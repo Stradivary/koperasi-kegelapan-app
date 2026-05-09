@@ -1,7 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "tanstack-start-app",
+  "name": "koperasi-kegelapan",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry"
+  "main": "@tanstack/react-start/server-entry",
+  // Bind your Cloudflare D1 database here. Replace database_name if your D1 DB name differs.
+  "d1_databases": [
+    {
+      "binding": "MBC_D1",
+      "database_name": "koperasi-kegelapan"
+    }
+  ]
 }
