@@ -60,7 +60,7 @@ export function AdminLayout({ children, activePage }: AdminLayoutProps) {
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="border-b border-border p-4">
-            <h1 className="text-lg font-bold">MBC Admin</h1>
+            <h1 className="text-lg font-bold">Koperasi Kegelapan Admin</h1>
             <div className="mt-3">
               <Select value={activeTenant} onValueChange={setActiveTenant}>
                 <SelectTrigger
@@ -101,7 +101,7 @@ export function AdminLayout({ children, activePage }: AdminLayoutProps) {
 
           {/* Footer */}
           <div className="border-t border-border p-4 text-xs text-muted-foreground">
-            MBC System v1.0
+            Koperasi Kegelapan v1.0
           </div>
         </div>
       </aside>

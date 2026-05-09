@@ -25,7 +25,7 @@ export function TenantBranding({ tenant }: TenantBrandingProps) {
   const primaryColor = tenant?.branding?.primaryColor ?? '#2563eb'
   const logoUrl = tenant?.branding?.logoUrl ?? ''
   const displayName =
-    tenant?.branding?.displayName ?? tenant?.name ?? 'MBC System'
+    tenant?.branding?.displayName ?? tenant?.name ?? 'Koperasi Kegelapan'
 
   // Escape CSS string values to prevent injection
   const escapedLogoUrl = logoUrl.replace(/["\\]/g, '\\$&')
@@ -49,6 +49,6 @@ export function useTenantBranding(tenant: TenantContext | null) {
     primaryColor: tenant?.branding?.primaryColor ?? '#2563eb',
     logoUrl: tenant?.branding?.logoUrl ?? null,
     displayName:
-      tenant?.branding?.displayName ?? tenant?.name ?? 'MBC System',
+      tenant?.branding?.displayName ?? tenant?.name ?? 'Koperasi Kegelapan',
   }
 }

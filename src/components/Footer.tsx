@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="page-wrap flex flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
         <div>
           <p className="m-0 text-sm font-semibold text-[var(--sea-ink)]">
-            MBC System
+            Koperasi Kegelapan
           </p>
           <p className="m-0 mt-1 text-xs">
             NFC-powered membership management for cooperatives.
@@ -38,7 +38,7 @@ export default function Footer() {
       </div>
 
       <div className="page-wrap mt-6 flex flex-col items-center justify-between gap-2 text-xs sm:flex-row">
-        <p className="m-0">&copy; {year} MBC System. All rights reserved.</p>
+        <p className="m-0">&copy; {year} Koperasi Kegelapan. All rights reserved.</p>
         <p className="island-kicker m-0">Offline-First · Multi-Tenant · Secure</p>
       </div>
     </footer>
