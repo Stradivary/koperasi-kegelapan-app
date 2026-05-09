@@ -1,0 +1,29 @@
+{
+  "projectName": "mbcs",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "includeExamples": true,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "postgresql"
+    }
+  },
+  "envVarValues": {},
+  "git": true,
+  "install": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "nitro",
+    "better-auth",
+    "form",
+    "sentry",
+    "shadcn",
+    "tanstack-query",
+    "drizzle",
+    "cloudflare"
+  ]
+}

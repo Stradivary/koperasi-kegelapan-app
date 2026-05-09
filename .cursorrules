@@ -1,0 +1,52 @@
+# MBC System — Agent Rules
+
+## Package Manager
+Use `pnpm` for all package operations. Never use npm or yarn.
+- Install: `pnpm add <package>`
+- Dev install: `pnpm add -D <package>`
+- Run script: `pnpm run <script>`
+- Add shadcn component: `pnpm dlx shadcn@latest add <component>`
+
+## Framework
+This is a TanStack Start (React) application deployed to Cloudflare Workers.
+- All code is ISOMORPHIC by default — it runs in BOTH server and client environments.
+- Use `createServerFn` for server-only code (DB access, secrets, etc.).
+- Do NOT use Next.js patterns (`getServerSideProps`, `"use server"`, `app/layout.tsx`).
+- Types are FULLY INFERRED. Never cast, never annotate inferred values.
+
+## Sentry
+We use Sentry for error collection and instrumentation.
+
+Error collection is automatic and configured in `src/router.tsx`.
+
+Wrap server function implementations with `Sentry.startSpan`:
+```tsx
+import * as Sentry from '@sentry/tanstackstart-react'
+
+Sentry.startSpan({ name: 'Requesting all the pokemon' }, async () => {
+  await fetch('https://api.pokemon.com/data/')
+})
+```
+
+## Shadcn UI
+Use the latest version of Shadcn to install new components:
+```bash
+pnpm dlx shadcn@latest add button
+```
+
+## Database
+- ORM: Drizzle ORM with PostgreSQL (Neon)
+- Schema: `src/db/schema.ts`
+- Migrations: `pnpm run db:generate` then `pnpm run db:push`
+
+## Auth
+- Better Auth with email/password enabled
+- Server config: `src/lib/auth.ts`
+- Client: `src/lib/auth-client.ts`
+
+## TanStack Intent Skills
+Before making architectural or library-specific changes, check available skills:
+```bash
+npx @tanstack/intent@latest list
+npx @tanstack/intent@latest load <package>#<skill>
+```
