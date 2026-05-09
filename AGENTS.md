@@ -88,7 +88,7 @@ All env vars go in `.env.local` (gitignored). For Cloudflare deployment, set sec
 ## Project Structure
 
 ```
-mbcs/
+koperasi-kegelapan/
 ├── src/
 │   ├── components/          # Shared UI components
 │   │   └── ui/              # Shadcn UI components
