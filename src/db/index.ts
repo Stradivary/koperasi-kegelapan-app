@@ -2,6 +2,7 @@ import { drizzle as drizzlePostgres } from 'drizzle-orm/node-postgres'
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
 
 import * as schema from './schema.ts'
+import { getD1Binding } from '#/lib/cloudflare-bindings.ts'
 
 type DB = ReturnType<typeof drizzlePostgres<typeof schema>>
 
@@ -10,7 +11,7 @@ type D1Client = Parameters<typeof drizzleD1>[0]
 let _db: DB | null = null
 
 function getD1Client(): D1Client | undefined {
-  return (globalThis as any).__env?.['MBC_D1'] as D1Client | undefined
+  return getD1Binding<D1Client>()
 }
 
 export function getDb(): DB {

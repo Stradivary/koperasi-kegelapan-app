@@ -12,7 +12,7 @@ import { createMiddleware } from '@tanstack/react-start'
 import { extractTenantSlug } from './tenant-context.ts'
 import { resolveTenantBySlug } from './tenant-resolver.ts'
 import { createKVCache } from './kv-cache.ts'
-import type { CloudflareKVNamespace } from './kv-cache.ts'
+import { TENANT_CONFIG_KV_BINDING_NAME, getCloudflareEnv } from '#/lib/cloudflare-bindings.ts'
 import { db } from '#/db/index.ts'
 import type { TenantContext } from './tenant-context.ts'
 
@@ -33,16 +33,11 @@ export const tenantMiddleware = createMiddleware().server(
       // In local dev, KV may not be available — we gracefully fall back to DB-only.
       let kvCache = null
       try {
-        // Access Cloudflare env bindings via the global context
-        // In Workers runtime, `process.env` won't have KV bindings;
-        // they're available on the env object passed to the fetch handler.
-        // For now, we use DB-only resolution. KV integration will be
-        // wired when the Worker env bindings are configured in wrangler.jsonc.
-        const env = (globalThis as Record<string, unknown>).__env as
-          | { TENANT_CONFIG_KV?: CloudflareKVNamespace }
-          | undefined
-        if (env?.TENANT_CONFIG_KV) {
-          kvCache = createKVCache(env.TENANT_CONFIG_KV)
+        // Access Cloudflare env bindings via the global context.
+        // In Workers runtime, process.env won't include KV bindings.
+        const env = getCloudflareEnv()
+        if (env?.[TENANT_CONFIG_KV_BINDING_NAME]) {
+          kvCache = createKVCache(env[TENANT_CONFIG_KV_BINDING_NAME]!)
         }
       } catch {
         // KV not available — continue with DB-only resolution
