@@ -19,28 +19,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: mbcs
 
       - name: Build app
         run: pnpm run build
-        working-directory: mbcs
 
       - name: Deploy to Cloudflare Workers
         run: pnpm exec wrangler deploy
-        working-directory: mbcs
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
