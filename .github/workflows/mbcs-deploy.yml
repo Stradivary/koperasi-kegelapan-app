@@ -1,0 +1,46 @@
+name: Deploy Koperasi Kegelapan
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy MBcS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: mbcs
+
+      - name: Build app
+        run: pnpm run build
+        working-directory: mbcs
+
+      - name: Deploy to Cloudflare Workers
+        run: pnpm exec wrangler deploy
+        working-directory: mbcs
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
