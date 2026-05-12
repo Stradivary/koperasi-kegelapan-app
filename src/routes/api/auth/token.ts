@@ -12,7 +12,7 @@ export const Route = createFileRoute('/api/auth/token')({
         if (!json?.username || !json?.password) return errJson(400, 'username and password required')
 
         const db = getDb()
-        const account = db
+        const account = await db
           .select()
           .from(accounts)
           .where(and(eq(accounts.username, json.username), eq(accounts.status, 'active')))
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/api/auth/token')({
           return errJson(401, 'Invalid credentials')
         }
 
-        const tenant = db
+        const tenant = await db
           .select()
           .from(tenants)
           .where(eq(tenants.tenantId, account.tenantId))

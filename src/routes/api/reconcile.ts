@@ -34,7 +34,7 @@ export const Route = createFileRoute('/api/reconcile')({
         for (const event of body.events as ReconcileEvent[]) {
           try {
             const cardIdBuf = Buffer.from(event.cardId, 'hex')
-            const card = db
+            const card = await db
               .select()
               .from(cards)
               .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBuf)))
@@ -46,12 +46,12 @@ export const Route = createFileRoute('/api/reconcile')({
             const LIMIT = 1_000_000
             if (event.amount > LIMIT) flags.push({ id: event.cardId, flag: 'amount_exceeds_limit' })
 
-            db.update(cards)
+            await db.update(cards)
               .set({ balance: event.balanceAfter, counter: event.counter, lastActivityAt: new Date(event.timestamp * 1000) })
               .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBuf)))
               .run()
 
-            db.insert(auditLog)
+            await db.insert(auditLog)
               .values({
                 tenantId,
                 cardId: cardIdBuf,

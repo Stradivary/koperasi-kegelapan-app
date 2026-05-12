@@ -6,13 +6,13 @@ import { eq, and, sql } from 'drizzle-orm'
 export const Route = createFileRoute('/api/cards')({
   server: {
     handlers: {
-      GET: ({ request }) => {
+      GET: async ({ request }) => {
         const url = new URL(request.url)
         const tenantId = url.searchParams.get('tenantId')
         if (!tenantId) return errJson(400, 'tenantId required')
 
         const db = getDb()
-        const rows = db
+        const rows = await db
           .select({
             cardId: cards.cardId,
             userId: cards.userId,
@@ -39,7 +39,7 @@ export const Route = createFileRoute('/api/cards')({
 
         const db = getDb()
         const cardIdBuf = Buffer.from(body.cardId, 'hex')
-        db.insert(cards).values({
+        await db.insert(cards).values({
           tenantId: body.tenantId,
           cardId: cardIdBuf,
           userId: body.userId ?? null,
@@ -63,7 +63,7 @@ export const Route = createFileRoute('/api/cards')({
         if (body.status) update.status = body.status
         if (body.balance !== undefined) update.balance = body.balance
 
-        db.update(cards)
+        await db.update(cards)
           .set(update)
           .where(and(eq(cards.tenantId, body.tenantId), eq(cards.cardId, cardIdBuf)))
           .run()
