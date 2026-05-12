@@ -1,0 +1,4 @@
+# Agent Memo
+
+- [ ] Document the finding from the current implementation planning task and save it in this memo.
+- Finding: created `.agents/specs/run-subtask-SKILL.md` to capture a reusable workflow for extracting and executing subtasks from requirement specs.
