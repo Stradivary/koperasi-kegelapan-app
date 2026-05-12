@@ -1,51 +1,38 @@
-import { createAPIFileRoute } from '@tanstack/react-start/api'
-import { issueSessionGrant } from '../../../server/sessionGrant'
+import { createFileRoute } from '@tanstack/react-router'
+import { issueSessionGrant } from '#/server/sessionGrant'
 
-export const APIRoute = createAPIFileRoute('/api/session-grant')({
-  GET: async ({ request }) => {
-    const url = new URL(request.url)
-    const tenantId = url.searchParams.get('tenantId')
-    const deviceId = url.searchParams.get('deviceId') ?? 'unknown'
+export const Route = createFileRoute('/api/session-grant')({
+  server: {
+    handlers: {
+      GET: ({ request }) => {
+        const url = new URL(request.url)
+        const tenantId = url.searchParams.get('tenantId')
+        const deviceId = url.searchParams.get('deviceId') ?? 'unknown'
+        if (!tenantId) return errJson(400, 'tenantId required')
 
-    const authHeader = request.headers.get('authorization') ?? ''
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+        const authHeader = request.headers.get('authorization') ?? ''
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+        const accountId = token ? decodeField(token, 'accountId') : 'anonymous'
+        const role = token ? decodeField(token, 'role') : 'terminal'
 
-    if (!tenantId) {
-      return errJson(400, 'tenantId required')
-    }
-
-    const accountId = token ? decodeAccountId(token) : 'anonymous'
-    const role = token ? decodeRole(token) : 'terminal'
-
-    const grant = issueSessionGrant(tenantId, accountId, deviceId, role)
-
-    return new Response(JSON.stringify(grant), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+        return jsonOk(issueSessionGrant(tenantId, accountId, deviceId, role))
+      },
+    },
   },
 })
 
-function decodeAccountId(token: string): string {
+function decodeField(token: string, field: string): string {
   try {
     const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
-    return payload.accountId ?? 'anonymous'
+    return payload[field] ?? (field === 'role' ? 'terminal' : 'anonymous')
   } catch {
-    return 'anonymous'
+    return field === 'role' ? 'terminal' : 'anonymous'
   }
 }
 
-function decodeRole(token: string): string {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1] ?? ''))
-    return payload.role ?? 'terminal'
-  } catch {
-    return 'terminal'
-  }
+function jsonOk(data: unknown) {
+  return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } })
 }
-
 function errJson(status: number, msg: string) {
-  return new Response(JSON.stringify({ error: msg }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return new Response(JSON.stringify({ error: msg }), { status, headers: { 'Content-Type': 'application/json' } })
 }
