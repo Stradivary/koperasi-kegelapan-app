@@ -1,0 +1,9 @@
+name = "koperasi-kegelapan"
+main = ".output/worker/index.mjs"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "koperasi-kegelapan"
+database_id = "YOUR_D1_DATABASE_ID"

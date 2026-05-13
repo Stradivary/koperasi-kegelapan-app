@@ -38,8 +38,8 @@
     "@tanstack/react-table": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "@tanstack/store": "latest",
-    "better-sqlite3": "^12.6.2",
     "class-variance-authority": "^0.7.1",
+    "dexie": "^4.0.10",
     "clsx": "^2.1.1",
     "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.45.1",
@@ -58,7 +58,6 @@
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -73,7 +72,6 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "esbuild",
       "lightningcss",
       "sharp",
