@@ -1,5 +1,5 @@
-import { sqliteTable, integer, text, primaryKey } from 'drizzle-orm/sqlite-core'
 import { sql } from 'drizzle-orm'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const tenants = sqliteTable('tenants', {
   tenantId: text('tenant_id').primaryKey(),
