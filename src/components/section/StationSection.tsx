@@ -63,7 +63,7 @@ async function getCardsWithUsers(tenantId: string): Promise<CardRow[]> {
   }))
 }
 
-export function StationSection({ tenantId, role }: StationSectionProps) {
+export function StationSection({ tenantId }: StationSectionProps) {
   const [tab, setTab] = useState<Tab>('cards')
 
   return (
@@ -175,12 +175,21 @@ function CardsTab({ tenantId }: { tenantId: string }) {
   })
 
   const handleNfcTap = async () => {
+    if (!nfcSupported) {
+      setError('Perangkat/browser ini belum mendukung Web NFC')
+      return
+    }
+
     setNfcScanning(true)
     setError(null)
+    setSuccess(null)
     const serial = await scanNfcSerial()
     setNfcScanning(false)
+
     if (serial) {
-      setNewCardId(serial)
+      const normalized = serial.replace(/[^a-fA-F0-9]/g, '').toLowerCase()
+      setNewCardId(normalized)
+      setSuccess('Serial NFC berhasil dibaca')
     } else {
       setError('NFC scan gagal atau waktu habis')
     }
@@ -270,20 +279,20 @@ function CardsTab({ tenantId }: { tenantId: string }) {
                 onChange={(e) => setNewCardId(e.target.value)}
                 className="font-mono"
               />
-              {nfcSupported && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNfcTap}
-                  disabled={nfcScanning}
-                  className="shrink-0"
-                >
-                  {nfcScanning ? '...' : 'NFC'}
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleNfcTap}
+                disabled={nfcScanning || registerCard.isPending || !nfcSupported}
+                className="shrink-0"
+              >
+                {nfcScanning ? 'Scanning...' : 'Scan NFC'}
+              </Button>
             </div>
-            {nfcScanning && <p className="text-xs text-muted-foreground">Tempelkan kartu...</p>}
+            <p className="text-xs text-muted-foreground">Isi manual atau scan serial number kartu NFC.</p>
+            {!nfcSupported && <p className="text-xs text-muted-foreground">Web NFC tidak tersedia di browser/perangkat ini.</p>}
+            {nfcScanning && <p className="text-xs text-muted-foreground">Tempelkan kartu ke pembaca NFC...</p>}
           </div>
 
           <div className="space-y-1.5">

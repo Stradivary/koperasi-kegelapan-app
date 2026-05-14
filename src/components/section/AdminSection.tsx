@@ -4,10 +4,15 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { cn } from '../../lib/utils'
-import { localDb, type Card, type User } from '../../db/local-db'
+import { localDb, type User } from '../../db/local-db'
+import { useNfcCard } from '../../hooks/useNfcCard'
+import { useSessionGrant } from '../../hooks/useSessionGrant'
 
 interface AdminSectionProps {
   tenantId: string
+  accountId: string
+  deviceId: string
+  terminalId: number
   role: string
 }
 
@@ -60,8 +65,10 @@ const ROLE_LABELS: Record<string, string> = {
   terminal: 'Terminal',
 }
 
-export function AdminSection({ tenantId, role }: AdminSectionProps) {
+export const AdminSection = ({ tenantId, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
   const [view, setView] = useState<View>('cards')
+  const { grant } = useSessionGrant(tenantId, accountId, deviceId)
+  const { state, scan } = useNfcCard(grant, tenantId, terminalId)
 
   return (
     <div className="flex gap-0 min-h-[calc(100vh-80px)] -m-4">
@@ -96,6 +103,8 @@ export function AdminSection({ tenantId, role }: AdminSectionProps) {
         {view === 'accounts' && <AccountsView tenantId={tenantId} />}
         {view === 'members' && <MembersView tenantId={tenantId} />}
       </div>
+      <button onClick={scan} disabled={!grant}>Scan NFC Card</button>
+      {state.error && <p className="error">Error: {state.error}</p>}
     </div>
   )
 }

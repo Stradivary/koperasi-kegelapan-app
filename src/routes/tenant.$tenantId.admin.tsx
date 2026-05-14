@@ -8,5 +8,13 @@ export const Route = createFileRoute('/tenant/$tenantId/admin')({
 function AdminPage() {
   const { tenantId } = Route.useParams()
   const { tenantContext } = Route.useRouteContext()
-  return <AdminSection tenantId={tenantId} role={tenantContext.role} />
+  return (
+    <AdminSection
+      tenantId={tenantId}
+      accountId={tenantContext.accountId}
+      deviceId={tenantContext.deviceId}
+      terminalId={0}
+      role={tenantContext.role}
+    />
+  )
 }

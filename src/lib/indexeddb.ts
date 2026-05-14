@@ -30,9 +30,19 @@ export interface PolicyCache {
   expiresAt: number
 }
 
+function getIndexedDbFactory(): IDBFactory | null {
+  if (typeof globalThis === 'undefined') return null
+  return 'indexedDB' in globalThis ? globalThis.indexedDB : null
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
+    const idb = getIndexedDbFactory()
+    if (!idb) {
+      reject(new Error('IndexedDB is not available in this runtime'))
+      return
+    }
+    const req = idb.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result
       if (!db.objectStoreNames.contains('tenantContext')) {
@@ -71,21 +81,29 @@ async function tx<T>(
 }
 
 export const tenantContextStore = {
-  get: (tenantId: string) => tx<TenantContext | undefined>('tenantContext', 'readonly', (s) => s.get(tenantId)),
+  get: async (tenantId: string) => {
+    if (!getIndexedDbFactory()) return undefined
+    return tx<TenantContext | undefined>('tenantContext', 'readonly', (s) => s.get(tenantId))
+  },
   put: (ctx: TenantContext) => tx<IDBValidKey>('tenantContext', 'readwrite', (s) => s.put(ctx)),
   delete: (tenantId: string) => tx<undefined>('tenantContext', 'readwrite', (s) => s.delete(tenantId)),
 }
 
 export const cardSnapshotStore = {
-  get: (tenantId: string, cardIdHex: string) =>
-    tx<CardSnapshot | undefined>('cardSnapshot', 'readonly', (s) => s.get([tenantId, cardIdHex])),
+  get: async (tenantId: string, cardIdHex: string) => {
+    if (!getIndexedDbFactory()) return undefined
+    return tx<CardSnapshot | undefined>('cardSnapshot', 'readonly', (s) => s.get([tenantId, cardIdHex]))
+  },
   put: (snap: CardSnapshot) => tx<IDBValidKey>('cardSnapshot', 'readwrite', (s) => s.put(snap)),
   delete: (tenantId: string, cardIdHex: string) =>
     tx<undefined>('cardSnapshot', 'readwrite', (s) => s.delete([tenantId, cardIdHex])),
 }
 
 export const policyCacheStore = {
-  get: (tenantId: string) => tx<PolicyCache | undefined>('policyCache', 'readonly', (s) => s.get(tenantId)),
+  get: async (tenantId: string) => {
+    if (!getIndexedDbFactory()) return undefined
+    return tx<PolicyCache | undefined>('policyCache', 'readonly', (s) => s.get(tenantId))
+  },
   put: (policy: PolicyCache) => tx<IDBValidKey>('policyCache', 'readwrite', (s) => s.put(policy)),
   delete: (tenantId: string) => tx<undefined>('policyCache', 'readwrite', (s) => s.delete(tenantId)),
 }
@@ -106,6 +124,10 @@ export const reconciliationOutbox = {
 
   getPending: (tenantId: string): Promise<OutboxEntry[]> =>
     new Promise(async (resolve, reject) => {
+      if (!getIndexedDbFactory()) {
+        resolve([])
+        return
+      }
       const db = await openDb()
       const transaction = db.transaction('reconciliationOutbox', 'readonly')
       const store = transaction.objectStore('reconciliationOutbox')
