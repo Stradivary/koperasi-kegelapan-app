@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
+import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
 import { Route as ApiSessionGrantRouteImport } from './routes/api/session-grant'
 import { Route as ApiPolicyRouteImport } from './routes/api/policy'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
 const TenantTenantIdRoute = TenantTenantIdRouteImport.update({
   id: '/tenant/$tenantId',
   path: '/tenant/$tenantId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
+  id: '/dev/issuance-test',
+  path: '/dev/issuance-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSessionGrantRoute = ApiSessionGrantRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
+  '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
+  '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
+  '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
+    | '/dev/issuance-test'
     | '/tenant/$tenantId'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
+    | '/dev/issuance-test'
     | '/tenant/$tenantId'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
+    | '/dev/issuance-test'
     | '/tenant/$tenantId'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiPolicyRoute: typeof ApiPolicyRoute
   ApiSessionGrantRoute: typeof ApiSessionGrantRoute
+  DevIssuanceTestRoute: typeof DevIssuanceTestRoute
   TenantTenantIdRoute: typeof TenantTenantIdRouteWithChildren
   ApiAuthTokenRoute: typeof ApiAuthTokenRoute
 }
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/tenant/$tenantId'
       fullPath: '/tenant/$tenantId'
       preLoaderRoute: typeof TenantTenantIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/issuance-test': {
+      id: '/dev/issuance-test'
+      path: '/dev/issuance-test'
+      fullPath: '/dev/issuance-test'
+      preLoaderRoute: typeof DevIssuanceTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/session-grant': {
@@ -296,6 +316,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAccountsRoute: ApiAccountsRoute,
   ApiPolicyRoute: ApiPolicyRoute,
   ApiSessionGrantRoute: ApiSessionGrantRoute,
+  DevIssuanceTestRoute: DevIssuanceTestRoute,
   TenantTenantIdRoute: TenantTenantIdRouteWithChildren,
   ApiAuthTokenRoute: ApiAuthTokenRoute,
 }

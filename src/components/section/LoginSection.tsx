@@ -210,13 +210,13 @@ export function LoginSection() {
 
       {isLocal && (
         <div className="pt-1 border-t text-center">
-          <button
+          <Button
             type="button"
             onClick={() => { setMode('setup'); setError(null) }}
-            className="type-body2 text-muted-foreground hover:text-foreground hover:underline"
+            variant="outline"
           >
             Daftarkan koperasi baru
-          </button>
+          </Button>
         </div>
       )}
 

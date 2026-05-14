@@ -23,6 +23,7 @@ export interface AdminAccountRow {
 
 interface AdminAccountsPanelProps {
   accounts: AdminAccountRow[]
+  tenantSlug: string
   isLoading: boolean
   isCreating: boolean
   isToggling: boolean
@@ -32,6 +33,7 @@ interface AdminAccountsPanelProps {
 
 export function AdminAccountsPanel({
   accounts,
+  tenantSlug,
   isLoading,
   isCreating,
   isToggling,
@@ -43,6 +45,11 @@ export function AdminAccountsPanel({
   const [password, setPassword] = useState('')
   const [selectedRole, setSelectedRole] = useState<string>('terminal')
   const [error, setError] = useState<string | null>(null)
+
+  function handleRoleChange(role: string) {
+    setSelectedRole(role)
+    setUsername(`${tenantSlug}-${role}`)
+  }
 
   async function handleCreate() {
     setError(null)
@@ -65,7 +72,7 @@ export function AdminAccountsPanel({
           <p className="text-sm text-muted-foreground mt-0.5">{accounts.length} akun terdaftar</p>
         </div>
         {!showForm && (
-          <Button size="sm" onClick={() => { setShowForm(true); setError(null) }}>
+          <Button size="sm" onClick={() => { setShowForm(true); setError(null); setUsername(`${tenantSlug}-terminal`) }}>
             Tambah Akun
           </Button>
         )}
@@ -78,6 +85,7 @@ export function AdminAccountsPanel({
           <div className="space-y-1.5">
             <Label className="text-xs">Username</Label>
             <Input placeholder="station01" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">Disarankan: <code>{tenantSlug}-{selectedRole}</code></p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Password</Label>
@@ -85,7 +93,7 @@ export function AdminAccountsPanel({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Role</Label>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
+            <Select value={selectedRole} onValueChange={handleRoleChange}>
               <SelectTrigger aria-label="Role">
                 <SelectValue />
               </SelectTrigger>

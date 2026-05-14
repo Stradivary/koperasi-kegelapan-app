@@ -94,7 +94,11 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
                   Kembali
                 </Button>
                 <Button
-                  onClick={() => setStep('admin')}
+                  onClick={() => {
+                    const slug = tenantSlug || tenantName.toLowerCase().replace(/\s+/g, '-')
+                    setAdminUsername(`${slug}-admin`)
+                    setStep('admin')
+                  }}
                   disabled={!tenantName.trim()}
                   className="flex-1 bg-brand-dark text-white hover:bg-brand-dark/90"
                 >
@@ -119,6 +123,9 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
                   onChange={(e) => setAdminUsername(e.target.value)}
                   autoComplete="username"
                 />
+                <p className="type-body2 text-muted-foreground">
+                  Disarankan: <code className="text-xs">{(tenantSlug || tenantName.toLowerCase().replace(/\s+/g, '-')) + '-admin'}</code>
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label className="type-body1-bold">Password</Label>

@@ -12,13 +12,14 @@ import { AdminMembersPanel, type AdminUserRow } from '../block/AdminMembersPanel
 interface AdminSectionProps {
   tenantId: string
   tenantName: string
+  tenantSlug: string
   accountId: string
   deviceId: string
   terminalId: number
   role: string
 }
 
-export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
+export const AdminSection = ({ tenantId, tenantName, tenantSlug, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
   const [view, setView] = useState<AdminView>('cards')
   const qc = useQueryClient()
 
@@ -162,6 +163,7 @@ export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, termin
       {view === 'accounts' && (
         <AdminAccountsPanel
           accounts={accounts.data ?? []}
+          tenantSlug={tenantSlug}
           isLoading={accounts.isLoading}
           isCreating={createAccount.isPending}
           isToggling={toggleAccountStatus.isPending}

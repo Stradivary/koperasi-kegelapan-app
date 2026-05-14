@@ -12,6 +12,7 @@ function AdminPage() {
     <AdminSection
       tenantId={tenantId}
       tenantName={tenantContext.tenantName}
+      tenantSlug={tenantContext.tenantSlug}
       accountId={tenantContext.accountId}
       deviceId={tenantContext.deviceId}
       terminalId={0}
