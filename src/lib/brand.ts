@@ -1,0 +1,80 @@
+export const BRAND = {
+  APP_NAME: 'Koperasi Kegelapan',
+  ORG_NAME: 'Telkomsel',
+  TAGLINE: 'By Telkomsel',
+  BYLINE: 'By Telkomsel',
+  SHORT_NAME: 'KK Wallet',
+  APP_DESCRIPTION: 'Dompet NFC Koperasi — By Telkomsel',
+} as const
+
+export const BRAND_FONTS = {
+  HEADING_BOLD: 'telkomselbatikbold',
+  HEADING_REGULAR: 'telkomselbatikregular',
+  BODY: 'Poppins',
+} as const
+
+export const SIGNAL_COLORS = {
+  // Brand
+  PRIMARY: '#FF0025',
+  PRIMARY_BG: '#ED0226',
+  SECONDARY: '#001A41',
+
+  // Text
+  TEXT_PRIMARY: '#001A41',
+  TEXT_SECONDARY: '#4E5784',
+  TEXT_DISABLE: '#B3BAC8',
+  TEXT_RED: '#FF0025',
+  TEXT_VALID: '#008E53',
+  TEXT_INFO: '#0050AE',
+  TEXT_ERROR: '#BC1D42',
+  TEXT_WARNING: '#D9801F',
+
+  // Background
+  BG_DISABLE: '#F5F8FA',
+  BG_WARM: '#F6F3F3',
+  BG_VALID: '#EDFCF0',
+  BG_INFO: '#E7F5FC',
+  BG_ERROR: '#FDDDD4',
+  BG_WARNING: '#FEF3D4',
+
+  // Primary shades (Brand Red)
+  SHADE_PRIMARY_0: '#FFF5F6',
+  SHADE_PRIMARY_100: '#FFCCD5',
+  SHADE_PRIMARY_200: '#FF99AB',
+  SHADE_PRIMARY_300: '#FF6680',
+  SHADE_PRIMARY_400: '#FF3356',
+  SHADE_PRIMARY_500: '#FF0025',
+  SHADE_PRIMARY_600: '#CC001E',
+  SHADE_PRIMARY_700: '#990016',
+  SHADE_PRIMARY_800: '#66000F',
+  SHADE_PRIMARY_900: '#330007',
+
+  // Secondary shades (Dark Blue)
+  SHADE_SECONDARY_0: '#FCFDFD',
+  SHADE_SECONDARY_100: '#E8EDF5',
+  SHADE_SECONDARY_200: '#C5CEDF',
+  SHADE_SECONDARY_300: '#8FA0BD',
+  SHADE_SECONDARY_400: '#5A749A',
+  SHADE_SECONDARY_500: '#2E4D78',
+  SHADE_SECONDARY_600: '#1A3360',
+  SHADE_SECONDARY_700: '#001A41',
+  SHADE_SECONDARY_800: '#001030',
+  SHADE_SECONDARY_900: '#00081E',
+
+  // Semantic Valid (Green)
+  SEMANTIC_VALID_0: '#C7F9C6',
+  SEMANTIC_VALID_500: '#008E53',
+  SEMANTIC_VALID_600: '#007A53',
+
+  // Semantic Info (Blue)
+  SEMANTIC_INFO_0: '#CBEBFA',
+  SEMANTIC_INFO_500: '#0050AE',
+
+  // Semantic Warning (Amber)
+  SEMANTIC_WARNING_0: '#FEFBF7',
+  SEMANTIC_WARNING_500: '#D9801F',
+
+  // Semantic Error (Red)
+  SEMANTIC_ERROR_0: '#FEF5F8',
+  SEMANTIC_ERROR_500: '#BC1D42',
+} as const

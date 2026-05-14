@@ -1,6 +1,7 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "short_name": "KK Wallet",
+  "name": "Koperasi Kegelapan",
+  "description": "Dompet NFC Koperasi — By Telkomsel",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +19,10 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#FF0025",
+  "background_color": "#001A41",
+  "categories": ["finance", "utilities"]
 }
