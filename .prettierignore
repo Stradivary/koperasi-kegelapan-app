@@ -1,0 +1,7 @@
+dist
+node_modules
+.wrangler
+coverage
+pnpm-lock.yaml
+src/routeTree.gen.ts
+*.min.js
