@@ -1,0 +1,26 @@
+@font-face {
+  font-family: 'telkomselbatikbold';
+  src: url('TelkomselBatikSans-Bold.eot');
+  src: url('TelkomselBatikSans-Bold.eot?#iefix') format('embedded-opentype'),
+    url('TelkomselBatikSans-Bold.woff2') format('woff2'),
+    url('TelkomselBatikSans-Bold.woff') format('woff'),
+    url('TelkomselBatikSans-Bold.ttf') format('truetype'),
+    url('TelkomselBatikSans-Bold.svg#poppinsbold') format('svg');
+  font-weight: normal;
+  font-style: normal;
+
+}
+
+
+@font-face {
+  font-family: 'telkomselbatikregular';
+  src: url('TelkomselBatikSans-Regular.eot');
+  src: url('TelkomselBatikSans-Regular.eot?#iefix') format('embedded-opentype'),
+    url('TelkomselBatikSans-Regular.woff2') format('woff2'),
+    url('TelkomselBatikSans-Regular.woff') format('woff'),
+    url('TelkomselBatikSans-Regular.ttf') format('truetype'),
+    url('TelkomselBatikSans-Regular.svg#poppinsmedium') format('svg');
+  font-weight: normal;
+  font-style: normal;
+
+}
