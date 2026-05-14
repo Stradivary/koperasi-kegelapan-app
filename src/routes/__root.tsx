@@ -13,6 +13,7 @@ import { PwaUpdatePrompt } from '../components/block/PwaUpdatePrompt'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
+import { TooltipProvider } from '#/components/ui/tooltip'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -47,7 +48,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <TooltipProvider>
+
+          {children}
+        </TooltipProvider>
         <PwaUpdatePrompt />
         <TanStackDevtools
           config={{ position: 'bottom-right' }}

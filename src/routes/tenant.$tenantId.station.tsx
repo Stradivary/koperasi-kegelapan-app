@@ -11,7 +11,6 @@ function StationPage() {
   return (
     <StationSection
       tenantId={tenantId}
-      tenantName={tenantContext.tenantName}
       role={tenantContext.role}
     />
   )

@@ -1,13 +1,15 @@
+import { CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 import { BRAND } from '../../lib/brand'
-import { setupLocalTenant } from '../../lib/localTenant'
+import { AuthLayout } from '../layout/AuthLayout'
+import { getOrCreateDeviceId } from '../../lib/getOrCreateDeviceId'
 import { tenantContextStore } from '../../lib/indexeddb'
+import { setupLocalTenant } from '../../lib/localTenant'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import { CheckCircle, Building2, User, Lock, Globe } from 'lucide-react'
 
-type SetupStep = 'welcome' | 'tenant' | 'admin' | 'done'
+type SetupStep = 'tenant' | 'admin' | 'done'
 
 interface LocalSetupSectionProps {
   onComplete: (tenantId: string, role: string) => void
@@ -15,7 +17,7 @@ interface LocalSetupSectionProps {
 }
 
 export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectionProps) {
-  const [step, setStep] = useState<SetupStep>('welcome')
+  const [step, setStep] = useState<SetupStep>('tenant')
   const [tenantName, setTenantName] = useState('')
   const [tenantSlug, setTenantSlug] = useState('')
   const [adminUsername, setAdminUsername] = useState('')
@@ -61,53 +63,7 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-signal-disable">
-      {/* Brand header */}
-      <div className="bg-brand-dark text-white text-center py-10 px-4">
-        <p className="type-h3 text-white">{BRAND.APP_NAME}</p>
-        <p className="type-body1 text-white/70 mt-1">Pengaturan Pertama</p>
-      </div>
-
-      <div className="flex-1 flex items-start justify-center p-6 -mt-6">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6 space-y-5">
-
-          {/* Step: Welcome */}
-          {step === 'welcome' && (
-            <div className="space-y-5">
-              <div>
-                <h1 className="type-h5 text-foreground">Selamat Datang</h1>
-                <p className="type-body1 text-signal-text-secondary mt-1">
-                  Pilih cara menjalankan {BRAND.APP_NAME}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setStep('tenant')}
-                className="w-full text-left rounded-xl border-2 border-brand-dark/20 p-4 hover:border-brand-dark hover:bg-brand-dark/5 transition-all group space-y-1"
-              >
-                <div className="flex items-center gap-2">
-                  <Building2 size={18} className="text-brand-dark group-hover:text-brand-dark" />
-                  <p className="type-title-bold text-foreground">Mulai Lokal</p>
-                </div>
-                <p className="type-body2 text-signal-text-secondary">
-                  Jalankan di perangkat ini tanpa server. Data tersimpan lokal. Bisa disinkronkan ke server kapan saja.
-                </p>
-              </button>
-
-              <button
-                onClick={onServerMode}
-                className="w-full text-left rounded-xl border-2 border-muted p-4 hover:border-brand/30 hover:bg-brand/5 transition-all group space-y-1"
-              >
-                <div className="flex items-center gap-2">
-                  <Globe size={18} className="text-signal-info group-hover:text-signal-info" />
-                  <p className="type-title-bold text-foreground">Hubungkan ke Server</p>
-                </div>
-                <p className="type-body2 text-signal-text-secondary">
-                  Login menggunakan akun yang sudah terdaftar di server.
-                </p>
-              </button>
-            </div>
-          )}
+    <AuthLayout variant="brand-dark" headerSubtitle="Daftarkan Koperasi" align="center">
 
           {/* Step: Tenant info */}
           {step === 'tenant' && (
@@ -134,7 +90,7 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
                 <p className="type-body2 text-muted-foreground">Biarkan kosong untuk generate otomatis</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('welcome')} className="flex-1">
+                <Button variant="outline" onClick={onServerMode} className="flex-1">
                   Kembali
                 </Button>
                 <Button
@@ -219,18 +175,8 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
               </p>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   )
 }
 
-function getOrCreateDeviceId(): string {
-  const key = 'koperasi-device-id'
-  let id = localStorage.getItem(key)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(key, id)
-  }
-  return id
-}
+
