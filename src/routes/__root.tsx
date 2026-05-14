@@ -8,6 +8,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { BRAND } from '../lib/brand'
+import { PwaUpdatePrompt } from '../components/block/PwaUpdatePrompt'
 
 import appCss from '../styles.css?url'
 
@@ -47,6 +48,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <PwaUpdatePrompt />
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
           plugins={[
