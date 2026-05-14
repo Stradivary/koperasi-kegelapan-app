@@ -60,6 +60,8 @@ function roleToOps(role: string): string[] {
       return ['read', 'debit']
     case 'gate':
       return ['read', 'checkin', 'checkout']
+    case 'scout':
+      return ['read']
     case 'station':
       return ['read', 'credit', 'checkin', 'checkout', 'admin']
     case 'admin':

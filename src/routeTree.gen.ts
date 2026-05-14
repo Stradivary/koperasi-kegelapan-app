@@ -12,17 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
 import { Route as ApiSessionGrantRouteImport } from './routes/api/session-grant'
-import { Route as ApiReconcileRouteImport } from './routes/api/reconcile'
 import { Route as ApiPolicyRouteImport } from './routes/api/policy'
-import { Route as ApiCardsRouteImport } from './routes/api/cards'
-import { Route as ApiAuditRouteImport } from './routes/api/audit'
+import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
 import { Route as TenantTenantIdStationRouteImport } from './routes/tenant.$tenantId.station'
 import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
 import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
 import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantId.gate'
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
-import { Route as ApiCardsCardIdRouteImport } from './routes/api/cards.$cardId'
 import { Route as ApiAuthTokenRouteImport } from './routes/api/auth/token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,24 +37,14 @@ const ApiSessionGrantRoute = ApiSessionGrantRouteImport.update({
   path: '/api/session-grant',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiReconcileRoute = ApiReconcileRouteImport.update({
-  id: '/api/reconcile',
-  path: '/api/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPolicyRoute = ApiPolicyRouteImport.update({
   id: '/api/policy',
   path: '/api/policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCardsRoute = ApiCardsRouteImport.update({
-  id: '/api/cards',
-  path: '/api/cards',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuditRoute = ApiAuditRouteImport.update({
-  id: '/api/audit',
-  path: '/api/audit',
+const ApiAccountsRoute = ApiAccountsRouteImport.update({
+  id: '/api/accounts',
+  path: '/api/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
@@ -90,11 +77,6 @@ const TenantTenantIdAdminRoute = TenantTenantIdAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const ApiCardsCardIdRoute = ApiCardsCardIdRouteImport.update({
-  id: '/$cardId',
-  path: '/$cardId',
-  getParentRoute: () => ApiCardsRoute,
-} as any)
 const ApiAuthTokenRoute = ApiAuthTokenRouteImport.update({
   id: '/api/auth/token',
   path: '/api/auth/token',
@@ -103,14 +85,11 @@ const ApiAuthTokenRoute = ApiAuthTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/audit': typeof ApiAuditRoute
-  '/api/cards': typeof ApiCardsRouteWithChildren
+  '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/cards/$cardId': typeof ApiCardsCardIdRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -120,14 +99,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/audit': typeof ApiAuditRoute
-  '/api/cards': typeof ApiCardsRouteWithChildren
+  '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/cards/$cardId': typeof ApiCardsCardIdRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -138,14 +114,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/audit': typeof ApiAuditRoute
-  '/api/cards': typeof ApiCardsRouteWithChildren
+  '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/cards/$cardId': typeof ApiCardsCardIdRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -157,14 +130,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/api/audit'
-    | '/api/cards'
+    | '/api/accounts'
     | '/api/policy'
-    | '/api/reconcile'
     | '/api/session-grant'
     | '/tenant/$tenantId'
     | '/api/auth/token'
-    | '/api/cards/$cardId'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -174,14 +144,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/api/audit'
-    | '/api/cards'
+    | '/api/accounts'
     | '/api/policy'
-    | '/api/reconcile'
     | '/api/session-grant'
     | '/tenant/$tenantId'
     | '/api/auth/token'
-    | '/api/cards/$cardId'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -191,14 +158,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/api/audit'
-    | '/api/cards'
+    | '/api/accounts'
     | '/api/policy'
-    | '/api/reconcile'
     | '/api/session-grant'
     | '/tenant/$tenantId'
     | '/api/auth/token'
-    | '/api/cards/$cardId'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -209,10 +173,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiAuditRoute: typeof ApiAuditRoute
-  ApiCardsRoute: typeof ApiCardsRouteWithChildren
+  ApiAccountsRoute: typeof ApiAccountsRoute
   ApiPolicyRoute: typeof ApiPolicyRoute
-  ApiReconcileRoute: typeof ApiReconcileRoute
   ApiSessionGrantRoute: typeof ApiSessionGrantRoute
   TenantTenantIdRoute: typeof TenantTenantIdRouteWithChildren
   ApiAuthTokenRoute: typeof ApiAuthTokenRoute
@@ -241,13 +203,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSessionGrantRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/reconcile': {
-      id: '/api/reconcile'
-      path: '/api/reconcile'
-      fullPath: '/api/reconcile'
-      preLoaderRoute: typeof ApiReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/policy': {
       id: '/api/policy'
       path: '/api/policy'
@@ -255,18 +210,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cards': {
-      id: '/api/cards'
-      path: '/api/cards'
-      fullPath: '/api/cards'
-      preLoaderRoute: typeof ApiCardsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/audit': {
-      id: '/api/audit'
-      path: '/api/audit'
-      fullPath: '/api/audit'
-      preLoaderRoute: typeof ApiAuditRouteImport
+    '/api/accounts': {
+      id: '/api/accounts'
+      path: '/api/accounts'
+      fullPath: '/api/accounts'
+      preLoaderRoute: typeof ApiAccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenant/$tenantId/terminal': {
@@ -311,13 +259,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdAdminRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
-    '/api/cards/$cardId': {
-      id: '/api/cards/$cardId'
-      path: '/$cardId'
-      fullPath: '/api/cards/$cardId'
-      preLoaderRoute: typeof ApiCardsCardIdRouteImport
-      parentRoute: typeof ApiCardsRoute
-    }
     '/api/auth/token': {
       id: '/api/auth/token'
       path: '/api/auth/token'
@@ -327,18 +268,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface ApiCardsRouteChildren {
-  ApiCardsCardIdRoute: typeof ApiCardsCardIdRoute
-}
-
-const ApiCardsRouteChildren: ApiCardsRouteChildren = {
-  ApiCardsCardIdRoute: ApiCardsCardIdRoute,
-}
-
-const ApiCardsRouteWithChildren = ApiCardsRoute._addFileChildren(
-  ApiCardsRouteChildren,
-)
 
 interface TenantTenantIdRouteChildren {
   TenantTenantIdAdminRoute: typeof TenantTenantIdAdminRoute
@@ -364,10 +293,8 @@ const TenantTenantIdRouteWithChildren = TenantTenantIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiAuditRoute: ApiAuditRoute,
-  ApiCardsRoute: ApiCardsRouteWithChildren,
+  ApiAccountsRoute: ApiAccountsRoute,
   ApiPolicyRoute: ApiPolicyRoute,
-  ApiReconcileRoute: ApiReconcileRoute,
   ApiSessionGrantRoute: ApiSessionGrantRoute,
   TenantTenantIdRoute: TenantTenantIdRouteWithChildren,
   ApiAuthTokenRoute: ApiAuthTokenRoute,

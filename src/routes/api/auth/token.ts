@@ -11,7 +11,7 @@ export const Route = createFileRoute('/api/auth/token')({
         const json = await request.json().catch(() => null)
         if (!json?.username || !json?.password) return errJson(400, 'username and password required')
 
-        const db = getDb()
+        const db = await getDb()
         const account = await db
           .select()
           .from(accounts)

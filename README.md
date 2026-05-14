@@ -9,6 +9,59 @@ pnpm install
 pnpm dev
 ```
 
+## D1: Local vs Remote
+
+Use local D1 for offline work and remote D1 when you want to hit Cloudflare-hosted data.
+
+### Run app with local D1 bindings
+
+```bash
+pnpm dev:local
+```
+
+### Run app with remote D1 bindings
+
+```bash
+pnpm dev:remote
+```
+
+### Local D1 workflow (offline)
+
+```bash
+pnpm db:generate
+pnpm db:local:migrate
+pnpm db:local:seed
+```
+
+Query local D1:
+
+```bash
+pnpm db:local:query -- "SELECT name FROM sqlite_master WHERE type='table';"
+```
+
+### Remote D1 workflow
+
+Apply migrations to remote D1:
+
+```bash
+pnpm db:remote:migrate
+```
+
+Query remote D1:
+
+```bash
+pnpm db:remote:query -- "SELECT name FROM sqlite_master WHERE type='table';"
+```
+
+### Reset local D1 state
+
+If you want a clean local database:
+
+```bash
+rm -rf .wrangler/state
+pnpm db:local:migrate
+```
+
 # Building For Production
 
 To build this application for production:

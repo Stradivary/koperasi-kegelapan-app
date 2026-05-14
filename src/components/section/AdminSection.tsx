@@ -1,93 +1,30 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { AdminLayout } from '../layout/AdminLayout'
-import { BRAND } from '../../lib/brand'
-import { RefreshCw, CreditCard, TrendingUp, FileText } from 'lucide-react'
-import { exportTenant, deriveExportPassphrase, importTenant, downloadExportBlob } from '../../lib/localTenant'
-import { localTenantConfigStore } from '../../lib/indexeddb'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-
-type AdminSection = 'dashboard' | 'cards' | 'transactions' | 'reconcile' | 'settings' | 'export'
+import { cn } from '../../lib/utils'
+import { localDb, type User } from '../../db/local-db'
+import { useNfcCard } from '../../hooks/useNfcCard'
+import { useSessionGrant } from '../../hooks/useSessionGrant'
 
 interface AdminSectionProps {
   tenantId: string
-  tenantName: string
+  accountId: string
+  deviceId: string
+  terminalId: number
   role: string
 }
 
-async function fetchCards(tenantId: string) {
-  const res = await fetch(`/api/cards?tenantId=${tenantId}`)
-  if (!res.ok) throw new Error('Failed to fetch cards')
-  return res.json()
-}
+type View = 'cards' | 'audit' | 'accounts' | 'members'
 
-async function fetchAuditLog(tenantId: string) {
-  const res = await fetch(`/api/audit?tenantId=${tenantId}&limit=100`)
-  if (!res.ok) throw new Error('Failed to fetch audit log')
-  return res.json()
-}
-
-export function AdminSection({ tenantId, tenantName, role }: AdminSectionProps) {
-  const [activeSection, setActiveSection] = useState<AdminSection>('dashboard')
-
-  const cards = useQuery({ queryKey: ['cards', tenantId], queryFn: () => fetchCards(tenantId) })
-  const audit = useQuery({ queryKey: ['audit', tenantId], queryFn: () => fetchAuditLog(tenantId) })
-
-  const totalBalance = (cards.data ?? []).reduce(
-    (sum: number, c: { balance: number }) => sum + (c.balance ?? 0),
-    0,
-  )
-  const activeCards = (cards.data ?? []).filter(
-    (c: { status: string }) => c.status === 'active',
-  ).length
-
-  return (
-    <AdminLayout
-      tenantId={tenantId}
-      tenantName={tenantName}
-      role={role}
-      activeSection={activeSection}
-      onSectionChange={setActiveSection}
-    >
-      {activeSection === 'dashboard' && (
-        <DashboardView
-          cardCount={(cards.data ?? []).length}
-          activeCards={activeCards}
-          totalBalance={totalBalance}
-          recentAudit={(audit.data ?? []).slice(0, 5)}
-          loading={cards.isLoading || audit.isLoading}
-        />
-      )}
-
-      {activeSection === 'cards' && (
-        <CardsView tenantId={tenantId} cards={cards.data ?? []} loading={cards.isLoading} error={cards.error} />
-      )}
-
-      {activeSection === 'transactions' && (
-        <TransactionsView entries={audit.data ?? []} loading={audit.isLoading} error={audit.error} />
-      )}
-
-      {activeSection === 'reconcile' && (
-        <ReconcileView tenantId={tenantId} />
-      )}
-
-      {(activeSection === 'settings' || activeSection === 'export') && (
-        <SettingsView tenantId={tenantId} tenantName={tenantName} activeSection={activeSection} />
-      )}
-    </AdminLayout>
-  )
-}
-
-/* ── Sub-views ─────────────────────────────────── */
-
-interface DashboardViewProps {
-  cardCount: number
-  activeCards: number
-  totalBalance: number
-  recentAudit: AuditEntry[]
-  loading: boolean
+interface CardRow {
+  cardId: string
+  userId: number | null
+  userName: string | null
+  status: string
+  balance: number
+  counter: number
 }
 
 interface AuditEntry {
@@ -99,373 +36,399 @@ interface AuditEntry {
   flagged: boolean
 }
 
-function DashboardView({ cardCount, activeCards, totalBalance, recentAudit, loading }: DashboardViewProps) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="type-h4 text-foreground">{BRAND.APP_NAME}</h1>
-        <p className="type-body1 text-signal-text-secondary">{BRAND.BYLINE}</p>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={CreditCard} label="Total Kartu" value={String(cardCount)} loading={loading} />
-        <StatCard icon={TrendingUp} label="Kartu Aktif" value={String(activeCards)} loading={loading} color="valid" />
-        <StatCard
-          icon={FileText}
-          label="Total Saldo"
-          value={`Rp ${totalBalance.toLocaleString('id-ID')}`}
-          loading={loading}
-          wide
-        />
-        <StatCard icon={RefreshCw} label="Transaksi" value={String(recentAudit.length)} loading={loading} />
-      </div>
-
-      <section>
-        <h2 className="type-title-bold text-foreground mb-3">Transaksi Terbaru</h2>
-        <div className="bg-white rounded-xl border divide-y">
-          {loading && <p className="px-4 py-3 type-body1 text-muted-foreground">Memuat...</p>}
-          {recentAudit.map((entry) => (
-            <AuditRow key={entry.id} entry={entry} />
-          ))}
-          {!loading && recentAudit.length === 0 && (
-            <p className="px-4 py-3 type-body1 text-muted-foreground">Belum ada transaksi.</p>
-          )}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-interface StatCardProps {
-  icon: React.ElementType
-  label: string
-  value: string
-  loading?: boolean
-  color?: 'valid' | 'info' | 'warning'
-  wide?: boolean
-}
-
-function StatCard({ icon: Icon, label, value, loading, color, wide }: StatCardProps) {
-  const colorClass = color === 'valid'
-    ? 'text-signal-valid'
-    : color === 'info'
-      ? 'text-signal-info'
-      : color === 'warning'
-        ? 'text-signal-warning'
-        : 'text-brand'
-
-  return (
-    <div className={['bg-white rounded-xl border p-4 space-y-2', wide ? 'col-span-2 lg:col-span-1' : ''].join(' ')}>
-      <Icon size={20} className={colorClass} />
-      <p className="type-body2 text-signal-text-secondary">{label}</p>
-      {loading
-        ? <div className="h-6 bg-muted rounded animate-pulse" />
-        : <p className="type-title-bold text-foreground">{value}</p>
-      }
-    </div>
-  )
-}
-
-interface CardsViewProps {
-  tenantId: string
-  cards: CardRow[]
-  loading: boolean
-  error: Error | null
-}
-
-interface CardRow {
-  cardId: string
+interface AccountRow {
+  accountId: string
+  username: string
+  role: string
   status: string
-  balance: number
-  userId: number | null
-  userName?: string | null
+  createdAt: number
 }
 
-function CardsView({ cards, loading, error }: CardsViewProps) {
+interface UserRow {
+  userId: number
+  name: string
+  status: string
+  createdAt: number
+}
+
+const NAV_ITEMS: { id: View; label: string }[] = [
+  { id: 'cards', label: 'Kartu' },
+  { id: 'audit', label: 'Audit Log' },
+  { id: 'accounts', label: 'Akun' },
+  { id: 'members', label: 'Anggota' },
+]
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  station: 'Station',
+  gate: 'Gate',
+  terminal: 'Terminal',
+}
+
+export const AdminSection = ({ tenantId, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
+  const [view, setView] = useState<View>('cards')
+  const { grant } = useSessionGrant(tenantId, accountId, deviceId)
+  const { state, scan } = useNfcCard(grant, tenantId, terminalId)
+
   return (
-    <div className="space-y-4">
-      <h1 className="type-h4 text-foreground">Kartu</h1>
-      {loading && <p className="type-body1 text-muted-foreground">Memuat...</p>}
-      {error && <p className="type-body1 text-destructive">{String(error)}</p>}
-      <div className="bg-white rounded-xl border divide-y">
-        {cards.map((card) => (
-          <div key={card.cardId} className="px-4 py-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="type-body1-bold text-foreground truncate">
-                {card.userName ?? `User #${card.userId}`}
-              </p>
-              <p className="type-body2 font-mono text-signal-text-secondary truncate">{card.cardId}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="type-body1-bold text-foreground">
-                Rp {card.balance?.toLocaleString('id-ID')}
-              </p>
-              <StatusBadge status={card.status} />
-            </div>
-          </div>
-        ))}
-        {!loading && cards.length === 0 && (
-          <p className="px-4 py-3 type-body1 text-muted-foreground">Belum ada kartu.</p>
-        )}
+    <div className="flex gap-0 min-h-[calc(100vh-80px)] -m-4">
+      {/* Sidebar */}
+      <aside className="w-44 shrink-0 border-r bg-muted/30 flex flex-col pt-4 pb-4">
+        <div className="px-3 mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Admin</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{role}</p>
+        </div>
+        <nav className="space-y-0.5 px-2">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setView(item.id)}
+              className={cn(
+                'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                view === item.id
+                  ? 'bg-primary text-primary-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 p-4 overflow-auto">
+        {view === 'cards' && <CardsView tenantId={tenantId} />}
+        {view === 'audit' && <AuditView tenantId={tenantId} />}
+        {view === 'accounts' && <AccountsView tenantId={tenantId} />}
+        {view === 'members' && <MembersView tenantId={tenantId} />}
       </div>
+      <button onClick={scan} disabled={!grant}>Scan NFC Card</button>
+      {state.error && <p className="error">Error: {state.error}</p>}
     </div>
   )
 }
 
-interface TransactionsViewProps {
-  entries: AuditEntry[]
-  loading: boolean
-  error: Error | null
-}
-
-function TransactionsView({ entries, loading, error }: TransactionsViewProps) {
-  return (
-    <div className="space-y-4">
-      <h1 className="type-h4 text-foreground">Transaksi</h1>
-      {loading && <p className="type-body1 text-muted-foreground">Memuat...</p>}
-      {error && <p className="type-body1 text-destructive">{String(error)}</p>}
-      <div className="bg-white rounded-xl border divide-y">
-        {entries.map((entry) => (
-          <AuditRow key={entry.id} entry={entry} />
-        ))}
-        {!loading && entries.length === 0 && (
-          <p className="px-4 py-3 type-body1 text-muted-foreground">Belum ada transaksi.</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function AuditRow({ entry }: { entry: AuditEntry }) {
-  const typeColors: Record<string, string> = {
-    debit: 'text-signal-error',
-    credit: 'text-signal-valid',
-    checkin: 'text-signal-info',
-    checkout: 'text-signal-text-secondary',
-    admin: 'text-signal-warning',
-  }
-  return (
-    <div className="px-4 py-3 flex items-center justify-between gap-3">
-      <div>
-        <span className={['type-body1-bold capitalize', typeColors[entry.type] ?? ''].join(' ')}>
-          {entry.type}
-        </span>
-        {entry.flagged && (
-          <span className="ml-2 px-1.5 py-0.5 rounded bg-signal-bg-error type-body2 text-signal-error">
-            flagged
-          </span>
-        )}
-      </div>
-      <div className="text-right">
-        <p className="type-body1-bold text-foreground">
-          Rp {entry.amount?.toLocaleString('id-ID')}
-        </p>
-        <p className="type-body2 text-signal-text-secondary">
-          {new Date(entry.timestamp * 1000).toLocaleString('id-ID')}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; text: string }> = {
-    active: { bg: 'bg-signal-bg-valid', text: 'text-signal-valid' },
-    blocked_admin: { bg: 'bg-signal-bg-error', text: 'text-signal-error' },
-    blocked_tamper: { bg: 'bg-signal-bg-error', text: 'text-signal-error' },
-    blocked_fraud: { bg: 'bg-signal-bg-warning', text: 'text-signal-warning' },
-    blocked_expired: { bg: 'bg-muted', text: 'text-muted-foreground' },
-  }
-  const { bg, text } = map[status] ?? { bg: 'bg-muted', text: 'text-muted-foreground' }
-  return (
-    <span className={['inline-block px-2 py-0.5 rounded-full type-body2', bg, text].join(' ')}>
-      {status.replace('blocked_', '').replace('_', ' ')}
-    </span>
-  )
-}
-
-function ReconcileView({ tenantId }: { tenantId: string }) {
-  return (
-    <div className="space-y-4">
-      <h1 className="type-h4 text-foreground">Rekonsiliasi</h1>
-      <div className="bg-white rounded-xl border p-6 space-y-3">
-        <p className="type-body1 text-signal-text-secondary">
-          Sinkronisasi transaksi offline ke server untuk tenant <strong>{tenantId}</strong>.
-        </p>
-        <p className="type-body2 text-muted-foreground">
-          Transaksi yang belum terkirim akan muncul di sini. Gunakan tombol Sync di terminal untuk memulai.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function SettingsView({ tenantId, tenantName, activeSection }: { tenantId: string; tenantName: string; activeSection: string }) {
-  const [exportPassphrase, setExportPassphrase] = useState('')
-  const [useAutoPassphrase, setUseAutoPassphrase] = useState(true)
-  const [adminPassword, setAdminPassword] = useState('')
-  const [importBlob, setImportBlob] = useState('')
-  const [importPassphrase, setImportPassphrase] = useState('')
-  const [exportStatus, setExportStatus] = useState<string | null>(null)
-  const [importStatus, setImportStatus] = useState<string | null>(null)
-  const [isLocalTenant, setIsLocalTenant] = useState<boolean | null>(null)
-
-  useState(() => {
-    localTenantConfigStore.get(tenantId).then((cfg) => {
-      setIsLocalTenant(cfg?.mode === 'local' ?? false)
-    })
+function CardsView({ tenantId }: { tenantId: string }) {
+  const cards = useQuery<CardRow[]>({
+    queryKey: ['admin-cards', tenantId],
+    queryFn: async () => {
+      const [cardRows, userRows] = await Promise.all([
+        localDb.cards.where('tenantId').equals(tenantId).toArray(),
+        localDb.users.where('tenantId').equals(tenantId).toArray(),
+      ])
+      const userMap = new Map<number, string>(userRows.map((u) => [u.userId, u.name]))
+      return cardRows.map((c) => ({
+        cardId: c.cardId,
+        userId: c.userId,
+        userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
+        status: c.status,
+        balance: c.balance,
+        counter: c.counter,
+      }))
+    },
   })
 
-  async function handleExport() {
-    try {
-      let passphrase = exportPassphrase
-      if (useAutoPassphrase) {
-        passphrase = await deriveExportPassphrase(tenantId, adminPassword)
-      }
-      const blob = await exportTenant(tenantId, passphrase)
-      downloadExportBlob(blob, tenantId)
-      setExportStatus('Export berhasil! File sedang diunduh.')
-    } catch (e) {
-      setExportStatus(`Gagal: ${String(e)}`)
-    }
-  }
+  return (
+    <div className="space-y-3 max-w-2xl">
+      <h2 className="font-semibold">Daftar Kartu</h2>
+      {cards.isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+      {cards.error && <p className="text-sm text-destructive">{String(cards.error)}</p>}
+      {cards.data && (
+        <div className="rounded-lg border divide-y">
+          {cards.data.map((card) => (
+            <div key={card.cardId} className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{card.userName ?? `User #${card.userId}`}</p>
+                <p className="text-xs text-muted-foreground font-mono truncate">{card.cardId}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-medium">Rp {card.balance?.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">{card.status}</p>
+              </div>
+            </div>
+          ))}
+          {cards.data.length === 0 && (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Belum ada kartu terdaftar</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-  async function handleImport() {
-    try {
-      const cfg = await importTenant(importBlob.trim(), importPassphrase)
-      setImportStatus(`Import berhasil: ${cfg.name}`)
-    } catch (e) {
-      setImportStatus(`Gagal: ${String(e)}`)
-    }
-  }
+function AuditView({ tenantId }: { tenantId: string }) {
+  const audit = useQuery<AuditEntry[]>({
+    queryKey: ['admin-audit', tenantId],
+    queryFn: () =>
+      localDb.auditLog
+        .where('tenantId')
+        .equals(tenantId)
+        .reverse()
+        .limit(100)
+        .toArray() as Promise<AuditEntry[]>,
+  })
 
   return (
-    <div className="space-y-4">
-      <h1 className="type-h4 text-foreground">
-        {activeSection === 'export' ? 'Export & Backup' : 'Pengaturan'}
-      </h1>
+    <div className="space-y-3 max-w-2xl">
+      <h2 className="font-semibold">Audit Log</h2>
+      {audit.isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+      {audit.error && <p className="text-sm text-destructive">{String(audit.error)}</p>}
+      {audit.data && (
+        <div className="rounded-lg border divide-y text-sm">
+          {audit.data.map((entry) => (
+            <div key={entry.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+              <div>
+                <span className="font-medium capitalize">{entry.type}</span>
+                {entry.flagged && (
+                  <span className="ml-2 text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">
+                    flagged
+                  </span>
+                )}
+              </div>
+              <div className="text-right text-xs text-muted-foreground shrink-0">
+                <p className="font-medium text-foreground">Rp {entry.amount?.toLocaleString()}</p>
+                <p>{new Date(entry.timestamp * 1000).toLocaleString('id-ID')}</p>
+              </div>
+            </div>
+          ))}
+          {audit.data.length === 0 && (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Belum ada transaksi</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-      <div className="bg-white rounded-xl border p-5 space-y-3">
-        <p className="type-body1-bold text-foreground">Informasi Tenant</p>
-        <p className="type-body1 text-signal-text-secondary">{tenantName}</p>
-        <p className="type-body2 font-mono text-muted-foreground">{tenantId}</p>
-        {isLocalTenant !== null && (
-          <span className={[
-            'inline-block px-2 py-0.5 rounded-full type-body2',
-            isLocalTenant ? 'bg-brand-dark/10 text-brand-dark' : 'bg-signal-bg-info text-signal-info',
-          ].join(' ')}>
-            {isLocalTenant ? 'Mode Lokal' : 'Terhubung Server'}
-          </span>
+function AccountsView({ tenantId }: { tenantId: string }) {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [selectedRole, setSelectedRole] = useState<string>('terminal')
+  const [error, setError] = useState<string | null>(null)
+
+  const accounts = useQuery<AccountRow[]>({
+    queryKey: ['admin-accounts', tenantId],
+    queryFn: () => fetch(`/api/accounts?tenantId=${tenantId}`).then((r) => r.json()),
+  })
+
+  const createAccount = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, username, password, role: selectedRole }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Gagal membuat akun')
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-accounts', tenantId] })
+      setShowForm(false)
+      setUsername(''); setPassword(''); setSelectedRole('terminal'); setError(null)
+    },
+    onError: (e) => setError(String(e instanceof Error ? e.message : e)),
+  })
+
+  const toggleStatus = useMutation({
+    mutationFn: async ({ accountId, status }: { accountId: string; status: string }) => {
+      const res = await fetch('/api/accounts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, accountId, status }),
+      })
+      if (!res.ok) throw new Error('Gagal mengubah status')
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-accounts', tenantId] }),
+  })
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold">Manajemen Akun</h2>
+        {!showForm && (
+          <Button size="sm" onClick={() => { setShowForm(true); setError(null) }}>
+            Tambah Akun
+          </Button>
         )}
       </div>
 
-      {activeSection === 'export' && (
-        <>
-          {/* Export section */}
-          <div className="bg-white rounded-xl border p-5 space-y-4">
-            <p className="type-title-bold text-foreground">Backup / Export Data</p>
-            <p className="type-body2 text-signal-text-secondary">
-              Data tenant akan dienkripsi dan diunduh sebagai file teks. Simpan file ini di tempat aman.
-            </p>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="auto-passphrase"
-                checked={useAutoPassphrase}
-                onChange={(e) => setUseAutoPassphrase(e.target.checked)}
-                className="rounded"
-              />
-              <label htmlFor="auto-passphrase" className="type-body1 text-foreground cursor-pointer">
-                Gunakan password admin untuk enkripsi (direkomendasikan)
-              </label>
-            </div>
-
-            {useAutoPassphrase ? (
-              <div className="space-y-1.5">
-                <Label className="type-body1-bold">Password Admin</Label>
-                <Input
-                  type="password"
-                  placeholder="Masukkan password admin"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                />
-                <p className="type-body2 text-muted-foreground">
-                  Backup ini hanya bisa dibuka dengan password admin yang sama.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label className="type-body1-bold">Passphrase Kustom</Label>
-                <Input
-                  type="password"
-                  placeholder="Passphrase untuk arsip"
-                  value={exportPassphrase}
-                  onChange={(e) => setExportPassphrase(e.target.value)}
-                />
-              </div>
-            )}
-
-            {exportStatus && (
-              <p className={[
-                'type-body2',
-                exportStatus.startsWith('Gagal') ? 'text-signal-error' : 'text-signal-valid',
-              ].join(' ')}>
-                {exportStatus}
-              </p>
-            )}
-
-            <Button
-              onClick={handleExport}
-              disabled={useAutoPassphrase ? !adminPassword : !exportPassphrase}
-              className="w-full bg-brand-dark text-white hover:bg-brand-dark/90"
+      {showForm && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <h3 className="text-sm font-medium">Akun Baru</h3>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Username</Label>
+            <Input placeholder="station01" value={username} onChange={(e) => setUsername(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Password</Label>
+            <Input type="password" placeholder="min. 8 karakter" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Role</Label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
-              Unduh Backup
+              {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="flex-1"
+              onClick={() => createAccount.mutate()}
+              disabled={!username || !password || password.length < 8 || createAccount.isPending}
+            >
+              {createAccount.isPending ? 'Menyimpan...' : 'Buat Akun'}
+            </Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setError(null) }}>
+              Batal
             </Button>
           </div>
+        </div>
+      )}
 
-          {/* Import section */}
-          <div className="bg-white rounded-xl border p-5 space-y-4">
-            <p className="type-title-bold text-foreground">Import / Migrasi Data</p>
-            <p className="type-body2 text-signal-text-secondary">
-              Pulihkan data dari file backup. Ini akan menimpa data tenant yang ada.
-            </p>
-            <div className="space-y-1.5">
-              <Label className="type-body1-bold">Isi File Backup</Label>
-              <textarea
-                className="w-full h-24 rounded-lg border border-input bg-background px-3 py-2 type-body2 font-mono focus:border-brand focus:outline-none resize-none"
-                placeholder="Tempel isi file backup di sini..."
-                value={importBlob}
-                onChange={(e) => setImportBlob(e.target.value)}
-              />
+      {accounts.isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+      {accounts.data && (
+        <div className="rounded-lg border divide-y">
+          {accounts.data.map((acc) => (
+            <div key={acc.accountId} className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{acc.username}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{ROLE_LABELS[acc.role] ?? acc.role}</span>
+                  <span className={cn('text-xs', acc.status === 'active' ? 'text-green-600' : 'text-muted-foreground')}>
+                    {acc.status === 'active' ? 'Aktif' : 'Ditangguhkan'}
+                  </span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant={acc.status === 'active' ? 'ghost' : 'outline'}
+                className={acc.status === 'active' ? 'text-destructive' : ''}
+                onClick={() => toggleStatus.mutate({ accountId: acc.accountId, status: acc.status === 'active' ? 'suspended' : 'active' })}
+                disabled={toggleStatus.isPending}
+              >
+                {acc.status === 'active' ? 'Tangguhkan' : 'Aktifkan'}
+              </Button>
             </div>
-            <div className="space-y-1.5">
-              <Label className="type-body1-bold">Passphrase Dekripsi</Label>
-              <Input
-                type="password"
-                placeholder="Passphrase yang digunakan saat export"
-                value={importPassphrase}
-                onChange={(e) => setImportPassphrase(e.target.value)}
-              />
-            </div>
-            {importStatus && (
-              <p className={[
-                'type-body2',
-                importStatus.startsWith('Gagal') ? 'text-signal-error' : 'text-signal-valid',
-              ].join(' ')}>
-                {importStatus}
-              </p>
-            )}
+          ))}
+          {accounts.data.length === 0 && (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Belum ada akun</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MembersView({ tenantId }: { tenantId: string }) {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const members = useQuery<UserRow[]>({
+    queryKey: ['users', tenantId],
+    queryFn: () =>
+      localDb.users.where('tenantId').equals(tenantId).toArray() as Promise<UserRow[]>,
+  })
+
+  const createMember = useMutation({
+    mutationFn: async () => {
+      const existing = await localDb.users.where('tenantId').equals(tenantId).toArray()
+      const nextId = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) + 1 : 1001
+      const now = Math.floor(Date.now() / 1000)
+      await localDb.users.add({
+        tenantId,
+        userId: nextId,
+        name: name.trim(),
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users', tenantId] })
+      setShowForm(false)
+      setName(''); setError(null)
+    },
+    onError: (e) => setError(String(e instanceof Error ? e.message : e)),
+  })
+
+  const toggleStatus = useMutation({
+    mutationFn: async ({ userId, status }: { userId: number; status: string }) => {
+      await localDb.users.update([tenantId, userId], { status: status as User['status'], updatedAt: Math.floor(Date.now() / 1000) })
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users', tenantId] }),
+  })
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold">Anggota</h2>
+        {!showForm && (
+          <Button size="sm" onClick={() => { setShowForm(true); setError(null) }}>
+            Tambah Anggota
+          </Button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <h3 className="text-sm font-medium">Anggota Baru</h3>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Nama Lengkap</Label>
+            <Input placeholder="Ahmad Rifai" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="flex gap-2 pt-1">
             <Button
-              variant="outline"
-              onClick={handleImport}
-              disabled={!importBlob || !importPassphrase}
-              className="w-full"
+              className="flex-1"
+              onClick={() => createMember.mutate()}
+              disabled={!name.trim() || createMember.isPending}
             >
-              Import Data
+              {createMember.isPending ? 'Menyimpan...' : 'Daftarkan'}
+            </Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setError(null) }}>
+              Batal
             </Button>
           </div>
-        </>
+        </div>
+      )}
+
+      {members.isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+      {members.data && (
+        <div className="rounded-lg border divide-y">
+          {members.data.map((m) => (
+            <div key={m.userId} className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{m.name}</p>
+                <p className="text-xs text-muted-foreground">#{m.userId} · {m.status === 'active' ? 'Aktif' : 'Ditangguhkan'}</p>
+              </div>
+              <Button
+                size="sm"
+                variant={m.status === 'active' ? 'ghost' : 'outline'}
+                className={m.status === 'active' ? 'text-destructive' : ''}
+                onClick={() => toggleStatus.mutate({ userId: m.userId, status: m.status === 'active' ? 'suspended' : 'active' })}
+                disabled={toggleStatus.isPending}
+              >
+                {m.status === 'active' ? 'Tangguhkan' : 'Aktifkan'}
+              </Button>
+            </div>
+          ))}
+          {members.data.length === 0 && (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Belum ada anggota terdaftar</p>
+          )}
+        </div>
       )}
     </div>
   )
