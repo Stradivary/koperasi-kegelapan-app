@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DevIndexRouteImport } from './routes/dev.index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
+import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
 import { Route as ApiSessionGrantRouteImport } from './routes/api/session-grant'
 import { Route as ApiPolicyRouteImport } from './routes/api/policy'
@@ -28,9 +30,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevIndexRoute = DevIndexRouteImport.update({
+  id: '/dev/',
+  path: '/dev/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TenantTenantIdRoute = TenantTenantIdRouteImport.update({
   id: '/tenant/$tenantId',
   path: '/tenant/$tenantId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevNfcTestRoute = DevNfcTestRouteImport.update({
+  id: '/dev/nfc-test',
+  path: '/dev/nfc-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
@@ -95,7 +107,9 @@ export interface FileRoutesByFullPath {
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
+  '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
+  '/dev/': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
@@ -110,7 +124,9 @@ export interface FileRoutesByTo {
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
+  '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
+  '/dev': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
@@ -126,7 +142,9 @@ export interface FileRoutesById {
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
+  '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
+  '/dev/': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
@@ -143,7 +161,9 @@ export interface FileRouteTypes {
     | '/api/policy'
     | '/api/session-grant'
     | '/dev/issuance-test'
+    | '/dev/nfc-test'
     | '/tenant/$tenantId'
+    | '/dev/'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
@@ -158,7 +178,9 @@ export interface FileRouteTypes {
     | '/api/policy'
     | '/api/session-grant'
     | '/dev/issuance-test'
+    | '/dev/nfc-test'
     | '/tenant/$tenantId'
+    | '/dev'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
@@ -173,7 +195,9 @@ export interface FileRouteTypes {
     | '/api/policy'
     | '/api/session-grant'
     | '/dev/issuance-test'
+    | '/dev/nfc-test'
     | '/tenant/$tenantId'
+    | '/dev/'
     | '/api/auth/token'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
@@ -189,7 +213,9 @@ export interface RootRouteChildren {
   ApiPolicyRoute: typeof ApiPolicyRoute
   ApiSessionGrantRoute: typeof ApiSessionGrantRoute
   DevIssuanceTestRoute: typeof DevIssuanceTestRoute
+  DevNfcTestRoute: typeof DevNfcTestRoute
   TenantTenantIdRoute: typeof TenantTenantIdRouteWithChildren
+  DevIndexRoute: typeof DevIndexRoute
   ApiAuthTokenRoute: typeof ApiAuthTokenRoute
 }
 
@@ -202,11 +228,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev/': {
+      id: '/dev/'
+      path: '/dev'
+      fullPath: '/dev/'
+      preLoaderRoute: typeof DevIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tenant/$tenantId': {
       id: '/tenant/$tenantId'
       path: '/tenant/$tenantId'
       fullPath: '/tenant/$tenantId'
       preLoaderRoute: typeof TenantTenantIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/nfc-test': {
+      id: '/dev/nfc-test'
+      path: '/dev/nfc-test'
+      fullPath: '/dev/nfc-test'
+      preLoaderRoute: typeof DevNfcTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev/issuance-test': {
@@ -317,7 +357,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPolicyRoute: ApiPolicyRoute,
   ApiSessionGrantRoute: ApiSessionGrantRoute,
   DevIssuanceTestRoute: DevIssuanceTestRoute,
+  DevNfcTestRoute: DevNfcTestRoute,
   TenantTenantIdRoute: TenantTenantIdRouteWithChildren,
+  DevIndexRoute: DevIndexRoute,
   ApiAuthTokenRoute: ApiAuthTokenRoute,
 }
 export const routeTree = rootRouteImport

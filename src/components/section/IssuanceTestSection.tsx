@@ -1,21 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { readCard, writeCard, isNfcSupported } from '../../core/nfc/engine'
-import { decodePayload, encodePayload } from '../../core/payload/engine'
-import { MAGIC, CARD_SCHEMA_VERSION, CARD_SIZE, CardState, CardStatus } from '../../core/payload/types'
+import { decodePayload, encodePayloadWire } from '../../core/payload/engine'
+import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus } from '../../core/payload/types'
 import type { CardPayload } from '../../core/payload/types'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import { Badge } from '../ui/badge'
 import { Separator } from '../ui/separator'
+import { IssuanceScanDrawer } from '../block/IssuanceScanDrawer'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-function toHex(bytes: Uint8Array) {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join(':')
-}
 
 function randomBytes(n: number): Uint8Array {
   const buf = new Uint8Array(n)
@@ -23,7 +17,7 @@ function randomBytes(n: number): Uint8Array {
   return buf
 }
 
-function makeFreshCard(opts: {
+export function makeFreshCard(opts: {
   name: string
   userId: number
   balance: number
@@ -70,7 +64,7 @@ function makeFreshCard(opts: {
     },
   }
 
-  return encodePayload(payload)
+  return encodePayloadWire(payload)
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -82,6 +76,8 @@ export function IssuanceTestSection() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [readPayload, setReadPayload] = useState<CardPayload | null>(null)
   const [serialNumber, setSerialNumber] = useState<string | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [drawerMode, setDrawerMode] = useState<'read' | 'write'>('read')
   const abortRef = useRef<AbortController | null>(null)
 
   // issuance form state
@@ -92,16 +88,21 @@ export function IssuanceTestSection() {
 
   const nfcAvailable = isNfcSupported()
 
-  function abort() {
-    abortRef.current?.abort()
+  const handleDrawerClose = useCallback(() => {
+    if (phase === 'scanning' || phase === 'writing') {
+      abortRef.current?.abort()
+    }
     setPhase('idle')
     setErrorMsg(null)
-  }
+    setIsDrawerOpen(false)
+  }, [phase])
 
   // ── READ ──────────────────────────────────────────────────────────────────
   const handleRead = useCallback(async () => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
+    setDrawerMode('read')
+    setIsDrawerOpen(true)
     setPhase('scanning')
     setErrorMsg(null)
     setReadPayload(null)
@@ -120,7 +121,6 @@ export function IssuanceTestSection() {
       setSerialNumber(result.serialNumber)
       setPhase('done')
     } catch (e) {
-      // still show raw bytes even if decode fails
       setPhase('error')
       setErrorMsg(`Decode failed: ${e}`)
     }
@@ -130,6 +130,8 @@ export function IssuanceTestSection() {
   const handleIssue = useCallback(async () => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
+    setDrawerMode('write')
+    setIsDrawerOpen(true)
     setPhase('writing')
     setErrorMsg(null)
 
@@ -143,6 +145,7 @@ export function IssuanceTestSection() {
         balance: parseInt(balance, 10),
         expiresAt,
       })
+      console.log('Issuing card with payload', decodePayload(raw))
     } catch (e) {
       setPhase('error')
       setErrorMsg(`Build failed: ${e}`)
@@ -167,9 +170,10 @@ export function IssuanceTestSection() {
     setPhase('done')
   }, [name, userId, balance, expiresOffset])
 
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const busyLabel = phase === 'scanning' ? 'Tap kartu...' : phase === 'writing' ? 'Menulis kartu...' : null
+  const handleRetry = useCallback(() => {
+    if (drawerMode === 'read') handleRead()
+    else handleIssue()
+  }, [drawerMode, handleRead, handleIssue])
 
   return (
     <div className="min-h-screen bg-background p-4 max-w-lg mx-auto space-y-6">
@@ -185,26 +189,6 @@ export function IssuanceTestSection() {
           Web NFC is not supported on this browser/device. Use Chrome on Android.
         </div>
       )}
-
-      {/* Status */}
-      <div className="flex items-center gap-2">
-        <Badge
-          variant={
-            phase === 'error' ? 'destructive'
-              : phase === 'done' ? 'default'
-              : 'secondary'
-          }
-        >
-          {phase}
-        </Badge>
-        {busyLabel && <span className="text-sm text-muted-foreground animate-pulse">{busyLabel}</span>}
-        {(phase === 'scanning' || phase === 'writing') && (
-          <Button size="sm" variant="ghost" onClick={abort}>
-            Batal
-          </Button>
-        )}
-        {errorMsg && <span className="text-sm text-destructive">{errorMsg}</span>}
-      </div>
 
       <Separator />
 
@@ -234,11 +218,7 @@ export function IssuanceTestSection() {
           </div>
         </div>
 
-        <Button
-          disabled={!nfcAvailable || phase === 'scanning' || phase === 'writing'}
-          onClick={handleIssue}
-          className="w-full"
-        >
+        <Button disabled={!nfcAvailable} onClick={handleIssue} className="w-full">
           Tulis ke kartu
         </Button>
       </section>
@@ -250,7 +230,7 @@ export function IssuanceTestSection() {
         <h2 className="font-semibold">Baca kartu</h2>
         <Button
           variant="outline"
-          disabled={!nfcAvailable || phase === 'scanning' || phase === 'writing'}
+          disabled={!nfcAvailable}
           onClick={handleRead}
           className="w-full"
         >
@@ -258,70 +238,17 @@ export function IssuanceTestSection() {
         </Button>
       </section>
 
-      {/* ── Decoded payload ─────────────────────────────────────────────── */}
-      {readPayload && (
-        <>
-          <Separator />
-          <section className="space-y-3">
-            <h2 className="font-semibold">Payload terbaca</h2>
-            {serialNumber && (
-              <Row label="Serial number" value={serialNumber} />
-            )}
-            <div className="rounded-md border bg-muted/40 p-3 text-xs font-mono space-y-1">
-              <Row label="Card ID" value={toHex(readPayload.header.cardId)} />
-              <Row label="Magic" value={`0x${readPayload.header.magic.toString(16).toUpperCase()}`} />
-              <Row label="Version" value={String(readPayload.header.version)} />
-
-              <Separator className="my-1" />
-              <Row label="Nama" value={readPayload.identity.name} />
-              <Row label="User ID" value={String(readPayload.identity.userId)} />
-              <Row label="Status" value={CardStatus[readPayload.identity.status] ?? String(readPayload.identity.status)} />
-              <Row label="Dibuat" value={new Date(readPayload.identity.createdAt * 1000).toLocaleString('id-ID')} />
-
-              <Separator className="my-1" />
-              <Row label="Saldo" value={`Rp ${readPayload.wallet.balance.toLocaleString('id-ID')}`} />
-              <Row label="Saldo sebelum" value={`Rp ${readPayload.wallet.lastBalance.toLocaleString('id-ID')}`} />
-              <Row label="Counter" value={String(readPayload.wallet.counter)} />
-              <Row label="State" value={CardState[readPayload.wallet.state] ?? String(readPayload.wallet.state)} />
-
-              <Separator className="my-1" />
-              <Row label="Berlaku s/d" value={new Date(readPayload.trailer.expiresAt * 1000).toLocaleString('id-ID')} />
-              <Row label="Key version" value={String(readPayload.trailer.keyVersion)} />
-              <Row label="Active ptr" value={String(readPayload.trailer.activePtr)} />
-              <Row label="Counter bind" value={String(readPayload.trailer.counterBind)} />
-              <Row label="HMAC" value={toHex(readPayload.trailer.hmac)} />
-              <Row label="Root hash" value={toHex(readPayload.trailer.rootHash)} />
-
-              {readPayload.logEntries.length > 0 && (
-                <>
-                  <Separator className="my-1" />
-                  <p className="text-muted-foreground">Log ({readPayload.logEntries.length} entri)</p>
-                  {readPayload.logEntries.map((e, i) => (
-                    <div key={i} className="pl-2 border-l">
-                      <Row label={`[${i}] amount`} value={String(e.amount)} />
-                      <Row label={`[${i}] balance`} value={String(e.balanceAfter)} />
-                      <Row label={`[${i}] flags`} value={`0x${e.flags.toString(16)}`} />
-                      <Row label={`[${i}] hash`} value={toHex(e.hash)} />
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-
-            {/* raw bytes size */}
-            <p className="text-xs text-muted-foreground">Card size: {CARD_SIZE} bytes</p>
-          </section>
-        </>
-      )}
-    </div>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-2">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right break-all">{value}</span>
+      <IssuanceScanDrawer
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+        phase={phase}
+        mode={drawerMode}
+        payload={readPayload}
+        serialNumber={serialNumber}
+        error={errorMsg}
+        onClose={handleDrawerClose}
+        onRetry={handleRetry}
+      />
     </div>
   )
 }

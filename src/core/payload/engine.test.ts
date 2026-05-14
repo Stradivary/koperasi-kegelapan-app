@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { decodePayload, encodePayload } from './engine'
-import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus, CARD_SIZE } from './types'
+import { decodePayload, encodePayload, encodePayloadWire } from './engine'
+import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus, CARD_SIZE, WIRE_SIZE } from './types'
 
 function makeMinimalCard(activePtr = 0): Uint8Array {
   const raw = new Uint8Array(CARD_SIZE)
@@ -67,7 +67,6 @@ describe('decodePayload', () => {
   it('throws on undersized buffer', () => {
     expect(() => decodePayload(new Uint8Array(100))).toThrow('too small')
   })
-
   it('selects buffer B when activePtr=1', () => {
     const raw = makeMinimalCard(1)
     const payload = decodePayload(raw)
@@ -100,5 +99,34 @@ describe('encodePayload / decodePayload round-trip', () => {
     const redecoded = decodePayload(encoded)
     expect(redecoded.logEntries[0].amount).toBe(15000)
     expect(redecoded.logEntries[0].balanceAfter).toBe(485000)
+  })
+})
+
+describe('encodePayloadWire / decodePayload wire format', () => {
+  it('produces WIRE_SIZE bytes', () => {
+    const raw = makeMinimalCard(0)
+    const decoded = decodePayload(raw)
+    const wire = encodePayloadWire(decoded)
+    expect(wire.length).toBe(WIRE_SIZE)
+    expect(WIRE_SIZE).toBe(280)
+  })
+
+  it('round-trips correctly', () => {
+    const raw = makeMinimalCard(0)
+    const decoded = decodePayload(raw)
+    const wire = encodePayloadWire(decoded)
+    const redecoded = decodePayload(wire)
+    expect(redecoded.header.magic).toBe(MAGIC)
+    expect(redecoded.identity.name).toBe(decoded.identity.name)
+    expect(redecoded.identity.userId).toBe(decoded.identity.userId)
+    expect(redecoded.wallet.balance).toBe(decoded.wallet.balance)
+    expect(redecoded.wallet.counter).toBe(decoded.wallet.counter)
+    expect(redecoded.trailer.expiresAt).toBe(decoded.trailer.expiresAt)
+    expect(redecoded.trailer.activePtr).toBe(0)
+  })
+
+  it('wire format is smaller than full card format', () => {
+    expect(WIRE_SIZE).toBeLessThan(CARD_SIZE)
+    expect(CARD_SIZE - WIRE_SIZE).toBe(216) // one inactive buffer dropped
   })
 })

@@ -7,7 +7,9 @@ import { KioskLayout } from '../layout/KioskLayout'
 import { NfcTapArea, NfcStatusLabel } from '../block/NfcTapArea'
 import { applyDebit, isWriteEligible } from '../../core/state-machine/engine'
 import { CardStatus } from '../../core/payload/types'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { tenantContextStore } from '../../lib/indexeddb'
 
 interface KioskSectionProps {
   tenantId: string
@@ -21,11 +23,17 @@ const MAX_AMOUNT = 1_000_000
 const QUICK_AMOUNTS = [5_000, 10_000, 15_000, 20_000, 25_000, 50_000]
 
 export function KioskSection({ tenantId, tenantName, accountId, deviceId, terminalId }: KioskSectionProps) {
+  const navigate = useNavigate()
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId)
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId)
   const [amount, setAmount] = useState('')
   const [txError, setTxError] = useState<string | null>(null)
   const [step, setStep] = useState<'tap' | 'confirm' | 'done'>('tap')
+
+  const handleLogout = useCallback(async () => {
+    await tenantContextStore.delete(tenantId)
+    navigate({ to: '/' })
+  }, [navigate, tenantId])
 
   function handleAmountSelect(val: number) {
     setAmount(String(val))
@@ -56,7 +64,7 @@ export function KioskSection({ tenantId, tenantName, accountId, deviceId, termin
     : state.phase as 'idle' | 'scanning' | 'writing' | 'error'
 
   return (
-    <KioskLayout title="Mesin Kasir" tenantName={tenantName}>
+    <KioskLayout title="Mesin Kasir" tenantName={tenantName} onLogoLongPress={handleLogout}>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
 
         {/* Session error */}

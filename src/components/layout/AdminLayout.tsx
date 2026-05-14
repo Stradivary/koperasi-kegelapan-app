@@ -3,7 +3,6 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   CreditCard,
   ClipboardList,
-  Users,
   UserCheck,
   LogOut,
   Menu,
@@ -15,7 +14,7 @@ import { BRAND } from '../../lib/brand'
 import { tenantContextStore } from '../../lib/indexeddb'
 import { Button } from '../ui/button'
 
-export type AdminView = 'cards' | 'audit' | 'accounts' | 'members'
+export type AdminView = 'cards' | 'audit' | 'members'
 
 interface AdminLayoutProps {
   tenantName: string
@@ -29,21 +28,18 @@ interface AdminLayoutProps {
 const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: 'cards', icon: CreditCard, label: 'Kartu' },
   { id: 'audit', icon: ClipboardList, label: 'Audit Log' },
-  { id: 'accounts', icon: Users, label: 'Akun' },
   { id: 'members', icon: UserCheck, label: 'Anggota' },
 ]
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: 'cards', icon: CreditCard, label: 'Kartu' },
   { id: 'audit', icon: ClipboardList, label: 'Audit' },
-  { id: 'accounts', icon: Users, label: 'Akun' },
   { id: 'members', icon: UserCheck, label: 'Anggota' },
 ]
 
 const SECTION_LABEL: Record<AdminView, string> = {
   cards: 'Kartu',
   audit: 'Audit Log',
-  accounts: 'Akun',
   members: 'Anggota',
 }
 

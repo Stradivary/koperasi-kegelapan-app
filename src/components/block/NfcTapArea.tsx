@@ -1,6 +1,6 @@
 import { Wifi } from 'lucide-react'
 
-type NfcPhase = 'idle' | 'scanning' | 'writing' | 'success' | 'error'
+type NfcPhase = 'idle' | 'scanning' | 'validating' | 'ready' | 'writing' | 'success' | 'error'
 
 interface NfcTapAreaProps {
   phase: NfcPhase
@@ -27,6 +27,22 @@ const phaseConfig = {
     ringClass: 'nfc-ring-pulse',
     label: 'Menunggu kartu...',
     sublabel: 'Jangan pindahkan perangkat',
+  },
+  validating: {
+    border: 'border-brand',
+    bg: 'bg-brand/5',
+    iconColor: 'text-brand',
+    ringClass: 'nfc-ring-pulse',
+    label: 'Memvalidasi...',
+    sublabel: 'Jangan pindahkan kartu',
+  },
+  ready: {
+    border: 'border-signal-valid',
+    bg: 'bg-signal-bg-valid',
+    iconColor: 'text-signal-valid',
+    ringClass: '',
+    label: 'Kartu Siap',
+    sublabel: 'Pilih tindakan',
   },
   writing: {
     border: 'border-signal-warning',
@@ -81,7 +97,7 @@ export function NfcTapArea({
       ].join(' ')}
     >
       {/* Outer pulse ring */}
-      {(phase === 'idle' || phase === 'scanning') && (
+      {(phase === 'idle' || phase === 'scanning' || phase === 'validating') && (
         <span
           className={[
             'absolute inset-0 rounded-full border-2 border-brand/20',
@@ -102,7 +118,7 @@ export function NfcTapArea({
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         ) : (
-          <Wifi size={48} className={phase === 'scanning' || phase === 'writing' ? 'animate-pulse' : ''} />
+          <Wifi size={48} className={phase === 'scanning' || phase === 'validating' || phase === 'writing' ? 'animate-pulse' : ''} />
         )}
       </span>
 

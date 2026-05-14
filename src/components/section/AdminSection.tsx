@@ -6,20 +6,18 @@ import { useSessionGrant } from '../../hooks/useSessionGrant'
 import { AdminLayout, type AdminView } from '../layout/AdminLayout'
 import { AdminCardsPanel, type AdminCardRow } from '../block/AdminCardsPanel'
 import { AdminAuditPanel, type AdminAuditEntry } from '../block/AdminAuditPanel'
-import { AdminAccountsPanel, type AdminAccountRow } from '../block/AdminAccountsPanel'
 import { AdminMembersPanel, type AdminUserRow } from '../block/AdminMembersPanel'
 
 interface AdminSectionProps {
   tenantId: string
   tenantName: string
-  tenantSlug: string
   accountId: string
   deviceId: string
   terminalId: number
   role: string
 }
 
-export const AdminSection = ({ tenantId, tenantName, tenantSlug, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
+export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
   const [view, setView] = useState<AdminView>('cards')
   const qc = useQueryClient()
 
@@ -57,43 +55,10 @@ export const AdminSection = ({ tenantId, tenantName, tenantSlug, accountId, devi
         .toArray() as Promise<AdminAuditEntry[]>,
   })
 
-  const accounts = useQuery<AdminAccountRow[]>({
-    queryKey: ['admin-accounts', tenantId],
-    queryFn: () => fetch(`/api/accounts?tenantId=${tenantId}`).then((r) => r.json()),
-  })
-
   const members = useQuery<AdminUserRow[]>({
     queryKey: ['users', tenantId],
     queryFn: () =>
       localDb.users.where('tenantId').equals(tenantId).toArray() as Promise<AdminUserRow[]>,
-  })
-
-  // Mutations
-  const createAccount = useMutation({
-    mutationFn: async ({ username, password, role: newRole }: { username: string; password: string; role: string }) => {
-      const res = await fetch('/api/accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, username, password, role: newRole }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? 'Gagal membuat akun')
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-accounts', tenantId] }),
-  })
-
-  const toggleAccountStatus = useMutation({
-    mutationFn: async ({ accountId: accId, status }: { accountId: string; status: string }) => {
-      const res = await fetch('/api/accounts', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, accountId: accId, status }),
-      })
-      if (!res.ok) throw new Error('Gagal mengubah status')
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-accounts', tenantId] }),
   })
 
   const createMember = useMutation({
@@ -122,10 +87,6 @@ export const AdminSection = ({ tenantId, tenantName, tenantSlug, accountId, devi
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users', tenantId] }),
   })
-
-  async function handleCreateAccount(username: string, password: string, accountRole: string) {
-    await createAccount.mutateAsync({ username, password, role: accountRole })
-  }
 
   async function handleCreateMember(name: string) {
     await createMember.mutateAsync({ name })
@@ -158,22 +119,6 @@ export const AdminSection = ({ tenantId, tenantName, tenantSlug, accountId, devi
           entries={audit.data ?? []}
           isLoading={audit.isLoading}
           error={audit.error ? String(audit.error) : null}
-        />
-      )}
-      {view === 'accounts' && (
-        <AdminAccountsPanel
-          accounts={accounts.data ?? []}
-          tenantSlug={tenantSlug}
-          isLoading={accounts.isLoading}
-          isCreating={createAccount.isPending}
-          isToggling={toggleAccountStatus.isPending}
-          onCreateAccount={handleCreateAccount}
-          onToggleStatus={(accId, currentStatus) =>
-            toggleAccountStatus.mutate({
-              accountId: accId,
-              status: currentStatus === 'active' ? 'suspended' : 'active',
-            })
-          }
         />
       )}
       {view === 'members' && (

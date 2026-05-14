@@ -1,12 +1,12 @@
+import { useState, useEffect } from 'react'
 import { useNfcCard } from '../../hooks/useNfcCard'
 import { useSessionGrant } from '../../hooks/useSessionGrant'
 import { validateTransition, applyCheckin, applyCheckout } from '../../core/state-machine/engine'
 import { CardState } from '../../core/payload/types'
-import { CardStatusBadge } from '../block/CardStatusBadge'
 import { Button } from '../ui/button'
 import { KioskLayout } from '../layout/KioskLayout'
-import { NfcTapArea, NfcStatusLabel } from '../block/NfcTapArea'
-import { LogIn, LogOut } from 'lucide-react'
+import { NfcTapArea } from '../block/NfcTapArea'
+import { NfcScanDrawer } from '../block/NfcScanDrawer'
 
 interface GateSectionProps {
   tenantId: string
@@ -18,7 +18,37 @@ interface GateSectionProps {
 
 export function GateSection({ tenantId, tenantName, accountId, deviceId, terminalId }: GateSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId)
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId)
+  const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  // Auto-close drawer after success
+  useEffect(() => {
+    if (state.phase === 'success') {
+      const timer = setTimeout(() => {
+        reset()
+        setIsDrawerOpen(false)
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
+  }, [state.phase, reset])
+
+  function handleScan() {
+    setIsDrawerOpen(true)
+    scan()
+  }
+
+  function handleDrawerClose() {
+    if (state.phase === 'scanning' || state.phase === 'validating') {
+      cancel()
+    } else {
+      reset()
+    }
+    setIsDrawerOpen(false)
+  }
+
+  function handleDrawerOpenChange(open: boolean) {
+    if (!open) handleDrawerClose()
+  }
 
   async function handleCheckin() {
     if (!state.payload) return
@@ -50,91 +80,31 @@ export function GateSection({ tenantId, tenantName, accountId, deviceId, termina
           </div>
         )}
 
-        {/* Idle */}
-        {state.phase === 'idle' && (
-          <div className="flex flex-col items-center gap-6">
-            <NfcTapArea phase="idle" onClick={scan} disabled={!grant || loading} />
-            <Button
-              onClick={scan}
-              disabled={!grant || loading}
-              className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
-            >
-              {loading ? 'Memuat sesi...' : 'Tap Kartu'}
-            </Button>
-          </div>
-        )}
-
-        {/* Scanning */}
-        {state.phase === 'scanning' && (
-          <div className="flex flex-col items-center gap-4">
-            <NfcTapArea phase="scanning" />
-            <NfcStatusLabel phase="scanning" />
-          </div>
-        )}
-
-        {/* Error */}
-        {state.phase === 'error' && (
-          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
-            <NfcStatusLabel phase="error" error={state.error} tamperDetected={state.tamperDetected} />
-            <Button variant="outline" onClick={reset} className="w-full">Coba Lagi</Button>
-          </div>
-        )}
-
-        {/* Card ready */}
-        {(state.phase === 'ready' || state.phase === 'writing' || state.phase === 'success') && state.payload && (
-          <div className="w-full max-w-xs space-y-4">
-            <div className="bg-white rounded-2xl border p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
-                <CardStatusBadge status={state.payload.identity.status} />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={[
-                  'px-2 py-0.5 rounded-full type-body2-bold',
-                  isCheckedIn
-                    ? 'bg-signal-bg-valid text-signal-valid'
-                    : 'bg-signal-bg-info text-signal-info',
-                ].join(' ')}>
-                  {isCheckedIn ? 'Sudah Masuk' : 'Belum Masuk'}
-                </span>
-              </div>
-            </div>
-
-            {state.phase === 'success' && (
-              <div className="rounded-2xl bg-signal-bg-valid border border-signal-valid/30 p-5 text-center">
-                <p className="type-title-bold text-signal-valid">
-                  {isCheckedIn ? '✓ Check-in berhasil' : '✓ Check-out berhasil'}
-                </p>
-              </div>
-            )}
-
-            {state.phase !== 'success' && (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={handleCheckin}
-                  disabled={state.phase === 'writing' || isCheckedIn}
-                  className="h-14 flex-col gap-1 bg-brand-dark hover:bg-brand-dark/90 text-white"
-                >
-                  <LogIn size={20} />
-                  <span className="type-body2-bold">Masuk</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCheckout}
-                  disabled={state.phase === 'writing' || !isCheckedIn}
-                  className="h-14 flex-col gap-1 border-2"
-                >
-                  <LogOut size={20} />
-                  <span className="type-body2-bold">Keluar</span>
-                </Button>
-              </div>
-            )}
-
-            <Button variant="outline" onClick={reset} className="w-full">Selesai</Button>
-          </div>
-        )}
+        <div className="flex flex-col items-center gap-6">
+          <NfcTapArea phase="idle" onClick={handleScan} disabled={!grant || loading} />
+          <Button
+            onClick={handleScan}
+            disabled={!grant || loading}
+            className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
+          >
+            {loading ? 'Memuat sesi...' : 'Tap Kartu'}
+          </Button>
+        </div>
       </div>
+
+      <NfcScanDrawer
+        open={isDrawerOpen}
+        onOpenChange={handleDrawerOpenChange}
+        phase={state.phase}
+        payload={state.payload}
+        isCheckedIn={isCheckedIn}
+        error={state.error}
+        tamperDetected={state.tamperDetected}
+        onCheckin={handleCheckin}
+        onCheckout={handleCheckout}
+        onClose={handleDrawerClose}
+        onRetry={scan}
+      />
     </KioskLayout>
   )
 }

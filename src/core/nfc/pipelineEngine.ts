@@ -1,6 +1,7 @@
-import { decodePayload, encodePayload, buildHmacInput, getInactiveBufferOffset, validateMagic } from '../payload/engine'
+import { decodePayload, encodePayloadWire, buildHmacInput, validateMagic } from '../payload/engine'
 import { computeHmac, verifyHmac, computeChainHash } from '../crypto/engine'
 import type { CardPayload, SessionGrant } from '../payload/types'
+import { BUFFER_SIZE } from '../payload/types'
 import { readCard, writeCard } from './engine'
 
 export type PipelineReadResult =
@@ -114,19 +115,16 @@ export async function prepareWrite(
     ? logEntries[logEntries.length - 1].hash
     : new Uint8Array(6)
 
-  const inactiveOffset = getInactiveBufferOffset(currentPayload.trailer.activePtr)
-  const newActivePtr = currentPayload.trailer.activePtr === 0 ? 1 : 0
-
   const newTrailer: CardPayload['trailer'] = {
     ...currentPayload.trailer,
     rootHash,
     counterBind: Number(newCounter & 0xffffffffn),
-    activePtr: newActivePtr,
+    activePtr: 0,
     hmac: new Uint8Array(8),
   }
 
   const finalPayload: CardPayload = { ...withHashes, trailer: newTrailer }
-  const newBufBytes = encodePayload(finalPayload).slice(inactiveOffset, inactiveOffset + 216)
+  const newBufBytes = encodePayloadWire(finalPayload).slice(0, BUFFER_SIZE)
 
   const hmacInput = buildHmacInput(newBufBytes, newTrailer)
   const hmac = await computeHmac(sessionGrant.sessionKey, cardId, hmacInput)
@@ -134,7 +132,7 @@ export async function prepareWrite(
   const signedTrailer = { ...newTrailer, hmac }
   const signedPayload: CardPayload = { ...withHashes, trailer: signedTrailer }
 
-  return encodePayload(signedPayload)
+  return encodePayloadWire(signedPayload)
 }
 
 async function recomputeChainHashes(entries: CardPayload['logEntries']): Promise<CardPayload['logEntries']> {
@@ -162,32 +160,14 @@ export async function commitWrite(
   const writeResult = await writeCard(raw, signal)
   if (!writeResult.ok) return { ok: false, error: writeResult.error }
 
-  const readBack = await readCard(signal)
-  if (!readBack.ok) return { ok: false, error: `Readback failed: ${readBack.error}` }
-
-  const writtenHash = await computeSimpleHash(raw)
-  const readHash = await computeSimpleHash(readBack.raw)
-  if (!bufferEquals(writtenHash, readHash)) {
-    return { ok: false, error: 'Readback mismatch after write' }
+  try {
+    const payload = decodePayload(raw)
+    return { ok: true, payload }
+  } catch (e) {
+    return { ok: false, error: `Decode after write failed: ${e}` }
   }
-
-  const payload = decodePayload(readBack.raw)
-  return { ok: true, payload }
 }
 
-async function computeSimpleHash(data: Uint8Array): Promise<Uint8Array> {
-  const buf = new ArrayBuffer(data.byteLength)
-  new Uint8Array(buf).set(data)
-  const h = await crypto.subtle.digest('SHA-256', buf)
-  return new Uint8Array(h)
-}
-
-function bufferEquals(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
-  return diff === 0
-}
 
 export async function recoverFromIncompleteWrite(
   raw: Uint8Array,

@@ -1,6 +1,7 @@
 import {
   MAGIC,
   CARD_SIZE,
+  WIRE_SIZE,
   BUFFER_SIZE,
   TRAILER_SIZE,
   BUFFER_A_OFFSET,
@@ -137,8 +138,8 @@ function encodeBuffer(payload: Omit<CardPayload, 'trailer'>): Uint8Array {
   return buf
 }
 
-function decodeTrailer(raw: Uint8Array): CardPayload['trailer'] {
-  const trl = raw.slice(TRAILER_OFFSET, TRAILER_OFFSET + TRAILER_SIZE)
+function decodeTrailer(raw: Uint8Array, offset = TRAILER_OFFSET): CardPayload['trailer'] {
+  const trl = raw.slice(offset, offset + TRAILER_SIZE)
   const view = new DataView(trl.buffer, trl.byteOffset, trl.byteLength)
   return {
     expiresAt: view.getUint32(TRAILER_EXPIRES_AT, true),
@@ -163,7 +164,17 @@ function encodeTrailer(trailer: CardPayload['trailer']): Uint8Array {
 }
 
 export function decodePayload(raw: Uint8Array): CardPayload {
-  if (raw.length < CARD_SIZE) throw new Error(`Card buffer too small: ${raw.length}`)
+  if (raw.length < WIRE_SIZE) throw new Error(`Card buffer too small: ${raw.length}`)
+
+  if (raw.length < CARD_SIZE) {
+    // Wire format: [activeBuffer (BUFFER_SIZE)] + [trailer (TRAILER_SIZE)]
+    const trailer = decodeTrailer(raw, BUFFER_SIZE)
+    const body = decodeBuffer(raw, 0)
+    if (body.header.magic !== MAGIC) throw new Error(`Invalid card magic: 0x${body.header.magic.toString(16)}`)
+    return { ...body, trailer }
+  }
+
+  // Full dual-buffer format
   const trailer = decodeTrailer(raw)
   const bufOffset = trailer.activePtr === 0 ? BUFFER_A_OFFSET : BUFFER_B_OFFSET
   const body = decodeBuffer(raw, bufOffset)
@@ -179,6 +190,15 @@ export function encodePayload(payload: CardPayload): Uint8Array {
   const activeOffset = payload.trailer.activePtr === 0 ? BUFFER_A_OFFSET : BUFFER_B_OFFSET
   raw.set(bufBytes, activeOffset)
   raw.set(trlBytes, TRAILER_OFFSET)
+  return raw
+}
+
+// Compact wire format: [activeBuffer (216)] + [trailer (64)] = WIRE_SIZE bytes.
+// Use this for all NFC writes — fits NTAG215 with headroom vs the 496-byte full format.
+export function encodePayloadWire(payload: CardPayload): Uint8Array {
+  const raw = new Uint8Array(WIRE_SIZE)
+  raw.set(encodeBuffer(payload), 0)
+  raw.set(encodeTrailer({ ...payload.trailer, activePtr: 0 }), BUFFER_SIZE)
   return raw
 }
 

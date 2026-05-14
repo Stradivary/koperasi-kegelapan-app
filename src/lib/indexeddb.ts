@@ -118,6 +118,15 @@ export const tenantContextStore = {
     if (!getIndexedDbFactory()) return undefined
     return tx<TenantContext | undefined>('tenantContext', 'readonly', (s) => s.get(tenantId))
   },
+  getAll: (): Promise<TenantContext[]> =>
+    new Promise(async (resolve, reject) => {
+      if (!getIndexedDbFactory()) { resolve([]); return }
+      const db = await openDb()
+      const t = db.transaction('tenantContext', 'readonly')
+      const req = t.objectStore('tenantContext').getAll()
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    }),
   put: (ctx: TenantContext) => tx<IDBValidKey>('tenantContext', 'readwrite', (s) => s.put(ctx)),
   delete: (tenantId: string) => tx<undefined>('tenantContext', 'readwrite', (s) => s.delete(tenantId)),
 }
