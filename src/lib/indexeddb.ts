@@ -1,7 +1,7 @@
 import type { ReconciliationEvent } from '../core/payload/types'
 
 const DB_NAME = 'koperasi-wallet'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface TenantContext {
   tenantId: string
@@ -30,11 +30,36 @@ export interface PolicyCache {
   expiresAt: number
 }
 
+// v2: local-only mode stores
+export interface LocalTenantConfig {
+  tenantId: string
+  slug: string
+  name: string
+  timezone: string
+  /** 'local' = no server; 'synced' = registered with server */
+  mode: 'local' | 'synced'
+  serverUrl?: string
+  createdAt: number
+  exportedAt?: number
+}
+
+export interface LocalAccount {
+  accountId: string
+  tenantId: string
+  username: string
+  /** Format: "iterations:saltHex:hashHex" (PBKDF2-SHA256) */
+  passwordHash: string
+  role: string
+  status: 'active' | 'inactive'
+  createdAt: number
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result
+      // v1 stores
       if (!db.objectStoreNames.contains('tenantContext')) {
         db.createObjectStore('tenantContext', { keyPath: 'tenantId' })
       }
@@ -48,6 +73,15 @@ function openDb(): Promise<IDBDatabase> {
         const outbox = db.createObjectStore('reconciliationOutbox', { keyPath: 'idempotencyKey' })
         outbox.createIndex('byTenantId', 'tenantId', { unique: false })
         outbox.createIndex('byStatus', 'status', { unique: false })
+      }
+      // v2 stores
+      if (!db.objectStoreNames.contains('localTenantConfig')) {
+        db.createObjectStore('localTenantConfig', { keyPath: 'tenantId' })
+      }
+      if (!db.objectStoreNames.contains('localAccounts')) {
+        const accts = db.createObjectStore('localAccounts', { keyPath: 'accountId' })
+        accts.createIndex('byTenantId', 'tenantId', { unique: false })
+        accts.createIndex('byUsername', 'username', { unique: true })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -71,23 +105,32 @@ async function tx<T>(
 }
 
 export const tenantContextStore = {
-  get: (tenantId: string) => tx<TenantContext | undefined>('tenantContext', 'readonly', (s) => s.get(tenantId)),
-  put: (ctx: TenantContext) => tx<IDBValidKey>('tenantContext', 'readwrite', (s) => s.put(ctx)),
-  delete: (tenantId: string) => tx<undefined>('tenantContext', 'readwrite', (s) => s.delete(tenantId)),
+  get: (tenantId: string) =>
+    tx<TenantContext | undefined>('tenantContext', 'readonly', (s) => s.get(tenantId)),
+  put: (ctx: TenantContext) =>
+    tx<IDBValidKey>('tenantContext', 'readwrite', (s) => s.put(ctx)),
+  delete: (tenantId: string) =>
+    tx<undefined>('tenantContext', 'readwrite', (s) => s.delete(tenantId)),
 }
 
 export const cardSnapshotStore = {
   get: (tenantId: string, cardIdHex: string) =>
-    tx<CardSnapshot | undefined>('cardSnapshot', 'readonly', (s) => s.get([tenantId, cardIdHex])),
-  put: (snap: CardSnapshot) => tx<IDBValidKey>('cardSnapshot', 'readwrite', (s) => s.put(snap)),
+    tx<CardSnapshot | undefined>('cardSnapshot', 'readonly', (s) =>
+      s.get([tenantId, cardIdHex]),
+    ),
+  put: (snap: CardSnapshot) =>
+    tx<IDBValidKey>('cardSnapshot', 'readwrite', (s) => s.put(snap)),
   delete: (tenantId: string, cardIdHex: string) =>
     tx<undefined>('cardSnapshot', 'readwrite', (s) => s.delete([tenantId, cardIdHex])),
 }
 
 export const policyCacheStore = {
-  get: (tenantId: string) => tx<PolicyCache | undefined>('policyCache', 'readonly', (s) => s.get(tenantId)),
-  put: (policy: PolicyCache) => tx<IDBValidKey>('policyCache', 'readwrite', (s) => s.put(policy)),
-  delete: (tenantId: string) => tx<undefined>('policyCache', 'readwrite', (s) => s.delete(tenantId)),
+  get: (tenantId: string) =>
+    tx<PolicyCache | undefined>('policyCache', 'readonly', (s) => s.get(tenantId)),
+  put: (policy: PolicyCache) =>
+    tx<IDBValidKey>('policyCache', 'readwrite', (s) => s.put(policy)),
+  delete: (tenantId: string) =>
+    tx<undefined>('policyCache', 'readwrite', (s) => s.delete(tenantId)),
 }
 
 interface OutboxEntry extends ReconciliationEvent {
@@ -147,6 +190,50 @@ export const reconciliationOutbox = {
       req.onerror = () => reject(req.error)
     })
   },
+}
+
+// ── v2: Local tenant and account stores ────────────────────────────────
+
+export const localTenantConfigStore = {
+  get: (tenantId: string) =>
+    tx<LocalTenantConfig | undefined>('localTenantConfig', 'readonly', (s) => s.get(tenantId)),
+  getAll: (): Promise<LocalTenantConfig[]> =>
+    new Promise(async (resolve, reject) => {
+      const db = await openDb()
+      const t = db.transaction('localTenantConfig', 'readonly')
+      const req = t.objectStore('localTenantConfig').getAll()
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    }),
+  put: (cfg: LocalTenantConfig) =>
+    tx<IDBValidKey>('localTenantConfig', 'readwrite', (s) => s.put(cfg)),
+  delete: (tenantId: string) =>
+    tx<undefined>('localTenantConfig', 'readwrite', (s) => s.delete(tenantId)),
+}
+
+export const localAccountStore = {
+  getByUsername: (username: string): Promise<LocalAccount | undefined> =>
+    new Promise(async (resolve, reject) => {
+      const db = await openDb()
+      const t = db.transaction('localAccounts', 'readonly')
+      const idx = t.objectStore('localAccounts').index('byUsername')
+      const req = idx.get(username)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    }),
+  getByTenant: (tenantId: string): Promise<LocalAccount[]> =>
+    new Promise(async (resolve, reject) => {
+      const db = await openDb()
+      const t = db.transaction('localAccounts', 'readonly')
+      const idx = t.objectStore('localAccounts').index('byTenantId')
+      const req = idx.getAll(tenantId)
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    }),
+  put: (acct: LocalAccount) =>
+    tx<IDBValidKey>('localAccounts', 'readwrite', (s) => s.put(acct)),
+  delete: (accountId: string) =>
+    tx<undefined>('localAccounts', 'readwrite', (s) => s.delete(accountId)),
 }
 
 export function makeIdempotencyKey(

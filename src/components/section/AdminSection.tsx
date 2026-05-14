@@ -3,6 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { AdminLayout } from '../layout/AdminLayout'
 import { BRAND } from '../../lib/brand'
 import { RefreshCw, CreditCard, TrendingUp, FileText } from 'lucide-react'
+import { exportTenant, deriveExportPassphrase, importTenant, downloadExportBlob } from '../../lib/localTenant'
+import { localTenantConfigStore } from '../../lib/indexeddb'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
 
 type AdminSection = 'dashboard' | 'cards' | 'transactions' | 'reconcile' | 'settings' | 'export'
 
@@ -296,23 +301,172 @@ function ReconcileView({ tenantId }: { tenantId: string }) {
 }
 
 function SettingsView({ tenantId, tenantName, activeSection }: { tenantId: string; tenantName: string; activeSection: string }) {
+  const [exportPassphrase, setExportPassphrase] = useState('')
+  const [useAutoPassphrase, setUseAutoPassphrase] = useState(true)
+  const [adminPassword, setAdminPassword] = useState('')
+  const [importBlob, setImportBlob] = useState('')
+  const [importPassphrase, setImportPassphrase] = useState('')
+  const [exportStatus, setExportStatus] = useState<string | null>(null)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [isLocalTenant, setIsLocalTenant] = useState<boolean | null>(null)
+
+  useState(() => {
+    localTenantConfigStore.get(tenantId).then((cfg) => {
+      setIsLocalTenant(cfg?.mode === 'local' ?? false)
+    })
+  })
+
+  async function handleExport() {
+    try {
+      let passphrase = exportPassphrase
+      if (useAutoPassphrase) {
+        passphrase = await deriveExportPassphrase(tenantId, adminPassword)
+      }
+      const blob = await exportTenant(tenantId, passphrase)
+      downloadExportBlob(blob, tenantId)
+      setExportStatus('Export berhasil! File sedang diunduh.')
+    } catch (e) {
+      setExportStatus(`Gagal: ${String(e)}`)
+    }
+  }
+
+  async function handleImport() {
+    try {
+      const cfg = await importTenant(importBlob.trim(), importPassphrase)
+      setImportStatus(`Import berhasil: ${cfg.name}`)
+    } catch (e) {
+      setImportStatus(`Gagal: ${String(e)}`)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="type-h4 text-foreground">
         {activeSection === 'export' ? 'Export & Backup' : 'Pengaturan'}
       </h1>
-      <div className="bg-white rounded-xl border p-6 space-y-3">
-        <div>
-          <p className="type-body1-bold text-foreground">Informasi Tenant</p>
-          <p className="type-body1 text-signal-text-secondary mt-1">{tenantName}</p>
-          <p className="type-body2 font-mono text-muted-foreground">{tenantId}</p>
-        </div>
-        {activeSection === 'export' && (
-          <p className="type-body2 text-muted-foreground pt-2 border-t">
-            Fitur export data tenant akan tersedia setelah implementasi mode lokal.
-          </p>
+
+      <div className="bg-white rounded-xl border p-5 space-y-3">
+        <p className="type-body1-bold text-foreground">Informasi Tenant</p>
+        <p className="type-body1 text-signal-text-secondary">{tenantName}</p>
+        <p className="type-body2 font-mono text-muted-foreground">{tenantId}</p>
+        {isLocalTenant !== null && (
+          <span className={[
+            'inline-block px-2 py-0.5 rounded-full type-body2',
+            isLocalTenant ? 'bg-brand-dark/10 text-brand-dark' : 'bg-signal-bg-info text-signal-info',
+          ].join(' ')}>
+            {isLocalTenant ? 'Mode Lokal' : 'Terhubung Server'}
+          </span>
         )}
       </div>
+
+      {activeSection === 'export' && (
+        <>
+          {/* Export section */}
+          <div className="bg-white rounded-xl border p-5 space-y-4">
+            <p className="type-title-bold text-foreground">Backup / Export Data</p>
+            <p className="type-body2 text-signal-text-secondary">
+              Data tenant akan dienkripsi dan diunduh sebagai file teks. Simpan file ini di tempat aman.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="auto-passphrase"
+                checked={useAutoPassphrase}
+                onChange={(e) => setUseAutoPassphrase(e.target.checked)}
+                className="rounded"
+              />
+              <label htmlFor="auto-passphrase" className="type-body1 text-foreground cursor-pointer">
+                Gunakan password admin untuk enkripsi (direkomendasikan)
+              </label>
+            </div>
+
+            {useAutoPassphrase ? (
+              <div className="space-y-1.5">
+                <Label className="type-body1-bold">Password Admin</Label>
+                <Input
+                  type="password"
+                  placeholder="Masukkan password admin"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                />
+                <p className="type-body2 text-muted-foreground">
+                  Backup ini hanya bisa dibuka dengan password admin yang sama.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="type-body1-bold">Passphrase Kustom</Label>
+                <Input
+                  type="password"
+                  placeholder="Passphrase untuk arsip"
+                  value={exportPassphrase}
+                  onChange={(e) => setExportPassphrase(e.target.value)}
+                />
+              </div>
+            )}
+
+            {exportStatus && (
+              <p className={[
+                'type-body2',
+                exportStatus.startsWith('Gagal') ? 'text-signal-error' : 'text-signal-valid',
+              ].join(' ')}>
+                {exportStatus}
+              </p>
+            )}
+
+            <Button
+              onClick={handleExport}
+              disabled={useAutoPassphrase ? !adminPassword : !exportPassphrase}
+              className="w-full bg-brand-dark text-white hover:bg-brand-dark/90"
+            >
+              Unduh Backup
+            </Button>
+          </div>
+
+          {/* Import section */}
+          <div className="bg-white rounded-xl border p-5 space-y-4">
+            <p className="type-title-bold text-foreground">Import / Migrasi Data</p>
+            <p className="type-body2 text-signal-text-secondary">
+              Pulihkan data dari file backup. Ini akan menimpa data tenant yang ada.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="type-body1-bold">Isi File Backup</Label>
+              <textarea
+                className="w-full h-24 rounded-lg border border-input bg-background px-3 py-2 type-body2 font-mono focus:border-brand focus:outline-none resize-none"
+                placeholder="Tempel isi file backup di sini..."
+                value={importBlob}
+                onChange={(e) => setImportBlob(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="type-body1-bold">Passphrase Dekripsi</Label>
+              <Input
+                type="password"
+                placeholder="Passphrase yang digunakan saat export"
+                value={importPassphrase}
+                onChange={(e) => setImportPassphrase(e.target.value)}
+              />
+            </div>
+            {importStatus && (
+              <p className={[
+                'type-body2',
+                importStatus.startsWith('Gagal') ? 'text-signal-error' : 'text-signal-valid',
+              ].join(' ')}>
+                {importStatus}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              onClick={handleImport}
+              disabled={!importBlob || !importPassphrase}
+              className="w-full"
+            >
+              Import Data
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
