@@ -11,6 +11,7 @@ function ScoutPage() {
   return (
     <ScoutSection
       tenantId={tenantId}
+      tenantName={tenantContext.tenantName}
       accountId={tenantContext.accountId}
       deviceId={tenantContext.deviceId}
       terminalId={0}

@@ -3,84 +3,107 @@ import { useSessionGrant } from '../../hooks/useSessionGrant'
 import { CardStatusBadge } from '../block/CardStatusBadge'
 import { TransactionList } from '../block/TransactionList'
 import { Button } from '../ui/button'
+import { KioskLayout } from '../layout/KioskLayout'
+import { NfcTapArea, NfcStatusLabel } from '../block/NfcTapArea'
 
 interface ScoutSectionProps {
   tenantId: string
+  tenantName: string
   accountId: string
   deviceId: string
   terminalId: number
 }
 
-export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: ScoutSectionProps) {
+export function ScoutSection({ tenantId, tenantName, accountId, deviceId, terminalId }: ScoutSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId)
   const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId)
 
   return (
-    <div className="max-w-sm mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Cek Saldo</h1>
-        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">Scout</span>
-      </div>
+    <KioskLayout title="Cek Saldo" tenantName={tenantName}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
 
-      {loading && <p className="text-sm text-muted-foreground">Memuat sesi...</p>}
-      {!grant && !loading && <p className="text-sm text-destructive">Tidak ada sesi aktif.</p>}
+        {!grant && !loading && (
+          <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">
+            <p className="type-body1 text-signal-error text-center">Tidak ada sesi aktif.</p>
+          </div>
+        )}
 
-      {state.phase === 'idle' && (
-        <Button onClick={scan} disabled={!grant} className="w-full h-16 text-base">
-          📳 Tempelkan Kartu
-        </Button>
-      )}
+        {/* Idle */}
+        {state.phase === 'idle' && (
+          <div className="flex flex-col items-center gap-6">
+            <NfcTapArea phase="idle" onClick={scan} disabled={!grant || loading} label="Cek Saldo" sublabel="Tempelkan kartu Anda" />
+            <Button
+              onClick={scan}
+              disabled={!grant || loading}
+              className="w-full max-w-xs h-12 bg-signal-info hover:bg-signal-info/90 text-white type-title-bold"
+            >
+              {loading ? 'Memuat sesi...' : 'Tempelkan Kartu'}
+            </Button>
+          </div>
+        )}
 
-      {state.phase === 'scanning' && (
-        <div className="text-center py-10">
-          <p className="animate-pulse text-sm text-muted-foreground">Menunggu kartu...</p>
-        </div>
-      )}
+        {/* Scanning */}
+        {state.phase === 'scanning' && (
+          <div className="flex flex-col items-center gap-4">
+            <NfcTapArea phase="scanning" />
+            <NfcStatusLabel phase="scanning" />
+          </div>
+        )}
 
-      {state.phase === 'error' && (
-        <div className="rounded-lg border border-destructive p-4 space-y-2">
-          <p className="text-sm text-destructive">
-            {state.tamperDetected ? '⚠️ Kartu terdeteksi rusak' : state.error}
-          </p>
-          <Button variant="outline" onClick={reset} className="w-full">Coba Lagi</Button>
-        </div>
-      )}
+        {/* Error */}
+        {state.phase === 'error' && (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
+            <NfcStatusLabel phase="error" error={state.error} tamperDetected={state.tamperDetected} />
+            <Button variant="outline" onClick={reset} className="w-full">Coba Lagi</Button>
+          </div>
+        )}
 
-      {(state.phase === 'ready' || state.phase === 'success') && state.payload && (
-        <div className="space-y-4">
-          <div className="rounded-xl border p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-lg">{state.payload.identity.name}</span>
-              <CardStatusBadge status={state.payload.identity.status} />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Saldo</p>
-              <p className="text-3xl font-bold text-primary">
-                Rp {state.payload.wallet.balance.toLocaleString()}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground">Kartu ID</p>
-                <p className="font-mono text-xs">
-                  {Array.from(state.payload.header.cardId).map((b) => b.toString(16).padStart(2, '0')).join('')}
+        {/* Card info */}
+        {(state.phase === 'ready' || state.phase === 'success') && state.payload && (
+          <div className="w-full max-w-xs space-y-4">
+            <div className="bg-white rounded-2xl border p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="type-title-bold text-foreground text-lg">{state.payload.identity.name}</p>
+                <CardStatusBadge status={state.payload.identity.status} />
+              </div>
+
+              <div className="text-center py-2">
+                <p className="type-body2 text-signal-text-secondary">Saldo</p>
+                <p className="type-h2 text-signal-info font-heading">
+                  Rp {state.payload.wallet.balance.toLocaleString('id-ID')}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Transaksi ke-</p>
-                <p className="font-semibold">{state.payload.wallet.counter.toString()}</p>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                <div>
+                  <p className="type-body2 text-signal-text-secondary">Kartu ID</p>
+                  <p className="type-body2 font-mono text-foreground">
+                    {Array.from(state.payload.header.cardId)
+                      .map((b) => b.toString(16).padStart(2, '0'))
+                      .join('')}
+                  </p>
+                </div>
+                <div>
+                  <p className="type-body2 text-signal-text-secondary">Transaksi ke-</p>
+                  <p className="type-title-bold text-foreground">
+                    {state.payload.wallet.counter.toString()}
+                  </p>
+                </div>
               </div>
             </div>
+
+            <TransactionList
+              entries={state.payload.logEntries}
+              sessionStart={state.payload.session.startTime}
+            />
+
+            <Button variant="outline" onClick={reset} className="w-full h-12">
+              Selesai
+            </Button>
           </div>
-
-          <TransactionList
-            entries={state.payload.logEntries}
-            sessionStart={state.payload.session.startTime}
-          />
-
-          <Button variant="outline" onClick={reset} className="w-full">Selesai</Button>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </KioskLayout>
   )
 }

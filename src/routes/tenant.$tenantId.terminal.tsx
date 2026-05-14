@@ -11,6 +11,7 @@ function TerminalPage() {
   return (
     <TerminalSection
       tenantId={tenantId}
+      tenantName={tenantContext.tenantName}
       accountId={tenantContext.accountId}
       deviceId={tenantContext.deviceId}
       terminalId={42}
