@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminSection } from "../components/section/AdminSection";
+import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/admin")({
   component: AdminPage,
@@ -7,7 +8,10 @@ export const Route = createFileRoute("/tenant/$tenantId/admin")({
 
 function AdminPage() {
   const { tenantId } = Route.useParams();
-  const { tenantContext } = Route.useRouteContext();
+  const { tenantContext, loading } = useTenantContext(tenantId);
+
+  if (loading || !tenantContext) return <TenantRoutePending />;
+
   return (
     <AdminSection
       tenantId={tenantId}

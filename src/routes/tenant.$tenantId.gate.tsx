@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GateSection } from "../components/section/GateSection";
+import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/gate")({
   component: GatePage,
@@ -7,7 +8,10 @@ export const Route = createFileRoute("/tenant/$tenantId/gate")({
 
 function GatePage() {
   const { tenantId } = Route.useParams();
-  const { tenantContext } = Route.useRouteContext();
+  const { tenantContext, loading } = useTenantContext(tenantId);
+
+  if (loading || !tenantContext) return <TenantRoutePending />;
+
   return (
     <GateSection
       tenantId={tenantId}

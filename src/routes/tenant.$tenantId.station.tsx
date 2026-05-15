@@ -1,26 +1,17 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { StationSection } from "../components/section/StationSection";
-import type { TenantContext } from "../lib/indexeddb";
+import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/station")({
-  beforeLoad: ({ context }) => {
-    const { tenantContext } = context as { tenantContext: TenantContext };
-    if (!["admin", "station"].includes(tenantContext.role)) {
-      const roleRoutes: Record<string, string> = {
-        gate: `/tenant/${tenantContext.tenantId}/gate`,
-        terminal: `/tenant/${tenantContext.tenantId}/terminal`,
-        scout: `/tenant/${tenantContext.tenantId}/scout`,
-        kiosk: `/tenant/${tenantContext.tenantId}/kiosk`,
-      };
-      throw redirect({ to: roleRoutes[tenantContext.role] ?? "/" });
-    }
-  },
   component: StationPage,
 });
 
 function StationPage() {
   const { tenantId } = Route.useParams();
-  const { tenantContext } = Route.useRouteContext();
+  const { tenantContext, loading } = useTenantContext(tenantId, ["admin", "station"]);
+
+  if (loading || !tenantContext) return <TenantRoutePending />;
+
   return (
     <StationSection
       tenantId={tenantId}
