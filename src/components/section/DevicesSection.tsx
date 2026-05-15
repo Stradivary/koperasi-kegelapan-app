@@ -124,7 +124,7 @@ export function DevicesSection() {
   function handleOpen(entry: TenantEntry) {
     if (!entry.context) return;
     const sub = ROLE_ROUTES[entry.context.role];
-    if (sub) navigate({ to: `/tenant/${entry.context.tenantId}/${sub}` as any });
+    if (sub) navigate({ to: `/tenant/${entry.context.tenantId}/${sub}` });
   }
 
   const tenantName = (e: TenantEntry) =>

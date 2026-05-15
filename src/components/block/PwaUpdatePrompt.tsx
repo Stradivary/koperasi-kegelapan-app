@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useRegisterSW } from 'virtual:pwa-register/react'
+import { useState } from "react";
+import { useRegisterSW } from "virtual:pwa-register/react";
 
 export function PwaUpdatePrompt() {
   const {
@@ -9,14 +9,14 @@ export function PwaUpdatePrompt() {
     onRegistered(r) {
       if (r) {
         // Check for updates every hour
-        setInterval(() => r.update(), 60 * 60 * 1000)
+        setInterval(() => r.update(), 60 * 60 * 1000);
       }
     },
-  })
+  });
 
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(false);
 
-  if (!needRefresh || dismissed) return null
+  if (!needRefresh || dismissed) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto">
@@ -41,5 +41,5 @@ export function PwaUpdatePrompt() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,99 +1,113 @@
-import { useNfcCard } from '../../hooks/useNfcCard'
-import { useSessionGrant } from '../../hooks/useSessionGrant'
-import { CardStatusBadge } from '../block/CardStatusBadge'
-import { TransactionList } from '../block/TransactionList'
-import { Button } from '../ui/button'
-import { KioskLayout } from '../layout/KioskLayout'
-import { NfcTapArea, NfcStatusLabel } from '../block/NfcTapArea'
-import { applyDebit, isWriteEligible } from '../../core/state-machine/engine'
-import { CardStatus } from '../../core/payload/types'
-import { useState, useCallback } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { tenantContextStore } from '../../lib/indexeddb'
+import { useNfcCard } from "../../hooks/useNfcCard";
+import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { CardStatusBadge } from "../block/CardStatusBadge";
+import { TransactionList } from "../block/TransactionList";
+import { Button } from "../ui/button";
+import { KioskLayout } from "../layout/KioskLayout";
+import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
+import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
+import { CardStatus } from "../../core/payload/types";
+import { useState, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { tenantContextStore } from "../../lib/indexeddb";
 
 interface KioskSectionProps {
-  tenantId: string
-  tenantName: string
-  accountId: string
-  deviceId: string
-  terminalId: number
+  tenantId: string;
+  tenantName: string;
+  accountId: string;
+  deviceId: string;
+  terminalId: number;
 }
 
-const MAX_AMOUNT = 1_000_000
-const QUICK_AMOUNTS = [5_000, 10_000, 15_000, 20_000, 25_000, 50_000]
+const MAX_AMOUNT = 1_000_000;
+const QUICK_AMOUNTS = [5_000, 10_000, 15_000, 20_000, 25_000, 50_000];
 
-export function KioskSection({ tenantId, tenantName, accountId, deviceId, terminalId }: KioskSectionProps) {
-  const navigate = useNavigate()
-  const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId)
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId)
-  const [amount, setAmount] = useState('')
-  const [txError, setTxError] = useState<string | null>(null)
-  const [step, setStep] = useState<'tap' | 'confirm' | 'done'>('tap')
+export function KioskSection({
+  tenantId,
+  tenantName,
+  accountId,
+  deviceId,
+  terminalId,
+}: KioskSectionProps) {
+  const navigate = useNavigate();
+  const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId);
+  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
+  const [amount, setAmount] = useState("");
+  const [txError, setTxError] = useState<string | null>(null);
+  const [step, setStep] = useState<"tap" | "confirm" | "done">("tap");
 
   const handleLogout = useCallback(async () => {
-    await tenantContextStore.delete(tenantId)
-    navigate({ to: '/' })
-  }, [navigate, tenantId])
+    await tenantContextStore.delete(tenantId);
+    navigate({ to: "/" });
+  }, [navigate, tenantId]);
 
   function handleAmountSelect(val: number) {
-    setAmount(String(val))
-    setTxError(null)
-    setStep('confirm')
+    setAmount(String(val));
+    setTxError(null);
+    setStep("confirm");
   }
 
   async function handleConfirm() {
-    if (!state.payload || !grant) return
-    const amt = parseInt(amount, 10)
-    if (amt > MAX_AMOUNT) { setTxError(`Maks Rp ${MAX_AMOUNT.toLocaleString('id-ID')}`); return }
-    if (state.payload.wallet.balance < amt) { setTxError('Saldo tidak cukup'); return }
-    const eligibility = isWriteEligible(state.payload, grant, 'debit', Math.floor(Date.now() / 1000))
-    if (!eligibility.eligible) { setTxError(eligibility.reason ?? 'Tidak dapat diproses'); return }
-    const now = Math.floor(Date.now() / 1000)
-    const ok = await write(applyDebit(state.payload, amt, now))
-    if (ok) setStep('done')
+    if (!state.payload || !grant) return;
+    const amt = parseInt(amount, 10);
+    if (amt > MAX_AMOUNT) {
+      setTxError(`Maks Rp ${MAX_AMOUNT.toLocaleString("id-ID")}`);
+      return;
+    }
+    if (state.payload.wallet.balance < amt) {
+      setTxError("Saldo tidak cukup");
+      return;
+    }
+    const eligibility = isWriteEligible(
+      state.payload,
+      grant,
+      "debit",
+      Math.floor(Date.now() / 1000),
+    );
+    if (!eligibility.eligible) {
+      setTxError(eligibility.reason ?? "Tidak dapat diproses");
+      return;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const ok = await write(applyDebit(state.payload, amt, now));
+    if (ok) setStep("done");
   }
 
   function handleReset() {
-    reset()
-    setAmount('')
-    setTxError(null)
-    setStep('tap')
+    reset();
+    setAmount("");
+    setTxError(null);
+    setStep("tap");
   }
-
-  const nfcPhase = state.phase === 'ready' || state.phase === 'success' ? 'success'
-    : state.phase as 'idle' | 'scanning' | 'writing' | 'error'
 
   return (
     <KioskLayout title="Mesin Kasir" tenantName={tenantName} onLogoLongPress={handleLogout}>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
-
         {/* Session error */}
         {!grant && !loading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">
-            <p className="type-body1 text-signal-error text-center">Sesi tidak tersedia. Hubungi petugas.</p>
+            <p className="type-body1 text-signal-error text-center">
+              Sesi tidak tersedia. Hubungi petugas.
+            </p>
           </div>
         )}
 
         {/* Step: Tap card */}
-        {step === 'tap' && state.phase === 'idle' && (
+        {step === "tap" && state.phase === "idle" && (
           <div className="flex flex-col items-center gap-6">
-            <NfcTapArea
-              phase="idle"
-              onClick={scan}
-              disabled={!grant || loading}
-            />
+            <NfcTapArea phase="idle" onClick={scan} disabled={!grant || loading} />
             <Button
               onClick={scan}
               disabled={!grant || loading}
               className="w-full max-w-xs h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
             >
-              {loading ? 'Memuat sesi...' : 'Mulai Transaksi'}
+              {loading ? "Memuat sesi..." : "Mulai Transaksi"}
             </Button>
           </div>
         )}
 
         {/* Scanning */}
-        {state.phase === 'scanning' && (
+        {state.phase === "scanning" && (
           <div className="flex flex-col items-center gap-4">
             <NfcTapArea phase="scanning" />
             <NfcStatusLabel phase="scanning" />
@@ -101,106 +115,129 @@ export function KioskSection({ tenantId, tenantName, accountId, deviceId, termin
         )}
 
         {/* Error */}
-        {state.phase === 'error' && (
+        {state.phase === "error" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
-            <NfcStatusLabel phase="error" error={state.error} tamperDetected={state.tamperDetected} />
-            <Button variant="outline" onClick={handleReset} className="w-full">Coba Lagi</Button>
+            <NfcStatusLabel
+              phase="error"
+              error={state.error}
+              tamperDetected={state.tamperDetected}
+            />
+            <Button variant="outline" onClick={handleReset} className="w-full">
+              Coba Lagi
+            </Button>
           </div>
         )}
 
         {/* Card ready — choose amount */}
-        {(state.phase === 'ready' || state.phase === 'writing') && state.payload && step !== 'done' && (
-          <div className="w-full max-w-xs space-y-4">
-            {/* Card info */}
-            <div className="bg-white rounded-2xl border p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
-                <CardStatusBadge status={state.payload.identity.status} />
-              </div>
-              <div>
-                <p className="type-body2 text-signal-text-secondary">Saldo</p>
-                <p className="type-h4 text-brand font-heading">
-                  Rp {state.payload.wallet.balance.toLocaleString('id-ID')}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick amounts */}
-            {state.payload.identity.status === CardStatus.ACTIVE && step === 'tap' && (
-              <>
-                <p className="type-body1-bold text-foreground">Pilih nominal:</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {QUICK_AMOUNTS.map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => handleAmountSelect(v)}
-                      disabled={state.payload!.wallet.balance < v}
-                      className="rounded-xl border-2 border-brand/20 p-3 type-body1-bold text-brand hover:bg-brand hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      {(v / 1000)}k
-                    </button>
-                  ))}
+        {(state.phase === "ready" || state.phase === "writing") &&
+          state.payload &&
+          step !== "done" && (
+            <div className="w-full max-w-xs space-y-4">
+              {/* Card info */}
+              <div className="bg-white rounded-2xl border p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
+                  <CardStatusBadge status={state.payload.identity.status} />
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    placeholder="Nominal lain"
-                    className="flex-1 h-10 rounded-lg border border-input bg-background px-3 type-body1 focus:border-brand focus:outline-none"
-                    value={amount}
-                    onChange={(e) => { setAmount(e.target.value); setTxError(null) }}
-                  />
-                  <Button size="sm" onClick={() => setStep('confirm')} disabled={!amount} className="bg-brand hover:bg-brand/90 text-white">
-                    OK
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* Confirm */}
-            {step === 'confirm' && (
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-brand/5 border border-brand/20 p-5 text-center">
-                  <p className="type-body1 text-signal-text-secondary">Jumlah pembelian</p>
-                  <p className="type-h3 text-brand font-heading mt-1">
-                    Rp {parseInt(amount || '0').toLocaleString('id-ID')}
+                <div>
+                  <p className="type-body2 text-signal-text-secondary">Saldo</p>
+                  <p className="type-h4 text-brand font-heading">
+                    Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
                   </p>
                 </div>
-                {txError && (
-                  <p className="type-body2 text-signal-error text-center">{txError}</p>
-                )}
-                <Button
-                  onClick={handleConfirm}
-                  disabled={state.phase === 'writing'}
-                  className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
-                >
-                  {state.phase === 'writing' ? 'Memproses...' : 'Konfirmasi Pembayaran'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setStep('tap')}
-                  disabled={state.phase === 'writing'}
-                  className="w-full"
-                >
-                  Batal
-                </Button>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Quick amounts */}
+              {state.payload.identity.status === CardStatus.ACTIVE && step === "tap" && (
+                <>
+                  <p className="type-body1-bold text-foreground">Pilih nominal:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {QUICK_AMOUNTS.map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => handleAmountSelect(v)}
+                        disabled={state.payload!.wallet.balance < v}
+                        className="rounded-xl border-2 border-brand/20 p-3 type-body1-bold text-brand hover:bg-brand hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        {v / 1000}k
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Nominal lain"
+                      className="flex-1 h-10 rounded-lg border border-input bg-background px-3 type-body1 focus:border-brand focus:outline-none"
+                      value={amount}
+                      onChange={(e) => {
+                        setAmount(e.target.value);
+                        setTxError(null);
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => setStep("confirm")}
+                      disabled={!amount}
+                      className="bg-brand hover:bg-brand/90 text-white"
+                    >
+                      OK
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Confirm */}
+              {step === "confirm" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-brand/5 border border-brand/20 p-5 text-center">
+                    <p className="type-body1 text-signal-text-secondary">Jumlah pembelian</p>
+                    <p className="type-h3 text-brand font-heading mt-1">
+                      Rp {parseInt(amount || "0").toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                  {txError && <p className="type-body2 text-signal-error text-center">{txError}</p>}
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={state.phase === "writing"}
+                    className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
+                  >
+                    {state.phase === "writing" ? "Memproses..." : "Konfirmasi Pembayaran"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep("tap")}
+                    disabled={state.phase === "writing"}
+                    className="w-full"
+                  >
+                    Batal
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Done */}
-        {step === 'done' && state.payload && (
+        {step === "done" && state.payload && (
           <div className="w-full max-w-xs space-y-4">
             <div className="rounded-2xl bg-signal-bg-valid border border-signal-valid/30 p-6 text-center">
               <div className="w-16 h-16 rounded-full bg-signal-valid/10 flex items-center justify-center mx-auto mb-3">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#008E53" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#008E53"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
               <p className="type-title-bold text-signal-valid">Transaksi Berhasil</p>
               <p className="type-h4 text-signal-valid font-heading mt-1">
-                Rp {state.payload.wallet.balance.toLocaleString('id-ID')}
+                Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
               </p>
               <p className="type-body2 text-signal-valid/70 mt-0.5">Saldo tersisa</p>
             </div>
@@ -218,5 +255,5 @@ export function KioskSection({ tenantId, tenantName, accountId, deviceId, termin
         )}
       </div>
     </KioskLayout>
-  )
+  );
 }
