@@ -70,9 +70,7 @@
       "indexes": {
         "accounts_username_unique": {
           "name": "accounts_username_unique",
-          "columns": [
-            "username"
-          ],
+          "columns": ["username"],
           "isUnique": true
         }
       },
@@ -81,12 +79,8 @@
           "name": "accounts_tenant_id_tenants_tenant_id_fk",
           "tableFrom": "accounts",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -192,12 +186,8 @@
           "name": "audit_log_tenant_id_tenants_tenant_id_fk",
           "tableFrom": "audit_log",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -298,22 +288,15 @@
           "name": "cards_tenant_id_tenants_tenant_id_fk",
           "tableFrom": "cards",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "cards_tenant_id_card_id_pk": {
-          "columns": [
-            "tenant_id",
-            "card_id"
-          ],
+          "columns": ["tenant_id", "card_id"],
           "name": "cards_tenant_id_card_id_pk"
         }
       },
@@ -387,12 +370,8 @@
           "name": "session_grants_tenant_id_tenants_tenant_id_fk",
           "tableFrom": "session_grants",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -400,12 +379,8 @@
           "name": "session_grants_account_id_accounts_account_id_fk",
           "tableFrom": "session_grants",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "account_id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["account_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -474,9 +449,7 @@
       "indexes": {
         "tenants_slug_unique": {
           "name": "tenants_slug_unique",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "isUnique": true
         }
       },
@@ -540,22 +513,15 @@
           "name": "users_tenant_id_tenants_tenant_id_fk",
           "tableFrom": "users",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "users_tenant_id_user_id_pk": {
-          "columns": [
-            "tenant_id",
-            "user_id"
-          ],
+          "columns": ["tenant_id", "user_id"],
           "name": "users_tenant_id_user_id_pk"
         }
       },

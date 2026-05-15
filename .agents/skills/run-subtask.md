@@ -1,6 +1,6 @@
 ---
 name: run-subtask
-description: 'Extract the next actionable subtask from a requirement or task specification, execute it, and update task completion status.'
+description: "Extract the next actionable subtask from a requirement or task specification, execute it, and update task completion status."
 argument-hint: What requirement or task specification should this skill process?
 disable-model-invocation: false
 ---

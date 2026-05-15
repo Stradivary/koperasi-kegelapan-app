@@ -16,13 +16,5 @@
   "routerOnly": false,
   "version": 1,
   "framework": "react",
-  "chosenAddOns": [
-    "cloudflare",
-    "drizzle",
-    "shadcn",
-    "table",
-    "store",
-    "tanstack-query",
-    "form"
-  ]
+  "chosenAddOns": ["cloudflare", "drizzle", "shadcn", "table", "store", "tanstack-query", "form"]
 }

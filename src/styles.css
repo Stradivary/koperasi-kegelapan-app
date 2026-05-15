@@ -1,24 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
 @plugin '@tailwindcss/typography';
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 /* ── Telkomsel Batik Sans (served from /assets/) ── */
 @font-face {
-  font-family: 'telkomselbatikbold';
-  src: url('/assets/TelkomselBatikSans-Bold.woff2') format('woff2'),
-    url('/assets/TelkomselBatikSans-Bold.woff') format('woff'),
-    url('/assets/TelkomselBatikSans-Bold.ttf') format('truetype');
+  font-family: "telkomselbatikbold";
+  src:
+    url("/assets/TelkomselBatikSans-Bold.woff2") format("woff2"),
+    url("/assets/TelkomselBatikSans-Bold.woff") format("woff"),
+    url("/assets/TelkomselBatikSans-Bold.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'telkomselbatikregular';
-  src: url('/assets/TelkomselBatikSans-Regular.woff2') format('woff2'),
-    url('/assets/TelkomselBatikSans-Regular.woff') format('woff'),
-    url('/assets/TelkomselBatikSans-Regular.ttf') format('truetype');
+  font-family: "telkomselbatikregular";
+  src:
+    url("/assets/TelkomselBatikSans-Regular.woff2") format("woff2"),
+    url("/assets/TelkomselBatikSans-Regular.woff") format("woff"),
+    url("/assets/TelkomselBatikSans-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -28,35 +30,35 @@
 
 :root {
   /* ── Signal Design System semantic tokens ── */
-  --signal-primary: #FF0025;
-  --signal-primary-bg: #ED0226;
-  --signal-secondary: #001A41;
-  --signal-text-primary: #001A41;
-  --signal-text-secondary: #4E5784;
-  --signal-text-disable: #B3BAC8;
-  --signal-text-red: #FF0025;
-  --signal-text-valid: #008E53;
-  --signal-text-info: #0050AE;
-  --signal-text-error: #BC1D42;
-  --signal-text-warning: #D9801F;
-  --signal-bg-disable: #F5F8FA;
-  --signal-bg-warm: #F6F3F3;
-  --signal-bg-valid: #EDFCF0;
-  --signal-bg-info: #E7F5FC;
-  --signal-bg-error: #FDDDD4;
-  --signal-bg-warning: #FEF3D4;
+  --signal-primary: #ff0025;
+  --signal-primary-bg: #ed0226;
+  --signal-secondary: #001a41;
+  --signal-text-primary: #001a41;
+  --signal-text-secondary: #4e5784;
+  --signal-text-disable: #b3bac8;
+  --signal-text-red: #ff0025;
+  --signal-text-valid: #008e53;
+  --signal-text-info: #0050ae;
+  --signal-text-error: #bc1d42;
+  --signal-text-warning: #d9801f;
+  --signal-bg-disable: #f5f8fa;
+  --signal-bg-warm: #f6f3f3;
+  --signal-bg-valid: #edfcf0;
+  --signal-bg-info: #e7f5fc;
+  --signal-bg-error: #fdddd4;
+  --signal-bg-warning: #fef3d4;
 
   /* ── Legacy brand helpers (glass/gradient) ── */
-  --brand: #FF0025;
-  --brand-soft: #FF4D6A;
-  --brand-deep: #C2001C;
-  --brand-tint: #FFF5F6;
+  --brand: #ff0025;
+  --brand-soft: #ff4d6a;
+  --brand-deep: #c2001c;
+  --brand-tint: #fff5f6;
   --brand-line: rgba(255, 0, 37, 0.14);
   --surface: rgba(255, 255, 255, 0.76);
   --surface-strong: rgba(255, 255, 255, 0.92);
-  --line: rgba(0, 26, 65, 0.10);
+  --line: rgba(0, 26, 65, 0.1);
   --inset-glint: rgba(255, 255, 255, 0.84);
-  --bg-base: #F5F8FA;
+  --bg-base: #f5f8fa;
   --header-bg: rgba(255, 255, 255, 0.86);
   --hero-a: rgba(255, 0, 37, 0.07);
   --hero-b: rgba(0, 26, 65, 0.04);
@@ -73,7 +75,7 @@
   --secondary: oklch(0.965 0.008 258);
   --secondary-foreground: oklch(0.175 0.068 258);
   --muted: oklch(0.967 0.004 258);
-  --muted-foreground: oklch(0.420 0.056 266);
+  --muted-foreground: oklch(0.42 0.056 266);
   --accent: oklch(0.955 0.016 25.7);
   --accent-foreground: oklch(0.528 0.288 25.7);
   --destructive: oklch(0.445 0.165 13);
@@ -84,7 +86,7 @@
   --chart-1: oklch(0.528 0.288 25.7);
   --chart-2: oklch(0.544 0.155 162);
   --chart-3: oklch(0.424 0.148 258);
-  --chart-4: oklch(0.620 0.170 55);
+  --chart-4: oklch(0.62 0.17 55);
   --chart-5: oklch(0.175 0.068 258);
   --radius: 0.75rem;
   --sidebar: oklch(0.175 0.068 258);
@@ -98,19 +100,19 @@
 }
 
 .dark {
-  --brand: #FF4D6A;
-  --brand-soft: #FF7A8A;
-  --brand-deep: #FF0025;
-  --brand-tint: #1A0009;
+  --brand: #ff4d6a;
+  --brand-soft: #ff7a8a;
+  --brand-deep: #ff0025;
+  --brand-tint: #1a0009;
   --brand-line: rgba(255, 77, 106, 0.18);
   --surface: rgba(18, 10, 12, 0.82);
   --surface-strong: rgba(15, 8, 10, 0.94);
   --line: rgba(255, 77, 106, 0.14);
-  --inset-glint: rgba(255, 200, 210, 0.10);
-  --bg-base: #0D0608;
+  --inset-glint: rgba(255, 200, 210, 0.1);
+  --bg-base: #0d0608;
   --header-bg: rgba(12, 6, 8, 0.82);
   --hero-a: rgba(255, 77, 106, 0.12);
-  --hero-b: rgba(0, 26, 65, 0.20);
+  --hero-b: rgba(0, 26, 65, 0.2);
 
   --background: oklch(0.145 0.004 258);
   --foreground: oklch(0.985 0 0);
@@ -118,37 +120,37 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.145 0.004 258);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.650 0.240 25.7);
+  --primary: oklch(0.65 0.24 25.7);
   --primary-foreground: oklch(0.145 0.004 258);
-  --secondary: oklch(0.220 0.012 258);
+  --secondary: oklch(0.22 0.012 258);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.220 0.012 258);
-  --muted-foreground: oklch(0.680 0.015 258);
-  --accent: oklch(0.220 0.012 258);
+  --muted: oklch(0.22 0.012 258);
+  --muted-foreground: oklch(0.68 0.015 258);
+  --accent: oklch(0.22 0.012 258);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.396 0.141 13);
   --destructive-foreground: oklch(0.637 0.237 25.7);
-  --border: oklch(0.260 0.012 258);
-  --input: oklch(0.260 0.012 258);
-  --ring: oklch(0.650 0.240 25.7);
-  --chart-1: oklch(0.650 0.240 25.7);
-  --chart-2: oklch(0.720 0.180 162);
-  --chart-3: oklch(0.600 0.180 258);
-  --chart-4: oklch(0.700 0.160 55);
-  --chart-5: oklch(0.400 0.100 258);
-  --sidebar: oklch(0.120 0.010 258);
+  --border: oklch(0.26 0.012 258);
+  --input: oklch(0.26 0.012 258);
+  --ring: oklch(0.65 0.24 25.7);
+  --chart-1: oklch(0.65 0.24 25.7);
+  --chart-2: oklch(0.72 0.18 162);
+  --chart-3: oklch(0.6 0.18 258);
+  --chart-4: oklch(0.7 0.16 55);
+  --chart-5: oklch(0.4 0.1 258);
+  --sidebar: oklch(0.12 0.01 258);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.650 0.240 25.7);
+  --sidebar-primary: oklch(0.65 0.24 25.7);
   --sidebar-primary-foreground: oklch(0.145 0.004 258);
-  --sidebar-accent: oklch(0.220 0.012 258);
+  --sidebar-accent: oklch(0.22 0.012 258);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.260 0.012 258);
-  --sidebar-ring: oklch(0.650 0.240 25.7);
+  --sidebar-border: oklch(0.26 0.012 258);
+  --sidebar-ring: oklch(0.65 0.24 25.7);
 }
 
 @theme inline {
-  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
-  --font-heading: 'telkomselbatikbold', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "telkomselbatikbold", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -187,20 +189,20 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* ── Signal DS direct Tailwind tokens ── */
-  --color-brand: #FF0025;
-  --color-brand-dark: #001A41;
-  --color-brand-tint: #FFF5F6;
-  --color-signal-valid: #008E53;
-  --color-signal-info: #0050AE;
-  --color-signal-error: #BC1D42;
-  --color-signal-warning: #D9801F;
-  --color-signal-bg-valid: #EDFCF0;
-  --color-signal-bg-info: #E7F5FC;
-  --color-signal-bg-error: #FDDDD4;
-  --color-signal-bg-warning: #FEF3D4;
-  --color-signal-disable: #F5F8FA;
-  --color-signal-text-secondary: #4E5784;
-  --color-signal-text-disable: #B3BAC8;
+  --color-brand: #ff0025;
+  --color-brand-dark: #001a41;
+  --color-brand-tint: #fff5f6;
+  --color-signal-valid: #008e53;
+  --color-signal-info: #0050ae;
+  --color-signal-error: #bc1d42;
+  --color-signal-warning: #d9801f;
+  --color-signal-bg-valid: #edfcf0;
+  --color-signal-bg-info: #e7f5fc;
+  --color-signal-bg-error: #fdddd4;
+  --color-signal-bg-warning: #fef3d4;
+  --color-signal-disable: #f5f8fa;
+  --color-signal-text-secondary: #4e5784;
+  --color-signal-text-disable: #b3bac8;
 }
 
 html,
@@ -261,72 +263,72 @@ pre code {
 /* Batik Sans heading class */
 .display-title,
 .font-heading {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
 }
 
 /* ── Signal DS Type Scale ── */
 .type-h1 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 44px;
   line-height: 56px;
   font-weight: normal;
 }
 .type-h2 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 32px;
   line-height: 48px;
   font-weight: normal;
 }
 .type-h3 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 28px;
   line-height: 40px;
   font-weight: normal;
 }
 .type-h4 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 24px;
   line-height: 40px;
   font-weight: normal;
 }
 .type-h5 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 18px;
   line-height: 24px;
   font-weight: normal;
 }
 .type-h6 {
-  font-family: 'telkomselbatikbold', sans-serif;
+  font-family: "telkomselbatikbold", sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: normal;
 }
 .type-title-bold {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 600;
 }
 .type-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
 }
 .type-body1-bold {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   line-height: 20px;
   font-weight: 600;
 }
 .type-body1 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   line-height: 20px;
   font-weight: 400;
 }
 .type-body1-caps-bold {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   line-height: 20px;
   font-weight: 600;
@@ -334,7 +336,7 @@ pre code {
   letter-spacing: 0.5px;
 }
 .type-body1-caps {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   line-height: 20px;
   font-weight: 400;
@@ -342,19 +344,19 @@ pre code {
   letter-spacing: 0.5px;
 }
 .type-body2-bold {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 12px;
   line-height: 20px;
   font-weight: 600;
 }
 .type-body2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 12px;
   line-height: 20px;
   font-weight: 400;
 }
 .type-strike {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 12px;
   line-height: 20px;
   font-weight: 400;
@@ -374,7 +376,10 @@ pre code {
 button,
 .island-shell,
 a {
-  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
     transform 180ms ease;
 }
 
@@ -385,7 +390,7 @@ a {
 }
 
 .nav-link::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   bottom: -8px;
@@ -424,21 +429,47 @@ a {
 
 /* ── NFC tap area animations ── */
 @keyframes nfc-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.12); opacity: 0.15; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.15;
+  }
 }
 @keyframes nfc-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes nfc-shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-8px); }
-  40%, 80% { transform: translateX(8px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
 }
-.nfc-ring-pulse { animation: nfc-pulse 2s ease-in-out infinite; }
-.nfc-ring-spin { animation: nfc-spin 1s linear infinite; }
-.nfc-shake { animation: nfc-shake 0.4s ease-in-out; }
+.nfc-ring-pulse {
+  animation: nfc-pulse 2s ease-in-out infinite;
+}
+.nfc-ring-spin {
+  animation: nfc-spin 1s linear infinite;
+}
+.nfc-shake {
+  animation: nfc-shake 0.4s ease-in-out;
+}
 
 @layer base {
   * {

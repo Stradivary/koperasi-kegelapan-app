@@ -1,5 +1,7 @@
 # GRAND PLAN: Koperasi Kegelapan — By Telkomsel
+
 ### PWA NFC Cooperative Payment System — Feature Implementation Plan
+
 **Date:** 2026-05-14  
 **Stack:** TanStack Start + React 19 + Tailwind v4 + Drizzle ORM (SQLite / Cloudflare D1)  
 **Status:** DRAFT — Awaiting user approval before any code is written
@@ -8,61 +10,64 @@
 
 ## Baseline State
 
-| Item | Current State |
-|------|---------------|
-| Fonts | `Fraunces` + `Manrope` via Google Fonts |
-| Brand colors | Close but wrong — `#e9002e` vs Signal DS `#FF0025` |
-| Manifest | `"Create TanStack App Sample"`, no SW |
-| Service Worker | None |
-| IndexedDB | v1: tenantContext, cardSnapshot, policyCache, reconciliationOutbox |
-| Login | Always calls `/api/auth/token` — hard server dependency |
-| Admin layout | Flat section, no sidebar |
-| Kiosk views | Basic shadcn unstyled |
-| Tenant mode | Always server-connected |
+| Item           | Current State                                                      |
+| -------------- | ------------------------------------------------------------------ |
+| Fonts          | `Fraunces` + `Manrope` via Google Fonts                            |
+| Brand colors   | Close but wrong — `#e9002e` vs Signal DS `#FF0025`                 |
+| Manifest       | `"Create TanStack App Sample"`, no SW                              |
+| Service Worker | None                                                               |
+| IndexedDB      | v1: tenantContext, cardSnapshot, policyCache, reconciliationOutbox |
+| Login          | Always calls `/api/auth/token` — hard server dependency            |
+| Admin layout   | Flat section, no sidebar                                           |
+| Kiosk views    | Basic shadcn unstyled                                              |
+| Tenant mode    | Always server-connected                                            |
 
 ---
 
 ## Phase 1 — Brand Foundation & Constants
+
 **Goal:** Single source of truth for all brand text, colors, and font names.  
 **Files Created:**
+
 - `src/lib/brand.ts` — All brand constants (no logic, pure data)
 
 **Constants to define:**
+
 ```ts
-APP_NAME = "Koperasi Kegelapan"
-ORG_NAME = "Telkomsel"
-TAGLINE = "By Telkomsel"
-FULL_BRAND = "Koperasi Kegelapan — By Telkomsel"
-SHORT_BRAND = "KK"
-APP_VERSION = "1.0.0"
+APP_NAME = "Koperasi Kegelapan";
+ORG_NAME = "Telkomsel";
+TAGLINE = "By Telkomsel";
+FULL_BRAND = "Koperasi Kegelapan — By Telkomsel";
+SHORT_BRAND = "KK";
+APP_VERSION = "1.0.0";
 
 // Fonts
-FONT_HEADING = "Telkomsel Batik Sans"
-FONT_BODY = "Poppins"
+FONT_HEADING = "Telkomsel Batik Sans";
+FONT_BODY = "Poppins";
 
 // Brand Colors (Signal Design System)
-COLOR_PRIMARY = "#FF0025"         // Brand Red 500
-COLOR_SECONDARY = "#001A41"       // Dark Blue 700
-COLOR_PRIMARY_BG = "#ED0226"      // Tsel Red Accessible
-COLOR_SECONDARY_BG = "#001A41"    // Tsel Dark Blue
+COLOR_PRIMARY = "#FF0025"; // Brand Red 500
+COLOR_SECONDARY = "#001A41"; // Dark Blue 700
+COLOR_PRIMARY_BG = "#ED0226"; // Tsel Red Accessible
+COLOR_SECONDARY_BG = "#001A41"; // Tsel Dark Blue
 
 // Text Colors
-COLOR_TEXT_PRIMARY = "#001A41"
-COLOR_TEXT_SECONDARY = "#4E5784"
-COLOR_TEXT_DISABLE = "#B3BAC8"
-COLOR_TEXT_RED = "#FF0025"
-COLOR_TEXT_VALID = "#008E53"
-COLOR_TEXT_INFO = "#0050AE"
-COLOR_TEXT_ERROR = "#BC1D42"
-COLOR_TEXT_WARNING = "#D9801F"
+COLOR_TEXT_PRIMARY = "#001A41";
+COLOR_TEXT_SECONDARY = "#4E5784";
+COLOR_TEXT_DISABLE = "#B3BAC8";
+COLOR_TEXT_RED = "#FF0025";
+COLOR_TEXT_VALID = "#008E53";
+COLOR_TEXT_INFO = "#0050AE";
+COLOR_TEXT_ERROR = "#BC1D42";
+COLOR_TEXT_WARNING = "#D9801F";
 
 // Background Colors
-COLOR_BG_DISABLE = "#F5F8FA"
-COLOR_BG_WARM = "#F6F3F3"
-COLOR_BG_VALID = "#EDFCF0"
-COLOR_BG_INFO = "#E7F5FC"
-COLOR_BG_ERROR = "#FDDDD4"
-COLOR_BG_WARNING = "#FEF3D4"
+COLOR_BG_DISABLE = "#F5F8FA";
+COLOR_BG_WARM = "#F6F3F3";
+COLOR_BG_VALID = "#EDFCF0";
+COLOR_BG_INFO = "#E7F5FC";
+COLOR_BG_ERROR = "#FDDDD4";
+COLOR_BG_WARNING = "#FEF3D4";
 ```
 
 **Dependencies:** None  
@@ -71,9 +76,11 @@ COLOR_BG_WARNING = "#FEF3D4"
 ---
 
 ## Phase 2 — Typography System (Signal Design System)
-**Goal:** Replace Fraunces+Manrope with Telkomsel Batik Sans+Poppins per Signal DS spec.  
+
+**Goal:** Replace Fraunces+Manrope with Telkomsel Batik Sans+Poppins per Signal DS spec.
 
 **Files Modified:**
+
 - `src/styles.css` — Replace `@import` and `--font-*` variables, add type scale classes
 - `public/` — Add `fonts/TelkomselBatikSans-Bold.woff2` (font file to be provided or referenced)
 
@@ -97,6 +104,7 @@ COLOR_BG_WARNING = "#FEF3D4"
 | `.strike` | Poppins | 12px | 400 + strikethrough | 20px |
 
 **Font loading strategy:**
+
 - Telkomsel Batik Sans: `@font-face` from `public/fonts/` (local, works offline)
 - Poppins: Google Fonts with `<link rel="preconnect">` + fallback to `sans-serif`
 
@@ -108,12 +116,15 @@ COLOR_BG_WARNING = "#FEF3D4"
 ---
 
 ## Phase 3 — Signal Design System Color Tokens
+
 **Goal:** Implement the full Signal DS color palette as CSS variables and Tailwind v4 tokens.
 
 **Files Modified:**
+
 - `src/styles.css` — Replace existing color variables with full Signal DS token set
 
 **Token Structure:**
+
 ```css
 /* Brand Shades */
 --shade-primary-0: #FFF5F6;
@@ -136,7 +147,7 @@ COLOR_BG_WARNING = "#FEF3D4"
 /* Semantic Valid (Green) */
 --semantic-valid-0: #C7F9C6; ... --semantic-valid-500: #008888; --semantic-valid-600: #007A53;
 
-/* Semantic Info (Blue) */  
+/* Semantic Info (Blue) */
 --semantic-info-0: #CBFA; ... --semantic-info-500: #0050AE;
 
 /* Semantic Warning (Amber) */
@@ -156,11 +167,12 @@ COLOR_BG_WARNING = "#FEF3D4"
 ```
 
 **Tailwind v4 theme extension** in `src/styles.css` via `@theme`:
+
 ```css
 @theme {
   --color-brand: var(--shade-primary-500);
   --color-brand-dark: var(--shade-secondary-700);
-  --color-brand-bg: #ED0226;
+  --color-brand-bg: #ed0226;
   /* ... full mapping ... */
 }
 ```
@@ -171,18 +183,22 @@ COLOR_BG_WARNING = "#FEF3D4"
 ---
 
 ## Phase 4 — Offline-First PWA (Service Worker + Workbox)
+
 **Goal:** App fully functional after first visit, even with no internet.
 
 **New Dependencies:**
+
 - `vite-plugin-pwa` (Vite integration for Workbox)
 - `workbox-*` (auto-installed by vite-plugin-pwa)
 
 **Files Modified:**
+
 - `vite.config.ts` — Add `VitePWA` plugin with Workbox config
 - `public/manifest.json` — Update name, colors, description, icons
 - `src/routes/__root.tsx` — Add SW registration + update prompt UI
 
 **Files Created:**
+
 - `src/lib/pwa.ts` — SW registration utilities + update notification hook
 
 **Workbox Strategy:**
@@ -197,6 +213,7 @@ COLOR_BG_WARNING = "#FEF3D4"
 | All other API | `NetworkOnly` | (auth must be fresh) |
 
 **Manifest Updates:**
+
 ```json
 {
   "name": "Koperasi Kegelapan",
@@ -211,6 +228,7 @@ COLOR_BG_WARNING = "#FEF3D4"
 ```
 
 **SW Update Flow:**
+
 - On new SW detected: show non-blocking toast "Update tersedia — Muat Ulang"
 - User taps → `skipWaiting()` → reload
 
@@ -222,9 +240,11 @@ COLOR_BG_WARNING = "#FEF3D4"
 ---
 
 ## Phase 5 — Local-Only Mode (Optional Tenant Registration)
+
 **Goal:** App runs fully locally without any server. Server sync is optional (backup/migration/license).
 
 **Architecture Decision:**
+
 ```
 Current:  Device → Server (always required for login)
 New:      Device → IndexedDB (default, offline)
@@ -233,11 +253,13 @@ New:      Device → IndexedDB (default, offline)
 ```
 
 **Files Modified:**
+
 - `src/lib/indexeddb.ts` — Add `localAccounts` store (v2 migration), `localTenantConfig` store
 - `src/routes/index.tsx` — Add local login path + setup wizard trigger
 - `src/routes/api/auth/token.ts` — Unchanged (server path still works when online)
 
 **Files Created:**
+
 - `src/lib/localTenant.ts` — Local tenant CRUD + export/import
 - `src/components/section/LocalSetupSection.tsx` — First-run local setup wizard
 - `src/components/section/TenantExportSection.tsx` — Export/Import UI in admin
@@ -276,6 +298,7 @@ New:      Device → IndexedDB (default, offline)
 ```
 
 **Login Flow (Updated):**
+
 ```
 User enters username/password
   → Check: is tenant in 'local' mode?
@@ -285,11 +308,13 @@ User enters username/password
 ```
 
 **Local Setup Wizard (first-run):**
+
 1. Choose mode: "Mulai Lokal" vs "Hubungkan ke Server"
 2. If local: enter tenant name, admin username/password → stored in IDB
 3. If server: existing login flow
 
 **Export/Import (Admin → Settings → Tenant):**
+
 - Export: serialize localTenantConfig + localAccounts + cards + audit log → encrypted JSON
 - Encryption: AES-GCM with passphrase-derived key (PBKDF2)
 - Import: decrypt JSON → restore to IDB → optionally push to server (migration)
@@ -301,25 +326,29 @@ User enters username/password
 ---
 
 ## Phase 6 — Admin Layout (Desktop Sidebar)
+
 **Goal:** Desktop-first admin experience with collapsible sidebar navigation.
 
 **Files Created:**
+
 - `src/components/layout/AdminLayout.tsx` — Main layout with sidebar
 - `src/components/layout/AdminSidebar.tsx` — Nav items + collapse logic
 - `src/components/layout/AdminHeader.tsx` — Top bar with tenant/user info
 
 **Files Modified:**
+
 - `src/components/section/AdminSection.tsx` — Wrap in new AdminLayout
 - `src/routes/tenant.$tenantId.admin.tsx` — Pass layout context
 
 **Sidebar Structure:**
+
 ```
 [Logo + "Koperasi Kegelapan"]
 [Tenant name chip]
 ────────────────────────────
 📊 Dashboard
 💳 Kartu (Cards)
-👤 Pengguna (Users)  
+👤 Pengguna (Users)
 📋 Transaksi
 🔄 Rekonsiliasi
 ────────────────────────────
@@ -343,15 +372,18 @@ User enters username/password
 ---
 
 ## Phase 7 — Kiosk Views (Signal Design System)
+
 **Goal:** All operator/kiosk views (kiosk, gate, terminal, scout, station) adopt Signal DS visual language.
 
 **Files Created:**
+
 - `src/components/layout/KioskLayout.tsx` — Full-screen mobile layout shell
 - `src/components/block/NfcTapArea.tsx` — Animated NFC tap circle
 - `src/components/block/AmountDisplay.tsx` — Large currency display
 - `src/components/block/StatusSheet.tsx` — Bottom-sheet success/error/loading
 
 **Files Modified:**
+
 - `src/components/section/KioskSection.tsx`
 - `src/components/section/GateSection.tsx`
 - `src/components/section/TerminalSection.tsx`
@@ -359,6 +391,7 @@ User enters username/password
 - `src/components/section/StationSection.tsx`
 
 **KioskLayout Structure:**
+
 ```
 ┌─────────────────────────────┐
 │  [Header: Logo + App Name]  │  bg: #FF0025, text: white
@@ -377,6 +410,7 @@ User enters username/password
 ```
 
 **NFC Tap Area Animation:**
+
 - Idle: slow pulse ring (3s ease-in-out infinite)
 - Reading: fast spin ring (#FF0025)
 - Success: green fill + checkmark (#008E53)
@@ -384,13 +418,13 @@ User enters username/password
 
 **Per-view specifics:**
 
-| View | Primary Action | Color Accent |
-|------|----------------|--------------|
-| Terminal | Debit (bayar) | Red primary |
-| Gate | Checkin/Checkout | Dark Blue |
-| Kiosk | Top-up credit | Valid Green |
-| Scout | Balance check | Info Blue |
-| Station | Credit + admin | Dark Blue |
+| View     | Primary Action   | Color Accent |
+| -------- | ---------------- | ------------ |
+| Terminal | Debit (bayar)    | Red primary  |
+| Gate     | Checkin/Checkout | Dark Blue    |
+| Kiosk    | Top-up credit    | Valid Green  |
+| Scout    | Balance check    | Info Blue    |
+| Station  | Credit + admin   | Dark Blue    |
 
 **Dependencies:** Phases 1-3 (brand + colors + fonts must be in place)  
 **Risk:** Medium — visual overhaul of core operator views; NFC interaction states must be preserved
@@ -398,18 +432,22 @@ User enters username/password
 ---
 
 ## Phase 8 — Polish & Integration
+
 **Goal:** Tie all phases together, update root layout, finalize branding.
 
 **Files Modified:**
+
 - `src/routes/__root.tsx` — Brand head tags, SW registration, font preloads
 - `src/routes/index.tsx` — Apply Signal DS to login page
 - `src/components/block/OfflineIndicator.tsx` — Brand-consistent offline banner
 - `src/components/block/TransactionList.tsx` — Apply new type tokens
 
 **Files Created:**
+
 - `src/components/block/UpdatePrompt.tsx` — SW update notification toast
 
 **Deliverables:**
+
 - Login page: full Signal DS branding with Telkomsel colors
 - Offline indicator: red banner with proper typography
 - SW update prompt: bottom toast
@@ -443,13 +481,13 @@ Phases 2+3 can proceed in parallel. Phase 4 must precede Phase 5 (SW needed for 
 
 ## Risk Register
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Telkomsel Batik Sans font files unavailable | High | Medium | Fallback: use `Inter` with similar metrics; add TODO marker |
-| vite-plugin-pwa + Cloudflare Workers conflict | Medium | High | Test in dev mode first; consider manual SW if plugin fails |
-| IndexedDB v1→v2 migration breaks existing sessions | Medium | High | Always write `onupgradeneeded` with version guard; test migration path |
-| Local PBKDF2 hash incompatible with server hash | Medium | High | Use identical params (310,000 iterations, SHA-256, same salt format) |
-| Signal DS colors break existing shadcn components | Low | Medium | Map old CSS vars to new Signal vars; test each component |
+| Risk                                               | Likelihood | Impact | Mitigation                                                             |
+| -------------------------------------------------- | ---------- | ------ | ---------------------------------------------------------------------- |
+| Telkomsel Batik Sans font files unavailable        | High       | Medium | Fallback: use `Inter` with similar metrics; add TODO marker            |
+| vite-plugin-pwa + Cloudflare Workers conflict      | Medium     | High   | Test in dev mode first; consider manual SW if plugin fails             |
+| IndexedDB v1→v2 migration breaks existing sessions | Medium     | High   | Always write `onupgradeneeded` with version guard; test migration path |
+| Local PBKDF2 hash incompatible with server hash    | Medium     | High   | Use identical params (310,000 iterations, SHA-256, same salt format)   |
+| Signal DS colors break existing shadcn components  | Low        | Medium | Map old CSS vars to new Signal vars; test each component               |
 
 ---
 

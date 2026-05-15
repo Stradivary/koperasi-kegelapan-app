@@ -47,12 +47,12 @@ export function NfcTapArea({ phase, onClick, disabled, tamperDetected }: NfcTapA
 
 ## Naming Conventions
 
-| Pattern | Example |
-|---------|---------|
-| Noun describing what it renders | `TransactionList`, `CardStatusBadge`, `NfcTapArea` |
-| Suffix `Panel` for composed blocks | `BalancePanel`, `MemberPanel` |
-| Suffix `Form` for input groups | `TopupForm`, `RegisterCardForm` |
-| No `Section`, `Page`, `Screen` suffix | Those belong to higher layers |
+| Pattern                               | Example                                            |
+| ------------------------------------- | -------------------------------------------------- |
+| Noun describing what it renders       | `TransactionList`, `CardStatusBadge`, `NfcTapArea` |
+| Suffix `Panel` for composed blocks    | `BalancePanel`, `MemberPanel`                      |
+| Suffix `Form` for input groups        | `TopupForm`, `RegisterCardForm`                    |
+| No `Section`, `Page`, `Screen` suffix | Those belong to higher layers                      |
 
 ## Props Rules
 

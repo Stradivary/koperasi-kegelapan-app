@@ -6,7 +6,7 @@ description: >
   Use when: splitting a section into blocks, creating a new section, auditing
   component responsibilities, refactoring data-fetching out of blocks, moving
   routing logic out of sections, checking which layer a component belongs to.
-argument-hint: 'section file or component name to split/audit'
+argument-hint: "section file or component name to split/audit"
 ---
 
 # Atomic UI Split
@@ -15,13 +15,13 @@ Enforces the **Route → Section → Block → Layout/UI** hierarchy used in thi
 
 ## Layer Definitions
 
-| Layer | Folder | Responsibility | Forbidden |
-|-------|--------|---------------|-----------|
-| **Route** | `src/routes/` | Extract route params, pass to Section, handle routing states (loading, error, notFound) | Business logic, data fetching, render logic |
-| **Section** | `src/components/section/` | Call hooks, own state, orchestrate Blocks | Direct API calls outside hooks, layout decisions |
-| **Block** | `src/components/block/` | Render data, handle user activity (callbacks via props) | Data fetching, hooks with side effects, `useQuery`/`useMutation` |
-| **Layout** | `src/components/layout/` | Define slot structure (`children`, named slots) | Business logic, hooks, data |
-| **UI** | `src/components/ui/` | Primitive atoms (Button, Input, Badge, …) | Any domain knowledge, based on shadcn |
+| Layer       | Folder                    | Responsibility                                                                          | Forbidden                                                        |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Route**   | `src/routes/`             | Extract route params, pass to Section, handle routing states (loading, error, notFound) | Business logic, data fetching, render logic                      |
+| **Section** | `src/components/section/` | Call hooks, own state, orchestrate Blocks                                               | Direct API calls outside hooks, layout decisions                 |
+| **Block**   | `src/components/block/`   | Render data, handle user activity (callbacks via props)                                 | Data fetching, hooks with side effects, `useQuery`/`useMutation` |
+| **Layout**  | `src/components/layout/`  | Define slot structure (`children`, named slots)                                         | Business logic, hooks, data                                      |
+| **UI**      | `src/components/ui/`      | Primitive atoms (Button, Input, Badge, …)                                               | Any domain knowledge, based on shadcn                            |
 
 ## When to Use
 
@@ -54,6 +54,7 @@ For each visual chunk identified:
 4. Use the [Block template](./references/block-template.md)
 
 Rules:
+
 - Props must be typed with an explicit `interface <Name>Props`
 - No `useQuery`, `useMutation`, `fetch`, or `useEffect` with side effects
 - Event handlers passed in as `on<Action>: () => void` props

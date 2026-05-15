@@ -41,6 +41,7 @@ The plan covers the following layered implementation workstreams:
 #### A. Offline card transaction flow
 
 Key docs:
+
 - `docs/docs/system-design/4_card-state-machine.md`
 - `docs/docs/tech-specs/6_state-machine-session-rules.md`
 - `docs/docs/tech-specs/7_write-update-strategy.md`
@@ -48,6 +49,7 @@ Key docs:
 - `docs/docs/api-spec/5_cards.md`
 
 Tasks:
+
 - Implement card state transitions: `IDLE`, `CHECKED_IN`, `TERMINAL_OPERATION`, `CHECKED_OUT`
 - Enforce write eligibility and stale-session rules
 - Implement A/B buffer safe write process
@@ -57,12 +59,14 @@ Tasks:
 #### B. Session grant lifecycle
 
 Key docs:
+
 - `docs/docs/system-design/12_key-trust-model.md`
 - `docs/docs/tech-specs/12_key-hierarchy-session-grants.md`
 - `docs/docs/api-spec/3_session-grants.md`
 - `docs/docs/security-spec/5_offline-trust-model.md`
 
 Tasks:
+
 - Implement backend session grant issuance and validation
 - Store and refresh local session grants in terminal UI
 - Reject state-changing operations on expired or invalid grants
@@ -71,6 +75,7 @@ Tasks:
 #### C. Tamper, replay, and fraud detection
 
 Key docs:
+
 - `docs/docs/system-design/3_security-model.md`
 - `docs/docs/tech-specs/5_tamper-detection-validation.md`
 - `docs/docs/system-design/10_verification-rules.md`
@@ -78,6 +83,7 @@ Key docs:
 - `docs/docs/security-spec/7_financial-risk-controls.md`
 
 Tasks:
+
 - Validate card payload authenticity and integrity on read
 - Detect modifications outside valid write path
 - Reject cloned/replayed cards via counter mismatch
@@ -87,12 +93,14 @@ Tasks:
 #### D. Local-first terminal sync and outbox
 
 Key docs:
+
 - `docs/docs/tech-specs/8_backend-frontend-interfaces.md`
 - `docs/docs/data-spec/5_multitenancy-auth-local-first.md`
 - `docs/docs/api-spec/4_policy.md`
 - `docs/docs/api-spec/6_reconciliation.md`
 
 Tasks:
+
 - Implement IndexedDB local replica for tenant state, policy cache, and reconciliation outbox
 - Add outbox entries for offline card writes with deterministic idempotency keys
 - Sync outbox and then refresh backend checkpoint on reconnect
@@ -101,12 +109,14 @@ Tasks:
 #### E. Backend reconciliation and audit model
 
 Key docs:
+
 - `docs/docs/api-spec/6_reconciliation.md`
 - `docs/docs/api-spec/7_terminal-reports.md`
 - `docs/docs/data-spec/3_backend-db-schema.md`
 - `docs/docs/tech-specs/9_risk-financial-limits.md`
 
 Tasks:
+
 - Implement reconciliation endpoint and batch processing
 - Persist backend card projection with reconciled counter and balance
 - Flag limit breaches while accepting non-breaching batch events
@@ -115,11 +125,13 @@ Tasks:
 #### F. UI architecture and composition
 
 Key docs:
+
 - `docs/docs/tech-specs/8_backend-frontend-interfaces.md`
 - `docs/docs/system-design/13_client-roles.md`
 - `docs/docs/product-spec/4_acceptance-criteria.md`
 
 Tasks:
+
 - Use shadcn atomic design principles: `ui/`, `block/`, `layout/`, `section/`
 - Keep UI components small and reusable; avoid heavy page-level logic in presentational components
 - Separate data loading and state from rendering using React hooks + context + components
@@ -129,10 +141,12 @@ Tasks:
 #### G. Routing and tenant management
 
 Key docs:
+
 - `docs/docs/tech-specs/8_backend-frontend-interfaces.md`
 - `docs/docs/data-spec/5_multitenancy-auth-local-first.md`
 
 Tasks:
+
 - Configure TanStack Router routes for tenant-scoped flows: `/tenant/:tenantId/terminal`, `/tenant/:tenantId/gate`, `/tenant/:tenantId/kiosk`, `/tenant/:tenantId/admin`
 - Implement a tenant selector / tenant switcher after login and protect tenant-scoped routes
 - Keep route-level loaders and error boundaries thin; delegate domain logic to hooks and services
@@ -141,6 +155,7 @@ Tasks:
 #### H. NFC, payload engine, and crypto pipeline
 
 Key docs:
+
 - `docs/docs/tech-specs/4_cryptography.md`
 - `docs/docs/tech-specs/5_tamper-detection-validation.md`
 - `docs/docs/system-design/8_crypto-model.md`
@@ -148,6 +163,7 @@ Key docs:
 - `docs/docs/data-spec/4_encoding-conventions.md`
 
 Tasks:
+
 - Implement an NFC pipeline hook/service responsible for card read, validation, and write workflows
 - Keep cryptography separate from UI: a `useNfcCard` hook, `nfcEngine`, `pipelineEngine`, and a `cryptoEngine` module should provide plain APIs for read, verify, sign, encrypt, decrypt, and replay detection
 - Ensure the pipeline can be tested independently from the UI and from network sync logic
@@ -176,50 +192,50 @@ Tasks:
 ```ts
 interface CardPayload {
   header: {
-    magic: number
-    version: number
-    type: number
-    cardId: Uint8Array
-  }
+    magic: number;
+    version: number;
+    type: number;
+    cardId: Uint8Array;
+  };
   identity: {
-    name: string
-    userId: number
-    gender: number
-    status: number
-    createdAt: number
-  }
+    name: string;
+    userId: number;
+    gender: number;
+    status: number;
+    createdAt: number;
+  };
   wallet: {
-    balance: number
-    lastBalance: number
-    counter: bigint
-    lastTimestamp: number
-    state: number
-    flags: number
-  }
+    balance: number;
+    lastBalance: number;
+    counter: bigint;
+    lastTimestamp: number;
+    state: number;
+    flags: number;
+  };
   session: {
-    startTime: number
-    endTime: number
-    terminalId: number
-  }
+    startTime: number;
+    endTime: number;
+    terminalId: number;
+  };
   logEntries: Array<{
-    deltaTime: number
-    amount: number
-    balanceAfter: number
-    flags: number
-    hash: Uint8Array
-  }>
+    deltaTime: number;
+    amount: number;
+    balanceAfter: number;
+    flags: number;
+    hash: Uint8Array;
+  }>;
   trailer: {
-    expiresAt: number
-    keyVersion: number
-    rootHash: Uint8Array
-    counterBind: number
-    hmac: Uint8Array
-    activePtr: number
-  }
+    expiresAt: number;
+    keyVersion: number;
+    rootHash: Uint8Array;
+    counterBind: number;
+    hmac: Uint8Array;
+    activePtr: number;
+  };
 }
 
-function decodePayload(buffer: Uint8Array): CardPayload
-function encodePayload(payload: CardPayload): Uint8Array
+function decodePayload(buffer: Uint8Array): CardPayload;
+function encodePayload(payload: CardPayload): Uint8Array;
 ```
 
 #### Encoding rules from data spec
@@ -236,12 +252,14 @@ function encodePayload(payload: CardPayload): Uint8Array
 ### 3. Security and protection controls
 
 Key docs:
+
 - `docs/docs/security-spec/2_authentication-authorization.md`
 - `docs/docs/security-spec/3_cryptographic-controls.md`
 - `docs/docs/security-spec/6_data-protection.md`
 - `docs/docs/security-spec/7_financial-risk-controls.md`
 
 Tasks:
+
 - Use approved cryptographic algorithms and key lifecycle rules
 - Protect tenant-scoped storage and avoid storing permanent secrets on cards
 - Enforce RBAC for terminal, gate, and admin flows
@@ -251,11 +269,13 @@ Tasks:
 ### 4. Test coverage plan
 
 Key docs:
+
 - `docs/docs/test-spec/1_overview.md`
 - `docs/docs/test-spec/2_unit-tests.md`
 - `docs/docs/test-spec/3_e2e-tests.md`
 
 Tasks:
+
 - Add unit tests for card validation, state transitions, crypto primitives, risk limits, and local-first outbox behavior
 - Add E2E tests for offline transaction flow, session expiry, tamper detection, reconciliation, and tenant isolation
 - Trace each test back to a specific acceptance criterion

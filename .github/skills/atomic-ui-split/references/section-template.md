@@ -62,19 +62,19 @@ export function GateSection({ tenantId, tenantName, accountId, deviceId, termina
 
 ## Size Heuristic
 
-| Lines of JSX | Action |
-|-------------|--------|
-| < 80 | Fine as-is |
-| 80 – 150 | Consider extracting repeated visual groups to Blocks |
-| > 150 | Must extract — split by tab/view into sub-Blocks |
+| Lines of JSX | Action                                               |
+| ------------ | ---------------------------------------------------- |
+| < 80         | Fine as-is                                           |
+| 80 – 150     | Consider extracting repeated visual groups to Blocks |
+| > 150        | Must extract — split by tab/view into sub-Blocks     |
 
 ## What Belongs in the Section vs. a Block
 
-| Code | Section | Block |
-|------|---------|-------|
-| `useQuery(…)` | ✅ | ❌ |
-| `useState` for tab | ✅ | local UI only |
-| `<table>` rows map | ❌ → Block | ✅ |
-| `async handleSubmit` | ✅ | ❌ (pass as prop) |
-| Conditional branch per tab | ✅ (decide which Block) | ❌ |
-| CSS layout wrapper | ❌ → Layout | ❌ |
+| Code                       | Section                 | Block             |
+| -------------------------- | ----------------------- | ----------------- |
+| `useQuery(…)`              | ✅                      | ❌                |
+| `useState` for tab         | ✅                      | local UI only     |
+| `<table>` rows map         | ❌ → Block              | ✅                |
+| `async handleSubmit`       | ✅                      | ❌ (pass as prop) |
+| Conditional branch per tab | ✅ (decide which Block) | ❌                |
+| CSS layout wrapper         | ❌ → Layout             | ❌                |

@@ -54,17 +54,17 @@ The Section owns the tab state and queries both data sets. Each tab's content is
 
 ```tsx
 // Section
-const [tab, setTab] = useState<'cards' | 'members'>('cards')
-const { cards } = useCards(tenantId)
-const { members } = useMembers(tenantId)
+const [tab, setTab] = useState<"cards" | "members">("cards");
+const { cards } = useCards(tenantId);
+const { members } = useMembers(tenantId);
 
 return (
   <>
     <TabBar active={tab} onChange={setTab} />
-    {tab === 'cards'   && <CardListBlock cards={cards} />}
-    {tab === 'members' && <MemberListBlock members={members} />}
+    {tab === "cards" && <CardListBlock cards={cards} />}
+    {tab === "members" && <MemberListBlock members={members} />}
   </>
-)
+);
 ```
 
 ### "My Layout needs to know the tenant name for the header"
