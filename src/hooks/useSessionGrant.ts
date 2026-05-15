@@ -7,8 +7,11 @@ async function fetchSessionGrant(
   tenantId: string,
   accountId: string,
   deviceId: string,
+  role?: string,
 ): Promise<SessionGrant> {
-  const res = await fetch(`/api/session-grant?tenantId=${tenantId}&deviceId=${deviceId}`, {
+  const params = new URLSearchParams({ tenantId, deviceId });
+  if (role) params.set("role", role);
+  const res = await fetch(`/api/session-grant?${params}`, {
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) throw new Error(`Failed to fetch session grant: ${res.status}`);
@@ -26,7 +29,10 @@ async function fetchSessionGrant(
 }
 
 function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
+  // Normalize base64url (uses - and _ without padding) to standard base64
+  const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+  const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
@@ -42,7 +48,12 @@ function scheduleRefresh(
   ref.current = setTimeout(refresh, delay);
 }
 
-export function useSessionGrant(tenantId: string, accountId: string, deviceId: string) {
+export function useSessionGrant(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+  role?: string,
+) {
   const [grant, setGrant] = useState<SessionGrant | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +63,7 @@ export function useSessionGrant(tenantId: string, accountId: string, deviceId: s
     setLoading(true);
     setError(null);
     try {
-      const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId);
+      const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
       setGrant(newGrant);
       scheduleRefresh(refreshTimerRef, newGrant, refresh);
     } catch (e) {
@@ -60,7 +71,7 @@ export function useSessionGrant(tenantId: string, accountId: string, deviceId: s
     } finally {
       setLoading(false);
     }
-  }, [tenantId, accountId, deviceId]);
+  }, [tenantId, accountId, deviceId, role]);
 
   useEffect(() => {
     if (tenantId && accountId && deviceId) refresh();

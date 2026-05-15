@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { validateTransition, applyCheckin, applyCheckout } from "../../core/state-machine/engine";
@@ -7,6 +8,7 @@ import { Button } from "../ui/button";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea } from "../block/NfcTapArea";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
+import { tenantContextStore } from "../../lib/indexeddb";
 
 interface GateSectionProps {
   tenantId: string;
@@ -23,9 +25,15 @@ export function GateSection({
   deviceId,
   terminalId,
 }: GateSectionProps) {
-  const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId);
+  const navigate = useNavigate();
+  const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
   const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    await tenantContextStore.delete(tenantId);
+    navigate({ to: "/" });
+  }, [navigate, tenantId]);
 
   // Auto-close drawer after success
   useEffect(() => {
@@ -85,7 +93,12 @@ export function GateSection({
     cardState === CardState.CHECKED_IN || cardState === CardState.TERMINAL_OPERATION;
 
   return (
-    <KioskLayout title="Akses Masuk" subtitle="Gate" tenantName={tenantName}>
+    <KioskLayout
+      title="Akses Masuk"
+      subtitle="Gate"
+      tenantName={tenantName}
+      onLogoLongPress={handleLogout}
+    >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {!grant && !loading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">

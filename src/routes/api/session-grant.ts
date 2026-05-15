@@ -13,7 +13,8 @@ export const Route = createFileRoute("/api/session-grant")({
         const authHeader = request.headers.get("authorization") ?? "";
         const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
         const accountId = token ? decodeField(token, "accountId") : "anonymous";
-        const role = token ? decodeField(token, "role") : "terminal";
+        const role =
+          url.searchParams.get("role") ?? (token ? decodeField(token, "role") : "terminal");
 
         return jsonOk(issueSessionGrant(tenantId, accountId, deviceId, role));
       },

@@ -1,4 +1,4 @@
-import { CreditCard } from "lucide-react";
+import { CreditCard, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 
 export interface AdminCardRow {
@@ -15,7 +15,9 @@ interface AdminCardsPanelProps {
   isLoading: boolean;
   error: string | null;
   canScan: boolean;
+  isDeleting: boolean;
   onScan: () => void;
+  onDeleteCard: (card: AdminCardRow) => void;
 }
 
 export function AdminCardsPanel({
@@ -23,7 +25,9 @@ export function AdminCardsPanel({
   isLoading,
   error,
   canScan,
+  isDeleting,
   onScan,
+  onDeleteCard,
 }: AdminCardsPanelProps) {
   return (
     <div className="space-y-4">
@@ -74,18 +78,35 @@ export function AdminCardsPanel({
                   <p className="text-xs text-muted-foreground font-mono truncate">{card.cardId}</p>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-sm font-semibold">Rp {card.balance?.toLocaleString("id-ID")}</p>
-                <span
-                  className={[
-                    "text-xs px-1.5 py-0.5 rounded-full font-medium",
-                    card.status === "active"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-muted text-muted-foreground",
-                  ].join(" ")}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="text-right">
+                  <p className="text-sm font-semibold">
+                    Rp {card.balance?.toLocaleString("id-ID")}
+                  </p>
+                  <span
+                    className={[
+                      "text-xs px-1.5 py-0.5 rounded-full font-medium",
+                      card.status === "active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-muted text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {card.status}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive h-8 w-8 p-0"
+                  onClick={() => {
+                    if (confirm(`Hapus kartu ${card.cardId}?`)) {
+                      onDeleteCard(card);
+                    }
+                  }}
+                  disabled={isDeleting}
                 >
-                  {card.status}
-                </span>
+                  <Trash2 size={14} />
+                </Button>
               </div>
             </div>
           ))}

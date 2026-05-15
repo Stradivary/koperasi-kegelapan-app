@@ -1,7 +1,14 @@
 import { useState, useCallback, useRef } from "react";
-import { validateCard, prepareWrite } from "../core/nfc/pipelineEngine";
+import { validateCard, prepareWrite, decryptCardBody } from "../core/nfc/pipelineEngine";
 import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../core/nfc/engine";
+import { decodePayload } from "../core/payload/engine";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
+import {
+  BUFFER_SIZE,
+  WIRE_SIZE,
+  CARD_SCHEMA_VERSION,
+  TRAILER_COUNTER_BIND,
+} from "../core/payload/types";
 import { reconciliationOutbox, makeIdempotencyKey } from "../lib/indexeddb";
 
 export type NfcCardPhase =
@@ -94,7 +101,25 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
         }
 
         try {
-          const payload = decodePayload(raw);
+          // Decrypt body first if card uses v2 AES-256-GCM encryption
+          const version = raw[4];
+          let decodableRaw = raw;
+          if (version === CARD_SCHEMA_VERSION) {
+            const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
+            const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
+            const cardId = raw.slice(6, 12);
+            const decryptedBuf = await decryptCardBody(
+              raw.slice(0, BUFFER_SIZE),
+              grant.sessionKey,
+              cardId,
+              BigInt(counterBind),
+            );
+            const full = new Uint8Array(WIRE_SIZE);
+            full.set(decryptedBuf, 0);
+            full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
+            decodableRaw = full;
+          }
+          const payload = decodePayload(decodableRaw);
           const validation = await validateCard(payload, raw, grant);
           if (signal.aborted) return;
           if (!validation.valid) {

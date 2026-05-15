@@ -30,6 +30,7 @@ interface StationCardsPanelProps {
   isTopping: boolean;
   isIssuing: boolean;
   isUpdatingStatus: boolean;
+  isDeleting: boolean;
   hasGrant: boolean;
   onRegisterCard: (data: {
     cardId: string;
@@ -45,6 +46,8 @@ interface StationCardsPanelProps {
     expiresAt: number | null;
   }) => Promise<void>;
   onUpdateCardStatus: (card: StationCardRow, newStatus: string) => void;
+  onDeleteCard: (card: StationCardRow) => void;
+  onNfcScan: () => void;
 }
 
 async function scanNfcSerial(): Promise<string | null> {
@@ -83,11 +86,14 @@ export function StationCardsPanel({
   isTopping,
   isIssuing,
   isUpdatingStatus,
+  isDeleting,
   hasGrant,
   onRegisterCard,
   onTopupCard,
   onIssueCard,
   onUpdateCardStatus,
+  onDeleteCard,
+  onNfcScan,
 }: StationCardsPanelProps) {
   const [cardView, setCardView] = useState<CardView>("list");
   const [selectedCard, setSelectedCard] = useState<StationCardRow | null>(null);
@@ -285,6 +291,19 @@ export function StationCardsPanel({
                     Aktifkan
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => {
+                    if (confirm(`Hapus kartu ${card.cardId}?`)) {
+                      onDeleteCard(card);
+                    }
+                  }}
+                  disabled={isDeleting}
+                >
+                  Hapus
+                </Button>
               </div>
             </div>
           ))}
@@ -313,7 +332,10 @@ export function StationCardsPanel({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleNfcTap}
+                onClick={() => {
+                  onNfcScan();
+                  handleNfcTap();
+                }}
                 disabled={nfcScanning || isRegistering || !nfcSupported}
                 className="shrink-0"
               >
@@ -531,7 +553,7 @@ export function StationCardsPanel({
                   disabled={!topupAmount || isTopping || !hasGrant}
                   className="flex-1"
                 >
-                  Top-up
+                  {isTopping ? "Memproses..." : "Top-up & Tulis Kartu"}
                 </Button>
                 <Button variant="outline" onClick={goToList}>
                   Batal

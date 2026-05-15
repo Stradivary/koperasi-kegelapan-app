@@ -1,4 +1,4 @@
-import { randomBytes, createHmac } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { nowSeconds } from "./auth";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
@@ -29,7 +29,10 @@ export function issueSessionGrant(
   role: string,
   keyVersion = 1,
 ): GrantPayload & { signature: string } {
-  const sessionKey = randomBytes(32);
+  // Session key is deterministic — derived from tenant key so all devices
+  // in the same tenant can read/write cards encrypted with this key.
+  const tenantKey = deriveTenantKey(tenantId, keyVersion);
+  const sessionKey = createHmac("sha256", tenantKey).update("session-key").digest();
   const expiresAt = nowSeconds() + SESSION_KEY_LIFETIME_SECONDS;
 
   const allowedOps = roleToOps(role);
@@ -44,7 +47,6 @@ export function issueSessionGrant(
     deviceId,
   };
 
-  const tenantKey = deriveTenantKey(tenantId, keyVersion);
   const signature = createHmac("sha256", tenantKey)
     .update(JSON.stringify({ keyVersion, expiresAt, allowedOps, accountId, deviceId }))
     .digest("base64url");
@@ -60,10 +62,12 @@ function roleToOps(role: string): string[] {
       return ["read", "checkin", "checkout"];
     case "scout":
       return ["read"];
+    case "kiosk":
+      return ["read", "debit"];
     case "station":
       return ["read", "credit", "checkin", "checkout", "admin"];
     case "admin":
-      return ["read", "debit", "credit", "checkin", "checkout", "admin"];
+      return ["read", "debit", "credit", "checkin", "checkout", "admin", "station"];
     default:
       return ["read"];
   }

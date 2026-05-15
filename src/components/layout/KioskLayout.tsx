@@ -39,18 +39,20 @@ export function KioskLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-signal-disable">
-      <header className="bg-brand text-white px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+      <header
+        className="bg-brand text-white px-4 py-3 flex items-center justify-between gap-3 shrink-0"
+        onPointerDown={startHold}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerCancel={cancelHold}
+      >
         <div
           className={`min-w-0 select-none touch-none${holding ? " animate-pulse opacity-60" : ""}`}
-          onPointerDown={startHold}
-          onPointerUp={cancelHold}
-          onPointerLeave={cancelHold}
-          onPointerCancel={cancelHold}
         >
           <p className="type-h6 text-white leading-tight">{BRAND.APP_NAME}</p>
           <p className="type-body2 text-white/60">{BRAND.BYLINE}</p>
         </div>
-        <div className="text-right min-w-0">
+        <div className="text-right min-w-0 select-none">
           <p className="type-body2 text-white/60 truncate">{tenantName}</p>
           <p className="type-body1-bold text-white">{title}</p>
           {subtitle && <p className="type-body2 text-white/70">{subtitle}</p>}

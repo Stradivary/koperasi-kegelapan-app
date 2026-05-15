@@ -25,6 +25,7 @@ interface NfcScanDrawerProps {
   onCheckout: () => void;
   onClose: () => void;
   onRetry: () => void;
+  onFixCard?: () => void;
 }
 
 function formatRupiah(amount: number): string {
@@ -88,6 +89,7 @@ export function NfcScanDrawer({
   onCheckout,
   onClose,
   onRetry,
+  onFixCard,
 }: NfcScanDrawerProps) {
   const isScanning = phase === "scanning" || phase === "validating";
   const hasCard = phase === "ready";
@@ -233,7 +235,9 @@ export function NfcScanDrawer({
                   {tamperDetected ? "⚠ Kartu Terdeteksi Rusak" : "Gagal"}
                 </p>
                 {tamperDetected ? (
-                  <p className="text-sm text-muted-foreground mt-1">Hubungi petugas</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {onFixCard ? "Kartu perlu diperbaiki" : "Hubungi petugas"}
+                  </p>
                 ) : (
                   error && <p className="text-sm text-muted-foreground mt-1">{error}</p>
                 )}
@@ -266,6 +270,14 @@ export function NfcScanDrawer({
                   className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
                 >
                   Coba Lagi
+                </Button>
+              )}
+              {tamperDetected && onFixCard && (
+                <Button
+                  onClick={onFixCard}
+                  className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
+                >
+                  Perbaiki Kartu
                 </Button>
               )}
               <Button variant="outline" onClick={onClose} className="w-full">

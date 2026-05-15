@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { localDb, type User } from "../../db/local-db";
 import { useNfcCard } from "../../hooks/useNfcCard";
@@ -7,6 +7,9 @@ import { AdminLayout, type AdminView } from "../layout/AdminLayout";
 import { AdminCardsPanel, type AdminCardRow } from "../block/AdminCardsPanel";
 import { AdminAuditPanel, type AdminAuditEntry } from "../block/AdminAuditPanel";
 import { AdminMembersPanel, type AdminUserRow } from "../block/AdminMembersPanel";
+import { NfcScanDrawer } from "../block/NfcScanDrawer";
+import { StationSection } from "./StationSection";
+import { KioskSection } from "./KioskSection";
 
 interface AdminSectionProps {
   tenantId: string;
@@ -26,10 +29,43 @@ export const AdminSection = ({
   role,
 }: AdminSectionProps) => {
   const [view, setView] = useState<AdminView>("cards");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId);
-  const { state, scan } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
+
+  // Auto-close drawer after success
+  useEffect(() => {
+    if (state.phase === "success") {
+      const timer = setTimeout(() => {
+        reset();
+        setIsDrawerOpen(false);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [state.phase, reset]);
+
+  const handleScan = useCallback(() => {
+    setIsDrawerOpen(true);
+    scan();
+  }, [scan]);
+
+  const handleDrawerClose = useCallback(() => {
+    if (state.phase === "scanning" || state.phase === "validating") {
+      cancel();
+    } else {
+      reset();
+    }
+    setIsDrawerOpen(false);
+  }, [state.phase, cancel, reset]);
+
+  const handleDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) handleDrawerClose();
+    },
+    [handleDrawerClose],
+  );
 
   // Queries
   const cards = useQuery<AdminCardRow[]>({
@@ -92,6 +128,13 @@ export const AdminSection = ({
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
   });
 
+  const deleteCard = useMutation({
+    mutationFn: async ({ cardId }: { cardId: string }) => {
+      await localDb.cards.delete([tenantId, cardId]);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-cards", tenantId] }),
+  });
+
   async function handleCreateMember(name: string) {
     await createMember.mutateAsync({ name });
   }
@@ -115,7 +158,9 @@ export const AdminSection = ({
           isLoading={cards.isLoading}
           error={cards.error ? String(cards.error) : null}
           canScan={!!grant}
-          onScan={scan}
+          isDeleting={deleteCard.isPending}
+          onScan={handleScan}
+          onDeleteCard={(card) => deleteCard.mutate({ cardId: card.cardId })}
         />
       )}
       {view === "audit" && (
@@ -140,6 +185,39 @@ export const AdminSection = ({
           }
         />
       )}
+      {view === "station" && (
+        <StationSection
+          tenantId={tenantId}
+          tenantName={tenantName}
+          accountId={accountId}
+          deviceId={deviceId}
+          terminalId={terminalId}
+          role={role}
+        />
+      )}
+      {view === "kiosk" && (
+        <KioskSection
+          tenantId={tenantId}
+          tenantName={tenantName}
+          accountId={accountId}
+          deviceId={deviceId}
+          terminalId={terminalId}
+        />
+      )}
+
+      <NfcScanDrawer
+        open={isDrawerOpen}
+        onOpenChange={handleDrawerOpenChange}
+        phase={state.phase}
+        payload={state.payload}
+        isCheckedIn={false}
+        error={state.error}
+        tamperDetected={state.tamperDetected}
+        onCheckin={() => {}}
+        onCheckout={() => {}}
+        onClose={handleDrawerClose}
+        onRetry={scan}
+      />
     </AdminLayout>
   );
 };

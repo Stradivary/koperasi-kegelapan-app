@@ -36,7 +36,7 @@ const config = defineConfig({
         description: "Dompet NFC Koperasi — By Telkomsel",
         theme_color: "#FF0025",
         background_color: "#001A41",
-        display: "standalone",
+        display: "fullscreen",
         orientation: "portrait",
         start_url: "/",
         icons: [
@@ -48,6 +48,9 @@ const config = defineConfig({
       workbox: {
         // Cache all static assets (JS/CSS/fonts/images)
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}"],
+        // Serve app shell for all navigation requests when offline
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
         // Runtime caching strategies
         runtimeCaching: [
           {

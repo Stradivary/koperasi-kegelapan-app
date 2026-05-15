@@ -5,6 +5,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { BRAND } from "../lib/brand";
 import { PwaUpdatePrompt } from "../components/block/PwaUpdatePrompt";
+import { PwaInstallPrompt } from "../components/block/PwaInstallPrompt";
 
 import appCss from "../styles.css?url";
 
@@ -45,6 +46,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TooltipProvider>{children}</TooltipProvider>
+        <PwaInstallPrompt />
         <PwaUpdatePrompt />
         <TanStackDevtools
           config={{ position: "bottom-right" }}

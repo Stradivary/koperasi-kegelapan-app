@@ -1,20 +1,22 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  CreditCard,
+  ChevronLeft,
   ClipboardList,
-  UserCheck,
+  CreditCard,
   LogOut,
   Menu,
-  X,
-  ChevronLeft,
+  MonitorSmartphone,
   ShieldCheck,
+  ShoppingCart,
+  UserCheck,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 
-export type AdminView = "cards" | "audit" | "members";
+export type AdminView = "cards" | "audit" | "members" | "station" | "kiosk";
 
 interface AdminLayoutProps {
   tenantName: string;
@@ -29,18 +31,24 @@ const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
   { id: "audit", icon: ClipboardList, label: "Audit Log" },
   { id: "members", icon: UserCheck, label: "Anggota" },
+  { id: "station", icon: MonitorSmartphone, label: "Station" },
+  { id: "kiosk", icon: ShoppingCart, label: "Kiosk" },
 ];
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
   { id: "audit", icon: ClipboardList, label: "Audit" },
   { id: "members", icon: UserCheck, label: "Anggota" },
+  { id: "station", icon: MonitorSmartphone, label: "Station" },
+  { id: "kiosk", icon: ShoppingCart, label: "Kiosk" },
 ];
 
 const SECTION_LABEL: Record<AdminView, string> = {
   cards: "Kartu",
   audit: "Audit Log",
   members: "Anggota",
+  station: "Station",
+  kiosk: "Kiosk",
 };
 
 export function AdminLayout({

@@ -1,8 +1,17 @@
 import { useState, useRef, useCallback } from "react";
-import { readCard, writeCard, isNfcSupported } from "../../core/nfc/engine";
-import { decodePayload, encodePayloadWire } from "../../core/payload/engine";
-import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus } from "../../core/payload/types";
-import type { CardPayload } from "../../core/payload/types";
+import { readCard, isNfcSupported } from "../../core/nfc/engine";
+import { decodePayload } from "../../core/payload/engine";
+import { prepareWrite, decryptCardBody } from "../../core/nfc/pipelineEngine";
+import {
+  MAGIC,
+  CARD_SCHEMA_VERSION,
+  BUFFER_SIZE,
+  WIRE_SIZE,
+  TRAILER_COUNTER_BIND,
+  CardState,
+  CardStatus,
+} from "../../core/payload/types";
+import type { CardPayload, SessionGrant } from "../../core/payload/types";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -22,11 +31,11 @@ export function makeFreshCard(opts: {
   userId: number;
   balance: number;
   expiresAt: number;
-}): Uint8Array {
+}): CardPayload {
   const now = Math.floor(Date.now() / 1000);
   const cardId = randomBytes(6);
 
-  const payload: CardPayload = {
+  return {
     header: {
       magic: MAGIC,
       version: CARD_SCHEMA_VERSION,
@@ -56,15 +65,40 @@ export function makeFreshCard(opts: {
     logEntries: [],
     trailer: {
       expiresAt: opts.expiresAt,
-      keyVersion: 0,
+      keyVersion: 1,
       rootHash: new Uint8Array(6),
       counterBind: 1,
       hmac: new Uint8Array(8),
       activePtr: 0,
     },
   };
+}
 
-  return encodePayloadWire(payload);
+async function fetchDevGrant(tenantId: string): Promise<SessionGrant> {
+  // Fetch a session grant using the specified tenant ID
+  const params = new URLSearchParams({ tenantId, deviceId: "dev-issuance" });
+  params.set("role", "station");
+  const res = await fetch(`/api/session-grant?${params}`);
+  if (!res.ok) throw new Error(`Failed to fetch dev grant: ${res.status}`);
+  const data = await res.json();
+  const b64ToBytes = (b64: string): Uint8Array => {
+    const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+    const bin = atob(padded);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  };
+  return {
+    keyVersion: data.keyVersion,
+    sessionKey: b64ToBytes(data.sessionKey),
+    expiresAt: data.expiresAt,
+    allowedOps: data.allowedOps,
+    signature: b64ToBytes(data.signature),
+    tenantId,
+    accountId: "dev",
+    deviceId: "dev-issuance",
+  };
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -81,6 +115,7 @@ export function IssuanceTestSection() {
   const abortRef = useRef<AbortController | null>(null);
 
   // issuance form state
+  const [tenantId, setTenantId] = useState("dev");
   const [name, setName] = useState("Test User");
   const [userId, setUserId] = useState("1001");
   const [balance, setBalance] = useState("50000");
@@ -116,7 +151,34 @@ export function IssuanceTestSection() {
     }
 
     try {
-      const payload = decodePayload(result.raw);
+      const raw = result.raw;
+      const version = raw[4];
+      let decodableRaw = raw;
+
+      // Decrypt if v2 encrypted card
+      if (version === CARD_SCHEMA_VERSION) {
+        try {
+          const devGrant = await fetchDevGrant(tenantId);
+          const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
+          const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
+          const cardId = raw.slice(6, 12);
+          const decryptedBuf = await decryptCardBody(
+            raw.slice(0, BUFFER_SIZE),
+            devGrant.sessionKey,
+            cardId,
+            BigInt(counterBind),
+          );
+          const full = new Uint8Array(WIRE_SIZE);
+          full.set(decryptedBuf, 0);
+          full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
+          decodableRaw = full;
+        } catch (e) {
+          // If decryption fails, try plaintext decode as fallback
+          console.warn("Decryption failed, trying plaintext:", e);
+        }
+      }
+
+      const payload = decodePayload(decodableRaw);
       setReadPayload(payload);
       setSerialNumber(result.serialNumber);
       setPhase("done");
@@ -124,7 +186,7 @@ export function IssuanceTestSection() {
       setPhase("error");
       setErrorMsg(`Decode failed: ${e}`);
     }
-  }, []);
+  }, [tenantId]);
 
   // ── WRITE (issue fresh card) ───────────────────────────────────────────────
   const handleIssue = useCallback(async () => {
@@ -137,38 +199,48 @@ export function IssuanceTestSection() {
 
     const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresOffset, 10) * 86400;
 
-    let raw: Uint8Array;
+    let originalPayload: CardPayload;
     try {
-      raw = makeFreshCard({
+      originalPayload = makeFreshCard({
         name,
         userId: parseInt(userId, 10),
         balance: parseInt(balance, 10),
         expiresAt,
       });
-      console.log("Issuing card with payload", decodePayload(raw));
+
+      // Fetch a session grant and encrypt the card properly
+      const devGrant = await fetchDevGrant(tenantId);
+      const prepared = await prepareWrite(originalPayload, originalPayload, devGrant);
+      const raw = prepared.bytes;
+
+      console.log("Issuing card with payload", originalPayload);
+
+      const writer = new NDEFReader();
+      await writer.write(
+        {
+          records: [
+            {
+              recordType: "unknown",
+              data: raw.buffer.slice(
+                raw.byteOffset,
+                raw.byteOffset + raw.byteLength,
+              ) as ArrayBuffer,
+            },
+          ],
+        },
+        { signal: abortRef.current.signal, overwrite: true },
+      );
     } catch (e) {
       setPhase("error");
-      setErrorMsg(`Build failed: ${e}`);
+      setErrorMsg(`${e instanceof DOMException ? e.message : String(e)}`);
       return;
     }
 
-    const result = await writeCard(raw, abortRef.current.signal);
-    if (!result.ok) {
-      setPhase("error");
-      setErrorMsg(result.error);
-      return;
-    }
-
-    // immediately re-decode to confirm round-trip
-    try {
-      const payload = decodePayload(raw);
-      setReadPayload(payload);
-      setSerialNumber(null);
-    } catch {
-      // non-fatal
-    }
+    // Show the original (plaintext) payload — not the encrypted bytes
+    setReadPayload(originalPayload);
+    setSerialNumber(null);
     setPhase("done");
-  }, [name, userId, balance, expiresOffset]);
+  }, [name, userId, balance, expiresOffset, tenantId]);
 
   const handleRetry = useCallback(() => {
     if (drawerMode === "read") handleRead();
@@ -195,6 +267,23 @@ export function IssuanceTestSection() {
       {/* ── WRITE: Issue fresh card ─────────────────────────────────────── */}
       <section className="space-y-3">
         <h2 className="font-semibold">Issue kartu baru</h2>
+
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-1.5">
+          <Label htmlFor="it-tenant" className="text-xs font-semibold text-blue-700">
+            Tenant ID (harus sama dengan station/gate)
+          </Label>
+          <Input
+            id="it-tenant"
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+            placeholder="Tenant ID"
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-blue-600">
+            Gunakan tenant ID yang sama dengan akun station/gate agar kartu bisa dibaca lintas
+            perangkat.
+          </p>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">

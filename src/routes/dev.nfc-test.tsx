@@ -5,6 +5,9 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Separator } from "../components/ui/separator";
 import { makeFreshCard } from "../components/section/IssuanceTestSection";
+import { prepareWrite } from "../core/nfc/pipelineEngine";
+import { encodePayloadWire } from "../core/payload/engine";
+import type { SessionGrant } from "../core/payload/types";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,
@@ -31,6 +34,7 @@ function NfcTestPage() {
   const [payloadUserId, setPayloadUserId] = useState("1");
   const [payloadBalance, setPayloadBalance] = useState("50000");
   const [payloadExpiresOffset, setPayloadExpiresOffset] = useState("365");
+  const [payloadTenantId, setPayloadTenantId] = useState("dev");
 
   const addLog = useCallback((...lines: string[]) => {
     setLog((prev) => [...prev, ...lines.map((l) => `[${ts()}] ${l}`)]);
@@ -152,21 +156,67 @@ function NfcTestPage() {
       addLog("❌ NDEFReader not available");
       return;
     }
-    let raw: Uint8Array;
+    let raw: Uint8Array | undefined;
     try {
       const expiresAt = Math.floor(Date.now() / 1000) + parseInt(payloadExpiresOffset, 10) * 86400;
-      raw = makeFreshCard({
+      const payload = makeFreshCard({
         name: payloadName,
         userId: parseInt(payloadUserId, 10),
         balance: parseInt(payloadBalance, 10),
         expiresAt,
       });
+
+      // Try to fetch a session grant for proper encryption
+      let useEncrypted = false;
+      try {
+        const params = new URLSearchParams({
+          tenantId: payloadTenantId,
+          deviceId: "dev-nfc-test",
+          role: "station",
+        });
+        const res = await fetch(`/api/session-grant?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          const b64ToBytes = (b64: string): Uint8Array => {
+            const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+            const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+            const bin = atob(padded);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return bytes;
+          };
+          const grant: SessionGrant = {
+            keyVersion: data.keyVersion,
+            sessionKey: b64ToBytes(data.sessionKey),
+            expiresAt: data.expiresAt,
+            allowedOps: data.allowedOps,
+            signature: b64ToBytes(data.signature),
+            tenantId: payloadTenantId,
+            accountId: "dev",
+            deviceId: "dev-nfc-test",
+          };
+          const prepared = await prepareWrite(payload, payload, grant);
+          raw = prepared.bytes;
+          useEncrypted = true;
+        }
+      } catch {
+        // Fall back to plaintext if grant fetch fails
+      }
+
+      if (!useEncrypted) {
+        raw = encodePayloadWire(payload);
+      }
+
       addLog(
-        `Built payload  name="${payloadName}"  uid=${payloadUserId}  balance=${payloadBalance}  expires+${payloadExpiresOffset}d`,
-        `  hex: ${toHex(raw)}`,
+        `Built payload (${useEncrypted ? "encrypted" : "plaintext"})  name="${payloadName}"  uid=${payloadUserId}  balance=${payloadBalance}  expires+${payloadExpiresOffset}d`,
+        `  hex: ${toHex(raw!)}`,
       );
     } catch (e) {
       addLog(`❌ Build failed: ${e}`);
+      return;
+    }
+    if (!raw) {
+      addLog("❌ Build failed: no payload generated");
       return;
     }
     addLog(`Writing payload (${raw.length} bytes) …`);
@@ -190,7 +240,15 @@ function NfcTestPage() {
     } catch (e) {
       addLog(`❌ Write payload failed: ${e}`);
     }
-  }, [supported, addLog, payloadName, payloadUserId, payloadBalance, payloadExpiresOffset]);
+  }, [
+    supported,
+    addLog,
+    payloadName,
+    payloadUserId,
+    payloadBalance,
+    payloadExpiresOffset,
+    payloadTenantId,
+  ]);
 
   const handleClearLog = useCallback(() => setLog([]), []);
 
@@ -269,6 +327,20 @@ function NfcTestPage() {
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
           Write Payload (tap card when prompted)
         </h2>
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold text-blue-700">Tenant ID</Label>
+            <Input
+              value={payloadTenantId}
+              onChange={(e) => setPayloadTenantId(e.target.value)}
+              placeholder="dev"
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Harus sama dengan tenant ID di station/gate agar kartu bisa dibaca.
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Name</Label>

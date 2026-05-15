@@ -9,7 +9,9 @@ import { OfflineIndicator } from "../block/OfflineIndicator";
 import { Button } from "../ui/button";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { tenantContextStore } from "../../lib/indexeddb";
 
 interface TerminalSectionProps {
   tenantId: string;
@@ -28,15 +30,21 @@ export function TerminalSection({
   deviceId,
   terminalId,
 }: TerminalSectionProps) {
+  const navigate = useNavigate();
   const {
     grant,
     loading: grantLoading,
     error: grantError,
-  } = useSessionGrant(tenantId, accountId, deviceId);
+  } = useSessionGrant(tenantId, accountId, deviceId, "terminal");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const [amountInput, setAmountInput] = useState("");
   const [txError, setTxError] = useState<string | null>(null);
+
+  const handleLogout = useCallback(async () => {
+    await tenantContextStore.delete(tenantId);
+    navigate({ to: "/" });
+  }, [navigate, tenantId]);
 
   async function handleDebit() {
     if (!state.payload || !grant) return;
@@ -74,7 +82,12 @@ export function TerminalSection({
   );
 
   return (
-    <KioskLayout title="Terminal" tenantName={tenantName} trailing={syncTrailing}>
+    <KioskLayout
+      title="Terminal"
+      tenantName={tenantName}
+      trailing={syncTrailing}
+      onLogoLongPress={handleLogout}
+    >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {grantLoading && <p className="type-body2 text-white/70 animate-pulse">Memuat sesi...</p>}
         {!grant && !grantLoading && (
