@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [master, main]
   schedule:
-    - cron: "0 3 * * 1"  # Weekly Monday 03:00 UTC
+    - cron: "0 3 * * 1" # Weekly Monday 03:00 UTC
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -84,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history for blame annotations
+          fetch-depth: 0 # full history for blame annotations
 
       - uses: pnpm/action-setup@v4
         with:

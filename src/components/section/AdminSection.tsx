@@ -1,38 +1,45 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { localDb, type User } from '../../db/local-db'
-import { useNfcCard } from '../../hooks/useNfcCard'
-import { useSessionGrant } from '../../hooks/useSessionGrant'
-import { AdminLayout, type AdminView } from '../layout/AdminLayout'
-import { AdminCardsPanel, type AdminCardRow } from '../block/AdminCardsPanel'
-import { AdminAuditPanel, type AdminAuditEntry } from '../block/AdminAuditPanel'
-import { AdminMembersPanel, type AdminUserRow } from '../block/AdminMembersPanel'
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { localDb, type User } from "../../db/local-db";
+import { useNfcCard } from "../../hooks/useNfcCard";
+import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { AdminLayout, type AdminView } from "../layout/AdminLayout";
+import { AdminCardsPanel, type AdminCardRow } from "../block/AdminCardsPanel";
+import { AdminAuditPanel, type AdminAuditEntry } from "../block/AdminAuditPanel";
+import { AdminMembersPanel, type AdminUserRow } from "../block/AdminMembersPanel";
 
 interface AdminSectionProps {
-  tenantId: string
-  tenantName: string
-  accountId: string
-  deviceId: string
-  terminalId: number
-  role: string
+  tenantId: string;
+  tenantName: string;
+  accountId: string;
+  deviceId: string;
+  terminalId: number;
+  role: string;
 }
 
-export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, terminalId, role }: AdminSectionProps) => {
-  const [view, setView] = useState<AdminView>('cards')
-  const qc = useQueryClient()
+export const AdminSection = ({
+  tenantId,
+  tenantName,
+  accountId,
+  deviceId,
+  terminalId,
+  role,
+}: AdminSectionProps) => {
+  const [view, setView] = useState<AdminView>("cards");
+  const qc = useQueryClient();
 
-  const { grant } = useSessionGrant(tenantId, accountId, deviceId)
-  const { state, scan } = useNfcCard(grant, tenantId, terminalId)
+  const { grant } = useSessionGrant(tenantId, accountId, deviceId);
+  const { state, scan } = useNfcCard(grant, tenantId, terminalId);
 
   // Queries
   const cards = useQuery<AdminCardRow[]>({
-    queryKey: ['admin-cards', tenantId],
+    queryKey: ["admin-cards", tenantId],
     queryFn: async () => {
       const [cardRows, userRows] = await Promise.all([
-        localDb.cards.where('tenantId').equals(tenantId).toArray(),
-        localDb.users.where('tenantId').equals(tenantId).toArray(),
-      ])
-      const userMap = new Map<number, string>(userRows.map((u) => [u.userId, u.name]))
+        localDb.cards.where("tenantId").equals(tenantId).toArray(),
+        localDb.users.where("tenantId").equals(tenantId).toArray(),
+      ]);
+      const userMap = new Map<number, string>(userRows.map((u) => [u.userId, u.name]));
       return cardRows.map((c) => ({
         cardId: c.cardId,
         userId: c.userId,
@@ -40,56 +47,53 @@ export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, termin
         status: c.status,
         balance: c.balance,
         counter: c.counter,
-      }))
+      }));
     },
-  })
+  });
 
   const audit = useQuery<AdminAuditEntry[]>({
-    queryKey: ['admin-audit', tenantId],
+    queryKey: ["admin-audit", tenantId],
     queryFn: () =>
-      localDb.auditLog
-        .where('tenantId')
-        .equals(tenantId)
-        .reverse()
-        .limit(100)
-        .toArray() as Promise<AdminAuditEntry[]>,
-  })
+      localDb.auditLog.where("tenantId").equals(tenantId).reverse().limit(100).toArray() as Promise<
+        AdminAuditEntry[]
+      >,
+  });
 
   const members = useQuery<AdminUserRow[]>({
-    queryKey: ['users', tenantId],
+    queryKey: ["users", tenantId],
     queryFn: () =>
-      localDb.users.where('tenantId').equals(tenantId).toArray() as Promise<AdminUserRow[]>,
-  })
+      localDb.users.where("tenantId").equals(tenantId).toArray() as Promise<AdminUserRow[]>,
+  });
 
   const createMember = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
-      const existing = await localDb.users.where('tenantId').equals(tenantId).toArray()
-      const nextId = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) + 1 : 1001
-      const now = Math.floor(Date.now() / 1000)
+      const existing = await localDb.users.where("tenantId").equals(tenantId).toArray();
+      const nextId = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) + 1 : 1001;
+      const now = Math.floor(Date.now() / 1000);
       await localDb.users.add({
         tenantId,
         userId: nextId,
         name: name.trim(),
-        status: 'active',
+        status: "active",
         createdAt: now,
         updatedAt: now,
-      })
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users', tenantId] }),
-  })
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+  });
 
   const toggleMemberStatus = useMutation({
     mutationFn: async ({ userId, status }: { userId: number; status: string }) => {
       await localDb.users.update([tenantId, userId], {
-        status: status as User['status'],
+        status: status as User["status"],
         updatedAt: Math.floor(Date.now() / 1000),
-      })
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users', tenantId] }),
-  })
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+  });
 
   async function handleCreateMember(name: string) {
-    await createMember.mutateAsync({ name })
+    await createMember.mutateAsync({ name });
   }
 
   return (
@@ -105,7 +109,7 @@ export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, termin
           {state.error}
         </div>
       )}
-      {view === 'cards' && (
+      {view === "cards" && (
         <AdminCardsPanel
           cards={cards.data ?? []}
           isLoading={cards.isLoading}
@@ -114,14 +118,14 @@ export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, termin
           onScan={scan}
         />
       )}
-      {view === 'audit' && (
+      {view === "audit" && (
         <AdminAuditPanel
           entries={audit.data ?? []}
           isLoading={audit.isLoading}
           error={audit.error ? String(audit.error) : null}
         />
       )}
-      {view === 'members' && (
+      {view === "members" && (
         <AdminMembersPanel
           members={members.data ?? []}
           isLoading={members.isLoading}
@@ -131,12 +135,11 @@ export const AdminSection = ({ tenantId, tenantName, accountId, deviceId, termin
           onToggleStatus={(userId, currentStatus) =>
             toggleMemberStatus.mutate({
               userId,
-              status: currentStatus === 'active' ? 'suspended' : 'active',
+              status: currentStatus === "active" ? "suspended" : "active",
             })
           }
         />
       )}
     </AdminLayout>
-  )
-}
-
+  );
+};

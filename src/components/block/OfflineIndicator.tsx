@@ -1,16 +1,16 @@
-import type { ReconciliationStatus } from '../../hooks/useReconciliation'
-import { Button } from '../ui/button'
+import type { ReconciliationStatus } from "../../hooks/useReconciliation";
+import { Button } from "../ui/button";
 
 interface OfflineIndicatorProps {
-  pendingCount: number
-  syncStatus: ReconciliationStatus
-  onSync: () => void
+  pendingCount: number;
+  syncStatus: ReconciliationStatus;
+  onSync: () => void;
 }
 
 export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIndicatorProps) {
-  const isOnline = typeof navigator !== 'undefined' && navigator.onLine
+  const isOnline = typeof navigator !== "undefined" && navigator.onLine;
 
-  if (pendingCount === 0 && isOnline) return null
+  if (pendingCount === 0 && isOnline) return null;
 
   return (
     <div className="flex items-center gap-2">
@@ -21,12 +21,12 @@ export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIn
         <Button
           variant="ghost"
           onClick={onSync}
-          disabled={syncStatus === 'syncing' || !isOnline}
+          disabled={syncStatus === "syncing" || !isOnline}
           className="text-xs h-7 px-2"
         >
-          {syncStatus === 'syncing' ? 'Syncing...' : `${pendingCount} pending`}
+          {syncStatus === "syncing" ? "Syncing..." : `${pendingCount} pending`}
         </Button>
       )}
     </div>
-  )
+  );
 }

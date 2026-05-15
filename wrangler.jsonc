@@ -10,13 +10,13 @@
       "database_name": "koperasi-kegelapan",
       // Run: wrangler d1 create koperasi-kegelapan  — then paste the returned database_id here
       "database_id": "62122eed-8454-4751-986d-6dcf12fb3d2e",
-      "migrations_dir": "drizzle"
-    }
+      "migrations_dir": "drizzle",
+    },
   ],
   "vars": {
-    // Override in .dev.vars for local development 
+    // Override in .dev.vars for local development
     "SESSION_MASTER_KEY": "5259e877-e293-4dc2-8c05-c6b40654a51c",
     "CLOUDFLARE_ACCOUNT_ID": "8b2e9fc61388c8c1bf7ac5d3eb283cb0",
-    "CLOUDFLARE_D1_TOKEN": "cfat_XkGyeFuFh0NPkzH6sndJlX08bLQ60xECV4743ZEZ3b1e9459"
-  }
+    "CLOUDFLARE_D1_TOKEN": "cfat_XkGyeFuFh0NPkzH6sndJlX08bLQ60xECV4743ZEZ3b1e9459",
+  },
 }

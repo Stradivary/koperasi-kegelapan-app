@@ -1,18 +1,18 @@
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList } from "lucide-react";
 
 export interface AdminAuditEntry {
-  id: number
-  type: string
-  amount: number
-  balanceAfter: number
-  timestamp: number
-  flagged: boolean
+  id: number;
+  type: string;
+  amount: number;
+  balanceAfter: number;
+  timestamp: number;
+  flagged: boolean;
 }
 
 interface AdminAuditPanelProps {
-  entries: AdminAuditEntry[]
-  isLoading: boolean
-  error: string | null
+  entries: AdminAuditEntry[];
+  isLoading: boolean;
+  error: string | null;
 }
 
 export function AdminAuditPanel({ entries, isLoading, error }: AdminAuditPanelProps) {
@@ -25,7 +25,10 @@ export function AdminAuditPanel({ entries, isLoading, error }: AdminAuditPanelPr
       {isLoading && (
         <div className="rounded-lg border divide-y">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="px-4 py-3 flex items-center justify-between gap-3 animate-pulse">
+            <div
+              key={i}
+              className="px-4 py-3 flex items-center justify-between gap-3 animate-pulse"
+            >
               <div className="h-3 w-24 bg-muted rounded" />
               <div className="space-y-2 text-right">
                 <div className="h-3 w-20 bg-muted rounded ml-auto" />
@@ -39,7 +42,10 @@ export function AdminAuditPanel({ entries, isLoading, error }: AdminAuditPanelPr
       {!isLoading && !error && (
         <div className="rounded-lg border divide-y overflow-hidden text-sm">
           {entries.map((entry) => (
-            <div key={entry.id} className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+            <div
+              key={entry.id}
+              className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <span className="font-medium capitalize">{entry.type}</span>
                 {entry.flagged && (
@@ -49,8 +55,10 @@ export function AdminAuditPanel({ entries, isLoading, error }: AdminAuditPanelPr
                 )}
               </div>
               <div className="text-right text-xs text-muted-foreground shrink-0">
-                <p className="font-semibold text-sm text-foreground">Rp {entry.amount?.toLocaleString('id-ID')}</p>
-                <p>{new Date(entry.timestamp * 1000).toLocaleString('id-ID')}</p>
+                <p className="font-semibold text-sm text-foreground">
+                  Rp {entry.amount?.toLocaleString("id-ID")}
+                </p>
+                <p>{new Date(entry.timestamp * 1000).toLocaleString("id-ID")}</p>
               </div>
             </div>
           ))}
@@ -63,5 +71,5 @@ export function AdminAuditPanel({ entries, isLoading, error }: AdminAuditPanelPr
         </div>
       )}
     </div>
-  )
+  );
 }

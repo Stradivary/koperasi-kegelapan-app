@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CreditCard,
   ClipboardList,
@@ -9,39 +9,39 @@ import {
   X,
   ChevronLeft,
   ShieldCheck,
-} from 'lucide-react'
-import { BRAND } from '../../lib/brand'
-import { tenantContextStore } from '../../lib/indexeddb'
-import { Button } from '../ui/button'
+} from "lucide-react";
+import { BRAND } from "../../lib/brand";
+import { tenantContextStore } from "../../lib/indexeddb";
+import { Button } from "../ui/button";
 
-export type AdminView = 'cards' | 'audit' | 'members'
+export type AdminView = "cards" | "audit" | "members";
 
 interface AdminLayoutProps {
-  tenantName: string
-  tenantId: string
-  role: string
-  activeSection: AdminView
-  onSectionChange: (section: AdminView) => void
-  children: React.ReactNode
+  tenantName: string;
+  tenantId: string;
+  role: string;
+  activeSection: AdminView;
+  onSectionChange: (section: AdminView) => void;
+  children: React.ReactNode;
 }
 
 const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
-  { id: 'cards', icon: CreditCard, label: 'Kartu' },
-  { id: 'audit', icon: ClipboardList, label: 'Audit Log' },
-  { id: 'members', icon: UserCheck, label: 'Anggota' },
-]
+  { id: "cards", icon: CreditCard, label: "Kartu" },
+  { id: "audit", icon: ClipboardList, label: "Audit Log" },
+  { id: "members", icon: UserCheck, label: "Anggota" },
+];
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
-  { id: 'cards', icon: CreditCard, label: 'Kartu' },
-  { id: 'audit', icon: ClipboardList, label: 'Audit' },
-  { id: 'members', icon: UserCheck, label: 'Anggota' },
-]
+  { id: "cards", icon: CreditCard, label: "Kartu" },
+  { id: "audit", icon: ClipboardList, label: "Audit" },
+  { id: "members", icon: UserCheck, label: "Anggota" },
+];
 
 const SECTION_LABEL: Record<AdminView, string> = {
-  cards: 'Kartu',
-  audit: 'Audit Log',
-  members: 'Anggota',
-}
+  cards: "Kartu",
+  audit: "Audit Log",
+  members: "Anggota",
+};
 
 export function AdminLayout({
   tenantName,
@@ -51,13 +51,13 @@ export function AdminLayout({
   onSectionChange,
   children,
 }: AdminLayoutProps) {
-  const navigate = useNavigate()
-  const [collapsed, setCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
-    await tenantContextStore.delete(tenantId)
-    navigate({ to: '/' })
+    await tenantContextStore.delete(tenantId);
+    navigate({ to: "/" });
   }
 
   return (
@@ -65,9 +65,9 @@ export function AdminLayout({
       {/* ── Desktop Sidebar ── */}
       <aside
         className={[
-          'hidden lg:flex flex-col bg-brand-dark text-white shrink-0 transition-all duration-200',
-          collapsed ? 'w-16' : 'w-60',
-        ].join(' ')}
+          "hidden lg:flex flex-col bg-brand-dark text-white shrink-0 transition-all duration-200",
+          collapsed ? "w-16" : "w-60",
+        ].join(" ")}
       >
         {/* Sidebar header */}
         <div className="flex items-center gap-2 px-4 py-5 border-b border-white/10">
@@ -90,7 +90,7 @@ export function AdminLayout({
           >
             <ChevronLeft
               size={16}
-              className={['transition-transform', collapsed ? 'rotate-180' : ''].join(' ')}
+              className={["transition-transform", collapsed ? "rotate-180" : ""].join(" ")}
             />
           </Button>
         </div>
@@ -177,9 +177,11 @@ export function AdminLayout({
             <Menu size={20} />
           </Button>
           <div className="flex-1 min-w-0">
-            <p className="type-title-bold text-foreground truncate">{SECTION_LABEL[activeSection]}</p>
+            <p className="type-title-bold text-foreground truncate">
+              {SECTION_LABEL[activeSection]}
+            </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
-          </div> 
+          </div>
         </header>
 
         <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
@@ -192,11 +194,11 @@ export function AdminLayout({
               variant="ghost"
               onClick={() => onSectionChange(id)}
               className={[
-                'flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs',
+                "flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs",
                 activeSection === id
-                  ? 'text-brand font-semibold hover:text-brand'
-                  : 'text-muted-foreground',
-              ].join(' ')}
+                  ? "text-brand font-semibold hover:text-brand"
+                  : "text-muted-foreground",
+              ].join(" ")}
             >
               <Icon size={20} />
               <span>{label}</span>
@@ -208,10 +210,7 @@ export function AdminLayout({
       {/* ── Mobile slide-in drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex flex-col bg-brand-dark text-white w-72 h-full">
             <div className="flex items-center justify-between px-4 py-5 border-b border-white/10">
               <div>
@@ -239,7 +238,10 @@ export function AdminLayout({
                   label={label}
                   active={activeSection === id}
                   collapsed={false}
-                  onClick={() => { onSectionChange(id); setMobileOpen(false) }}
+                  onClick={() => {
+                    onSectionChange(id);
+                    setMobileOpen(false);
+                  }}
                 />
               ))}
             </nav>
@@ -257,36 +259,44 @@ export function AdminLayout({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 interface SidebarItemProps {
-  icon: React.ElementType
-  label: string
-  active: boolean
-  collapsed: boolean
-  onClick: () => void
-  danger?: boolean
-  tooltip?: string
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+  onClick: () => void;
+  danger?: boolean;
+  tooltip?: string;
 }
 
-function SidebarItem({ icon: Icon, label, active, collapsed, onClick, danger, tooltip }: SidebarItemProps) {
+function SidebarItem({
+  icon: Icon,
+  label,
+  active,
+  collapsed,
+  onClick,
+  danger,
+  tooltip,
+}: SidebarItemProps) {
   return (
     <Button
       variant="ghost"
       onClick={onClick}
       title={tooltip}
       className={[
-        'w-full h-auto justify-start px-3 py-2.5 rounded-lg',
+        "w-full h-auto justify-start px-3 py-2.5 rounded-lg",
         active
-          ? 'bg-brand text-white hover:bg-brand/90 hover:text-white'
+          ? "bg-brand text-white hover:bg-brand/90 hover:text-white"
           : danger
-            ? 'text-white/60 hover:bg-red-600/20 hover:text-red-300'
-            : 'text-white/70 hover:bg-white/10 hover:text-white',
-      ].join(' ')}
+            ? "text-white/60 hover:bg-red-600/20 hover:text-red-300"
+            : "text-white/70 hover:bg-white/10 hover:text-white",
+      ].join(" ")}
     >
       <Icon size={18} className="shrink-0" />
       {!collapsed && <span className="type-body1 truncate">{label}</span>}
     </Button>
-  )
+  );
 }

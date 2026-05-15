@@ -1,20 +1,20 @@
-import { BRAND } from '../../lib/brand'
+import { BRAND } from "../../lib/brand";
 
 interface AuthLayoutProps {
-  children: React.ReactNode
-  headerSubtitle?: string
-  variant?: 'brand' | 'brand-dark'
-  align?: 'top' | 'center'
+  children: React.ReactNode;
+  headerSubtitle?: string;
+  variant?: "brand" | "brand-dark";
+  align?: "top" | "center";
 }
 
 export function AuthLayout({
   children,
   headerSubtitle = BRAND.BYLINE,
-  variant = 'brand',
-  align = 'center',
+  variant = "brand",
+  align = "center",
 }: AuthLayoutProps) {
-  const headerBg = variant === 'brand-dark' ? 'bg-brand-dark' : 'bg-brand'
-  const containerAlign = align === 'center' ? 'items-center' : 'items-start pt-4'
+  const headerBg = variant === "brand-dark" ? "bg-brand-dark" : "bg-brand";
+  const containerAlign = align === "center" ? "items-center" : "items-start pt-4";
 
   return (
     <div className="min-h-screen flex flex-col bg-signal-disable">
@@ -29,5 +29,5 @@ export function AuthLayout({
         </div>
       </div>
     </div>
-  )
+  );
 }

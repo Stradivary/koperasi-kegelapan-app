@@ -1,31 +1,31 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { CreditCard, Wifi } from 'lucide-react'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CreditCard, Wifi } from "lucide-react";
 
-export const Route = createFileRoute('/dev/')({
+export const Route = createFileRoute("/dev/")({
   component: DevIndexPage,
-})
+});
 
 interface DevTool {
-  to: string
-  icon: React.ReactNode
-  title: string
-  description: string
+  to: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
 }
 
 const devTools: DevTool[] = [
   {
-    to: '/dev/issuance-test',
+    to: "/dev/issuance-test",
     icon: <CreditCard size={24} className="text-muted-foreground" />,
-    title: 'Issuance Test',
-    description: 'Read & write NFC card payload, no auth required',
+    title: "Issuance Test",
+    description: "Read & write NFC card payload, no auth required",
   },
   {
-    to: '/dev/nfc-test',
+    to: "/dev/nfc-test",
     icon: <Wifi size={24} className="text-muted-foreground" />,
-    title: 'NFC Raw Test',
-    description: 'Direct NDEFReader API — scan, write, format without payload',
+    title: "NFC Raw Test",
+    description: "Direct NDEFReader API — scan, write, format without payload",
   },
-]
+];
 
 function DevIndexPage() {
   return (
@@ -50,5 +50,5 @@ function DevIndexPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }

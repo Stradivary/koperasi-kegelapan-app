@@ -1,68 +1,69 @@
-import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import viteReact from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { cloudflare } from '@cloudflare/vite-plugin'
-import { VitePWA } from 'vite-plugin-pwa'
-import basicSsl from '@vitejs/plugin-basic-ssl';
+import { defineConfig } from "vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { VitePWA } from "vite-plugin-pwa";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true, dedupe: ['react', 'react-dom'] },
+  resolve: { tsconfigPaths: true, dedupe: ["react", "react-dom"] },
   plugins: [
     devtools(),
     basicSsl(),
     cloudflare({
-      viteEnvironment: { name: 'ssr' },
-      remoteBindings: process.env.CF_REMOTE_BINDINGS === '1' || process.env.CF_REMOTE_BINDINGS === 'true',
+      viteEnvironment: { name: "ssr" },
+      remoteBindings:
+        process.env.CF_REMOTE_BINDINGS === "1" || process.env.CF_REMOTE_BINDINGS === "true",
     }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: "prompt",
       injectRegister: null,
       includeAssets: [
-        'favicon.ico',
-        'logo192.png',
-        'logo512.png',
-        'assets/TelkomselBatikSans-Bold.woff2',
-        'assets/TelkomselBatikSans-Regular.woff2',
+        "favicon.ico",
+        "logo192.png",
+        "logo512.png",
+        "assets/TelkomselBatikSans-Bold.woff2",
+        "assets/TelkomselBatikSans-Regular.woff2",
       ],
       manifest: {
-        name: 'Koperasi Kegelapan',
-        short_name: 'KK Wallet',
-        description: 'Dompet NFC Koperasi — By Telkomsel',
-        theme_color: '#FF0025',
-        background_color: '#001A41',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
+        name: "Koperasi Kegelapan",
+        short_name: "KK Wallet",
+        description: "Dompet NFC Koperasi — By Telkomsel",
+        theme_color: "#FF0025",
+        background_color: "#001A41",
+        display: "standalone",
+        orientation: "portrait",
+        start_url: "/",
         icons: [
-          { src: 'favicon.ico', sizes: '64x64 32x32 24x24 16x16', type: 'image/x-icon' },
-          { src: 'logo192.png', type: 'image/png', sizes: '192x192' },
-          { src: 'logo512.png', type: 'image/png', sizes: '512x512', purpose: 'any maskable' },
+          { src: "favicon.ico", sizes: "64x64 32x32 24x24 16x16", type: "image/x-icon" },
+          { src: "logo192.png", type: "image/png", sizes: "192x192" },
+          { src: "logo512.png", type: "image/png", sizes: "512x512", purpose: "any maskable" },
         ],
       },
       workbox: {
         // Cache all static assets (JS/CSS/fonts/images)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}'],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}"],
         // Runtime caching strategies
         runtimeCaching: [
           {
             // Poppins from Google Fonts
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
+            handler: "StaleWhileRevalidate",
             options: {
-              cacheName: 'google-fonts-stylesheets',
+              cacheName: "google-fonts-stylesheets",
               expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
+            handler: "CacheFirst",
             options: {
-              cacheName: 'google-fonts-webfonts',
+              cacheName: "google-fonts-webfonts",
               expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
@@ -70,9 +71,9 @@ const config = defineConfig({
           {
             // Policy API — prefer network, fall back to cache
             urlPattern: /\/api\/policy/,
-            handler: 'NetworkFirst',
+            handler: "NetworkFirst",
             options: {
-              cacheName: 'api-policy',
+              cacheName: "api-policy",
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
             },
@@ -80,12 +81,12 @@ const config = defineConfig({
           {
             // Session grant — network only (must be fresh)
             urlPattern: /\/api\/session-grant/,
-            handler: 'NetworkOnly',
+            handler: "NetworkOnly",
           },
           {
             // Reconcile — network only, queued via IndexedDB outbox
             urlPattern: /\/api\/reconcile/,
-            handler: 'NetworkOnly',
+            handler: "NetworkOnly",
           },
         ],
       },
@@ -97,6 +98,6 @@ const config = defineConfig({
   server: {
     host: true, // This enables LAN access
   },
-})
+});
 
-export default config
+export default config;

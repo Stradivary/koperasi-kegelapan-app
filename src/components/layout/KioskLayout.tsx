@@ -1,40 +1,47 @@
-import { useRef, useState } from 'react'
-import { BRAND } from '../../lib/brand'
+import { useRef, useState } from "react";
+import { BRAND } from "../../lib/brand";
 
 interface KioskLayoutProps {
-  children: React.ReactNode
-  title: string
-  subtitle?: string
-  tenantName: string
-  trailing?: React.ReactNode
-  onLogoLongPress?: () => void
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  tenantName: string;
+  trailing?: React.ReactNode;
+  onLogoLongPress?: () => void;
 }
 
-const HOLD_MS = 3000
+const HOLD_MS = 3000;
 
-export function KioskLayout({ children, title, subtitle, tenantName, trailing, onLogoLongPress }: KioskLayoutProps) {
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [holding, setHolding] = useState(false)
+export function KioskLayout({
+  children,
+  title,
+  subtitle,
+  tenantName,
+  trailing,
+  onLogoLongPress,
+}: KioskLayoutProps) {
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [holding, setHolding] = useState(false);
 
   function startHold() {
-    if (!onLogoLongPress) return
-    setHolding(true)
+    if (!onLogoLongPress) return;
+    setHolding(true);
     holdTimer.current = setTimeout(() => {
-      setHolding(false)
-      onLogoLongPress()
-    }, HOLD_MS)
+      setHolding(false);
+      onLogoLongPress();
+    }, HOLD_MS);
   }
 
   function cancelHold() {
-    if (holdTimer.current) clearTimeout(holdTimer.current)
-    setHolding(false)
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    setHolding(false);
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-signal-disable">
       <header className="bg-brand text-white px-4 py-3 flex items-center justify-between gap-3 shrink-0">
         <div
-          className={`min-w-0 select-none touch-none${holding ? ' animate-pulse opacity-60' : ''}`}
+          className={`min-w-0 select-none touch-none${holding ? " animate-pulse opacity-60" : ""}`}
           onPointerDown={startHold}
           onPointerUp={cancelHold}
           onPointerLeave={cancelHold}
@@ -52,5 +59,5 @@ export function KioskLayout({ children, title, subtitle, tenantName, trailing, o
       </header>
       <main className="flex-1 flex flex-col">{children}</main>
     </div>
-  )
+  );
 }
