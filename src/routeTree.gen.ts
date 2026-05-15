@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DevicesRouteImport } from './routes/devices'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DevIndexRouteImport } from './routes/dev.index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
@@ -25,6 +26,11 @@ import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantI
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
 import { Route as ApiAuthTokenRouteImport } from './routes/api/auth/token'
 
+const DevicesRoute = DevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -103,6 +109,7 @@ const ApiAuthTokenRoute = ApiAuthTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
@@ -138,6 +146,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/devices'
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/devices'
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/devices'
     | '/api/accounts'
     | '/api/policy'
     | '/api/session-grant'
@@ -209,6 +221,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DevicesRoute: typeof DevicesRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiPolicyRoute: typeof ApiPolicyRoute
   ApiSessionGrantRoute: typeof ApiSessionGrantRoute
@@ -221,6 +234,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/devices': {
+      id: '/devices'
+      path: '/devices'
+      fullPath: '/devices'
+      preLoaderRoute: typeof DevicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -353,6 +373,7 @@ const TenantTenantIdRouteWithChildren = TenantTenantIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DevicesRoute: DevicesRoute,
   ApiAccountsRoute: ApiAccountsRoute,
   ApiPolicyRoute: ApiPolicyRoute,
   ApiSessionGrantRoute: ApiSessionGrantRoute,

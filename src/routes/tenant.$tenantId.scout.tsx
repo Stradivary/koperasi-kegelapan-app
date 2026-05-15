@@ -1,20 +1,20 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { ScoutSection } from '../components/section/ScoutSection'
+import { createFileRoute } from "@tanstack/react-router";
+import { ScoutSection } from "../components/section/ScoutSection";
 
-export const Route = createFileRoute('/tenant/$tenantId/scout')({
+export const Route = createFileRoute("/tenant/$tenantId/scout")({
   component: ScoutPage,
-})
+});
 
 function ScoutPage() {
-  const { tenantId } = Route.useParams()
-  const { tenantContext } = Route.useRouteContext()
+  const { tenantId } = Route.useParams();
+  const { tenantContext } = Route.useRouteContext();
   return (
     <ScoutSection
       tenantId={tenantId}
       tenantName={tenantContext.tenantName}
       accountId={tenantContext.accountId}
       deviceId={tenantContext.deviceId}
-      terminalId={0}
+      terminalId={tenantContext.terminalId}
     />
-  )
+  );
 }
