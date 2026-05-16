@@ -45,7 +45,7 @@ export function TerminalSection({
     if (!state.payload || !grant) return;
     const nowSeconds = Math.floor(Date.now() / 1000);
     const cardState = state.payload.wallet.state;
-    const trigger = cardState === CardState.TERMINAL_OPERATION ? "force_checkout" : "gate_checkout";
+    const trigger = cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
     const result = validateTransition(state.payload, trigger, nowSeconds);
     if (!result.valid) return;
     const durationSeconds = nowSeconds - state.payload.session.startTime;
@@ -68,7 +68,7 @@ export function TerminalSection({
 
   const cardState = state.payload?.wallet.state;
   const canCheckout =
-    cardState === CardState.CHECKED_IN || cardState === CardState.TERMINAL_OPERATION;
+    cardState === CardState.CHECKED_IN || cardState === CardState.STATION_OPERATION;
 
   const syncTrailing = (
     <OfflineIndicator pendingCount={pendingCount} onSync={sync} syncStatus={syncStatus} />

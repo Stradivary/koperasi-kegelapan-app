@@ -27,11 +27,11 @@ const VALID_TRANSITIONS: Record<CardState, Partial<Record<TransitionTrigger, Car
     force_checkout: CardState.CHECKED_OUT,
   },
   [CardState.CHECKED_IN]: {
-    terminal_start: CardState.TERMINAL_OPERATION,
+    terminal_start: CardState.STATION_OPERATION,
     gate_checkout: CardState.CHECKED_OUT,
     force_checkout: CardState.CHECKED_OUT,
   },
-  [CardState.TERMINAL_OPERATION]: {
+  [CardState.STATION_OPERATION]: {
     terminal_end: CardState.CHECKED_IN,
     force_checkout: CardState.CHECKED_OUT,
   },

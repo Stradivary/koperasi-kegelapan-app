@@ -80,7 +80,7 @@ export function KioskSection({
       tenantId={tenantId}
       currentMode="kiosk"
     >
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-0">
         {/* Session error */}
         {!grant && !loading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">

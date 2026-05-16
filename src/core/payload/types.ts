@@ -33,7 +33,7 @@ export const TRAILER_ACTIVE_PTR = 28; // uint8
 export enum CardState {
   IDLE = 0,
   CHECKED_IN = 1,
-  TERMINAL_OPERATION = 2,
+  STATION_OPERATION = 2,
   CHECKED_OUT = 3,
 }
 

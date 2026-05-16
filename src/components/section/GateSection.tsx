@@ -135,7 +135,7 @@ export function GateSection({
 
   const cardState = state.payload?.wallet.state;
   const isAlreadyCheckedIn =
-    cardState === CardState.CHECKED_IN || cardState === CardState.TERMINAL_OPERATION;
+    cardState === CardState.CHECKED_IN || cardState === CardState.STATION_OPERATION;
 
   return (
     <KioskLayout

@@ -56,11 +56,11 @@ describe("validateTransition", () => {
   it("CHECKED_IN -> TERMINAL_OPERATION via terminal_start", () => {
     const r = validateTransition(makePayload(CardState.CHECKED_IN), "terminal_start", NOW);
     expect(r.valid).toBe(true);
-    expect(r.nextState).toBe(CardState.TERMINAL_OPERATION);
+    expect(r.nextState).toBe(CardState.STATION_OPERATION);
   });
 
   it("TERMINAL_OPERATION -> CHECKED_IN via terminal_end", () => {
-    const r = validateTransition(makePayload(CardState.TERMINAL_OPERATION), "terminal_end", NOW);
+    const r = validateTransition(makePayload(CardState.STATION_OPERATION), "terminal_end", NOW);
     expect(r.valid).toBe(true);
     expect(r.nextState).toBe(CardState.CHECKED_IN);
   });
@@ -150,20 +150,20 @@ describe("isSessionExpired", () => {
 
 describe("applyDebit", () => {
   it("reduces balance", () => {
-    const payload = makePayload(CardState.TERMINAL_OPERATION);
+    const payload = makePayload(CardState.STATION_OPERATION);
     const updated = applyDebit(payload, 15000, NOW);
     expect(updated.wallet.balance).toBe(500000 - 15000);
     expect(updated.wallet.lastBalance).toBe(500000);
   });
 
   it("increments counter", () => {
-    const payload = makePayload(CardState.TERMINAL_OPERATION);
+    const payload = makePayload(CardState.STATION_OPERATION);
     const updated = applyDebit(payload, 15000, NOW);
     expect(updated.wallet.counter).toBe(6n);
   });
 
   it("adds log entry", () => {
-    const payload = makePayload(CardState.TERMINAL_OPERATION);
+    const payload = makePayload(CardState.STATION_OPERATION);
     const updated = applyDebit(payload, 15000, NOW);
     expect(updated.logEntries).toHaveLength(1);
     expect(updated.logEntries[0].amount).toBe(15000);
@@ -171,7 +171,7 @@ describe("applyDebit", () => {
   });
 
   it("rings buffer at 5 entries", () => {
-    let payload = makePayload(CardState.TERMINAL_OPERATION);
+    let payload = makePayload(CardState.STATION_OPERATION);
     for (let i = 0; i < 6; i++) {
       payload = applyDebit(payload, 1000, NOW + i);
     }
