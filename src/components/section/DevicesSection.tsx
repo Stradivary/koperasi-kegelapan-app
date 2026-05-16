@@ -19,6 +19,7 @@ import {
 } from "../../lib/indexeddb";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
+import { LoadingState } from "../block/LoadingState";
 
 interface TenantEntry {
   context: TenantContext | null;
@@ -146,9 +147,7 @@ export function DevicesSection() {
       </div>
 
       {loading ? (
-        <div className="py-8 text-center">
-          <p className="type-body2 text-muted-foreground animate-pulse">Memuat...</p>
-        </div>
+        <LoadingState variant="section" />
       ) : entries.length === 0 ? (
         <div className="py-8 text-center space-y-2">
           <HardDrive size={32} className="mx-auto text-muted-foreground/40" />

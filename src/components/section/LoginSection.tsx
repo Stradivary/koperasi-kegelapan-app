@@ -18,6 +18,8 @@ import { LocalSetupSection } from "./LocalSetupSection";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Spinner } from "../ui/spinner";
+import { LoadingState } from "../block/LoadingState";
 
 type LoginMode = "detecting" | "server" | "local" | "setup" | "device-setup";
 type DeviceSetupStep = "auth" | "pick-role";
@@ -193,11 +195,7 @@ export function LoginSection() {
   }
 
   if (mode === "detecting") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-signal-disable">
-        <p className="type-body1 text-muted-foreground animate-pulse">Memuat...</p>
-      </div>
-    );
+    return <LoadingState variant="page" />;
   }
 
   if (mode === "setup") {
@@ -339,7 +337,13 @@ export function LoginSection() {
             disabled={loading}
             className="w-full h-12 text-white type-title-bold bg-brand-dark hover:bg-brand-dark/90"
           >
-            {loading ? "Memuat..." : "Lanjut"}
+            {loading ? (
+              <>
+                <Spinner size="sm" className="text-white" /> Memuat...
+              </>
+            ) : (
+              "Lanjut"
+            )}
           </Button>
         </form>
 
@@ -441,7 +445,13 @@ export function LoginSection() {
             isLocal ? "bg-brand-dark hover:bg-brand-dark/90" : "bg-brand hover:bg-brand/90",
           ].join(" ")}
         >
-          {loading ? "Memuat..." : "Masuk"}
+          {loading ? (
+            <>
+              <Spinner size="sm" className="text-white" /> Memuat...
+            </>
+          ) : (
+            "Masuk"
+          )}
         </Button>
       </form>
 

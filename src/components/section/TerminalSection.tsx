@@ -7,6 +7,7 @@ import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { OfflineIndicator } from "../block/OfflineIndicator";
 import { Button } from "../ui/button";
+import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { useState, useCallback } from "react";
@@ -89,7 +90,9 @@ export function TerminalSection({
       onLogoLongPress={handleLogout}
     >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
-        {grantLoading && <p className="type-body2 text-white/70 animate-pulse">Memuat sesi...</p>}
+        {grantLoading && (
+          <LoadingState variant="inline" text="Memuat sesi..." className="text-white/70" />
+        )}
         {!grant && !grantLoading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">
             <p className="type-body1 text-signal-error text-center">

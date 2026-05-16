@@ -3,6 +3,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
@@ -101,7 +102,13 @@ export function KioskSection({
               disabled={!grant || loading}
               className="w-full max-w-xs h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
             >
-              {loading ? "Memuat sesi..." : "Mulai Transaksi"}
+              {loading ? (
+                <>
+                  <Spinner size="sm" className="text-white" /> Memuat sesi...
+                </>
+              ) : (
+                "Mulai Transaksi"
+              )}
             </Button>
           </div>
         )}

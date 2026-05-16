@@ -5,6 +5,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { tenantContextStore } from "../../lib/indexeddb";
@@ -56,7 +57,13 @@ export function ScoutSection({
               disabled={!grant || loading}
               className="w-full max-w-xs h-12 bg-signal-info hover:bg-signal-info/90 text-white type-title-bold"
             >
-              {loading ? "Memuat sesi..." : "Tempelkan Kartu"}
+              {loading ? (
+                <>
+                  <Spinner size="sm" className="text-white" /> Memuat sesi...
+                </>
+              ) : (
+                "Tempelkan Kartu"
+              )}
             </Button>
           </div>
         )}

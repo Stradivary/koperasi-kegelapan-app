@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { tenantContextStore, type TenantContext } from "../lib/indexeddb";
+import { LoadingState } from "../components/block/LoadingState";
 
 function getRoleRoute(tenantId: string, role: string): string {
   const roleRoutes: Record<string, string> = {
@@ -58,9 +59,5 @@ export function useTenantContext(tenantId: string, allowedRoles?: readonly strin
 }
 
 export function TenantRoutePending() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-signal-disable">
-      <p className="type-body1 text-muted-foreground animate-pulse">Memuat...</p>
-    </div>
-  );
+  return <LoadingState variant="page" />;
 }

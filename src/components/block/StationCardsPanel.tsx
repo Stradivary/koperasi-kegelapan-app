@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { LoadingState } from "../block/LoadingState";
 import { cn } from "../../lib/utils";
 
 export interface StationCardRow {
@@ -238,7 +239,7 @@ export function StationCardsPanel({
       {/* Card list */}
       {cardView === "list" && (
         <div className="space-y-2">
-          {isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+          {isLoading && <LoadingState variant="inline" />}
           {cards.map((card) => (
             <div
               key={card.cardId}

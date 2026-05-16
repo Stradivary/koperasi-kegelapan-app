@@ -24,7 +24,12 @@ async function pbkdf2Hash(password: string, salt: Uint8Array): Promise<string> {
     "deriveBits",
   ]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH },
+    {
+      name: "PBKDF2",
+      salt: salt as unknown as ArrayBuffer,
+      iterations: PBKDF2_ITERATIONS,
+      hash: PBKDF2_HASH,
+    },
     keyMaterial,
     KEY_LENGTH_BYTES * 8,
   );
@@ -150,7 +155,12 @@ async function deriveAesKey(passphrase: string, salt: Uint8Array): Promise<Crypt
     ["deriveKey"],
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH },
+    {
+      name: "PBKDF2",
+      salt: salt as unknown as ArrayBuffer,
+      iterations: PBKDF2_ITERATIONS,
+      hash: PBKDF2_HASH,
+    },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,

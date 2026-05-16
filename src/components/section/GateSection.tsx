@@ -5,6 +5,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { validateTransition, applyCheckin, applyCheckout } from "../../core/state-machine/engine";
 import { CardState } from "../../core/payload/types";
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea } from "../block/NfcTapArea";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
@@ -113,7 +114,13 @@ export function GateSection({
             disabled={!grant || loading}
             className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
           >
-            {loading ? "Memuat sesi..." : "Tap Kartu"}
+            {loading ? (
+              <>
+                <Spinner size="sm" className="text-white" /> Memuat sesi...
+              </>
+            ) : (
+              "Tap Kartu"
+            )}
           </Button>
         </div>
       </div>

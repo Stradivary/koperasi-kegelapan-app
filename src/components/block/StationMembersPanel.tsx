@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { LoadingState } from "../block/LoadingState";
 import { cn } from "../../lib/utils";
 
 export interface StationMemberRow {
@@ -92,7 +93,7 @@ export function StationMembersPanel({
 
       {memberView === "list" && (
         <div className="space-y-2">
-          {isLoading && <p className="text-sm text-muted-foreground">Memuat...</p>}
+          {isLoading && <LoadingState variant="inline" />}
           {members.map((m) => (
             <div
               key={m.userId}
