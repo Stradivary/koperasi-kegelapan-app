@@ -1,15 +1,20 @@
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useReconciliation } from "../../hooks/useReconciliation";
-import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
-import { CardStatus } from "../../core/payload/types";
-import { CardStatusBadge } from "../block/CardStatusBadge";
+import {
+  applyCheckout,
+  validateTransition,
+  PARKING_RATE_PER_HOUR,
+} from "../../core/state-machine/engine";
+import { CardState } from "../../core/payload/types";
 import { TransactionList } from "../block/TransactionList";
 import { OfflineIndicator } from "../block/OfflineIndicator";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
+import { CheckoutConfirmCard } from "../block/CheckoutConfirmCard";
+import { formatDuration } from "../../lib/formatters";
 import { useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { tenantContextStore } from "../../lib/indexeddb";
@@ -21,8 +26,6 @@ interface TerminalSectionProps {
   deviceId: string;
   terminalId: number;
 }
-
-const MAX_TRANSACTION_AMOUNT = 1_000_000;
 
 export function TerminalSection({
   tenantId,
@@ -39,44 +42,41 @@ export function TerminalSection({
   } = useSessionGrant(tenantId, accountId, deviceId, "terminal");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
-  const [amountInput, setAmountInput] = useState("");
-  const [txError, setTxError] = useState<string | null>(null);
+  const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
 
   const handleLogout = useCallback(async () => {
     await tenantContextStore.delete(tenantId);
     navigate({ to: "/" });
   }, [navigate, tenantId]);
 
-  async function handleDebit() {
+  async function handleCheckout() {
     if (!state.payload || !grant) return;
-    const amount = parseInt(amountInput, 10);
-    if (isNaN(amount) || amount <= 0) {
-      setTxError("Nominal tidak valid");
-      return;
-    }
-    if (amount > MAX_TRANSACTION_AMOUNT) {
-      setTxError(`Maks Rp ${MAX_TRANSACTION_AMOUNT.toLocaleString("id-ID")}`);
-      return;
-    }
-    if (state.payload.wallet.balance < amount) {
-      setTxError("Saldo tidak cukup");
-      return;
-    }
-    const eligibility = isWriteEligible(
-      state.payload,
-      grant,
-      "debit",
-      Math.floor(Date.now() / 1000),
-    );
-    if (!eligibility.eligible) {
-      setTxError(eligibility.reason ?? "Tidak dapat diproses");
-      return;
-    }
-    setTxError(null);
     const nowSeconds = Math.floor(Date.now() / 1000);
-    await write(applyDebit(state.payload, amount, nowSeconds));
-    setAmountInput("");
+    const cardState = state.payload.wallet.state;
+    const trigger = cardState === CardState.TERMINAL_OPERATION ? "force_checkout" : "gate_checkout";
+    const result = validateTransition(state.payload, trigger, nowSeconds);
+    if (!result.valid) return;
+    const durationSeconds = nowSeconds - state.payload.session.startTime;
+    const hours = Math.ceil(durationSeconds / 3600);
+    const fee = Math.min(hours * PARKING_RATE_PER_HOUR, state.payload.wallet.balance);
+    setLastTx({ durationSeconds, fee });
+    await write(applyCheckout(state.payload, nowSeconds));
   }
+
+  const previewFee = (() => {
+    if (!state.payload) return null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const durationSeconds = nowSeconds - state.payload.session.startTime;
+    const hours = Math.ceil(durationSeconds / 3600);
+    return {
+      durationSeconds,
+      fee: Math.min(hours * PARKING_RATE_PER_HOUR, state.payload.wallet.balance),
+    };
+  })();
+
+  const cardState = state.payload?.wallet.state;
+  const canCheckout =
+    cardState === CardState.CHECKED_IN || cardState === CardState.TERMINAL_OPERATION;
 
   const syncTrailing = (
     <OfflineIndicator pendingCount={pendingCount} onSync={sync} syncStatus={syncStatus} />
@@ -138,68 +138,70 @@ export function TerminalSection({
           </div>
         )}
 
-        {/* Card ready */}
-        {(state.phase === "ready" || state.phase === "writing" || state.phase === "success") &&
-          state.payload && (
-            <div className="w-full max-w-xs space-y-4">
-              <div className="bg-white rounded-2xl border p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
-                  <CardStatusBadge status={state.payload.identity.status} />
-                </div>
-                <div>
-                  <p className="type-body2 text-signal-text-secondary">Saldo</p>
-                  <p className="type-h4 text-brand font-heading">
-                    Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
-                  </p>
-                </div>
-                <p className="type-body2 font-mono text-muted-foreground">
-                  {Array.from(state.payload.header.cardId)
-                    .map((b) => b.toString(16).padStart(2, "0"))
-                    .join("")}
-                </p>
-              </div>
-
-              {state.phase === "success" && (
-                <div className="rounded-2xl bg-signal-bg-valid border border-signal-valid/30 p-4 text-center">
-                  <p className="type-title-bold text-signal-valid">Transaksi selesai</p>
-                </div>
-              )}
-
-              {state.payload.identity.status === CardStatus.ACTIVE && state.phase !== "success" && (
-                <div className="space-y-2">
-                  <input
-                    type="number"
-                    placeholder="Nominal (IDR)"
-                    className="flex h-12 w-full rounded-xl border-2 border-input bg-background px-4 type-body1 focus:border-brand focus:outline-none"
-                    value={amountInput}
-                    onChange={(e) => {
-                      setAmountInput(e.target.value);
-                      setTxError(null);
-                    }}
-                    disabled={state.phase === "writing"}
-                  />
-                  {txError && <p className="type-body2 text-signal-error">{txError}</p>}
-                  <Button
-                    onClick={handleDebit}
-                    disabled={state.phase === "writing" || !amountInput}
-                    className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
-                  >
-                    {state.phase === "writing" ? "Memproses..." : "Bayar"}
-                  </Button>
-                </div>
-              )}
-
-              <TransactionList
-                entries={state.payload.logEntries}
-                sessionStart={state.payload.session.startTime}
+        {/* Card ready / writing */}
+        {(state.phase === "ready" || state.phase === "writing") && state.payload && (
+          <div className="w-full max-w-xs space-y-4">
+            {canCheckout && previewFee ? (
+              <CheckoutConfirmCard
+                payload={state.payload}
+                durationSeconds={previewFee.durationSeconds}
+                fee={previewFee.fee}
+                onConfirm={handleCheckout}
+                phase={state.phase}
               />
+            ) : cardState === CardState.IDLE ? (
+              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center">
+                <p className="type-body1 text-muted-foreground">Anggota belum check-in</p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center">
+                <p className="type-body1 text-muted-foreground">Anggota sudah checkout</p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
+            )}
+            <TransactionList
+              entries={state.payload.logEntries}
+              sessionStart={state.payload.session.startTime}
+            />
+          </div>
+        )}
 
-              <Button variant="outline" onClick={reset} className="w-full">
-                Selesai
-              </Button>
+        {/* Success */}
+        {state.phase === "success" && state.payload && lastTx && (
+          <div className="w-full max-w-xs space-y-4">
+            <div className="bg-white rounded-2xl border p-4 space-y-3">
+              <p className="type-title-bold text-signal-valid">✓ Checkout Berhasil</p>
+              <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
+              <div className="space-y-1">
+                <div className="flex justify-between type-body2">
+                  <span className="text-muted-foreground">Durasi</span>
+                  <span>{formatDuration(lastTx.durationSeconds)}</span>
+                </div>
+                <div className="flex justify-between type-body2">
+                  <span className="text-muted-foreground">Biaya</span>
+                  <span>Rp {lastTx.fee.toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between type-body2">
+                  <span className="text-muted-foreground">Saldo</span>
+                  <span className="text-brand font-medium">
+                    Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
             </div>
-          )}
+            <Button
+              onClick={reset}
+              className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
+            >
+              Scan Berikutnya
+            </Button>
+          </div>
+        )}
       </div>
     </KioskLayout>
   );

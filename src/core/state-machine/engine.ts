@@ -37,6 +37,7 @@ const VALID_TRANSITIONS: Record<CardState, Partial<Record<TransitionTrigger, Car
   },
   [CardState.CHECKED_OUT]: {
     admin_reset: CardState.IDLE,
+    gate_checkin: CardState.IDLE,
   },
 };
 
