@@ -1,14 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import {
-  Server,
-  HardDrive,
-  DoorOpen,
-  MonitorSmartphone,
-  BookOpen,
-  Settings,
-  Layers,
-} from "lucide-react";
+import { DoorOpen, MonitorSmartphone, BookOpen, Settings, Layers, Plus } from "lucide-react";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { localLogin, hasLocalTenant } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
@@ -21,7 +13,7 @@ import { Label } from "../ui/label";
 import { Spinner } from "../ui/spinner";
 import { LoadingState } from "../block/LoadingState";
 
-type LoginMode = "detecting" | "server" | "local" | "setup" | "device-setup";
+type LoginMode = "detecting" | "login" | "setup" | "device-setup";
 type DeviceSetupStep = "auth" | "pick-role";
 
 const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
@@ -56,7 +48,7 @@ export function LoginSection() {
 
       const exists = await hasLocalTenant();
       setHasLocal(exists);
-      setMode(exists ? "local" : "server");
+      setMode("login");
     }
     detectMode();
   }, []);
@@ -73,17 +65,6 @@ export function LoginSection() {
     navigate({ to: roleRoutes[role] ?? "/" });
   }
 
-  function switchMode(next: "server" | "local") {
-    setError(null);
-    setUsername("");
-    setPassword("");
-    if (next === "local" && !hasLocal) {
-      setMode("setup");
-    } else {
-      setMode(next);
-    }
-  }
-
   function enterDeviceSetup() {
     setError(null);
     setUsername("");
@@ -93,62 +74,56 @@ export function LoginSection() {
     setMode("device-setup");
   }
 
-  async function handleLocalLogin(e: React.FormEvent) {
+  async function handleUnifiedLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
-      const result = await localLogin(username, password);
-      if (!result) {
-        setError("Username atau password salah");
+      // 1. Try local login first
+      const localResult = await localLogin(username, password);
+      if (localResult) {
+        await tenantContextStore.put({
+          tenantId: localResult.tenantId,
+          tenantSlug: localResult.tenantSlug,
+          tenantName: localResult.tenantName,
+          deviceId: await getDeviceFingerprint(),
+          accountId: localResult.accountId,
+          role: localResult.role,
+          terminalId: 0,
+          updatedAt: Date.now(),
+        });
+        redirectToRole(localResult.tenantId, localResult.role);
         return;
       }
-      await tenantContextStore.put({
-        tenantId: result.tenantId,
-        tenantSlug: result.tenantSlug,
-        tenantName: result.tenantName,
-        deviceId: await getDeviceFingerprint(),
-        accountId: result.accountId,
-        role: result.role,
-        terminalId: 0,
-        updatedAt: Date.now(),
-      });
-      redirectToRole(result.tenantId, result.role);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  async function handleServerLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
+      // 2. Try server login as fallback
       const res = await fetch("/api/auth/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      if (!res.ok) {
-        setError("Username atau password salah");
+
+      if (res.ok) {
+        const data = await res.json();
+        await tenantContextStore.put({
+          tenantId: data.tenantId,
+          tenantSlug: data.tenantSlug,
+          tenantName: data.tenantName,
+          deviceId: await getDeviceFingerprint(),
+          accountId: data.accountId,
+          role: data.role,
+          terminalId: 0,
+          updatedAt: Date.now(),
+        });
+        redirectToRole(data.tenantId, data.role);
         return;
       }
-      const data = await res.json();
-      await tenantContextStore.put({
-        tenantId: data.tenantId,
-        tenantSlug: data.tenantSlug,
-        tenantName: data.tenantName,
-        deviceId: await getDeviceFingerprint(),
-        accountId: data.accountId,
-        role: data.role,
-        terminalId: 0,
-        updatedAt: Date.now(),
-      });
-      redirectToRole(data.tenantId, data.role);
-    } catch (e) {
-      setError(String(e));
+
+      // 3. Both failed
+      setError("Username atau password salah");
+    } catch {
+      setError("Gagal terhubung ke server. Periksa koneksi Anda.");
     } finally {
       setLoading(false);
     }
@@ -175,8 +150,8 @@ export function LoginSection() {
         accountId: result.accountId,
       });
       setSetupStep("pick-role");
-    } catch (e) {
-      setError(String(e));
+    } catch {
+      setError("Terjadi kesalahan. Coba lagi.");
     } finally {
       setLoading(false);
     }
@@ -205,7 +180,10 @@ export function LoginSection() {
           setHasLocal(true);
           redirectToRole(tenantId, role);
         }}
-        onServerMode={() => switchMode("server")}
+        onBack={() => {
+          setMode("login");
+          setError(null);
+        }}
       />
     );
   }
@@ -347,61 +325,25 @@ export function LoginSection() {
           </Button>
         </form>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setMode(hasLocal ? "local" : "server")}
-          className="w-full"
-        >
+        <Button type="button" variant="outline" onClick={() => setMode("login")} className="w-full">
           Batal
         </Button>
       </AuthLayout>
     );
   }
 
-  const isLocal = mode === "local";
-  const handleSubmit = isLocal ? handleLocalLogin : handleServerLogin;
+  // ─── Unified Login Form ────────────────────────────────────────────────────
 
   return (
-    <AuthLayout variant={isLocal ? "brand-dark" : "brand"}>
-      {/* Mode toggle */}
-      <div className="flex rounded-xl border bg-muted/40 p-1 gap-1">
-        <button
-          type="button"
-          onClick={() => switchMode("server")}
-          className={[
-            "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-            !isLocal
-              ? "bg-white shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          ].join(" ")}
-        >
-          <Server size={15} />
-          Server
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("local")}
-          className={[
-            "flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-            isLocal
-              ? "bg-white shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          ].join(" ")}
-        >
-          <HardDrive size={15} />
-          Lokal
-        </button>
-      </div>
-
+    <AuthLayout variant="brand-dark">
       <div>
         <h1 className="type-h5 text-foreground">Masuk</h1>
         <p className="type-body2 text-signal-text-secondary mt-0.5">
-          {isLocal ? "Masuk menggunakan akun lokal" : "Masuk ke terminal Anda"}
+          Masuk dengan akun lokal atau server
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleUnifiedLogin} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="username" className="type-body1-bold">
             Username
@@ -440,10 +382,7 @@ export function LoginSection() {
         <Button
           type="submit"
           disabled={loading}
-          className={[
-            "w-full h-12 text-white type-title-bold",
-            isLocal ? "bg-brand-dark hover:bg-brand-dark/90" : "bg-brand hover:bg-brand/90",
-          ].join(" ")}
+          className="w-full h-12 text-white type-title-bold bg-brand hover:bg-brand/90"
         >
           {loading ? (
             <>
@@ -456,20 +395,20 @@ export function LoginSection() {
       </form>
 
       <div className="pt-1 border-t space-y-2">
-        {isLocal && (
-          <Button
-            type="button"
-            onClick={() => {
-              setMode("setup");
-              setError(null);
-            }}
-            variant="outline"
-            className="w-full"
-          >
-            Daftarkan koperasi baru
-          </Button>
-        )}
-        {isLocal && hasLocal && (
+        <Button
+          type="button"
+          onClick={() => {
+            setMode("setup");
+            setError(null);
+          }}
+          variant="outline"
+          className="w-full gap-2"
+        >
+          <Plus size={15} />
+          Daftarkan koperasi baru
+        </Button>
+
+        {hasLocal && (
           <Button
             type="button"
             onClick={enterDeviceSetup}

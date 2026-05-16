@@ -13,10 +13,10 @@ type SetupStep = "tenant" | "admin" | "done";
 
 interface LocalSetupSectionProps {
   onComplete: (tenantId: string, role: string) => void;
-  onServerMode: () => void;
+  onBack: () => void;
 }
 
-export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectionProps) {
+export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps) {
   const [step, setStep] = useState<SetupStep>("tenant");
   const [tenantName, setTenantName] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
@@ -92,7 +92,7 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onServerMode} className="flex-1">
+            <Button variant="outline" onClick={onBack} className="flex-1">
               Kembali
             </Button>
             <Button
