@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
+import { LoadingState } from "./LoadingState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -142,11 +143,7 @@ export function StationMembersPanel({
 
           {/* List */}
           <div className="rounded-lg border divide-y overflow-hidden">
-            {isLoading && (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground animate-pulse">
-                Memuat...
-              </div>
-            )}
+            {isLoading && <LoadingState variant="inline" />}
             {!isLoading &&
               paginated.map((m) => (
                 <div

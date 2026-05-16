@@ -5,7 +5,7 @@ interface LoadingStateProps {
   /** Text to display next to the spinner. Defaults to "Memuat..." */
   text?: string;
   /** Layout variant */
-  variant?: "inline" | "section" | "page";
+  variant?: "inline" | "section" | "page" | "button";
   className?: string;
 }
 
@@ -13,6 +13,7 @@ interface LoadingStateProps {
  * Standardized loading indicator with spinner + text.
  *
  * Variants:
+ * - `button` — for use inside buttons, inherits parent text color
  * - `inline` — small spinner + text, for use inside lists or panels
  * - `section` — centered within a section/card
  * - `page` — full-screen centered loading
@@ -37,6 +38,15 @@ function LoadingState({ text = "Memuat...", variant = "section", className }: Lo
         <Spinner className="text-muted-foreground" />
         <p className="type-body2 text-muted-foreground">{text}</p>
       </div>
+    );
+  }
+
+  if (variant === "button") {
+    return (
+      <span className={cn("inline-flex items-center gap-1.5", className)}>
+        <Spinner size="sm" className="text-current" />
+        <span>{text}</span>
+      </span>
     );
   }
 

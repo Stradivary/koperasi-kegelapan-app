@@ -7,7 +7,7 @@ import { CardState, CardStatus } from "../../core/payload/types";
 import { localDb } from "../../db/local-db";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Spinner } from "../ui/spinner";
+import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 
@@ -167,9 +167,7 @@ export function GateSection({
               className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
             >
               {loading ? (
-                <>
-                  <Spinner size="sm" className="text-white" /> Memuat sesi...
-                </>
+                <LoadingState variant="button" text="Memuat sesi..." />
               ) : (
                 "Tap Kartu untuk Check-in"
               )}

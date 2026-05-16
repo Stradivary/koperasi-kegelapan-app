@@ -10,7 +10,6 @@ import { LocalSetupSection } from "./LocalSetupSection";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Spinner } from "../ui/spinner";
 import { LoadingState } from "../block/LoadingState";
 
 type LoginMode = "detecting" | "login" | "setup" | "device-setup";
@@ -317,7 +316,7 @@ export function LoginSection() {
           >
             {loading ? (
               <>
-                <Spinner size="sm" className="text-white" /> Memuat...
+                <LoadingState variant="button" />
               </>
             ) : (
               "Lanjut"
@@ -386,7 +385,7 @@ export function LoginSection() {
         >
           {loading ? (
             <>
-              <Spinner size="sm" className="text-white" /> Memuat...
+              <LoadingState variant="button" />
             </>
           ) : (
             "Masuk"
