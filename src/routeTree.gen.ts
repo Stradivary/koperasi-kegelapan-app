@@ -16,6 +16,7 @@ import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
 import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
 import { Route as ApiSessionGrantRouteImport } from './routes/api/session-grant'
+import { Route as ApiReconcileRouteImport } from './routes/api/reconcile'
 import { Route as ApiPolicyRouteImport } from './routes/api/policy'
 import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
@@ -59,6 +60,11 @@ const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
 const ApiSessionGrantRoute = ApiSessionGrantRouteImport.update({
   id: '/api/session-grant',
   path: '/api/session-grant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReconcileRoute = ApiReconcileRouteImport.update({
+  id: '/api/reconcile',
+  path: '/api/reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPolicyRoute = ApiPolicyRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
+  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
+  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/devices': typeof DevicesRoute
   '/api/accounts': typeof ApiAccountsRoute
   '/api/policy': typeof ApiPolicyRoute
+  '/api/reconcile': typeof ApiReconcileRoute
   '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/api/accounts'
     | '/api/policy'
+    | '/api/reconcile'
     | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/api/accounts'
     | '/api/policy'
+    | '/api/reconcile'
     | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/api/accounts'
     | '/api/policy'
+    | '/api/reconcile'
     | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   DevicesRoute: typeof DevicesRoute
   ApiAccountsRoute: typeof ApiAccountsRoute
   ApiPolicyRoute: typeof ApiPolicyRoute
+  ApiReconcileRoute: typeof ApiReconcileRoute
   ApiSessionGrantRoute: typeof ApiSessionGrantRoute
   DevIssuanceTestRoute: typeof DevIssuanceTestRoute
   DevNfcTestRoute: typeof DevNfcTestRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/api/session-grant'
       fullPath: '/api/session-grant'
       preLoaderRoute: typeof ApiSessionGrantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reconcile': {
+      id: '/api/reconcile'
+      path: '/api/reconcile'
+      fullPath: '/api/reconcile'
+      preLoaderRoute: typeof ApiReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/policy': {
@@ -376,6 +396,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevicesRoute: DevicesRoute,
   ApiAccountsRoute: ApiAccountsRoute,
   ApiPolicyRoute: ApiPolicyRoute,
+  ApiReconcileRoute: ApiReconcileRoute,
   ApiSessionGrantRoute: ApiSessionGrantRoute,
   DevIssuanceTestRoute: DevIssuanceTestRoute,
   DevNfcTestRoute: DevNfcTestRoute,

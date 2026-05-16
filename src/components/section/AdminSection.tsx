@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { localDb, type User } from "../../db/local-db";
+import { localDb, type User, type Card } from "../../db/local-db";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
@@ -135,6 +135,33 @@ export const AdminSection = ({
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-cards", tenantId] }),
   });
 
+  const blockCard = useMutation({
+    mutationFn: async ({ cardId, reason }: { cardId: string; reason: string }) => {
+      await localDb.cards.update([tenantId, cardId], {
+        status: reason as Card["status"],
+        lastActivityAt: Math.floor(Date.now() / 1000),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-cards", tenantId] }),
+  });
+
+  const unblockCard = useMutation({
+    mutationFn: async ({ cardId }: { cardId: string }) => {
+      await localDb.cards.update([tenantId, cardId], {
+        status: "active",
+        lastActivityAt: Math.floor(Date.now() / 1000),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-cards", tenantId] }),
+  });
+
+  const deleteMember = useMutation({
+    mutationFn: async ({ userId }: { userId: number }) => {
+      await localDb.users.delete([tenantId, userId]);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+  });
+
   async function handleCreateMember(name: string) {
     await createMember.mutateAsync({ name });
   }
@@ -159,8 +186,11 @@ export const AdminSection = ({
           error={cards.error ? String(cards.error) : null}
           canScan={!!grant}
           isDeleting={deleteCard.isPending}
+          isUpdatingStatus={blockCard.isPending || unblockCard.isPending}
           onScan={handleScan}
           onDeleteCard={(card) => deleteCard.mutate({ cardId: card.cardId })}
+          onBlockCard={(card, reason) => blockCard.mutate({ cardId: card.cardId, reason })}
+          onUnblockCard={(card) => unblockCard.mutate({ cardId: card.cardId })}
         />
       )}
       {view === "audit" && (
@@ -176,6 +206,7 @@ export const AdminSection = ({
           isLoading={members.isLoading}
           isCreating={createMember.isPending}
           isToggling={toggleMemberStatus.isPending}
+          isDeleting={deleteMember.isPending}
           onCreateMember={handleCreateMember}
           onToggleStatus={(userId, currentStatus) =>
             toggleMemberStatus.mutate({
@@ -183,6 +214,7 @@ export const AdminSection = ({
               status: currentStatus === "active" ? "suspended" : "active",
             })
           }
+          onDeleteMember={(userId) => deleteMember.mutate({ userId })}
         />
       )}
       {view === "station" && (

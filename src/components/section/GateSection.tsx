@@ -3,7 +3,8 @@ import { Clock } from "lucide-react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
-import { CardState } from "../../core/payload/types";
+import { CardState, CardStatus } from "../../core/payload/types";
+import { localDb } from "../../db/local-db";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
@@ -34,6 +35,7 @@ export function GateSection({
     const now = new Date();
     return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   });
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   // Track whether we already triggered auto-checkin for this scan cycle
   const autoCheckinTriggered = useRef(false);
@@ -55,17 +57,57 @@ export function GateSection({
 
     const payload = state.payload;
     const nowSeconds = getNowSeconds();
-    const result = validateTransition(payload, "gate_checkin", nowSeconds);
 
-    if (!result.valid) {
-      // Card can't check in (already checked in, or invalid state)
+    // Check card status from payload (on-card status)
+    if (payload.identity.status !== CardStatus.ACTIVE) {
       autoCheckinTriggered.current = true;
+      const statusNames: Record<number, string> = {
+        [CardStatus.BLOCKED_TAMPER]: "Kartu diblokir: terdeteksi manipulasi",
+        [CardStatus.BLOCKED_FRAUD]: "Kartu diblokir: terdeteksi penipuan",
+        [CardStatus.BLOCKED_EXPIRED]: "Kartu diblokir: kadaluarsa",
+        [CardStatus.BLOCKED_ADMIN]: "Kartu diblokir oleh admin",
+      };
+      setBlockedReason(statusNames[payload.identity.status] ?? "Kartu tidak aktif");
       return;
     }
 
-    autoCheckinTriggered.current = true;
-    write(applyCheckin(payload, terminalId, nowSeconds));
-  }, [state.phase, state.payload, write, terminalId, getNowSeconds]);
+    // Also check local DB for blocked card or suspended member
+    const cardIdHex = Array.from(payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    Promise.all([
+      localDb.cards.get([tenantId, cardIdHex]),
+      payload.identity.userId
+        ? localDb.users.get([tenantId, payload.identity.userId])
+        : Promise.resolve(null),
+    ]).then(([cardRecord, userRecord]) => {
+      // Check if card is blocked in local DB
+      if (cardRecord && cardRecord.status !== "active") {
+        autoCheckinTriggered.current = true;
+        setBlockedReason(`Kartu diblokir: ${cardRecord.status.replace("blocked_", "")}`);
+        return;
+      }
+
+      // Check if member account is suspended
+      if (userRecord && userRecord.status !== "active") {
+        autoCheckinTriggered.current = true;
+        setBlockedReason("Akun anggota ditangguhkan. Hubungi admin.");
+        return;
+      }
+
+      // Proceed with normal transition validation
+      const result = validateTransition(payload, "gate_checkin", nowSeconds);
+      if (!result.valid) {
+        autoCheckinTriggered.current = true;
+        return;
+      }
+
+      autoCheckinTriggered.current = true;
+      setBlockedReason(null);
+      write(applyCheckin(payload, terminalId, nowSeconds));
+    });
+  }, [state.phase, state.payload, write, terminalId, getNowSeconds, tenantId]);
 
   // Auto-reset after success
   useEffect(() => {
@@ -81,11 +123,13 @@ export function GateSection({
   useEffect(() => {
     if (state.phase === "idle") {
       autoCheckinTriggered.current = false;
+      setBlockedReason(null);
     }
   }, [state.phase]);
 
   function handleScan() {
     autoCheckinTriggered.current = false;
+    setBlockedReason(null);
     scan();
   }
 
@@ -145,7 +189,16 @@ export function GateSection({
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
-            {isAlreadyCheckedIn && state.phase === "ready" ? (
+            {blockedReason && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center w-full">
+                <p className="type-body1-bold text-destructive">⛔ Akses Ditolak</p>
+                <p className="type-body2 text-muted-foreground">{blockedReason}</p>
+                <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
+            ) : isAlreadyCheckedIn && state.phase === "ready" ? (
               <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
                 <p className="type-body1-bold text-signal-warning">Sudah Check-in</p>
                 <p className="type-body2 text-muted-foreground">
