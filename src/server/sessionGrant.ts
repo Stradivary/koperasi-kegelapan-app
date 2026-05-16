@@ -57,9 +57,9 @@ export function issueSessionGrant(
 function roleToOps(role: string): string[] {
   switch (role) {
     case "terminal":
-      return ["read", "debit"];
+      return ["read", "debit", "checkout"];
     case "gate":
-      return ["read", "checkin", "checkout"];
+      return ["read", "checkin"];
     case "scout":
       return ["read"];
     case "kiosk":

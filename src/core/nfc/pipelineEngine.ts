@@ -13,6 +13,7 @@ import {
   CARD_SCHEMA_VERSION,
   TRAILER_COUNTER_BIND,
 } from "../payload/types";
+import { isTenantBindValid } from "../payload/tenantBind";
 import { readCard, writeCard } from "./engine";
 
 const ENCRYPTED_BODY_START = 16; // IDENTITY_OFFSET — first byte of encrypted region
@@ -141,6 +142,10 @@ export async function validateCard(
   const counterBindLower = Number(payload.wallet.counter & 0xffffffffn);
   if (counterBindLower !== payload.trailer.counterBind) {
     return { valid: false, reason: "Counter bind mismatch", tamper: true };
+  }
+
+  if (!isTenantBindValid(payload.header.tenantBind, sessionGrant.tenantId)) {
+    return { valid: false, reason: "Kartu bukan milik tenant ini", tamper: false };
   }
 
   const chainValid = await validateChainHash(payload);

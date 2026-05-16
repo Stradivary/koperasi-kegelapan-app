@@ -39,6 +39,7 @@ function createMockPayload(overrides: Partial<CardPayload> = {}): CardPayload {
       version: 2,
       type: 0,
       cardId: new Uint8Array([1, 2, 3, 4, 5, 6]),
+      tenantBind: 0,
     },
     identity: {
       name: "Test User",

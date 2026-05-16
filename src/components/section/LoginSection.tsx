@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { localLogin, hasLocalTenant } from "../../lib/localTenant";
-import { getOrCreateDeviceId } from "../../lib/getOrCreateDeviceId";
+import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
@@ -107,7 +107,7 @@ export function LoginSection() {
         tenantId: result.tenantId,
         tenantSlug: result.tenantSlug,
         tenantName: result.tenantName,
-        deviceId: getOrCreateDeviceId(),
+        deviceId: await getDeviceFingerprint(),
         accountId: result.accountId,
         role: result.role,
         terminalId: 0,
@@ -140,7 +140,7 @@ export function LoginSection() {
         tenantId: data.tenantId,
         tenantSlug: data.tenantSlug,
         tenantName: data.tenantName,
-        deviceId: getOrCreateDeviceId(),
+        deviceId: await getDeviceFingerprint(),
         accountId: data.accountId,
         role: data.role,
         terminalId: 0,
@@ -186,7 +186,7 @@ export function LoginSection() {
     if (!pendingContext) return;
     await tenantContextStore.put({
       ...pendingContext,
-      deviceId: getOrCreateDeviceId(),
+      deviceId: await getDeviceFingerprint(),
       role,
       terminalId: 0,
       updatedAt: Date.now(),

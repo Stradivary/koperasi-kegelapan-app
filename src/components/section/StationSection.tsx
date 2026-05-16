@@ -13,6 +13,7 @@ import {
   CardStatus,
   type CardPayload,
 } from "../../core/payload/types";
+import { encodeTenantBind } from "../../core/payload/tenantBind";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
 import { StationFixCardPanel } from "../block/StationFixCardPanel";
 import {
@@ -218,6 +219,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           version: CARD_SCHEMA_VERSION,
           type: 0,
           cardId,
+          tenantBind: encodeTenantBind(tenantId),
         },
         identity: {
           name: name || "Anggota",

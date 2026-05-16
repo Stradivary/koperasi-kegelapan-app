@@ -15,9 +15,7 @@ import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { CheckoutConfirmCard } from "../block/CheckoutConfirmCard";
 import { formatDuration } from "../../lib/formatters";
-import { useState, useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { useState } from "react";
 
 interface TerminalSectionProps {
   tenantId: string;
@@ -34,7 +32,6 @@ export function TerminalSection({
   deviceId,
   terminalId,
 }: TerminalSectionProps) {
-  const navigate = useNavigate();
   const {
     grant,
     loading: grantLoading,
@@ -43,11 +40,6 @@ export function TerminalSection({
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
-
-  const handleLogout = useCallback(async () => {
-    await tenantContextStore.delete(tenantId);
-    navigate({ to: "/" });
-  }, [navigate, tenantId]);
 
   async function handleCheckout() {
     if (!state.payload || !grant) return;
@@ -86,8 +78,9 @@ export function TerminalSection({
     <KioskLayout
       title="Terminal"
       tenantName={tenantName}
+      tenantId={tenantId}
+      currentMode="terminal"
       trailing={syncTrailing}
-      onLogoLongPress={handleLogout}
     >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {grantLoading && (

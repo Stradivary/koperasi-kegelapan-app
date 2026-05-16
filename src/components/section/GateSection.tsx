@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Clock } from "lucide-react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { validateTransition, applyCheckin, applyCheckout } from "../../core/state-machine/engine";
+import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState } from "../../core/payload/types";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { KioskLayout } from "../layout/KioskLayout";
-import { NfcTapArea } from "../block/NfcTapArea";
-import { NfcScanDrawer } from "../block/NfcScanDrawer";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 
 interface GateSectionProps {
   tenantId: string;
@@ -26,79 +25,81 @@ export function GateSection({
   deviceId,
   terminalId,
 }: GateSectionProps) {
-  const navigate = useNavigate();
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
-  const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
 
-  const handleLogout = useCallback(async () => {
-    await tenantContextStore.delete(tenantId);
-    navigate({ to: "/" });
-  }, [navigate, tenantId]);
+  // Simulation mode: time picker
+  const [simulationMode, setSimulationMode] = useState(false);
+  const [simulatedTime, setSimulatedTime] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
 
-  // Auto-close drawer after success
+  // Track whether we already triggered auto-checkin for this scan cycle
+  const autoCheckinTriggered = useRef(false);
+
+  // Get the current timestamp (real or simulated)
+  const getNowSeconds = useCallback(() => {
+    if (simulationMode && simulatedTime) {
+      const [hours, minutes] = simulatedTime.split(":").map(Number);
+      const simDate = new Date();
+      simDate.setHours(hours, minutes, 0, 0);
+      return Math.floor(simDate.getTime() / 1000);
+    }
+    return Math.floor(Date.now() / 1000);
+  }, [simulationMode, simulatedTime]);
+
+  // Auto check-in when card is ready — no confirmation needed
+  useEffect(() => {
+    if (state.phase !== "ready" || !state.payload || autoCheckinTriggered.current) return;
+
+    const payload = state.payload;
+    const nowSeconds = getNowSeconds();
+    const result = validateTransition(payload, "gate_checkin", nowSeconds);
+
+    if (!result.valid) {
+      // Card can't check in (already checked in, or invalid state)
+      autoCheckinTriggered.current = true;
+      return;
+    }
+
+    autoCheckinTriggered.current = true;
+    write(applyCheckin(payload, terminalId, nowSeconds));
+  }, [state.phase, state.payload, write, terminalId, getNowSeconds]);
+
+  // Auto-reset after success
   useEffect(() => {
     if (state.phase === "success") {
       const timer = setTimeout(() => {
         reset();
-        setIsDrawerOpen(false);
       }, 2500);
       return () => clearTimeout(timer);
     }
   }, [state.phase, reset]);
 
+  // Reset the auto-checkin flag when going back to idle
+  useEffect(() => {
+    if (state.phase === "idle") {
+      autoCheckinTriggered.current = false;
+    }
+  }, [state.phase]);
+
   function handleScan() {
-    setIsDrawerOpen(true);
+    autoCheckinTriggered.current = false;
     scan();
   }
 
-  function handleDrawerClose() {
-    if (state.phase === "scanning" || state.phase === "validating") {
-      cancel();
-    } else {
-      reset();
-    }
-    setIsDrawerOpen(false);
-  }
-
-  function handleDrawerOpenChange(open: boolean) {
-    if (!open) handleDrawerClose();
-  }
-
-  async function handleCheckin() {
-    if (!state.payload) return;
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const result = validateTransition(state.payload, "gate_checkin", nowSeconds);
-    if (!result.valid) {
-      alert(result.reason);
-      return;
-    }
-    await write(applyCheckin(state.payload, terminalId, nowSeconds));
-  }
-
-  async function handleCheckout() {
-    if (!state.payload) return;
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const trigger =
-      state.payload.wallet.state === CardState.IDLE ? "force_checkout" : "gate_checkout";
-    const result = validateTransition(state.payload, trigger, nowSeconds);
-    if (!result.valid) {
-      alert(result.reason);
-      return;
-    }
-    await write(applyCheckout(state.payload, nowSeconds));
-  }
-
   const cardState = state.payload?.wallet.state;
-  const isCheckedIn =
+  const isAlreadyCheckedIn =
     cardState === CardState.CHECKED_IN || cardState === CardState.TERMINAL_OPERATION;
 
   return (
     <KioskLayout
-      title="Akses Masuk"
-      subtitle="Gate"
+      title="Gerbang Masuk"
+      subtitle="Check-in"
       tenantName={tenantName}
-      onLogoLongPress={handleLogout}
+      tenantId={tenantId}
+      currentMode="gate"
     >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {!grant && !loading && (
@@ -107,37 +108,115 @@ export function GateSection({
           </div>
         )}
 
-        <div className="flex flex-col items-center gap-6">
-          <NfcTapArea phase="idle" onClick={handleScan} disabled={!grant || loading} />
-          <Button
-            onClick={handleScan}
-            disabled={!grant || loading}
-            className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
-          >
-            {loading ? (
-              <>
-                <Spinner size="sm" className="text-white" /> Memuat sesi...
-              </>
+        {/* Idle — tap to scan */}
+        {state.phase === "idle" && (
+          <div className="flex flex-col items-center gap-6">
+            <NfcTapArea
+              phase="idle"
+              onClick={handleScan}
+              disabled={!grant || loading}
+              label="Tap untuk Masuk"
+            />
+            <Button
+              onClick={handleScan}
+              disabled={!grant || loading}
+              className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
+            >
+              {loading ? (
+                <>
+                  <Spinner size="sm" className="text-white" /> Memuat sesi...
+                </>
+              ) : (
+                "Tap Kartu untuk Check-in"
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Scanning */}
+        {(state.phase === "scanning" || state.phase === "validating") && (
+          <div className="flex flex-col items-center gap-4">
+            <NfcTapArea phase={state.phase} />
+            <NfcStatusLabel phase={state.phase} />
+          </div>
+        )}
+
+        {/* Ready — auto-checkin in progress or card already checked in */}
+        {(state.phase === "ready" || state.phase === "writing") && state.payload && (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
+            {isAlreadyCheckedIn && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
+                <p className="type-body1-bold text-signal-warning">Sudah Check-in</p>
+                <p className="type-body2 text-muted-foreground">
+                  {state.payload.identity.name} sudah dalam status masuk.
+                </p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
             ) : (
-              "Tap Kartu"
+              <p className="type-body2 text-muted-foreground animate-pulse">
+                Memproses check-in...
+              </p>
             )}
-          </Button>
-        </div>
+          </div>
+        )}
+
+        {/* Success */}
+        {state.phase === "success" && state.payload && (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase="success" />
+            <div className="bg-white rounded-2xl border p-4 space-y-2 text-center w-full">
+              <p className="type-title-bold text-signal-valid">✓ Check-in Berhasil</p>
+              <p className="type-body1 text-foreground">{state.payload.identity.name}</p>
+              <p className="type-body2 text-muted-foreground">Selamat datang!</p>
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">Menutup otomatis...</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {state.phase === "error" && (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
+            <NfcStatusLabel
+              phase="error"
+              error={state.error}
+              tamperDetected={state.tamperDetected}
+            />
+            <Button variant="outline" onClick={reset} className="w-full">
+              Coba Lagi
+            </Button>
+          </div>
+        )}
       </div>
 
-      <NfcScanDrawer
-        open={isDrawerOpen}
-        onOpenChange={handleDrawerOpenChange}
-        phase={state.phase}
-        payload={state.payload}
-        isCheckedIn={isCheckedIn}
-        error={state.error}
-        tamperDetected={state.tamperDetected}
-        onCheckin={handleCheckin}
-        onCheckout={handleCheckout}
-        onClose={handleDrawerClose}
-        onRetry={scan}
-      />
+      {/* Simulation mode toggle & time picker */}
+      <div className="border-t bg-white/80 px-4 py-3 space-y-2">
+        <button
+          type="button"
+          onClick={() => setSimulationMode((v) => !v)}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Clock className="size-4" />
+          <span>{simulationMode ? "Mode Simulasi Aktif" : "Mode Simulasi"}</span>
+        </button>
+        {simulationMode && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="sim-time" className="text-sm text-muted-foreground whitespace-nowrap">
+              Waktu check-in:
+            </label>
+            <Input
+              id="sim-time"
+              type="time"
+              value={simulatedTime}
+              onChange={(e) => setSimulatedTime(e.target.value)}
+              className="w-auto"
+            />
+          </div>
+        )}
+      </div>
     </KioskLayout>
   );
 }

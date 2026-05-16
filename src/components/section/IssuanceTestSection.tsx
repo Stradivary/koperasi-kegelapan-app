@@ -41,6 +41,7 @@ export function makeFreshCard(opts: {
       version: CARD_SCHEMA_VERSION,
       type: 0,
       cardId,
+      tenantBind: 0,
     },
     identity: {
       name: opts.name,

@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { CardStatusBadge } from "../block/CardStatusBadge";
@@ -8,7 +6,6 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { tenantContextStore } from "../../lib/indexeddb";
 
 interface ScoutSectionProps {
   tenantId: string;
@@ -25,17 +22,11 @@ export function ScoutSection({
   deviceId,
   terminalId,
 }: ScoutSectionProps) {
-  const navigate = useNavigate();
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "scout");
   const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId);
 
-  const handleLogout = useCallback(async () => {
-    await tenantContextStore.delete(tenantId);
-    navigate({ to: "/" });
-  }, [navigate, tenantId]);
-
   return (
-    <KioskLayout title="Cek Saldo" tenantName={tenantName} onLogoLongPress={handleLogout}>
+    <KioskLayout title="Cek Saldo" tenantName={tenantName} tenantId={tenantId} currentMode="scout">
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {!grant && !loading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">

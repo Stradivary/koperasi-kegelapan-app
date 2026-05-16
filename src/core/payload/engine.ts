@@ -61,6 +61,7 @@ function decodeBuffer(raw: Uint8Array, bufOffset: number): Omit<CardPayload, "tr
     version: view.getUint8(HEADER_OFFSET + 4),
     type: view.getUint8(HEADER_OFFSET + 5),
     cardId: buf.slice(HEADER_OFFSET + 6, HEADER_OFFSET + 12),
+    tenantBind: view.getUint32(HEADER_OFFSET + 12, true), // bytes 12–15
   };
 
   const identity = {
@@ -111,6 +112,7 @@ function encodeBuffer(payload: Omit<CardPayload, "trailer">): Uint8Array {
   view.setUint8(HEADER_OFFSET + 4, payload.header.version);
   view.setUint8(HEADER_OFFSET + 5, payload.header.type);
   buf.set(payload.header.cardId.slice(0, 6), HEADER_OFFSET + 6);
+  view.setUint32(HEADER_OFFSET + 12, payload.header.tenantBind ?? 0, true);
 
   writeNullPaddedUtf8(buf, IDENTITY_OFFSET, 32, payload.identity.name);
   view.setUint32(IDENTITY_OFFSET + 32, payload.identity.userId, true);

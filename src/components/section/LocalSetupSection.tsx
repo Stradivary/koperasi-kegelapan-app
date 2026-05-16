@@ -2,7 +2,7 @@ import { CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
-import { getOrCreateDeviceId } from "../../lib/getOrCreateDeviceId";
+import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { setupLocalTenant } from "../../lib/localTenant";
 import { Button } from "../ui/button";
@@ -48,7 +48,7 @@ export function LocalSetupSection({ onComplete, onServerMode }: LocalSetupSectio
         tenantId: cfg.tenantId,
         tenantSlug: cfg.slug,
         tenantName: cfg.name,
-        deviceId: getOrCreateDeviceId(),
+        deviceId: await getDeviceFingerprint(),
         accountId: cfg.tenantId + "-admin",
         role: "admin",
         terminalId: 0,

@@ -67,6 +67,7 @@ export interface CardPayload {
     version: number;
     type: number;
     cardId: Uint8Array; // 6 bytes
+    tenantBind: number; // FNV-32a hash of tenantId; 0 = unbound legacy card
   };
   identity: {
     name: string;

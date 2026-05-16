@@ -63,6 +63,7 @@ async function issueCard(opts: {
       version: CARD_SCHEMA_VERSION,
       type: 0,
       cardId: new Uint8Array(CARD_ID),
+      tenantBind: 0,
     },
     identity: {
       name: opts.name ?? "Budi Santoso",
@@ -100,7 +101,7 @@ async function issueLegacyCard(balance: number): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const grant = makeGrant();
   const payload: CardPayload = {
-    header: { magic: MAGIC, version: 1, type: 0, cardId: new Uint8Array(CARD_ID) },
+    header: { magic: MAGIC, version: 1, type: 0, cardId: new Uint8Array(CARD_ID), tenantBind: 0 },
     identity: {
       name: "Legacy User",
       userId: 2001,

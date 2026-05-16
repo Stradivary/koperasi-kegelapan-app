@@ -8,9 +8,7 @@ import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
 import { CardStatus } from "../../core/payload/types";
-import { useState, useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { useState } from "react";
 
 interface KioskSectionProps {
   tenantId: string;
@@ -30,17 +28,11 @@ export function KioskSection({
   deviceId,
   terminalId,
 }: KioskSectionProps) {
-  const navigate = useNavigate();
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId);
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const [amount, setAmount] = useState("");
   const [txError, setTxError] = useState<string | null>(null);
   const [step, setStep] = useState<"tap" | "confirm" | "done">("tap");
-
-  const handleLogout = useCallback(async () => {
-    await tenantContextStore.delete(tenantId);
-    navigate({ to: "/" });
-  }, [navigate, tenantId]);
 
   function handleAmountSelect(val: number) {
     setAmount(String(val));
@@ -82,7 +74,12 @@ export function KioskSection({
   }
 
   return (
-    <KioskLayout title="Mesin Kasir" tenantName={tenantName} onLogoLongPress={handleLogout}>
+    <KioskLayout
+      title="Mesin Kasir"
+      tenantName={tenantName}
+      tenantId={tenantId}
+      currentMode="kiosk"
+    >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {/* Session error */}
         {!grant && !loading && (

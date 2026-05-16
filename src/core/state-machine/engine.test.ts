@@ -9,7 +9,13 @@ function makePayload(
   lastTimestamp = 1700000000,
 ): CardPayload {
   return {
-    header: { magic: MAGIC, version: CARD_SCHEMA_VERSION, type: 0, cardId: new Uint8Array(6) },
+    header: {
+      magic: MAGIC,
+      version: CARD_SCHEMA_VERSION,
+      type: 0,
+      cardId: new Uint8Array(6),
+      tenantBind: 0,
+    },
     identity: { name: "Test", userId: 1, gender: 0, status, createdAt: 1700000000 },
     wallet: { balance: 500000, lastBalance: 500000, counter: 5n, lastTimestamp, state, flags: 0 },
     session: { startTime: lastTimestamp - 3600, endTime: 0, terminalId: 42 },

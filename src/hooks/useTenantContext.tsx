@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { tenantContextStore, type TenantContext } from "../lib/indexeddb";
+import { getDeviceFingerprint } from "../lib/getOrCreateDeviceId";
 import { LoadingState } from "../components/block/LoadingState";
 
 function getRoleRoute(tenantId: string, role: string): string {
@@ -31,6 +32,17 @@ export function useTenantContext(tenantId: string, allowedRoles?: readonly strin
       if (!active) return;
 
       if (!context) {
+        setTenantContext(null);
+        setLoading(false);
+        navigate({ to: "/", search: { redirect: `/tenant/${tenantId}` }, replace: true });
+        return;
+      }
+
+      // Validate device fingerprint — reject if context was copied from another device
+      const runtimeFp = await getDeviceFingerprint();
+      if (!active) return;
+      if (context.deviceId !== runtimeFp) {
+        await tenantContextStore.delete(tenantId);
         setTenantContext(null);
         setLoading(false);
         navigate({ to: "/", search: { redirect: `/tenant/${tenantId}` }, replace: true });
