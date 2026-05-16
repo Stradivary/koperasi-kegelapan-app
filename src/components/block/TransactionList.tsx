@@ -1,4 +1,5 @@
 import type { LogEntry } from "../../core/payload/types";
+import { TxType } from "../../core/payload/types";
 
 interface TransactionListProps {
   entries: LogEntry[];
@@ -14,7 +15,9 @@ const FLAG_LABELS: Record<number, string> = {
 };
 
 export function TransactionList({ entries, sessionStart }: TransactionListProps) {
-  const valid = entries.filter((e) => e.deltaTime > 0 || e.amount > 0);
+  const valid = entries.filter(
+    (e) => e.deltaTime > 0 || e.amount > 0 || (e.flags & 0x0f) === TxType.CHECKIN,
+  );
   if (valid.length === 0) return null;
 
   return (
@@ -22,7 +25,7 @@ export function TransactionList({ entries, sessionStart }: TransactionListProps)
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         Recent Transactions
       </p>
-      <div className="rounded-lg border divide-y text-sm">
+      <div className="rounded-lg border bg-card divide-y text-sm">
         {valid.map((entry, i) => {
           const txTime =
             sessionStart > 0
