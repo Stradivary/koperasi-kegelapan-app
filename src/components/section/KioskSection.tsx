@@ -1,13 +1,13 @@
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { CardStatusBadge } from "../block/CardStatusBadge";
-import { TransactionList } from "../block/TransactionList";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
 import { CardStatus } from "../../core/payload/types";
+import { localDb } from "../../db/local-db";
 import { useState } from "react";
 
 interface KioskSectionProps {
@@ -32,7 +32,9 @@ export function KioskSection({
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const [amount, setAmount] = useState("");
   const [txError, setTxError] = useState<string | null>(null);
-  const [step, setStep] = useState<"tap" | "confirm" | "done">("tap");
+  const [step, setStep] = useState<"tap" | "confirm" | "register" | "done">("tap");
+  const [registerBalance, setRegisterBalance] = useState("");
+  const [registerSuccess, setRegisterSuccess] = useState(false);
 
   function handleAmountSelect(val: number) {
     setAmount(String(val));
@@ -62,7 +64,7 @@ export function KioskSection({
       return;
     }
     const now = Math.floor(Date.now() / 1000);
-    const ok = await write(applyDebit(state.payload, amt, now));
+    const ok = await write(applyDebit(state.payload, amt, now), "debit");
     if (ok) setStep("done");
   }
 
@@ -70,7 +72,41 @@ export function KioskSection({
     reset();
     setAmount("");
     setTxError(null);
+    setRegisterBalance("");
+    setRegisterSuccess(false);
     setStep("tap");
+  }
+
+  async function handleRegister() {
+    if (!state.payload) return;
+    setTxError(null);
+
+    const cardIdHex = Array.from(state.payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const balance = registerBalance ? parseInt(registerBalance, 10) : state.payload.wallet.balance;
+
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      await localDb.cards.put({
+        tenantId,
+        cardId: cardIdHex,
+        userId: state.payload.identity.userId || null,
+        status: "active",
+        balance,
+        counter: Number(state.payload.wallet.counter),
+        keyVersion: grant?.keyVersion ?? 1,
+        createdAt: now,
+        lastActivityAt: now,
+        expiresAt: null,
+        notes: state.payload.identity.name || null,
+      });
+      setRegisterSuccess(true);
+      setStep("done");
+    } catch (e) {
+      setTxError(`Gagal mendaftarkan kartu: ${e}`);
+    }
   }
 
   return (
@@ -186,6 +222,16 @@ export function KioskSection({
                       OK
                     </Button>
                   </div>
+                  {/* Register action — does not require amount selection */}
+                  <div className="border-t pt-3 mt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep("register")}
+                      className="w-full border-brand/30 text-brand hover:bg-brand/5"
+                    >
+                      Daftarkan Kartu
+                    </Button>
+                  </div>
                 </>
               )}
 
@@ -216,6 +262,63 @@ export function KioskSection({
                   </Button>
                 </div>
               )}
+
+              {/* Register — independent of amount selection */}
+              {step === "register" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-brand/5 border border-brand/20 p-5 text-center">
+                    <p className="type-body1 text-signal-text-secondary">Daftarkan Kartu</p>
+                    <p className="type-body2 text-signal-text-secondary mt-1">
+                      {state.payload.identity.name || "Anggota"}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="type-body2 text-signal-text-secondary">
+                      Saldo awal (opsional, default: saldo kartu saat ini)
+                    </p>
+                    <input
+                      type="number"
+                      placeholder={String(state.payload.wallet.balance)}
+                      className="w-full h-10 rounded-lg border border-input bg-background px-3 type-body1 focus:border-brand focus:outline-none"
+                      value={registerBalance}
+                      onChange={(e) => {
+                        setRegisterBalance(e.target.value);
+                        setTxError(null);
+                      }}
+                    />
+                    <div className="flex gap-1.5">
+                      {[50_000, 100_000, 200_000].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setRegisterBalance(String(v))}
+                          className="flex-1 rounded border px-2 py-1 text-xs hover:bg-muted transition-colors"
+                        >
+                          {v / 1000}k
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {txError && <p className="type-body2 text-signal-error text-center">{txError}</p>}
+                  <Button
+                    onClick={handleRegister}
+                    className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
+                  >
+                    Daftarkan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setStep("tap");
+                      setRegisterBalance("");
+                      setTxError(null);
+                    }}
+                    className="w-full"
+                  >
+                    Batal
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -237,16 +340,16 @@ export function KioskSection({
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p className="type-title-bold text-signal-valid">Transaksi Berhasil</p>
+              <p className="type-title-bold text-signal-valid">
+                {registerSuccess ? "Kartu Berhasil Didaftarkan" : "Transaksi Berhasil"}
+              </p>
               <p className="type-h4 text-signal-valid font-heading mt-1">
                 Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
               </p>
-              <p className="type-body2 text-signal-valid/70 mt-0.5">Saldo tersisa</p>
+              <p className="type-body2 text-signal-valid/70 mt-0.5">
+                {registerSuccess ? "Saldo terdaftar" : "Saldo tersisa"}
+              </p>
             </div>
-            <TransactionList
-              entries={state.payload.logEntries}
-              sessionStart={state.payload.session.startTime}
-            />
             <Button
               onClick={handleReset}
               className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"

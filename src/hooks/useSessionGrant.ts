@@ -71,12 +71,15 @@ export function useSessionGrant(
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, accountId, deviceId, role]);
 
   useEffect(() => {
     if (tenantId && accountId && deviceId) refresh();
     return () => {
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const timer = refreshTimerRef.current;
+      if (timer) clearTimeout(timer);
     };
   }, [tenantId, accountId, deviceId, refresh]);
 

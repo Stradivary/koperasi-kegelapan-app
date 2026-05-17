@@ -16,6 +16,13 @@ import {
 import { isTenantBindValid } from "../payload/tenantBind";
 import { readCard, writeCard } from "./engine";
 
+/** Standardized reason code for tenant mismatch validation failures */
+export const TENANT_MISMATCH_REASON = "TENANT_MISMATCH" as const;
+
+/** User-facing Indonesian message for unregistered/foreign cards */
+export const UNREGISTERED_CARD_MESSAGE =
+  "Kartu anda tidak terdaftar / anda bukan member, harap daftarkan terlebih dahulu di station" as const;
+
 const ENCRYPTED_BODY_START = 16; // IDENTITY_OFFSET — first byte of encrypted region
 const ENCRYPTED_BODY_END = 184; // LOG_OFFSET + LOG_ENTRY_COUNT*LOG_ENTRY_SIZE = 104 + 80
 const AUTH_TAG_END = 200; // ENCRYPTED_BODY_END + 16 (AES-GCM auth tag)
@@ -145,7 +152,7 @@ export async function validateCard(
   }
 
   if (!isTenantBindValid(payload.header.tenantBind, sessionGrant.tenantId)) {
-    return { valid: false, reason: "Kartu bukan milik tenant ini", tamper: false };
+    return { valid: false, reason: UNREGISTERED_CARD_MESSAGE, tamper: false };
   }
 
   const chainValid = await validateChainHash(payload);

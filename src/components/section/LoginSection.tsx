@@ -41,7 +41,15 @@ export function LoginSection() {
       const contexts = await tenantContextStore.getAll();
       const noAuthCtx = contexts.find((c) => (NO_AUTH_ROLES as readonly string[]).includes(c.role));
       if (noAuthCtx) {
-        redirectToRole(noAuthCtx.tenantId, noAuthCtx.role);
+        const roleRoutes: Record<string, string> = {
+          terminal: `/tenant/${noAuthCtx.tenantId}/terminal`,
+          gate: `/tenant/${noAuthCtx.tenantId}/gate`,
+          kiosk: `/tenant/${noAuthCtx.tenantId}/kiosk`,
+          scout: `/tenant/${noAuthCtx.tenantId}/scout`,
+          station: `/tenant/${noAuthCtx.tenantId}/station`,
+          admin: `/tenant/${noAuthCtx.tenantId}/admin`,
+        };
+        navigate({ to: roleRoutes[noAuthCtx.role] ?? "/" });
         return;
       }
 
@@ -50,7 +58,7 @@ export function LoginSection() {
       setMode("login");
     }
     detectMode();
-  }, []);
+  }, [navigate]);
 
   function redirectToRole(tenantId: string, role: string) {
     const roleRoutes: Record<string, string> = {
@@ -198,17 +206,17 @@ export function LoginSection() {
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-1">
             <button
               type="button"
               onClick={() => handlePickDeviceRole("gate")}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-white hover:border-brand hover:bg-brand/5 transition-all text-left"
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
             >
-              <div className="size-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
-                <DoorOpen size={22} className="text-brand" />
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <DoorOpen size={20} className="text-muted-foreground" />
               </div>
-              <div>
-                <p className="type-title-bold text-foreground">Gerbang (Gate)</p>
+              <div className="flex-1 min-w-0">
+                <p className="type-body1-bold text-foreground">Gerbang (Gate)</p>
                 <p className="type-body2 text-muted-foreground">
                   Mencatat waktu masuk ke kartu anggota
                 </p>
@@ -218,13 +226,13 @@ export function LoginSection() {
             <button
               type="button"
               onClick={() => handlePickDeviceRole("terminal")}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-white hover:border-brand hover:bg-brand/5 transition-all text-left"
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
             >
-              <div className="size-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
-                <MonitorSmartphone size={22} className="text-brand" />
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <MonitorSmartphone size={20} className="text-muted-foreground" />
               </div>
-              <div>
-                <p className="type-title-bold text-foreground">Terminal (Exit)</p>
+              <div className="flex-1 min-w-0">
+                <p className="type-body1-bold text-foreground">Terminal (Exit)</p>
                 <p className="type-body2 text-muted-foreground">
                   Menghitung durasi dan memotong saldo anggota
                 </p>
@@ -234,13 +242,13 @@ export function LoginSection() {
             <button
               type="button"
               onClick={() => handlePickDeviceRole("scout")}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-white hover:border-brand hover:bg-brand/5 transition-all text-left"
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
             >
-              <div className="size-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
-                <BookOpen size={22} className="text-brand" />
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <BookOpen size={20} className="text-muted-foreground" />
               </div>
-              <div>
-                <p className="type-title-bold text-foreground">Buku Saku (Scout)</p>
+              <div className="flex-1 min-w-0">
+                <p className="type-body1-bold text-foreground">Buku Saku (Scout)</p>
                 <p className="type-body2 text-muted-foreground">
                   Anggota melihat saldo dan riwayat kartu
                 </p>

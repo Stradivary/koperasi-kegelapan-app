@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef } from "react";
-import { validateCard, prepareWrite, decryptCardBody } from "../core/nfc/pipelineEngine";
+import {
+  validateCard,
+  prepareWrite,
+  decryptCardBody,
+  TENANT_MISMATCH_REASON,
+  UNREGISTERED_CARD_MESSAGE,
+} from "../core/nfc/pipelineEngine";
 import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../core/nfc/engine";
 import { decodePayload } from "../core/payload/engine";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
@@ -34,6 +40,7 @@ interface PendingWrite {
   currentPayload: CardPayload;
   updatedPayload: CardPayload;
   serialNumber: string | null;
+  operationType: string;
 }
 
 export function useNfcCard(grant: SessionGrant | null, tenantId: string, terminalId: number) {
@@ -50,6 +57,8 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
   // phaseRef mirrors state.phase so event handlers always see the current value
   const phaseRef = useRef<NfcCardPhase>("idle");
   const pendingWriteRef = useRef<PendingWrite | null>(null);
+  // Rapid-tap debounce: ignore reading events within 1s of the last valid scan
+  const lastScanTimestamp = useRef<number>(0);
 
   const scan = useCallback(async () => {
     if (!grant) {
@@ -81,10 +90,29 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
     reader.addEventListener("reading", async (event: NDEFReadingEvent) => {
       const phase = phaseRef.current;
 
+      // ── Rapid-tap debounce guard ────────────────────────────────────────────
+      // Ignore reading events that arrive within 1s of the last valid scan start,
+      // unless we're in the "writing" phase (second tap to confirm write).
+      if (phase !== "writing") {
+        const now = Date.now();
+        if (now - lastScanTimestamp.current < 1000) {
+          return; // ignore rapid tap
+        }
+      }
+
+      // ── Phase guard: prevent re-entry during active processing ──────────────
+      // Only allow entry from "idle", "error", "scanning", or "writing" phases.
+      // All other phases (validating, ready, success) indicate an active cycle.
+      if (phase !== "idle" && phase !== "error" && phase !== "scanning" && phase !== "writing") {
+        return; // ignore tap during active processing
+      }
+
       // ── Phase 1: card scan ──────────────────────────────────────────────────
       // Guard on 'scanning' only — if the card stays in range during async validation
       // a second reading event would enter here concurrently, causing a race.
       if (phase === "scanning") {
+        // Record timestamp when a valid scan begins processing
+        lastScanTimestamp.current = Date.now();
         phaseRef.current = "validating";
         setState((s) => ({ ...s, phase: "validating" }));
 
@@ -94,7 +122,8 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
           setState((s) => ({
             ...s,
             phase: "error",
-            error: "Kartu tidak berisi data yang valid",
+            payload: null,
+            error: UNREGISTERED_CARD_MESSAGE,
             tamperDetected: false,
           }));
           return;
@@ -124,10 +153,17 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
           if (signal.aborted) return;
           if (!validation.valid) {
             phaseRef.current = "error";
+            // Tenant mismatch: show standard unregistered message and suppress card details
+            const isTenantMismatch =
+              validation.reason === TENANT_MISMATCH_REASON ||
+              validation.reason === UNREGISTERED_CARD_MESSAGE;
             setState((s) => ({
               ...s,
               phase: "error",
-              error: validation.reason ?? "Validasi gagal",
+              payload: isTenantMismatch ? null : s.payload,
+              error: isTenantMismatch
+                ? UNREGISTERED_CARD_MESSAGE
+                : (validation.reason ?? "Validasi gagal"),
               tamperDetected: validation.tamper ?? false,
             }));
             return;
@@ -140,14 +176,15 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             error: null,
             tamperDetected: false,
           });
-        } catch (e) {
+        } catch {
           if (signal.aborted) return;
           phaseRef.current = "error";
           setState((s) => ({
             ...s,
             phase: "error",
-            error: `Decode gagal: ${e}`,
-            tamperDetected: true,
+            payload: null,
+            error: UNREGISTERED_CARD_MESSAGE,
+            tamperDetected: false,
           }));
         }
         return;
@@ -187,7 +224,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             terminalId,
             cardId: cardIdHex,
             counter: Number(updatedPayload.wallet.counter),
-            type: "debit",
+            type: pending.operationType,
             amount: currentPayload.wallet.balance - updatedPayload.wallet.balance,
             balanceAfter: updatedPayload.wallet.balance,
             timestamp: updatedPayload.wallet.lastTimestamp,
@@ -243,7 +280,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
   }, [grant, tenantId, terminalId]);
 
   const write = useCallback(
-    async (updatedPayload: CardPayload): Promise<boolean> => {
+    async (updatedPayload: CardPayload, operationType: string = "debit"): Promise<boolean> => {
       if (!grant || !state.payload) return false;
 
       const currentPayload = state.payload;
@@ -261,6 +298,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
           currentPayload,
           updatedPayload,
           serialNumber: currentSerial,
+          operationType,
         };
         return true;
       } catch (e) {

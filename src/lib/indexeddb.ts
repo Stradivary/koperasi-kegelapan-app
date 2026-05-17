@@ -119,18 +119,18 @@ export const tenantContextStore = {
     if (!getIndexedDbFactory()) return undefined;
     return tx<TenantContext | undefined>("tenantContext", "readonly", (s) => s.get(tenantId));
   },
-  getAll: (): Promise<TenantContext[]> =>
-    new Promise(async (resolve, reject) => {
-      if (!getIndexedDbFactory()) {
-        resolve([]);
-        return;
-      }
-      const db = await openDb();
+  getAll: async (): Promise<TenantContext[]> => {
+    if (!getIndexedDbFactory()) {
+      return [];
+    }
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const t = db.transaction("tenantContext", "readonly");
       const req = t.objectStore("tenantContext").getAll();
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-    }),
+    });
+  },
   put: (ctx: TenantContext) => tx<IDBValidKey>("tenantContext", "readwrite", (s) => s.put(ctx)),
   delete: (tenantId: string) =>
     tx<undefined>("tenantContext", "readwrite", (s) => s.delete(tenantId)),
@@ -172,13 +172,12 @@ export const reconciliationOutbox = {
     await tx<IDBValidKey>("reconciliationOutbox", "readwrite", (s) => s.put(full));
   },
 
-  getPending: (tenantId: string): Promise<OutboxEntry[]> =>
-    new Promise(async (resolve, reject) => {
-      if (!getIndexedDbFactory()) {
-        resolve([]);
-        return;
-      }
-      const db = await openDb();
+  getPending: async (tenantId: string): Promise<OutboxEntry[]> => {
+    if (!getIndexedDbFactory()) {
+      return [];
+    }
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const transaction = db.transaction("reconciliationOutbox", "readonly");
       const store = transaction.objectStore("reconciliationOutbox");
       const index = store.index("byTenantId");
@@ -186,11 +185,12 @@ export const reconciliationOutbox = {
       req.onsuccess = () =>
         resolve((req.result as OutboxEntry[]).filter((e) => e.status === "pending"));
       req.onerror = () => reject(req.error);
-    }),
+    });
+  },
 
-  markSynced: (idempotencyKey: string) =>
-    new Promise<void>(async (resolve, reject) => {
-      const db = await openDb();
+  markSynced: async (idempotencyKey: string): Promise<void> => {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const transaction = db.transaction("reconciliationOutbox", "readwrite");
       const store = transaction.objectStore("reconciliationOutbox");
       const req = store.get(idempotencyKey);
@@ -205,7 +205,8 @@ export const reconciliationOutbox = {
         putReq.onerror = () => reject(putReq.error);
       };
       req.onerror = () => reject(req.error);
-    }),
+    });
+  },
 
   clearTenant: async (tenantId: string): Promise<void> => {
     const db = await openDb();
@@ -231,14 +232,15 @@ export const reconciliationOutbox = {
 export const localTenantConfigStore = {
   get: (tenantId: string) =>
     tx<LocalTenantConfig | undefined>("localTenantConfig", "readonly", (s) => s.get(tenantId)),
-  getAll: (): Promise<LocalTenantConfig[]> =>
-    new Promise(async (resolve, reject) => {
-      const db = await openDb();
+  getAll: async (): Promise<LocalTenantConfig[]> => {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const t = db.transaction("localTenantConfig", "readonly");
       const req = t.objectStore("localTenantConfig").getAll();
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-    }),
+    });
+  },
   put: (cfg: LocalTenantConfig) =>
     tx<IDBValidKey>("localTenantConfig", "readwrite", (s) => s.put(cfg)),
   delete: (tenantId: string) =>
@@ -246,24 +248,26 @@ export const localTenantConfigStore = {
 };
 
 export const localAccountStore = {
-  getByUsername: (username: string): Promise<LocalAccount | undefined> =>
-    new Promise(async (resolve, reject) => {
-      const db = await openDb();
+  getByUsername: async (username: string): Promise<LocalAccount | undefined> => {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const t = db.transaction("localAccounts", "readonly");
       const idx = t.objectStore("localAccounts").index("byUsername");
       const req = idx.get(username);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-    }),
-  getByTenant: (tenantId: string): Promise<LocalAccount[]> =>
-    new Promise(async (resolve, reject) => {
-      const db = await openDb();
+    });
+  },
+  getByTenant: async (tenantId: string): Promise<LocalAccount[]> => {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
       const t = db.transaction("localAccounts", "readonly");
       const idx = t.objectStore("localAccounts").index("byTenantId");
       const req = idx.getAll(tenantId);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-    }),
+    });
+  },
   put: (acct: LocalAccount) => tx<IDBValidKey>("localAccounts", "readwrite", (s) => s.put(acct)),
   delete: (accountId: string) =>
     tx<undefined>("localAccounts", "readwrite", (s) => s.delete(accountId)),

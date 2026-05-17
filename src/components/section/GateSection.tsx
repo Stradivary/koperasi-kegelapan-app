@@ -103,9 +103,16 @@ export function GateSection({
         return;
       }
 
+      // Minimum balance check: reject check-in if balance < 10,000
+      if (payload.wallet.balance < 10_000) {
+        autoCheckinTriggered.current = true;
+        setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+        return;
+      }
+
       autoCheckinTriggered.current = true;
       setBlockedReason(null);
-      write(applyCheckin(payload, terminalId, nowSeconds));
+      write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
     });
   }, [state.phase, state.payload, write, terminalId, getNowSeconds, tenantId]);
 

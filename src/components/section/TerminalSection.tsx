@@ -40,6 +40,7 @@ export function TerminalSection({
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   async function handleCheckout() {
     if (!state.payload || !grant) return;
@@ -50,8 +51,16 @@ export function TerminalSection({
     if (!result.valid) return;
     const durationSeconds = nowSeconds - state.payload.session.startTime;
     const hours = Math.ceil(durationSeconds / 3600);
-    const fee = Math.min(hours * PARKING_RATE_PER_HOUR, state.payload.wallet.balance);
-    setLastTx({ durationSeconds, fee });
+    const fee = hours * PARKING_RATE_PER_HOUR;
+
+    // Insufficient balance check: reject if balance < calculated fee
+    if (state.payload.wallet.balance < fee) {
+      setBlockedReason("Saldo anda kurang untuk checkout, harap isi Saldo terlebih dahulu");
+      return;
+    }
+
+    const actualFee = Math.min(fee, state.payload.wallet.balance);
+    setLastTx({ durationSeconds, fee: actualFee });
     await write(applyCheckout(state.payload, nowSeconds));
   }
 
@@ -134,7 +143,23 @@ export function TerminalSection({
         {/* Card ready / writing */}
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="w-full max-w-xs space-y-4">
-            {canCheckout && previewFee ? (
+            {blockedReason ? (
+              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center">
+                <p className="type-body1-bold text-destructive">⛔ Checkout Ditolak</p>
+                <p className="type-body2 text-muted-foreground">{blockedReason}</p>
+                <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setBlockedReason(null);
+                    reset();
+                  }}
+                  className="w-full"
+                >
+                  Selesai
+                </Button>
+              </div>
+            ) : canCheckout && previewFee ? (
               <CheckoutConfirmCard
                 payload={state.payload}
                 durationSeconds={previewFee.durationSeconds}

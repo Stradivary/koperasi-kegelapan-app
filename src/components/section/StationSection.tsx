@@ -130,7 +130,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       if (!state.payload || !grant) return;
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);
-      await write(updated);
+      await write(updated, "topup");
     },
     [state.payload, grant, write],
   );

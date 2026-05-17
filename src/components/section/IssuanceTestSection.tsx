@@ -173,9 +173,8 @@ export function IssuanceTestSection() {
           full.set(decryptedBuf, 0);
           full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
           decodableRaw = full;
-        } catch (e) {
+        } catch {
           // If decryption fails, try plaintext decode as fallback
-          console.warn("Decryption failed, trying plaintext:", e);
         }
       }
 
@@ -213,8 +212,6 @@ export function IssuanceTestSection() {
       const devGrant = await fetchDevGrant(tenantId);
       const prepared = await prepareWrite(originalPayload, originalPayload, devGrant);
       const raw = prepared.bytes;
-
-      console.log("Issuing card with payload", originalPayload);
 
       const writer = new NDEFReader();
       await writer.write(
