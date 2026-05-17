@@ -15,8 +15,6 @@
   ],
   "vars": {
     // Override in .dev.vars for local development
-    "SESSION_MASTER_KEY": "5259e877-e293-4dc2-8c05-c6b40654a51c",
-    "CLOUDFLARE_ACCOUNT_ID": "8b2e9fc61388c8c1bf7ac5d3eb283cb0",
-    "CLOUDFLARE_D1_TOKEN": "cfat_XkGyeFuFh0NPkzH6sndJlX08bLQ60xECV4743ZEZ3b1e9459",
+    "SESSION_MASTER_KEY": "5259e877-e293-4dc2-8c05-c6b40654a51c", 
   },
 }
