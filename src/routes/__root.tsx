@@ -6,6 +6,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { BRAND } from "../lib/brand";
 import { PwaUpdatePrompt } from "../components/block/PwaUpdatePrompt";
 import { PwaInstallPrompt } from "../components/block/PwaInstallPrompt";
+import { Toaster } from "../components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -46,6 +47,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
         <PwaInstallPrompt />
         <PwaUpdatePrompt />
         <TanStackDevtools

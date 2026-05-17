@@ -1,18 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { DoorOpen, MonitorSmartphone, BookOpen, Settings, Layers, Plus } from "lucide-react";
+import { DoorOpen, MonitorSmartphone, BookOpen, Settings, Layers, Plus, Globe } from "lucide-react";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { localLogin, hasLocalTenant } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
+import { ServerTenantSelectionSection } from "./ServerTenantSelectionSection";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { LoadingState } from "../block/LoadingState";
 
-type LoginMode = "detecting" | "login" | "setup" | "device-setup";
+type LoginMode = "detecting" | "login" | "setup" | "device-setup" | "server";
 type DeviceSetupStep = "auth" | "pick-role";
 
 const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
@@ -185,6 +186,20 @@ export function LoginSection() {
       <LocalSetupSection
         onComplete={(tenantId, role) => {
           setHasLocal(true);
+          redirectToRole(tenantId, role);
+        }}
+        onBack={() => {
+          setMode("login");
+          setError(null);
+        }}
+      />
+    );
+  }
+
+  if (mode === "server") {
+    return (
+      <ServerTenantSelectionSection
+        onComplete={(tenantId, role) => {
           redirectToRole(tenantId, role);
         }}
         onBack={() => {
@@ -402,6 +417,19 @@ export function LoginSection() {
       </form>
 
       <div className="pt-1 border-t space-y-2">
+        <Button
+          type="button"
+          onClick={() => {
+            setMode("server");
+            setError(null);
+          }}
+          variant="outline"
+          className="w-full gap-2"
+        >
+          <Globe size={15} />
+          Hubungkan ke Server
+        </Button>
+
         <Button
           type="button"
           onClick={() => {

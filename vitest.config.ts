@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
   test: {
@@ -7,8 +8,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "#": "/src",
-      "@": "/src",
+      "#": path.resolve(__dirname, "src"),
+      "@": path.resolve(__dirname, "src"),
+      "cloudflare:workers": path.resolve(__dirname, "src/__mocks__/cloudflare-workers.ts"),
     },
   },
 });

@@ -537,7 +537,7 @@ export function StationCardsPanel({
 
       {/* Issue fresh card — write to blank NFC card */}
       {cardView === "issue" && (
-        <div className="rounded-lg border p-4 space-y-4 max-w-sm">
+        <div className="rounded-lg border p-4 space-y-4 max-w-sm bg-card">
           <h2 className="font-medium">Cetak Kartu Baru</h2>
           <p className="text-xs text-muted-foreground">
             Siapkan kartu NFC kosong. Data akan ditulis ke kartu dan didaftarkan otomatis.
@@ -576,6 +576,7 @@ export function StationCardsPanel({
                 <Input
                   placeholder="Nama lengkap pemegang kartu"
                   value={issueName}
+                  readOnly
                   onChange={(e) => setIssueName(e.target.value)}
                 />
               </div>
@@ -583,12 +584,12 @@ export function StationCardsPanel({
                 <Label>Saldo Awal (IDR)</Label>
                 <Input
                   type="number"
-                  placeholder="50000"
+                  placeholder="0"
                   value={issueBalance}
                   onChange={(e) => setIssueBalance(e.target.value)}
                 />
-                <div className="flex gap-1.5">
-                  {[50_000, 100_000, 200_000].map((v) => (
+                <div className="grid gap-1.5 grid-cols-3">
+                  {[10_000, 20_000, 50_000, 100_000, 150_000, 200_000].map((v) => (
                     <button
                       key={v}
                       type="button"

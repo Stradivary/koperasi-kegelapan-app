@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { localDb, type User, type Card } from "../../db/local-db";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { useTenantSync } from "../../hooks/useTenantSync";
+import { localTenantConfigStore, localAccountStore } from "../../lib/indexeddb";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
 import { AdminCardsPanel, type AdminCardRow } from "../block/AdminCardsPanel";
 import { AdminAuditPanel, type AdminAuditEntry } from "../block/AdminAuditPanel";
 import { AdminMembersPanel, type AdminUserRow } from "../block/AdminMembersPanel";
+import { SyncConflictDialog } from "../block/SyncConflictDialog";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
+import { Button } from "../ui/button";
 import { StationSection } from "./StationSection";
 import { KioskSection } from "./KioskSection";
 
@@ -34,6 +39,44 @@ export const AdminSection = ({
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId);
   const { state, scan, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
+  const {
+    status: syncStatus,
+    conflict,
+    error: syncError,
+    syncToServer,
+    reset: resetSync,
+  } = useTenantSync();
+
+  // Show toast on sync success
+  useEffect(() => {
+    if (syncStatus === "success") {
+      toast.success("Tenant berhasil disinkronkan ke server");
+    }
+  }, [syncStatus]);
+
+  // Show toast on sync error
+  useEffect(() => {
+    if (syncStatus === "error" && syncError) {
+      toast.error(syncError);
+    }
+  }, [syncStatus, syncError]);
+
+  const handleSync = useCallback(async () => {
+    const [config, accounts] = await Promise.all([
+      localTenantConfigStore.get(tenantId),
+      localAccountStore.getByTenant(tenantId),
+    ]);
+    if (!config) {
+      toast.error("Konfigurasi tenant lokal tidak ditemukan");
+      return;
+    }
+    const admin = accounts.find((a) => a.role === "admin");
+    if (!admin) {
+      toast.error("Akun admin tidak ditemukan");
+      return;
+    }
+    await syncToServer(config, admin.passwordHash);
+  }, [tenantId, syncToServer]);
 
   // Auto-close drawer after success
   useEffect(() => {
@@ -250,6 +293,24 @@ export const AdminSection = ({
         onClose={handleDrawerClose}
         onRetry={scan}
       />
+
+      {/* Sync to Server */}
+      {view === "cards" && (
+        <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-10">
+          <Button onClick={handleSync} disabled={syncStatus === "syncing"}>
+            {syncStatus === "syncing" ? "Menyinkronkan..." : "Sync ke Server"}
+          </Button>
+        </div>
+      )}
+
+      {/* Sync Conflict Dialog */}
+      {conflict && (
+        <SyncConflictDialog
+          open={syncStatus === "conflict"}
+          conflict={conflict}
+          onDismiss={resetSync}
+        />
+      )}
     </AdminLayout>
   );
 };

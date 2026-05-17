@@ -42,6 +42,10 @@ export interface LocalTenantConfig {
   serverUrl?: string;
   createdAt: number;
   exportedAt?: number;
+  /** Timestamp of last successful sync to server (epoch ms) */
+  syncedAt?: number;
+  /** Server-assigned tenant ID (may differ from local tenantId) */
+  serverTenantId?: string;
 }
 
 export interface LocalAccount {

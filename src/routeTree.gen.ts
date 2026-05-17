@@ -25,6 +25,8 @@ import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenant
 import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
 import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantId.gate'
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
+import { Route as ApiTenantsSyncRouteImport } from './routes/api/tenants/sync'
+import { Route as ApiTenantsSearchRouteImport } from './routes/api/tenants/search'
 import { Route as ApiAuthTokenRouteImport } from './routes/api/auth/token'
 
 const DevicesRoute = DevicesRouteImport.update({
@@ -107,6 +109,16 @@ const TenantTenantIdAdminRoute = TenantTenantIdAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
+const ApiTenantsSyncRoute = ApiTenantsSyncRouteImport.update({
+  id: '/api/tenants/sync',
+  path: '/api/tenants/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTenantsSearchRoute = ApiTenantsSearchRouteImport.update({
+  id: '/api/tenants/search',
+  path: '/api/tenants/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthTokenRoute = ApiAuthTokenRouteImport.update({
   id: '/api/auth/token',
   path: '/api/auth/token',
@@ -125,6 +137,8 @@ export interface FileRoutesByFullPath {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
+  '/api/tenants/search': typeof ApiTenantsSearchRoute
+  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -144,6 +158,8 @@ export interface FileRoutesByTo {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
+  '/api/tenants/search': typeof ApiTenantsSearchRoute
+  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -164,6 +180,8 @@ export interface FileRoutesById {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/api/auth/token': typeof ApiAuthTokenRoute
+  '/api/tenants/search': typeof ApiTenantsSearchRoute
+  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
@@ -185,6 +203,8 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev/'
     | '/api/auth/token'
+    | '/api/tenants/search'
+    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -204,6 +224,8 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev'
     | '/api/auth/token'
+    | '/api/tenants/search'
+    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -223,6 +245,8 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev/'
     | '/api/auth/token'
+    | '/api/tenants/search'
+    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
@@ -243,6 +267,8 @@ export interface RootRouteChildren {
   TenantTenantIdRoute: typeof TenantTenantIdRouteWithChildren
   DevIndexRoute: typeof DevIndexRoute
   ApiAuthTokenRoute: typeof ApiAuthTokenRoute
+  ApiTenantsSearchRoute: typeof ApiTenantsSearchRoute
+  ApiTenantsSyncRoute: typeof ApiTenantsSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -359,6 +385,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdAdminRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
+    '/api/tenants/sync': {
+      id: '/api/tenants/sync'
+      path: '/api/tenants/sync'
+      fullPath: '/api/tenants/sync'
+      preLoaderRoute: typeof ApiTenantsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tenants/search': {
+      id: '/api/tenants/search'
+      path: '/api/tenants/search'
+      fullPath: '/api/tenants/search'
+      preLoaderRoute: typeof ApiTenantsSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/token': {
       id: '/api/auth/token'
       path: '/api/auth/token'
@@ -403,6 +443,8 @@ const rootRouteChildren: RootRouteChildren = {
   TenantTenantIdRoute: TenantTenantIdRouteWithChildren,
   DevIndexRoute: DevIndexRoute,
   ApiAuthTokenRoute: ApiAuthTokenRoute,
+  ApiTenantsSearchRoute: ApiTenantsSearchRoute,
+  ApiTenantsSyncRoute: ApiTenantsSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
