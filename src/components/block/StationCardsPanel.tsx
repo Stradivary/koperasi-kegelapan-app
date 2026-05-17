@@ -244,6 +244,9 @@ export function StationCardsPanel({
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">{cards.length} kartu</span>
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={onNfcScan} disabled={!nfcSupported}>
+              Scan & Sync
+            </Button>
             <Button
               size="sm"
               variant="outline"

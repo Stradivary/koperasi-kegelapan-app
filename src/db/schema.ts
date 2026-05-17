@@ -24,7 +24,9 @@ export const accounts = sqliteTable("accounts", {
     .references(() => tenants.tenantId),
   username: text("username").unique().notNull(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["admin", "station", "gate", "terminal", "scout"] }).notNull(),
+  role: text("role", {
+    enum: ["admin", "station", "gate", "terminal", "scout", "superadmin", "kiosk"],
+  }).notNull(),
   status: text("status", { enum: ["active", "suspended"] })
     .notNull()
     .default("active"),

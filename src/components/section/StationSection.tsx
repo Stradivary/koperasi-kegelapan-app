@@ -61,6 +61,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [fixCardId, setFixCardId] = useState<string | null>(null);
   const [topupAmount, setTopupAmount] = useState<number | null>(null);
+  const [syncDone, setSyncDone] = useState(false);
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId, "station");
@@ -94,9 +95,48 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     }
   }, [state.phase, state.payload, reset, tenantId, qc]);
 
+  // Auto-sync card data to local DB when scanned (non-topup flow)
+  useEffect(() => {
+    if (state.phase !== "ready" || !state.payload || topupAmount != null) return;
+
+    const payload = state.payload;
+    const cardIdHex = Array.from(payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Sync the on-card values to local DB
+    localDb.cards.get([tenantId, cardIdHex]).then((existing) => {
+      if (existing) {
+        localDb.cards.update([tenantId, cardIdHex], {
+          balance: payload.wallet.balance,
+          counter: Number(payload.wallet.counter),
+          lastActivityAt: Math.floor(Date.now() / 1000),
+        });
+      } else {
+        // Card exists on NFC but not in local DB — register it
+        localDb.cards.put({
+          tenantId,
+          cardId: cardIdHex,
+          userId: payload.identity.userId || null,
+          status: "active",
+          balance: payload.wallet.balance,
+          counter: Number(payload.wallet.counter),
+          keyVersion: payload.trailer.keyVersion,
+          createdAt: payload.identity.createdAt,
+          lastActivityAt: Math.floor(Date.now() / 1000),
+          expiresAt: payload.trailer.expiresAt < 9_999_999_999 ? payload.trailer.expiresAt : null,
+          notes: payload.identity.name,
+        });
+      }
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      setSyncDone(true);
+    });
+  }, [state.phase, state.payload, topupAmount, tenantId, qc]);
+
   const handleScan = useCallback(() => {
     setIsDrawerOpen(true);
     setTopupAmount(null);
+    setSyncDone(false);
     scan();
   }, [scan]);
 
@@ -108,6 +148,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     }
     setIsDrawerOpen(false);
     setTopupAmount(null);
+    setSyncDone(false);
   }, [state.phase, cancel, reset]);
 
   const handleDrawerOpenChange = useCallback(
@@ -377,6 +418,18 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     [state.phase, state.payload, handleTopupWrite, scan],
   );
 
+  // Auto-close drawer after sync (non-topup scan)
+  useEffect(() => {
+    if (syncDone && topupAmount == null && state.phase === "ready") {
+      const timer = setTimeout(() => {
+        reset();
+        setIsDrawerOpen(false);
+        setSyncDone(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncDone, topupAmount, state.phase, reset]);
+
   // When card becomes ready and we have a pending topup amount, trigger write
   useEffect(() => {
     if (state.phase === "ready" && topupAmount != null && state.payload) {
@@ -478,6 +531,8 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         onClose={handleDrawerClose}
         onRetry={scan}
         onFixCard={handleFixCard}
+        syncMode={topupAmount == null}
+        syncSuccess={syncDone}
       />
     </div>
   );

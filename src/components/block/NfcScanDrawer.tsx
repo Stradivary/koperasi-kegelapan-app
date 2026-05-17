@@ -26,6 +26,9 @@ interface NfcScanDrawerProps {
   onClose: () => void;
   onRetry: () => void;
   onFixCard?: () => void;
+  /** When true, card-ready state shows synced info instead of masuk/keluar buttons */
+  syncMode?: boolean;
+  syncSuccess?: boolean;
 }
 
 function formatRupiah(amount: number): string {
@@ -90,6 +93,8 @@ export function NfcScanDrawer({
   onClose,
   onRetry,
   onFixCard,
+  syncMode = false,
+  syncSuccess = false,
 }: NfcScanDrawerProps) {
   const isScanning = phase === "scanning" || phase === "validating";
   const hasCard = phase === "ready";
@@ -166,25 +171,52 @@ export function NfcScanDrawer({
                   {formatRupiah(payload.wallet.balance)}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={onCheckin}
-                  disabled={isCheckedIn || isBlocked}
-                  className="h-14 flex-col gap-1 bg-brand-dark hover:bg-brand-dark/90 text-white"
-                >
-                  <LogIn size={20} />
-                  <span className="text-xs font-bold">Masuk</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={onCheckout}
-                  disabled={!isCheckedIn || isBlocked}
-                  className="h-14 flex-col gap-1 border-2"
-                >
-                  <LogOut size={20} />
-                  <span className="text-xs font-bold">Keluar</span>
-                </Button>
-              </div>
+              {syncMode ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-signal-bg-valid border border-signal-valid/30 p-3 text-center">
+                    <CheckCircle2 size={24} className="text-signal-valid mx-auto mb-1" />
+                    <p className="text-sm font-medium text-signal-valid">
+                      {syncSuccess ? "Data kartu disinkronkan" : "Menyinkronkan..."}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-lg bg-muted/50 p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Nama</p>
+                      <p className="font-medium truncate">{payload.identity.name}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className="font-medium">
+                        {payload.wallet.state === 1
+                          ? "Checked-in"
+                          : payload.wallet.state === 0
+                            ? "Idle"
+                            : "Lainnya"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={onCheckin}
+                    disabled={isCheckedIn || isBlocked}
+                    className="h-14 flex-col gap-1 bg-brand-dark hover:bg-brand-dark/90 text-white"
+                  >
+                    <LogIn size={20} />
+                    <span className="text-xs font-bold">Masuk</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={onCheckout}
+                    disabled={!isCheckedIn || isBlocked}
+                    className="h-14 flex-col gap-1 border-2"
+                  >
+                    <LogOut size={20} />
+                    <span className="text-xs font-bold">Keluar</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

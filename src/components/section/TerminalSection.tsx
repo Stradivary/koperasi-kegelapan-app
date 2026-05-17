@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useReconciliation } from "../../hooks/useReconciliation";
@@ -7,15 +8,12 @@ import {
   PARKING_RATE_PER_HOUR,
 } from "../../core/state-machine/engine";
 import { CardState } from "../../core/payload/types";
-import { TransactionList } from "../block/TransactionList";
 import { OfflineIndicator } from "../block/OfflineIndicator";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { CheckoutConfirmCard } from "../block/CheckoutConfirmCard";
 import { formatDuration } from "../../lib/formatters";
-import { useState } from "react";
 
 interface TerminalSectionProps {
   tenantId: string;
@@ -42,42 +40,76 @@ export function TerminalSection({
   const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
-  async function handleCheckout() {
-    if (!state.payload || !grant) return;
+  // Track whether we already triggered auto-checkout for this scan cycle
+  const autoCheckoutTriggered = useRef(false);
+
+  // Auto-checkout when card is ready — no confirmation needed (like gate)
+  useEffect(() => {
+    if (state.phase !== "ready" || !state.payload || autoCheckoutTriggered.current) return;
+
+    const payload = state.payload;
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const cardState = state.payload.wallet.state;
+    const cardState = payload.wallet.state;
+
+    // Card not checked in — nothing to checkout
+    if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
+      autoCheckoutTriggered.current = true;
+      // IDLE or CHECKED_OUT — no action needed, render handles the message
+      return;
+    }
+
     const trigger = cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
-    const result = validateTransition(state.payload, trigger, nowSeconds);
-    if (!result.valid) return;
-    const durationSeconds = nowSeconds - state.payload.session.startTime;
+    const result = validateTransition(payload, trigger, nowSeconds);
+    if (!result.valid) {
+      autoCheckoutTriggered.current = true;
+      setBlockedReason("Transisi tidak valid");
+      return;
+    }
+
+    const durationSeconds = nowSeconds - payload.session.startTime;
     const hours = Math.ceil(durationSeconds / 3600);
     const fee = hours * PARKING_RATE_PER_HOUR;
 
-    // Insufficient balance check: reject if balance < calculated fee
-    if (state.payload.wallet.balance < fee) {
+    // Insufficient balance
+    if (payload.wallet.balance < fee) {
+      autoCheckoutTriggered.current = true;
       setBlockedReason("Saldo anda kurang untuk checkout, harap isi Saldo terlebih dahulu");
       return;
     }
 
-    const actualFee = Math.min(fee, state.payload.wallet.balance);
+    autoCheckoutTriggered.current = true;
+    setBlockedReason(null);
+    const actualFee = Math.min(fee, payload.wallet.balance);
     setLastTx({ durationSeconds, fee: actualFee });
-    await write(applyCheckout(state.payload, nowSeconds));
+    write(applyCheckout(payload, nowSeconds));
+  }, [state.phase, state.payload, write]);
+
+  // Auto-reset after success
+  useEffect(() => {
+    if (state.phase === "success") {
+      const timer = setTimeout(() => {
+        reset();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.phase, reset]);
+
+  // Reset the auto-checkout flag when going back to idle
+  useEffect(() => {
+    if (state.phase === "idle") {
+      autoCheckoutTriggered.current = false;
+      setBlockedReason(null);
+      setLastTx(null);
+    }
+  }, [state.phase]);
+
+  function handleScan() {
+    autoCheckoutTriggered.current = false;
+    setBlockedReason(null);
+    scan();
   }
 
-  const previewFee = (() => {
-    if (!state.payload) return null;
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const durationSeconds = nowSeconds - state.payload.session.startTime;
-    const hours = Math.ceil(durationSeconds / 3600);
-    return {
-      durationSeconds,
-      fee: Math.min(hours * PARKING_RATE_PER_HOUR, state.payload.wallet.balance),
-    };
-  })();
-
   const cardState = state.payload?.wallet.state;
-  const canCheckout =
-    cardState === CardState.CHECKED_IN || cardState === CardState.STATION_OPERATION;
 
   const syncTrailing = (
     <OfflineIndicator pendingCount={pendingCount} onSync={sync} syncStatus={syncStatus} />
@@ -103,98 +135,85 @@ export function TerminalSection({
           </div>
         )}
 
-        {/* Idle */}
+        {/* Idle — tap to scan */}
         {state.phase === "idle" && (
           <div className="flex flex-col items-center gap-6">
-            <NfcTapArea phase="idle" onClick={scan} disabled={!grant || grantLoading} />
+            <NfcTapArea
+              phase="idle"
+              onClick={handleScan}
+              disabled={!grant || grantLoading}
+              label="Tap untuk Checkout"
+            />
             <Button
-              onClick={scan}
+              onClick={handleScan}
               disabled={!grant || grantLoading}
               className="w-full max-w-xs h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
             >
-              Tap Kartu untuk Mulai
+              {grantLoading ? (
+                <LoadingState variant="button" text="Memuat sesi..." />
+              ) : (
+                "Tap Kartu untuk Checkout"
+              )}
             </Button>
           </div>
         )}
 
         {/* Scanning */}
-        {state.phase === "scanning" && (
+        {(state.phase === "scanning" || state.phase === "validating") && (
           <div className="flex flex-col items-center gap-4">
-            <NfcTapArea phase="scanning" />
-            <NfcStatusLabel phase="scanning" />
+            <NfcTapArea phase={state.phase} />
+            <NfcStatusLabel phase={state.phase} />
           </div>
         )}
 
-        {/* Error */}
-        {state.phase === "error" && (
-          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
-            <NfcStatusLabel
-              phase="error"
-              error={state.error}
-              tamperDetected={state.tamperDetected}
-            />
-            <Button variant="outline" onClick={reset} className="w-full">
-              Coba Lagi
-            </Button>
-          </div>
-        )}
-
-        {/* Card ready / writing */}
+        {/* Ready — auto-checkout in progress or blocked */}
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
-          <div className="w-full max-w-xs space-y-4">
-            {blockedReason ? (
-              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center">
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
+            {blockedReason && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center w-full">
                 <p className="type-body1-bold text-destructive">⛔ Checkout Ditolak</p>
                 <p className="type-body2 text-muted-foreground">{blockedReason}</p>
                 <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setBlockedReason(null);
-                    reset();
-                  }}
-                  className="w-full"
-                >
+                <Button variant="outline" onClick={reset} className="w-full">
                   Selesai
                 </Button>
               </div>
-            ) : canCheckout && previewFee ? (
-              <CheckoutConfirmCard
-                payload={state.payload}
-                durationSeconds={previewFee.durationSeconds}
-                fee={previewFee.fee}
-                onConfirm={handleCheckout}
-                phase={state.phase}
-              />
-            ) : cardState === CardState.IDLE ? (
-              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center">
-                <p className="type-body1 text-muted-foreground">Anggota belum check-in</p>
+            ) : cardState === CardState.IDLE && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
+                <p className="type-body1-bold text-signal-warning">Belum Check-in</p>
+                <p className="type-body2 text-muted-foreground">
+                  {state.payload.identity.name} belum melakukan check-in.
+                </p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
+            ) : cardState === CardState.CHECKED_OUT && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
+                <p className="type-body1-bold text-signal-warning">Sudah Checkout</p>
+                <p className="type-body2 text-muted-foreground">
+                  {state.payload.identity.name} sudah dalam status keluar.
+                </p>
                 <Button variant="outline" onClick={reset} className="w-full">
                   Selesai
                 </Button>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center">
-                <p className="type-body1 text-muted-foreground">Anggota sudah checkout</p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
+              <p className="type-body2 text-muted-foreground animate-pulse">
+                Memproses checkout...
+              </p>
             )}
-            <TransactionList
-              entries={state.payload.logEntries}
-              sessionStart={state.payload.session.startTime}
-            />
           </div>
         )}
 
         {/* Success */}
         {state.phase === "success" && state.payload && lastTx && (
-          <div className="w-full max-w-xs space-y-4">
-            <div className="bg-white rounded-2xl border p-4 space-y-3">
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase="success" />
+            <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
               <p className="type-title-bold text-signal-valid">✓ Checkout Berhasil</p>
-              <p className="type-title-bold text-foreground">{state.payload.identity.name}</p>
+              <p className="type-body1 text-foreground">{state.payload.identity.name}</p>
               <div className="space-y-1">
                 <div className="flex justify-between type-body2">
                   <span className="text-muted-foreground">Durasi</span>
@@ -212,11 +231,21 @@ export function TerminalSection({
                 </div>
               </div>
             </div>
-            <Button
-              onClick={reset}
-              className="w-full h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
-            >
-              Scan Berikutnya
+            <p className="text-sm text-muted-foreground animate-pulse">Menutup otomatis...</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {state.phase === "error" && (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
+            <NfcStatusLabel
+              phase="error"
+              error={state.error}
+              tamperDetected={state.tamperDetected}
+            />
+            <Button variant="outline" onClick={reset} className="w-full">
+              Coba Lagi
             </Button>
           </div>
         )}

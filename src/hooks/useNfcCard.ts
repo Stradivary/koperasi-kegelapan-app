@@ -285,6 +285,8 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
 
       const currentPayload = state.payload;
       const currentSerial = state.serialNumber;
+      const reader = readerRef.current;
+      const signal = abortRef.current?.signal;
 
       phaseRef.current = "writing";
       setState((s) => ({ ...s, phase: "writing" }));
@@ -292,6 +294,64 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
       try {
         // Crypto runs while scan is still active — foreground dispatch never drops
         const { bytes: raw, payload } = await prepareWrite(currentPayload, updatedPayload, grant);
+
+        // Attempt immediate write — card is likely still in range from the scan
+        if (reader && signal && !signal.aborted) {
+          try {
+            await reader.write(
+              {
+                records: [
+                  {
+                    recordType: "unknown",
+                    data: raw.buffer.slice(
+                      raw.byteOffset,
+                      raw.byteOffset + raw.byteLength,
+                    ) as ArrayBuffer,
+                  },
+                ],
+              },
+              { signal, overwrite: true },
+            );
+
+            // Write succeeded immediately — record to outbox and finish
+            const cardIdHex = Array.from(updatedPayload.header.cardId)
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("");
+
+            await reconciliationOutbox.add({
+              tenantId,
+              terminalId,
+              cardId: cardIdHex,
+              counter: Number(updatedPayload.wallet.counter),
+              type: operationType,
+              amount: currentPayload.wallet.balance - updatedPayload.wallet.balance,
+              balanceAfter: updatedPayload.wallet.balance,
+              timestamp: updatedPayload.wallet.lastTimestamp,
+              hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join(""),
+              idempotencyKey: makeIdempotencyKey(
+                tenantId,
+                cardIdHex,
+                Number(updatedPayload.wallet.counter),
+              ),
+            });
+
+            phaseRef.current = "success";
+            setState({
+              phase: "success",
+              payload,
+              serialNumber: currentSerial,
+              error: null,
+              tamperDetected: false,
+            });
+            return true;
+          } catch {
+            // Immediate write failed (card removed too fast) — fall back to re-tap
+          }
+        }
+
+        // Fallback: store pending write and wait for next tap
         pendingWriteRef.current = {
           raw,
           payload,
@@ -307,7 +367,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
         return false;
       }
     },
-    [grant, state.payload, state.serialNumber],
+    [grant, state.payload, state.serialNumber, tenantId, terminalId],
   );
 
   const reset = useCallback(() => {
