@@ -1,6 +1,7 @@
 import { getDb } from "#/db";
 import { tenants, accounts } from "#/db/schema";
 import { and, eq, sql } from "drizzle-orm";
+import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/slugValidation";
 
 export interface SyncRequest {
   slug: string;
@@ -8,6 +9,8 @@ export interface SyncRequest {
   timezone: string;
   adminUsername: string;
   adminPasswordHash: string;
+  /** If previously synced, the server-assigned tenant ID to identify self */
+  serverTenantId?: string;
 }
 
 export interface ValidationError {
@@ -40,15 +43,15 @@ export function validateSlug(slug: unknown): ValidationError[] {
     errors.push({ field: "slug", message: "slug is required and must be a string" });
     return errors;
   }
-  if (slug.length < 3 || slug.length > 50) {
-    errors.push({ field: "slug", message: "slug must be between 3 and 50 characters" });
+  if (slug.length < SLUG_MIN_LENGTH || slug.length > SLUG_MAX_LENGTH) {
+    errors.push({ field: "slug", message: `slug must be between ${SLUG_MIN_LENGTH} and ${SLUG_MAX_LENGTH} characters` });
   }
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug) && slug.length >= 3) {
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug) && slug.length >= SLUG_MIN_LENGTH) {
     errors.push({
       field: "slug",
       message: "slug must start and end with a lowercase letter or digit",
     });
-  } else if (slug.length < 3 && slug.length > 0 && !/^[a-z0-9]+$/.test(slug)) {
+  } else if (slug.length < SLUG_MIN_LENGTH && slug.length > 0 && !/^[a-z0-9]+$/.test(slug)) {
     errors.push({
       field: "slug",
       message: "slug must contain only lowercase letters, digits, and hyphens",
@@ -295,29 +298,28 @@ export async function processTenantSync(
     };
   }
 
-  // Step 4: No conflict — create tenant + admin account in a single transaction
+  // Step 4: No conflict — create tenant + admin account atomically via D1 batch
   const tenantId = crypto.randomUUID();
   const accountId = crypto.randomUUID();
 
   try {
-    await db.transaction(async (tx) => {
-      await tx.insert(tenants).values({
+    await db.batch([
+      db.insert(tenants).values({
         tenantId,
         slug: request.slug,
         name: request.name,
         timezone: request.timezone,
         status: "active",
-      });
-
-      await tx.insert(accounts).values({
+      }),
+      db.insert(accounts).values({
         accountId,
         tenantId,
         username: request.adminUsername,
         passwordHash: request.adminPasswordHash,
         role: "admin",
         status: "active",
-      });
-    });
+      }),
+    ]);
   } catch (e: unknown) {
     // Handle race condition: unique constraint violation means another request
     // created the same slug/admin between our check and insert

@@ -207,6 +207,36 @@ export function applyTopup(payload: CardPayload, amount: number, nowSeconds: num
   };
 }
 
+export function applyResetState(payload: CardPayload, nowSeconds: number): CardPayload {
+  const newCounter = payload.wallet.counter + 1n;
+  return {
+    ...payload,
+    identity: {
+      ...payload.identity,
+      status: CardStatus.ACTIVE,
+    },
+    wallet: {
+      ...payload.wallet,
+      state: CardState.IDLE,
+      counter: newCounter,
+      lastTimestamp: nowSeconds,
+      flags: 0,
+    },
+    session: {
+      startTime: 0,
+      endTime: 0,
+      terminalId: 0,
+    },
+    logEntries: buildLogEntry(payload.logEntries, {
+      deltaTime: 0,
+      amount: 0,
+      balanceAfter: payload.wallet.balance,
+      flags: TxType.ADMIN,
+      hash: new Uint8Array(6),
+    }),
+  };
+}
+
 export function buildLogEntry(
   existing: CardPayload["logEntries"],
   entry: CardPayload["logEntries"][number],

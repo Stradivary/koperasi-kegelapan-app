@@ -15,6 +15,7 @@ import {
 } from "../../core/payload/types";
 import { encodeTenantBind } from "../../core/payload/tenantBind";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
+import { TopupDrawer } from "../block/TopupDrawer";
 import { StationFixCardPanel } from "../block/StationFixCardPanel";
 import {
   StationCardsPanel,
@@ -22,6 +23,7 @@ import {
   type StationUserRow,
 } from "../block/StationCardsPanel";
 import { StationMembersPanel } from "../block/StationMembersPanel";
+import { CardOverwriteDialog, type CardOwnerInfo } from "../block/CardOverwriteDialog";
 
 interface StationSectionProps {
   tenantId: string;
@@ -56,28 +58,46 @@ function generateCardId(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(6));
 }
 
+/** Thrown when a card serial is already registered to another owner */
+class CardAlreadyRegisteredError extends Error {
+  constructor(public existingCard: CardOwnerInfo) {
+    super("Kartu sudah terdaftar");
+    this.name = "CardAlreadyRegisteredError";
+  }
+}
+
 export function StationSection({ tenantId, accountId, deviceId, terminalId }: StationSectionProps) {
   const [tab, setTab] = useState<Tab>("cards");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [fixCardId, setFixCardId] = useState<string | null>(null);
-  const [topupAmount, setTopupAmount] = useState<number | null>(null);
-  const [syncDone, setSyncDone] = useState(false);
+  const [overwriteDialog, setOverwriteDialog] = useState<{
+    existingCard: CardOwnerInfo;
+    pendingIssue: { name: string; userId: number | null; balance: number; expiresAt: number | null };
+  } | null>(null);
+  const [isOverwriting, setIsOverwriting] = useState(false);
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId, "station");
   const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
 
+  // Normalize hardware serial number to consistent hex format
+  const normalizeSerial = (sn: string | null): string | null => {
+    if (!sn) return null;
+    const normalized = sn.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+    return normalized || null;
+  };
+
   // Auto-close drawer after success and sync local DB
   useEffect(() => {
     if (state.phase === "success" && state.payload) {
       const payload = state.payload;
-      const cardIdHex = Array.from(payload.header.cardId)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const cardId = normalizeSerial(state.serialNumber);
+      if (!cardId) return;
       // Sync balance to local DB after successful write
-      localDb.cards.get([tenantId, cardIdHex]).then((existing) => {
+      localDb.cards.get([tenantId, cardId]).then((existing) => {
         if (existing) {
-          localDb.cards.update([tenantId, cardIdHex], {
+          localDb.cards.update([tenantId, cardId], {
             balance: payload.wallet.balance,
             counter: Number(payload.wallet.counter),
             lastActivityAt: Math.floor(Date.now() / 1000),
@@ -89,25 +109,24 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       const timer = setTimeout(() => {
         reset();
         setIsDrawerOpen(false);
-        setTopupAmount(null);
+        setTopupDrawerOpen(false);
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, state.payload, reset, tenantId, qc]);
+  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc]);
 
-  // Auto-sync card data to local DB when scanned (non-topup flow)
+  // Auto-sync card data to local DB when scanned (always, including topup)
   useEffect(() => {
-    if (state.phase !== "ready" || !state.payload || topupAmount != null) return;
+    if (state.phase !== "ready" || !state.payload) return;
 
     const payload = state.payload;
-    const cardIdHex = Array.from(payload.header.cardId)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    const cardId = normalizeSerial(state.serialNumber);
+    if (!cardId) return;
 
-    // Sync the on-card values to local DB
-    localDb.cards.get([tenantId, cardIdHex]).then((existing) => {
+    // Sync the on-card values to local DB using hardware serial as stable ID
+    localDb.cards.get([tenantId, cardId]).then((existing) => {
       if (existing) {
-        localDb.cards.update([tenantId, cardIdHex], {
+        localDb.cards.update([tenantId, cardId], {
           balance: payload.wallet.balance,
           counter: Number(payload.wallet.counter),
           lastActivityAt: Math.floor(Date.now() / 1000),
@@ -116,7 +135,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         // Card exists on NFC but not in local DB — register it
         localDb.cards.put({
           tenantId,
-          cardId: cardIdHex,
+          cardId,
           userId: payload.identity.userId || null,
           status: "active",
           balance: payload.wallet.balance,
@@ -129,16 +148,8 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         });
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-      setSyncDone(true);
     });
-  }, [state.phase, state.payload, topupAmount, tenantId, qc]);
-
-  const handleScan = useCallback(() => {
-    setIsDrawerOpen(true);
-    setTopupAmount(null);
-    setSyncDone(false);
-    scan();
-  }, [scan]);
+  }, [state.phase, state.payload, state.serialNumber, tenantId, qc]);
 
   const handleDrawerClose = useCallback(() => {
     if (state.phase === "scanning" || state.phase === "validating") {
@@ -147,8 +158,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       reset();
     }
     setIsDrawerOpen(false);
-    setTopupAmount(null);
-    setSyncDone(false);
+    setTopupDrawerOpen(false);
   }, [state.phase, cancel, reset]);
 
   const handleDrawerOpenChange = useCallback(
@@ -165,8 +175,8 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     setTab("fix-card");
   }, [state.serialNumber, handleDrawerClose]);
 
-  // Top-up: once card is scanned and amount is set, write to card
-  const handleTopupWrite = useCallback(
+  // Top-up: user confirmed amount in the topup drawer
+  const handleTopupConfirm = useCallback(
     async (amount: number) => {
       if (!state.payload || !grant) return;
       const now = Math.floor(Date.now() / 1000);
@@ -189,36 +199,6 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   });
 
   // Mutations
-  const registerCard = useMutation({
-    mutationFn: async ({
-      cardId,
-      userId,
-      balance,
-      expiresAt,
-    }: {
-      cardId: string;
-      userId: number | null;
-      balance: number;
-      expiresAt: number | null;
-    }) => {
-      const now = Math.floor(Date.now() / 1000);
-      await localDb.cards.put({
-        tenantId,
-        cardId,
-        userId,
-        status: "active",
-        balance,
-        counter: 0,
-        keyVersion: 1,
-        createdAt: now,
-        lastActivityAt: null,
-        expiresAt,
-        notes: null,
-      });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
-  });
-
   const updateCardStatus = useMutation({
     mutationFn: async ({ card, status }: { card: StationCardRow; status: string }) => {
       await localDb.cards.update([tenantId, card.cardId], { status: status as Card["status"] });
@@ -239,19 +219,18 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       userId,
       balance,
       expiresAt,
+      forceOverwrite,
     }: {
       name: string;
       userId: number | null;
       balance: number;
       expiresAt: number | null;
+      forceOverwrite?: boolean;
     }) => {
       if (!grant) throw new Error("Sesi tidak aktif");
 
       const now = Math.floor(Date.now() / 1000);
       const cardId = generateCardId();
-      const cardIdHex = Array.from(cardId)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
 
       // Build fresh CardPayload
       const payload: CardPayload = {
@@ -292,12 +271,56 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       // Encrypt and sign the payload
       const { bytes } = await prepareWrite(payload, payload, grant);
 
-      // Write to NFC card using scan-then-write pattern
-      // NDEFReader.write() handles waiting for a tag automatically
+      // Write to NFC card and capture hardware serial number
+      // We use scan + reading event to get the serial, then write in the same session
       const reader = new NDEFReader();
       const abort = new AbortController();
       const timeout = setTimeout(() => abort.abort(), 30_000);
+
+      let capturedSerial: string | null = null;
+
       try {
+        // Start scanning to capture the serial number on tap
+        const serialPromise = new Promise<string>((resolve, reject) => {
+          reader.addEventListener("reading", (event: NDEFReadingEvent) => {
+            const serial = event.serialNumber?.replace(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+            if (serial) {
+              resolve(serial);
+            } else {
+              reject(new Error("Kartu tidak memiliki serial number"));
+            }
+          });
+          abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
+        });
+
+        await reader.scan({ signal: abort.signal });
+
+        // Wait for the card to be tapped (reading event fires)
+        capturedSerial = await serialPromise;
+
+        // ── Check if card is already registered ──
+        if (!forceOverwrite) {
+          const existing = await localDb.cards.get([tenantId, capturedSerial]);
+          if (existing) {
+            // Look up owner name
+            let ownerName: string | null = existing.notes;
+            if (existing.userId != null && !ownerName) {
+              const user = await localDb.users.get([tenantId, existing.userId]);
+              ownerName = user?.name ?? null;
+            }
+            // Abort the NFC session before throwing
+            abort.abort();
+            throw new CardAlreadyRegisteredError({
+              cardId: capturedSerial,
+              ownerName,
+              userId: existing.userId,
+              balance: existing.balance,
+              status: existing.status,
+            });
+          }
+        }
+
+        // Now write to the card that's still in range
         await reader.write(
           {
             records: [
@@ -314,12 +337,17 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         );
       } finally {
         clearTimeout(timeout);
+        abort.abort();
       }
 
-      // Register in local DB
+      if (!capturedSerial) {
+        throw new Error("Gagal membaca serial kartu");
+      }
+
+      // Register in local DB using hardware serial as the stable card ID
       await localDb.cards.put({
         tenantId,
-        cardId: cardIdHex,
+        cardId: capturedSerial,
         userId,
         status: "active",
         balance,
@@ -402,40 +430,14 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
   });
 
-  // Top-up flow handler: scan card via NfcScanDrawer, then write topup
+  // Top-up flow handler — opens topup drawer and starts scanning
   const handleTopupCard = useCallback(
-    async (_cardId: string, amount: number) => {
-      setTopupAmount(amount);
-      // If card is already scanned and ready, write immediately
-      if (state.phase === "ready" && state.payload) {
-        await handleTopupWrite(amount);
-      } else {
-        // Open drawer to scan card first
-        setIsDrawerOpen(true);
-        scan();
-      }
+    (_cardId: string) => {
+      setTopupDrawerOpen(true);
+      scan();
     },
-    [state.phase, state.payload, handleTopupWrite, scan],
+    [scan],
   );
-
-  // Auto-close drawer after sync (non-topup scan)
-  useEffect(() => {
-    if (syncDone && topupAmount == null && state.phase === "ready") {
-      const timer = setTimeout(() => {
-        reset();
-        setIsDrawerOpen(false);
-        setSyncDone(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [syncDone, topupAmount, state.phase, reset]);
-
-  // When card becomes ready and we have a pending topup amount, trigger write
-  useEffect(() => {
-    if (state.phase === "ready" && topupAmount != null && state.payload) {
-      handleTopupWrite(topupAmount);
-    }
-  }, [state.phase, topupAmount, state.payload, handleTopupWrite]);
 
   return (
     <div className="space-y-4">
@@ -472,20 +474,29 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           cards={cards.data ?? []}
           members={members.data ?? []}
           isLoading={cards.isLoading}
-          isRegistering={registerCard.isPending}
           isTopping={state.phase === "writing"}
           isIssuing={issueCard.isPending}
           isUpdatingStatus={updateCardStatus.isPending}
           isDeleting={deleteCard.isPending}
           hasGrant={!!grant}
-          onRegisterCard={(data) => registerCard.mutateAsync(data)}
           onTopupCard={handleTopupCard}
-          onIssueCard={(data) => issueCard.mutateAsync(data)}
+          onIssueCard={async (data) => {
+            try {
+              await issueCard.mutateAsync(data);
+            } catch (e) {
+              if (e instanceof CardAlreadyRegisteredError) {
+                setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
+              } else {
+                throw e;
+              }
+            }
+          }}
           onUpdateCardStatus={(card, newStatus) =>
             updateCardStatus.mutate({ card, status: newStatus })
           }
           onDeleteCard={(card) => deleteCard.mutate({ card })}
-          onNfcScan={handleScan}
+          isResetting={false}
+          onResetCard={() => {}}
         />
       )}
       {tab === "members" && (
@@ -531,8 +542,42 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         onClose={handleDrawerClose}
         onRetry={scan}
         onFixCard={handleFixCard}
-        syncMode={topupAmount == null}
-        syncSuccess={syncDone}
+      />
+
+      <TopupDrawer
+        open={topupDrawerOpen}
+        onOpenChange={(open) => {
+          if (!open) handleDrawerClose();
+        }}
+        phase={state.phase}
+        payload={state.payload}
+        error={state.error}
+        onTopup={handleTopupConfirm}
+        onClose={handleDrawerClose}
+        onRetry={scan}
+      />
+
+      <CardOverwriteDialog
+        open={overwriteDialog != null}
+        existingCard={overwriteDialog?.existingCard ?? null}
+        newOwnerName={overwriteDialog?.pendingIssue.name ?? ""}
+        isProcessing={isOverwriting}
+        onCancel={() => setOverwriteDialog(null)}
+        onConfirm={async () => {
+          if (!overwriteDialog) return;
+          setIsOverwriting(true);
+          try {
+            await issueCard.mutateAsync({
+              ...overwriteDialog.pendingIssue,
+              forceOverwrite: true,
+            });
+            setOverwriteDialog(null);
+          } catch {
+            // Error will be shown by the mutation's error state
+          } finally {
+            setIsOverwriting(false);
+          }
+        }}
       />
     </div>
   );

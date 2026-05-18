@@ -38,20 +38,27 @@ export function LoginSection() {
 
   useEffect(() => {
     async function detectMode() {
-      // Auto-boot: if this device is already registered as a no-auth role, go directly
+      // Auto-boot: if this device already has an active session, redirect back
       const contexts = await tenantContextStore.getAll();
-      const noAuthCtx = contexts.find((c) => (NO_AUTH_ROLES as readonly string[]).includes(c.role));
-      if (noAuthCtx) {
-        const roleRoutes: Record<string, string> = {
-          terminal: `/tenant/${noAuthCtx.tenantId}/terminal`,
-          gate: `/tenant/${noAuthCtx.tenantId}/gate`,
-          kiosk: `/tenant/${noAuthCtx.tenantId}/kiosk`,
-          scout: `/tenant/${noAuthCtx.tenantId}/scout`,
-          station: `/tenant/${noAuthCtx.tenantId}/station`,
-          admin: `/tenant/${noAuthCtx.tenantId}/admin`,
-        };
-        navigate({ to: roleRoutes[noAuthCtx.role] ?? "/" });
-        return;
+      if (contexts.length > 0) {
+        // Prefer no-auth roles (dedicated devices), then fall back to most recent context
+        const noAuthCtx = contexts.find((c) =>
+          (NO_AUTH_ROLES as readonly string[]).includes(c.role),
+        );
+        const activeCtx =
+          noAuthCtx ?? contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
+        if (activeCtx) {
+          const roleRoutes: Record<string, string> = {
+            terminal: `/tenant/${activeCtx.tenantId}/terminal`,
+            gate: `/tenant/${activeCtx.tenantId}/gate`,
+            kiosk: `/tenant/${activeCtx.tenantId}/kiosk`,
+            scout: `/tenant/${activeCtx.tenantId}/scout`,
+            station: `/tenant/${activeCtx.tenantId}/station`,
+            admin: `/tenant/${activeCtx.tenantId}/admin`,
+          };
+          navigate({ to: roleRoutes[activeCtx.role] ?? "/", replace: true });
+          return;
+        }
       }
 
       const exists = await hasLocalTenant();

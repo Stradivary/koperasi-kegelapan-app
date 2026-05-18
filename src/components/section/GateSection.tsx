@@ -29,12 +29,16 @@ export function GateSection({
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
 
-  // Simulation mode: time picker
+  // Simulation mode: date+time picker
   const [simulationMode, setSimulationMode] = useState(false);
-  const [simulatedTime, setSimulatedTime] = useState(() => {
+  const [simulatedDateTime, setSimulatedDateTime] = useState(() => {
     const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    // Format: YYYY-MM-DDTHH:MM for datetime-local input
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
+  // 24-hour max checkout enforcement (default: enabled)
+  const [enforce24hLimit, setEnforce24hLimit] = useState(true);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   // Track whether we already triggered auto-checkin for this scan cycle
@@ -42,14 +46,14 @@ export function GateSection({
 
   // Get the current timestamp (real or simulated)
   const getNowSeconds = useCallback(() => {
-    if (simulationMode && simulatedTime) {
-      const [hours, minutes] = simulatedTime.split(":").map(Number);
-      const simDate = new Date();
-      simDate.setHours(hours, minutes, 0, 0);
-      return Math.floor(simDate.getTime() / 1000);
+    if (simulationMode && simulatedDateTime) {
+      const simDate = new Date(simulatedDateTime);
+      if (!isNaN(simDate.getTime())) {
+        return Math.floor(simDate.getTime() / 1000);
+      }
     }
     return Math.floor(Date.now() / 1000);
-  }, [simulationMode, simulatedTime]);
+  }, [simulationMode, simulatedDateTime]);
 
   // Auto check-in when card is ready — no confirmation needed
   useEffect(() => {
@@ -97,7 +101,14 @@ export function GateSection({
       }
 
       // Proceed with normal transition validation
-      const result = validateTransition(payload, "gate_checkin", nowSeconds);
+      // When enforce24hLimit is disabled, skip session expiry check by using
+      // a "fresh" nowSeconds that won't trigger the expiry logic
+      let validationNow = nowSeconds;
+      if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
+        // Use a timestamp just after lastTimestamp to bypass expiry check
+        validationNow = payload.wallet.lastTimestamp + 1;
+      }
+      const result = validateTransition(payload, "gate_checkin", validationNow);
       if (!result.valid) {
         autoCheckinTriggered.current = true;
         return;
@@ -114,7 +125,7 @@ export function GateSection({
       setBlockedReason(null);
       write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
     });
-  }, [state.phase, state.payload, write, terminalId, getNowSeconds, tenantId]);
+  }, [state.phase, state.payload, write, terminalId, getNowSeconds, tenantId, enforce24hLimit]);
 
   // Auto-reset after success
   useEffect(() => {
@@ -250,7 +261,7 @@ export function GateSection({
         )}
       </div>
 
-      {/* Simulation mode toggle & time picker */}
+      {/* Simulation mode toggle & date+time picker */}
       <div className="border-t bg-white/80 px-4 py-3 space-y-2">
         <button
           type="button"
@@ -261,17 +272,28 @@ export function GateSection({
           <span>{simulationMode ? "Mode Simulasi Aktif" : "Mode Simulasi"}</span>
         </button>
         {simulationMode && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="sim-time" className="text-sm text-muted-foreground whitespace-nowrap">
-              Waktu check-in:
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <label htmlFor="sim-datetime" className="text-sm text-muted-foreground whitespace-nowrap">
+                Waktu check-in:
+              </label>
+              <Input
+                id="sim-datetime"
+                type="datetime-local"
+                value={simulatedDateTime}
+                onChange={(e) => setSimulatedDateTime(e.target.value)}
+                className="w-auto"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enforce24hLimit}
+                onChange={(e) => setEnforce24hLimit(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Batasi maks 24 jam checkout
             </label>
-            <Input
-              id="sim-time"
-              type="time"
-              value={simulatedTime}
-              onChange={(e) => setSimulatedTime(e.target.value)}
-              className="w-auto"
-            />
           </div>
         )}
       </div>

@@ -58,8 +58,13 @@ function NfcTestPage() {
     const reader = new NDEFReader();
 
     reader.addEventListener("reading", (event: NDEFReadingEvent) => {
+      // Normalize serial: strip non-hex chars, lowercase — this is the stable hardware UID
+      const rawSerial = event.serialNumber || "(none)";
+      const normalizedSerial = event.serialNumber
+        ? event.serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase()
+        : "(none)";
       addLog(
-        `✅ Card detected  serial=${event.serialNumber || "(none)"}  records=${event.message.records.length}`,
+        `✅ Card detected  serial=${rawSerial}  normalized=${normalizedSerial}  records=${event.message.records.length}`,
       );
       event.message.records.forEach((rec, i) => {
         const bytes = rec.data
@@ -284,6 +289,9 @@ function NfcTestPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           Shows raw NDEF records — works on formatted cards only.
+          <br />
+          <strong>Note:</strong> The normalized serial (hardware UID, hex without separators) is the
+          stable card identifier used by the app. Same card = same normalized serial every scan.
         </p>
       </section>
 

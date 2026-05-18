@@ -42,7 +42,8 @@ export const Route = createFileRoute("/api/tenants/sync")({
           if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
             return errJson(409, "Conflict: tenant or admin already exists");
           }
-          return errJson(500, "Internal server error");
+          console.error("[POST /api/tenants/sync] processTenantSync failed:", msg);
+          return errJson(500, `Internal server error: ${msg}`);
         }
       },
     },

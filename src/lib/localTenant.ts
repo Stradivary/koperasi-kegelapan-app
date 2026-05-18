@@ -11,6 +11,7 @@ import {
   type LocalAccount,
   type LocalTenantConfig,
 } from "./indexeddb";
+import { createSlug, validateSlugFormat } from "./slugValidation";
 
 const PBKDF2_ITERATIONS = 310_000;
 const PBKDF2_HASH = "SHA-256";
@@ -65,6 +66,12 @@ async function pbkdf2Verify(password: string, storedHash: string): Promise<boole
 
 // ── Tenant setup ─────────────────────────────────────────────────────────────
 
+/** Check if a slug is already used by an existing local tenant. */
+export async function isLocalSlugTaken(slug: string): Promise<boolean> {
+  const existingTenants = await localTenantConfigStore.getAll();
+  return existingTenants.some((t) => t.slug === slug);
+}
+
 export interface SetupLocalTenantParams {
   name: string;
   slug?: string;
@@ -75,7 +82,20 @@ export interface SetupLocalTenantParams {
 
 export async function setupLocalTenant(params: SetupLocalTenantParams): Promise<LocalTenantConfig> {
   const tenantId = crypto.randomUUID();
-  const slug = params.slug ?? params.name.toLowerCase().replace(/\s+/g, "-");
+  const slug = params.slug ?? createSlug(params.name);
+
+  // Validate slug format (min 3 chars, valid characters, etc.)
+  const slugError = validateSlugFormat(slug);
+  if (slugError) {
+    throw new Error(slugError);
+  }
+
+  // Validate slug uniqueness among existing local tenants
+  const existingTenants = await localTenantConfigStore.getAll();
+  const duplicate = existingTenants.find((t) => t.slug === slug);
+  if (duplicate) {
+    throw new Error(`Slug "${slug}" sudah digunakan oleh koperasi "${duplicate.name}".`);
+  }
 
   const cfg: LocalTenantConfig = {
     tenantId,

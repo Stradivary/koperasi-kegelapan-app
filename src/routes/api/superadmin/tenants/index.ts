@@ -21,8 +21,10 @@ export const Route = createFileRoute("/api/superadmin/tenants/")({
         try {
           const result = await listTenants({ page, pageSize, search });
           return jsonOk(result);
-        } catch {
-          return errJson(500, "Internal server error");
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[GET /api/superadmin/tenants] listTenants failed:", msg);
+          return errJson(500, `Internal server error: ${msg}`);
         }
       },
 
@@ -40,8 +42,10 @@ export const Route = createFileRoute("/api/superadmin/tenants/")({
             status: result.status,
             headers: { "Content-Type": "application/json" },
           });
-        } catch {
-          return errJson(500, "Internal server error");
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[POST /api/superadmin/tenants] createTenant failed:", msg);
+          return errJson(500, `Internal server error: ${msg}`);
         }
       },
     },

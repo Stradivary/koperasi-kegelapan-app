@@ -9,15 +9,34 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const parts = stored.split("$");
-  if (parts.length !== 3 || parts[0] !== "pbkdf2") return false;
-  const [, salt, hash] = parts;
-  const computed = pbkdf2Sync(password, salt, 310_000, 32, "sha256").toString("hex");
-  try {
-    return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(computed, "hex"));
-  } catch {
-    return false;
+  // Format A: server-side hash "pbkdf2$saltHex$hashHex"
+  if (stored.startsWith("pbkdf2$")) {
+    const parts = stored.split("$");
+    if (parts.length !== 3) return false;
+    const [, salt, hash] = parts;
+    const computed = pbkdf2Sync(password, salt, 310_000, 32, "sha256").toString("hex");
+    try {
+      return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(computed, "hex"));
+    } catch {
+      return false;
+    }
   }
+
+  // Format B: client-side hash "iterations:saltHex:hashHex"
+  const colonParts = stored.split(":");
+  if (colonParts.length === 3) {
+    const [iterStr, saltHex, hashHex] = colonParts;
+    const iterations = parseInt(iterStr, 10);
+    if (!Number.isInteger(iterations) || iterations <= 0) return false;
+    const computed = pbkdf2Sync(password, Buffer.from(saltHex, "hex"), iterations, 32, "sha256").toString("hex");
+    try {
+      return timingSafeEqual(Buffer.from(hashHex, "hex"), Buffer.from(computed, "hex"));
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 export function generateId(): string {

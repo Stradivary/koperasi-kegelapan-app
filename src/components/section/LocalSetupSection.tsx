@@ -1,10 +1,12 @@
 import { CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { tenantContextStore } from "../../lib/indexeddb";
-import { setupLocalTenant } from "../../lib/localTenant";
+import { isLocalSlugTaken, setupLocalTenant } from "../../lib/localTenant";
+import { createSlug, validateSlugFormat } from "../../lib/slugValidation";
+import { useTenantSync } from "../../hooks/useTenantSync";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -20,11 +22,56 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
   const [step, setStep] = useState<SetupStep>("tenant");
   const [tenantName, setTenantName] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
+  const [slugError, setSlugError] = useState<string | null>(null);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { syncToServer } = useTenantSync();
+
+  // Validate slug uniqueness against local tenants on change
+  const validateSlug = useCallback(async (slug: string) => {
+    if (!slug) {
+      setSlugError(null);
+      return;
+    }
+
+    const formatError = validateSlugFormat(slug);
+    if (formatError) {
+      setSlugError(formatError);
+      return;
+    }
+
+    const taken = await isLocalSlugTaken(slug);
+    setSlugError(taken ? `Slug "${slug}" sudah digunakan oleh koperasi lain.` : null);
+  }, []);
+
+  // Debounced slug validation
+  useEffect(() => {
+    const effectiveSlug = tenantSlug || createSlug(tenantName);
+    if (!effectiveSlug) return;
+    const timer = setTimeout(() => validateSlug(effectiveSlug), 300);
+    return () => clearTimeout(timer);
+  }, [tenantSlug, tenantName, validateSlug]);
+
+  async function handleNextStep() {
+    const slug = tenantSlug || createSlug(tenantName);
+
+    const formatError = validateSlugFormat(slug);
+    if (formatError) {
+      setSlugError(formatError);
+      return;
+    }
+
+    const taken = await isLocalSlugTaken(slug);
+    if (taken) {
+      setSlugError(`Slug "${slug}" sudah digunakan oleh koperasi lain.`);
+      return;
+    }
+    setAdminUsername(`${slug}-admin`);
+    setStep("admin");
+  }
 
   async function handleSetup() {
     if (adminPassword !== confirmPassword) {
@@ -54,6 +101,19 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
         terminalId: 0,
         updatedAt: Date.now(),
       });
+
+      // Auto-sync to server if online (fire-and-forget, don't block setup)
+      if (navigator.onLine) {
+        const { localAccountStore } = await import("../../lib/indexeddb");
+        const accounts = await localAccountStore.getByTenant(cfg.tenantId);
+        const admin = accounts.find((a) => a.role === "admin");
+        if (admin) {
+          syncToServer(cfg, admin.passwordHash).catch(() => {
+            // Sync failed silently — user can retry from admin panel
+          });
+        }
+      }
+
       setStep("done");
       setTimeout(() => onComplete(cfg.tenantId, "admin"), 1200);
     } catch (e) {
@@ -85,23 +145,23 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
             <Input
               placeholder="koperasi-maju"
               value={tenantSlug}
-              onChange={(e) => setTenantSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+              onChange={(e) => setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
             />
-            <p className="type-body2 text-muted-foreground">
-              Biarkan kosong untuk generate otomatis
-            </p>
+            {slugError ? (
+              <p className="type-body2 text-signal-error">{slugError}</p>
+            ) : (
+              <p className="type-body2 text-muted-foreground">
+                Biarkan kosong untuk generate otomatis
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onBack} className="flex-1">
               Kembali
             </Button>
             <Button
-              onClick={() => {
-                const slug = tenantSlug || tenantName.toLowerCase().replace(/\s+/g, "-");
-                setAdminUsername(`${slug}-admin`);
-                setStep("admin");
-              }}
-              disabled={!tenantName.trim()}
+              onClick={handleNextStep}
+              disabled={!tenantName.trim() || !!slugError}
               className="flex-1 bg-brand-dark text-white hover:bg-brand-dark/90"
             >
               Lanjut
@@ -130,7 +190,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
             <p className="type-body2 text-muted-foreground">
               Disarankan:{" "}
               <code className="text-xs">
-                {(tenantSlug || tenantName.toLowerCase().replace(/\s+/g, "-")) + "-admin"}
+                {(tenantSlug || createSlug(tenantName)) + "-admin"}
               </code>
             </p>
           </div>

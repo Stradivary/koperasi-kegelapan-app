@@ -9,7 +9,7 @@
     "dev": "vite dev --port 3000",
     "dev:local": "vite dev --port 3000",
     "dev:remote": "CF_REMOTE_BINDINGS=1 vite dev --port 3000",
-    "build": "vite build && node scripts/build-sw.mjs",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

@@ -11,6 +11,10 @@ export interface SyncConflict {
   conflictType: "slug_and_admin" | "slug_only" | "admin_only";
   existingTenantName: string;
   existingSlug: string;
+  /** Current slug being synced (for editing in conflict dialog) */
+  currentSlug: string;
+  /** Current admin username being synced (for editing in conflict dialog) */
+  currentAdminUsername: string;
 }
 
 export interface UseTenantSyncReturn {
@@ -18,6 +22,8 @@ export interface UseTenantSyncReturn {
   conflict: SyncConflict | null;
   error: string | null;
   syncToServer: (config: LocalTenantConfig, adminPassword: string) => Promise<void>;
+  /** Retry sync with a new slug and/or admin username after conflict */
+  retryWithChanges: (newSlug: string, newAdminUsername: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -27,8 +33,17 @@ export function useTenantSync(): UseTenantSyncReturn {
   const [error, setError] = useState<string | null>(null);
   const statusRef = useRef<SyncStatus>("idle");
 
-  const syncToServer = useCallback(
-    async (config: LocalTenantConfig, adminPassword: string): Promise<void> => {
+  // Keep last sync params for retry
+  const lastConfigRef = useRef<LocalTenantConfig | null>(null);
+  const lastPasswordRef = useRef<string>("");
+
+  const performSync = useCallback(
+    async (
+      config: LocalTenantConfig,
+      adminPasswordHash: string,
+      slugOverride?: string,
+      adminUsernameOverride?: string,
+    ): Promise<void> => {
       // Ignore duplicate calls while syncing
       if (statusRef.current === "syncing") return;
 
@@ -37,35 +52,50 @@ export function useTenantSync(): UseTenantSyncReturn {
       setConflict(null);
       setError(null);
 
+      // Store for potential retry
+      lastConfigRef.current = config;
+      lastPasswordRef.current = adminPasswordHash;
+
       try {
         // Resolve the actual admin username from IndexedDB instead of hardcoding
         const accounts = await localAccountStore.getByTenant(config.tenantId);
         const admin = accounts.find((a) => a.role === "admin");
-        const adminUsername = admin?.username ?? config.slug + "-admin";
+        const adminUsername =
+          adminUsernameOverride ?? admin?.username ?? config.slug + "-admin";
+        const slug = slugOverride ?? config.slug;
 
         const res = await fetch("/api/tenants/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            slug: config.slug,
+            slug,
             name: config.name,
             timezone: config.timezone,
             adminUsername,
-            adminPasswordHash: adminPassword,
+            adminPasswordHash,
+            // Send serverTenantId so the server can identify re-syncs from the same tenant
+            serverTenantId: config.serverTenantId ?? undefined,
+            localTenantId: config.tenantId,
           }),
         });
 
-        if (res.status === 201) {
+        if (res.status === 201 || res.status === 200) {
           const data = await res.json();
 
-          // Update LocalTenantConfig in IndexedDB
+          // Update LocalTenantConfig in IndexedDB with new slug if changed
           const updatedConfig: LocalTenantConfig = {
             ...config,
+            slug,
             mode: "synced",
             syncedAt: Date.now(),
-            serverTenantId: data.tenantId,
+            serverTenantId: data.tenantId ?? config.serverTenantId,
           };
           await localTenantConfigStore.put(updatedConfig);
+
+          // Update admin username in IndexedDB if it was changed
+          if (admin && admin.username !== adminUsername) {
+            await localAccountStore.put({ ...admin, username: adminUsername });
+          }
 
           statusRef.current = "success";
           setStatus("success");
@@ -75,6 +105,8 @@ export function useTenantSync(): UseTenantSyncReturn {
             conflictType: data.conflictType,
             existingTenantName: data.existingTenantName,
             existingSlug: data.existingSlug,
+            currentSlug: slug,
+            currentAdminUsername: adminUsername,
           };
           statusRef.current = "conflict";
           setStatus("conflict");
@@ -104,6 +136,26 @@ export function useTenantSync(): UseTenantSyncReturn {
     [],
   );
 
+  const syncToServer = useCallback(
+    async (config: LocalTenantConfig, adminPassword: string): Promise<void> => {
+      await performSync(config, adminPassword);
+    },
+    [performSync],
+  );
+
+  const retryWithChanges = useCallback(
+    async (newSlug: string, newAdminUsername: string): Promise<void> => {
+      const config = lastConfigRef.current;
+      const password = lastPasswordRef.current;
+      if (!config) {
+        setError("Tidak ada data sync sebelumnya untuk dicoba ulang.");
+        return;
+      }
+      await performSync(config, password, newSlug, newAdminUsername);
+    },
+    [performSync],
+  );
+
   const reset = useCallback(() => {
     statusRef.current = "idle";
     setStatus("idle");
@@ -111,5 +163,5 @@ export function useTenantSync(): UseTenantSyncReturn {
     setError(null);
   }, []);
 
-  return { status, conflict, error, syncToServer, reset };
+  return { status, conflict, error, syncToServer, retryWithChanges, reset };
 }

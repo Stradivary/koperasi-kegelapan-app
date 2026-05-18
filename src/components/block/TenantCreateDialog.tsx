@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select.tsx";
+import { createSlug, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/slugValidation.ts";
 
 // --- Types ---
 
@@ -48,8 +49,8 @@ export interface TenantCreateDialogProps {
 // --- Validation ---
 
 export function validateSlug(slug: string): string | null {
-  if (slug.length < 3 || slug.length > 50) {
-    return "Slug must be between 3 and 50 characters";
+  if (slug.length < SLUG_MIN_LENGTH || slug.length > SLUG_MAX_LENGTH) {
+    return `Slug must be between ${SLUG_MIN_LENGTH} and ${SLUG_MAX_LENGTH} characters`;
   }
   if (/[^a-z0-9-]/.test(slug)) {
     return "Slug must contain only lowercase letters, digits, and hyphens";
@@ -107,18 +108,10 @@ export function validateAdminPassword(password: string): string | null {
 
 /**
  * Auto-generate a slug from a tenant name.
- * - Lowercase
- * - Replace non-alphanumeric with hyphens
- * - Collapse consecutive hyphens
- * - Trim leading/trailing hyphens
+ * Delegates to the shared createSlug utility.
  */
 export function generateSlugFromName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "");
+  return createSlug(name);
 }
 
 // --- Timezone list ---

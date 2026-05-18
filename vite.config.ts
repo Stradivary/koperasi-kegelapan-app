@@ -26,8 +26,8 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
     VitePWA({
-      registerType: "prompt",
-      injectRegister: null,
+      registerType: "autoUpdate",
+      injectRegister: 'auto',
       includeAssets: [
         "favicon.ico",
         "logo192.png",
@@ -35,6 +35,7 @@ const config = defineConfig({
         "assets/TelkomselBatikSans-Bold.woff2",
         "assets/TelkomselBatikSans-Regular.woff2",
       ],
+      strategies: "generateSW",
       manifest: {
         name: "Koperasi Kegelapan",
         short_name: "KK Wallet",

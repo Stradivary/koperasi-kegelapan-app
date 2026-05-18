@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Monitor, ShoppingCart, Search, DoorOpen, Check, LogOut } from "lucide-react";
+import { Monitor, MonitorSmartphone, ShoppingCart, Search, DoorOpen, Check, LogOut } from "lucide-react";
 import { BRAND } from "../../lib/brand";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
@@ -12,13 +12,13 @@ interface KioskLayoutProps {
   subtitle?: string;
   tenantName: string;
   tenantId: string;
-  currentMode: "terminal" | "kiosk" | "scout" | "gate";
+  currentMode: "terminal" | "kiosk" | "scout" | "gate" | "station";
   trailing?: React.ReactNode;
   /** @deprecated Use mode switching instead. Kept for backward compat. */
   onLogoLongPress?: () => void;
 }
 
-const HOLD_MS = 1500;
+const HOLD_MS = 500;
 
 const MODE_OPTIONS = [
   {
@@ -27,9 +27,9 @@ const MODE_OPTIONS = [
     icon: Monitor,
     description: "Checkout parkir & hitung durasi",
   },
-  { key: "kiosk", label: "Kiosk", icon: ShoppingCart, description: "Mesin kasir & transaksi" },
   { key: "scout", label: "Scout", icon: Search, description: "Cek saldo & riwayat kartu" },
   { key: "gate", label: "Gate", icon: DoorOpen, description: "Gerbang masuk & check-in" },
+  { key: "admin", label: "Station", icon: MonitorSmartphone, description: "Kelola kartu & anggota" },
 ] as const;
 
 export function KioskLayout({
@@ -60,7 +60,7 @@ export function KioskLayout({
   }
 
   const handleSwitchMode = useCallback(
-    async (mode: "terminal" | "kiosk" | "scout" | "gate") => {
+    async (mode: "terminal" | "kiosk" | "scout" | "gate" | "admin") => {
       const ctx = await tenantContextStore.get(tenantId);
       if (ctx) {
         await tenantContextStore.put({ ...ctx, role: mode, updatedAt: Date.now() });

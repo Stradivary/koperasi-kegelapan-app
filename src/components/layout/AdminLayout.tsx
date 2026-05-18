@@ -1,13 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
+  BookOpen,
   ChevronLeft,
-  ClipboardList,
   CreditCard,
   LogOut,
   Menu,
-  MonitorSmartphone,
   ShieldCheck,
-  ShoppingCart,
   UserCheck,
   X,
 } from "lucide-react";
@@ -17,7 +15,7 @@ import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 
-export type AdminView = "cards" | "audit" | "members" | "station" | "kiosk";
+export type AdminView = "cards" | "members" | "scout";
 
 interface AdminLayoutProps {
   tenantName: string;
@@ -30,26 +28,20 @@ interface AdminLayoutProps {
 
 const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
-  { id: "audit", icon: ClipboardList, label: "Audit Log" },
   { id: "members", icon: UserCheck, label: "Anggota" },
-  { id: "station", icon: MonitorSmartphone, label: "Station" },
-  { id: "kiosk", icon: ShoppingCart, label: "Kiosk" },
+  { id: "scout", icon: BookOpen, label: "Scout" },
 ];
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
-  { id: "audit", icon: ClipboardList, label: "Audit" },
   { id: "members", icon: UserCheck, label: "Anggota" },
-  { id: "station", icon: MonitorSmartphone, label: "Station" },
-  { id: "kiosk", icon: ShoppingCart, label: "Kiosk" },
+  { id: "scout", icon: BookOpen, label: "Scout" },
 ];
 
 const SECTION_LABEL: Record<AdminView, string> = {
   cards: "Kartu",
-  audit: "Audit Log",
   members: "Anggota",
-  station: "Station",
-  kiosk: "Kiosk",
+  scout: "Scout",
 };
 
 export function AdminLayout({
@@ -70,8 +62,16 @@ export function AdminLayout({
     navigate({ to: "/" });
   }
 
+  function handleNavClick(id: AdminView) {
+    if (id === "scout") {
+      navigate({ to: `/tenant/${tenantId}/scout` });
+    } else {
+      onSectionChange(id);
+    }
+  }
+
   return (
-    <div className="min-h-screen flex bg-signal-disable">
+    <div className="h-screen flex bg-signal-disable overflow-hidden">
       {/* ── Desktop Sidebar ── */}
       <aside
         className={[
@@ -135,7 +135,7 @@ export function AdminLayout({
               label={label}
               active={activeSection === id}
               collapsed={collapsed}
-              onClick={() => onSectionChange(id)}
+              onClick={() => handleNavClick(id)}
             />
           ))}
         </nav>
@@ -170,7 +170,7 @@ export function AdminLayout({
               label={label}
               active={activeSection === id}
               collapsed
-              onClick={() => onSectionChange(id)}
+              onClick={() => handleNavClick(id)}
               tooltip={label}
             />
           ))}
@@ -206,17 +206,37 @@ export function AdminLayout({
             </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
           </div>
+          {/* Online indicator */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={[
+                "size-2 rounded-full shrink-0",
+                isOnline ? "bg-green-500" : "bg-red-500",
+              ].join(" ")}
+              aria-hidden="true"
+            />
+            <span
+              className={[
+                "type-body2 hidden sm:inline",
+                isOnline ? "text-green-600" : "text-red-600",
+              ].join(" ")}
+              role="status"
+              aria-label={`Connectivity: ${isOnline ? "Online" : "Offline"}`}
+            >
+              {isOnline ? "Online" : "Offline"}
+            </span>
+          </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto pb-2">{children}</main>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden bg-white border-t flex items-stretch">
+        <nav className="md:hidden bg-white border-t flex items-stretch shrink-0">
           {MOBILE_NAV.map(({ id, icon: Icon, label }) => (
             <Button
               key={id}
               variant="ghost"
-              onClick={() => onSectionChange(id)}
+              onClick={() => handleNavClick(id)}
               className={[
                 "flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs",
                 activeSection === id
@@ -267,7 +287,7 @@ export function AdminLayout({
                   active={activeSection === id}
                   collapsed={false}
                   onClick={() => {
-                    onSectionChange(id);
+                    handleNavClick(id);
                     setMobileOpen(false);
                   }}
                 />
