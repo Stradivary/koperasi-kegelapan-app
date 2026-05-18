@@ -105,7 +105,13 @@ export function LoginSection() {
         return;
       }
 
-      // 2. Try server login as fallback
+      // 2. If offline and local login failed, don't attempt server fetch
+      if (!navigator.onLine) {
+        setError("Username atau password salah");
+        return;
+      }
+
+      // 3. Try server login as fallback (online only)
       const res = await fetch("/api/auth/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,7 +134,7 @@ export function LoginSection() {
         return;
       }
 
-      // 3. Both failed
+      // 4. Both failed (online, server rejected credentials)
       setError("Username atau password salah");
     } catch {
       setError("Gagal terhubung ke server. Periksa koneksi Anda.");

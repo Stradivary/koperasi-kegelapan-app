@@ -50,8 +50,26 @@ const config = defineConfig({
           { src: "logo512.png", type: "image/png", sizes: "512x512", purpose: "any maskable" },
         ],
       },
+      workbox: {
+        navigateFallback: "/index.html",
+        navigateFallbackAllowlist: [/^(?!\/(api|_server)\/).*$/],
+        runtimeCaching: [
+          {
+            urlPattern: /^https?:\/\/.*\/(api|_server)\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+              },
+              networkTimeoutSeconds: 5,
+            },
+          },
+        ],
+      },
       devOptions: {
-        enabled: false,
+        enabled: process.env.PWA_DEV === "1",
       },
     }),
   ],

@@ -1,0 +1,122 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Offline Login Completes Without Network
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases: offline state with local account credentials (valid and invalid)
+  - Test that `handleUnifiedLogin` when offline and `localLogin` returns `null` (invalid credentials) shows "Username atau password salah" instead of "Gagal terhubung ke server"
+  - Test that `handleUnifiedLogin` when offline and `localLogin` succeeds does NOT attempt a network fetch
+  - Test that `useSessionGrant` when offline and a valid cached grant exists returns the cached grant instead of entering error state
+  - Mock `navigator.onLine = false` and `fetch` to throw `TypeError: Failed to fetch`
+  - Bug Condition from design: `isBugCondition(input)` where `isOffline AND (localAccountExists OR cachedGrantExists)`
+  - Expected Behavior: offline login completes locally, offline session grant returns cache
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found: login shows "Gagal terhubung ke server" instead of credential error; session grant enters error state instead of returning cache
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Online Login and Session Grant Behavior Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe: `handleUnifiedLogin` with online state and server-only account authenticates via `/api/auth/token` and redirects correctly on unfixed code
+  - Observe: `handleUnifiedLogin` with online state and both local+server accounts prefers local login result on unfixed code
+  - Observe: `useSessionGrant` with online state fetches fresh grant from server and schedules refresh on unfixed code
+  - Write property-based test: for all online login attempts with server-only accounts, result is server authentication via `/api/auth/token` with correct redirect
+  - Write property-based test: for all online login attempts where local account exists, local login takes priority over server
+  - Write property-based test: for all online session grant requests, fresh grant is fetched from server and cached
+  - Generate random (username, password, onlineState=true, localAccountExists, serverAccountExists) tuples and verify server fallback works for non-local accounts
+  - Generate random session grant states (online + any cache state) and verify fresh fetch is attempted
+  - Verify tests pass on UNFIXED code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [ ] 3. Fix for PWA offline-first login, session grant, service worker, and connectivity indicator
+  - [x] 3.1 Create `useOnlineStatus` hook
+    - Create new file `src/hooks/useOnlineStatus.ts`
+    - Implement hook that returns `isOnline: boolean` using `navigator.onLine` initial state
+    - Add `useEffect` with `online`/`offline` window event listeners for reactive updates
+    - Clean up event listeners on unmount
+    - Export hook for use in `LoginSection`, `AdminLayout`, and other components
+    - _Bug_Condition: isBugCondition(input) where isOffline AND app needs connectivity awareness_
+    - _Expected_Behavior: hook reactively reports true/false connectivity state_
+    - _Preservation: No existing behavior affected — new utility hook_
+    - _Requirements: 2.1, 2.2, 2.6_
+
+  - [x] 3.2 Fix `handleUnifiedLogin` in `LoginSection.tsx`
+    - Import and use `useOnlineStatus` hook (or inline `navigator.onLine` check)
+    - After `localLogin` returns `null` (credentials don't match local account), check `navigator.onLine`
+    - If offline: immediately set error to "Username atau password salah" and return — do NOT attempt server fetch
+    - If online: proceed with existing server fetch fallback (unchanged behavior)
+    - Verify that existing `return` after successful local login + `redirectToRole` already prevents server fetch (confirm no change needed for success case)
+    - _Bug_Condition: isBugCondition(input) where isOffline AND localLogin returns null_
+    - _Expected_Behavior: display "Username atau password salah" without network request_
+    - _Preservation: Online login with server-only accounts continues via /api/auth/token; local-first priority preserved when online_
+    - _Requirements: 2.1, 2.2, 3.1, 3.2_
+
+  - [x] 3.3 Add IndexedDB caching to `useSessionGrant`
+    - Add IndexedDB store (or use existing `localDb`) for session grants keyed by `(tenantId, accountId, deviceId)`
+    - On `refresh()`: first check IndexedDB for cached grant; if found and not expired, use immediately
+    - If online: attempt network fetch in background to refresh cache (write-through on success)
+    - If offline and cached grant exists (even close to expiry): return cached grant instead of error state
+    - If offline and no cached grant: enter error state (expected — no data available)
+    - After successful network fetch: write grant to IndexedDB for future offline use
+    - _Bug_Condition: isBugCondition(input) where isOffline AND cachedGrantExists AND cachedGrantNotExpired_
+    - _Expected_Behavior: return cached session grant instead of entering error state_
+    - _Preservation: Online session grant fetching continues to return fresh grants from server; refresh scheduling unchanged_
+    - _Requirements: 2.3, 3.3_
+
+  - [x] 3.4 Decouple service worker registration from `PwaUpdatePrompt`
+    - In `src/routes/__root.tsx` (or root-level component), add eager SW registration via `useEffect` or inline script
+    - Call `navigator.serviceWorker.register('/sw.js', { scope: '/' })` at root level on app load
+    - Keep `PwaUpdatePrompt` component for update UI (prompt to reload when new version detected)
+    - Ensure `PwaUpdatePrompt` does not duplicate registration — it should detect existing registration
+    - _Bug_Condition: isBugCondition(input) where serviceWorkerNotRegistered AND PwaUpdatePromptNotMounted_
+    - _Expected_Behavior: SW registered eagerly regardless of component tree state_
+    - _Preservation: PWA update prompt continues to appear when needRefresh is true_
+    - _Requirements: 2.4, 3.4_
+
+  - [x] 3.5 Enable `devOptions` and add workbox `navigateFallback` in `vite.config.ts`
+    - Change `devOptions: { enabled: false }` to `devOptions: { enabled: process.env.PWA_DEV === '1' }` (or `import.meta.env` equivalent)
+    - Add `workbox: { navigateFallback: '/index.html' }` to ensure offline navigation serves cached app shell
+    - Add `workbox.navigateFallbackAllowlist` if needed to exclude API routes from fallback
+    - Verify existing `workbox` runtimeCaching strategies for API routes are preserved
+    - _Bug_Condition: isBugCondition(input) where navigationFallbackNotConfigured OR devOptions disabled_
+    - _Expected_Behavior: offline navigation always serves cached app shell; dev mode allows SW testing_
+    - _Preservation: Production precaching of static assets unchanged; existing workbox routing strategies preserved_
+    - _Requirements: 2.5, 2.7, 3.6, 3.8_
+
+  - [x] 3.6 Add online/offline status badge to `AdminLayout`
+    - Import `useOnlineStatus` hook in `AdminLayout.tsx`
+    - Add connectivity indicator in sidebar header: green dot + "Online" / red/gray dot + "Offline"
+    - Ensure badge is visible in both desktop sidebar and mobile drawer views
+    - Style with appropriate colors and accessibility (aria-label for screen readers)
+    - _Bug_Condition: isBugCondition(input) where isOffline AND userIsInAdminPanel AND noConnectivityIndicatorVisible_
+    - _Expected_Behavior: visible badge shows current connectivity state_
+    - _Preservation: Online state shows green/connected badge; no layout changes to existing sidebar elements_
+    - _Requirements: 2.6, 3.7_
+
+  - [x] 3.7 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Offline Login Completes Without Network
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3_
+
+  - [~] 3.8 Verify preservation tests still pass
+    - **Property 2: Preservation** - Online Login and Session Grant Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions)
+
+- [~] 4. Checkpoint - Ensure all tests pass
+  - Run full test suite to confirm all property-based tests and unit tests pass
+  - Verify bug condition exploration test (Property 1) passes after fix
+  - Verify preservation tests (Property 2) still pass after fix
+  - Verify no other existing tests have been broken by the changes
+  - Ensure all tests pass, ask the user if questions arise.

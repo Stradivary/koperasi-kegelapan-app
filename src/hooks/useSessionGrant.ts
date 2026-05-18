@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
+import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
 
 const REFRESH_BUFFER_SECONDS = 300;
 
@@ -37,6 +38,13 @@ function base64ToBytes(b64: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
 }
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 function scheduleRefresh(
   ref: React.RefObject<ReturnType<typeof setTimeout> | null>,
   g: SessionGrant,
@@ -46,6 +54,61 @@ function scheduleRefresh(
   const nowSeconds = Math.floor(Date.now() / 1000);
   const delay = Math.max(0, (g.expiresAt - nowSeconds - REFRESH_BUFFER_SECONDS) * 1000);
   ref.current = setTimeout(refresh, delay);
+}
+
+/** Convert a SessionGrant to a CachedSessionGrant for IndexedDB storage. */
+function toCachedGrant(grant: SessionGrant): CachedSessionGrant {
+  return {
+    tenantId: grant.tenantId,
+    accountId: grant.accountId,
+    deviceId: grant.deviceId,
+    keyVersion: grant.keyVersion,
+    sessionKeyB64: bytesToBase64(grant.sessionKey),
+    expiresAt: grant.expiresAt,
+    allowedOps: grant.allowedOps,
+    signatureB64: bytesToBase64(grant.signature),
+    cachedAt: Date.now(),
+  };
+}
+
+/** Convert a CachedSessionGrant from IndexedDB back to a SessionGrant. */
+function fromCachedGrant(cached: CachedSessionGrant): SessionGrant {
+  return {
+    tenantId: cached.tenantId,
+    accountId: cached.accountId,
+    deviceId: cached.deviceId,
+    keyVersion: cached.keyVersion,
+    sessionKey: base64ToBytes(cached.sessionKeyB64),
+    expiresAt: cached.expiresAt,
+    allowedOps: cached.allowedOps,
+    signature: base64ToBytes(cached.signatureB64),
+  };
+}
+
+/** Write a session grant to IndexedDB cache. */
+async function writeGrantToCache(grant: SessionGrant): Promise<void> {
+  try {
+    await sessionGrantCacheStore.put(toCachedGrant(grant));
+  } catch {
+    // Silently fail — caching is best-effort
+  }
+}
+
+/** Read a session grant from IndexedDB cache. Returns null if not found or expired. */
+async function readGrantFromCache(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+): Promise<SessionGrant | null> {
+  try {
+    const cached = await sessionGrantCacheStore.get(tenantId, accountId, deviceId);
+    if (!cached) return null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (cached.expiresAt <= nowSeconds) return null; // Expired
+    return fromCachedGrant(cached);
+  } catch {
+    return null;
+  }
 }
 
 export function useSessionGrant(
@@ -62,15 +125,40 @@ export function useSessionGrant(
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
-      setGrant(newGrant);
-      scheduleRefresh(refreshTimerRef, newGrant, refresh);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+
+    // First, check IndexedDB for a cached grant
+    const cachedGrant = await readGrantFromCache(tenantId, accountId, deviceId);
+
+    if (isOnline) {
+      // Online: attempt network fetch (write-through on success)
+      try {
+        const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
+        setGrant(newGrant);
+        scheduleRefresh(refreshTimerRef, newGrant, refresh);
+        // Write-through: cache the fresh grant for future offline use
+        writeGrantToCache(newGrant);
+      } catch (e) {
+        // Network fetch failed even though online — use cached grant if available
+        if (cachedGrant) {
+          setGrant(cachedGrant);
+          scheduleRefresh(refreshTimerRef, cachedGrant, refresh);
+        } else {
+          setError(String(e));
+        }
+      }
+    } else {
+      // Offline: return cached grant if available, otherwise error
+      if (cachedGrant) {
+        setGrant(cachedGrant);
+        scheduleRefresh(refreshTimerRef, cachedGrant, refresh);
+      } else {
+        setError("Offline dan tidak ada sesi tersimpan");
+      }
     }
+
+    setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, accountId, deviceId, role]);
 

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -40,6 +41,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // Eager service worker registration — decoupled from PwaUpdatePrompt component lifecycle.
+  // This ensures the SW is registered on app load regardless of which components mount.
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
+        // Registration may fail in dev mode or unsupported contexts — silently ignore.
+      });
+    }
+  }, []);
+
   return (
     <html lang="id">
       <head>

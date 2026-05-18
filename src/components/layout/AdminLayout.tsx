@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 
@@ -60,6 +61,7 @@ export function AdminLayout({
   children,
 }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const { isOnline } = useOnlineStatus();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -114,6 +116,16 @@ export function AdminLayout({
           </div>
         )}
 
+        {/* Connectivity status */}
+        <div
+          className={[
+            "px-4 py-2 border-b border-white/10",
+            collapsed ? "flex justify-center" : "",
+          ].join(" ")}
+        >
+          <ConnectivityBadge isOnline={isOnline} collapsed={collapsed} />
+        </div>
+
         {/* Nav items */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
@@ -145,6 +157,10 @@ export function AdminLayout({
       <aside className="hidden md:flex lg:hidden flex-col bg-brand-dark text-white w-16 shrink-0">
         <div className="flex items-center justify-center py-4 border-b border-white/10">
           <span className="type-h6 text-white">KK</span>
+        </div>
+        {/* Connectivity status */}
+        <div className="flex justify-center py-2 border-b border-white/10">
+          <ConnectivityBadge isOnline={isOnline} collapsed />
         </div>
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
@@ -238,6 +254,10 @@ export function AdminLayout({
               <p className="type-body2 text-white/50">Tenant</p>
               <p className="type-body1-bold text-white">{tenantName}</p>
             </div>
+            {/* Connectivity status */}
+            <div className="px-4 py-2 border-b border-white/10">
+              <ConnectivityBadge isOnline={isOnline} collapsed={false} />
+            </div>
             <nav className="flex-1 px-2 py-3 space-y-0.5">
               {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
                 <SidebarItem
@@ -306,5 +326,34 @@ function SidebarItem({
       <Icon size={18} className="shrink-0" />
       {!collapsed && <span className="type-body1 truncate">{label}</span>}
     </Button>
+  );
+}
+
+interface ConnectivityBadgeProps {
+  isOnline: boolean;
+  collapsed: boolean;
+}
+
+function ConnectivityBadge({ isOnline, collapsed }: ConnectivityBadgeProps) {
+  const label = isOnline ? "Online" : "Offline";
+  return (
+    <div
+      className="flex items-center gap-2"
+      role="status"
+      aria-label={`Connectivity status: ${label}`}
+    >
+      <span
+        className={[
+          "size-2.5 rounded-full shrink-0",
+          isOnline ? "bg-green-400" : "bg-red-400",
+        ].join(" ")}
+        aria-hidden="true"
+      />
+      {!collapsed && (
+        <span className={["type-body2", isOnline ? "text-green-300" : "text-red-300"].join(" ")}>
+          {label}
+        </span>
+      )}
+    </div>
   );
 }

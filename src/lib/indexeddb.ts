@@ -1,7 +1,7 @@
 import type { ReconciliationEvent } from "../core/payload/types";
 
 const DB_NAME = "koperasi-wallet";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export interface TenantContext {
   tenantId: string;
@@ -58,6 +58,25 @@ export interface LocalAccount {
   status: "active" | "inactive";
   createdAt: number;
 }
+
+/**
+ * Cached session grant for offline use.
+ * Keyed by composite key [tenantId, accountId, deviceId].
+ */
+export interface CachedSessionGrant {
+  tenantId: string;
+  accountId: string;
+  deviceId: string;
+  keyVersion: number;
+  /** Base64-encoded session key (stored as string for IndexedDB compatibility) */
+  sessionKeyB64: string;
+  expiresAt: number;
+  allowedOps: string[];
+  /** Base64-encoded signature */
+  signatureB64: string;
+  /** Timestamp when this grant was cached (epoch ms) */
+  cachedAt: number;
+}
 function getIndexedDbFactory(): IDBFactory | null {
   if (typeof globalThis === "undefined") return null;
   return "indexedDB" in globalThis ? globalThis.indexedDB : null;
@@ -96,6 +115,12 @@ function openDb(): Promise<IDBDatabase> {
         const accts = db.createObjectStore("localAccounts", { keyPath: "accountId" });
         accts.createIndex("byTenantId", "tenantId", { unique: false });
         accts.createIndex("byUsername", "username", { unique: true });
+      }
+      // v3 stores
+      if (!db.objectStoreNames.contains("sessionGrantCache")) {
+        db.createObjectStore("sessionGrantCache", {
+          keyPath: ["tenantId", "accountId", "deviceId"],
+        });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -275,6 +300,27 @@ export const localAccountStore = {
   put: (acct: LocalAccount) => tx<IDBValidKey>("localAccounts", "readwrite", (s) => s.put(acct)),
   delete: (accountId: string) =>
     tx<undefined>("localAccounts", "readwrite", (s) => s.delete(accountId)),
+};
+
+// ── v3: Session grant cache store ──────────────────────────────────────
+
+export const sessionGrantCacheStore = {
+  get: async (
+    tenantId: string,
+    accountId: string,
+    deviceId: string,
+  ): Promise<CachedSessionGrant | undefined> => {
+    if (!getIndexedDbFactory()) return undefined;
+    return tx<CachedSessionGrant | undefined>("sessionGrantCache", "readonly", (s) =>
+      s.get([tenantId, accountId, deviceId]),
+    );
+  },
+  put: (grant: CachedSessionGrant) =>
+    tx<IDBValidKey>("sessionGrantCache", "readwrite", (s) => s.put(grant)),
+  delete: (tenantId: string, accountId: string, deviceId: string) =>
+    tx<undefined>("sessionGrantCache", "readwrite", (s) =>
+      s.delete([tenantId, accountId, deviceId]),
+    ),
 };
 
 export function makeIdempotencyKey(tenantId: string, cardIdHex: string, counter: number): string {
