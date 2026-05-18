@@ -3,9 +3,10 @@
  * and injects the precache manifest from dist/client assets.
  *
  * Run after `vite build` completes.
+ * Uses Vite's build API (Rollup) — no esbuild dependency needed.
  */
 import { injectManifest } from "workbox-build";
-import { build } from "esbuild";
+import { build } from "vite";
 import { mkdirSync } from "fs";
 
 const SW_SRC = "src/sw.ts";
@@ -13,18 +14,30 @@ const SW_DEST = "dist/client/sw.js";
 const GLOB_DIR = "dist/client";
 
 async function main() {
-  // Step 1: Bundle the SW TypeScript source to JS
+  // Step 1: Bundle the SW TypeScript source to JS using Vite
   mkdirSync("dist/client", { recursive: true });
   await build({
-    entryPoints: [SW_SRC],
-    outfile: SW_DEST,
-    bundle: true,
-    format: "esm",
-    platform: "browser",
-    target: "es2020",
-    minify: true,
+    configFile: false,
+    logLevel: "warn",
+    build: {
+      emptyOutDir: false,
+      lib: {
+        entry: SW_SRC,
+        formats: ["es"],
+        fileName: () => "sw.js",
+      },
+      outDir: "dist/client",
+      rollupOptions: {
+        output: {
+          entryFileNames: "sw.js",
+        },
+      },
+      minify: true,
+      sourcemap: false,
+    },
     define: {
-      "self.__WB_MANIFEST": "self.__WB_MANIFEST", // placeholder for workbox injection
+      "self.__WB_MANIFEST": "self.__WB_MANIFEST",
+      "process.env.NODE_ENV": JSON.stringify("production"),
     },
   });
 

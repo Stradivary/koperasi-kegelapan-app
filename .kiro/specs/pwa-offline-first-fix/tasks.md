@@ -33,7 +33,7 @@
   - Verify tests pass on UNFIXED code
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 3. Fix for PWA offline-first login, session grant, service worker, and connectivity indicator
+- [x] 3. Fix for PWA offline-first login, session grant, service worker, and connectivity indicator
   - [x] 3.1 Create `useOnlineStatus` hook
     - Create new file `src/hooks/useOnlineStatus.ts`
     - Implement hook that returns `isOnline: boolean` using `navigator.onLine` initial state
