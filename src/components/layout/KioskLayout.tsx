@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Monitor, MonitorSmartphone, ShoppingCart, Search, DoorOpen, Check, LogOut } from "lucide-react";
+import { Monitor, MonitorSmartphone, Search, DoorOpen, Check, LogOut } from "lucide-react";
 import { BRAND } from "../../lib/brand";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
@@ -29,7 +29,12 @@ const MODE_OPTIONS = [
   },
   { key: "scout", label: "Scout", icon: Search, description: "Cek saldo & riwayat kartu" },
   { key: "gate", label: "Gate", icon: DoorOpen, description: "Gerbang masuk & check-in" },
-  { key: "admin", label: "Station", icon: MonitorSmartphone, description: "Kelola kartu & anggota" },
+  {
+    key: "admin",
+    label: "Station",
+    icon: MonitorSmartphone,
+    description: "Kelola kartu & anggota",
+  },
 ] as const;
 
 export function KioskLayout({

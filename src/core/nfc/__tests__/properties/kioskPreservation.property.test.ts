@@ -297,7 +297,13 @@ describe("Preservation 3.3: Single-tap scan events produce identical state machi
         // scanning → classifying
         state = nfcReducer(state, {
           type: "RAW_SCAN_COMPLETE",
-          result: { raw: new Uint8Array(WIRE_SIZE), serialNumber: "ABC123" },
+          result: {
+            rawBytes: new Uint8Array(WIRE_SIZE),
+            serialNumber: "ABC123",
+            records: [{ recordType: "unknown", data: new Uint8Array(WIRE_SIZE) }],
+            classification: "valid_payload",
+            metadata: { recordCount: 1, totalBytes: WIRE_SIZE, hasNdef: true },
+          },
         });
         expect(state.phase).toBe("classifying");
 
@@ -369,7 +375,13 @@ describe("Preservation 3.3: Single-tap scan events produce identical state machi
           if (phase !== "scanning") {
             const next = nfcReducer(state, {
               type: "RAW_SCAN_COMPLETE",
-              result: { raw: new Uint8Array(WIRE_SIZE), serialNumber: "X" },
+              result: {
+                rawBytes: new Uint8Array(WIRE_SIZE),
+                serialNumber: "X",
+                records: [{ recordType: "unknown", data: new Uint8Array(WIRE_SIZE) }],
+                classification: "valid_payload",
+                metadata: { recordCount: 1, totalBytes: WIRE_SIZE, hasNdef: true },
+              },
             });
             expect(next.phase).toBe(phase); // unchanged
           }

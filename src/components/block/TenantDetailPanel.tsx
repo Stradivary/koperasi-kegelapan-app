@@ -14,8 +14,12 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { LoadingState } from "./LoadingState";
-import type { TenantDetail, TenantAccountInfo, TenantStatus } from "#/server/superadminTenants";
-import { VALID_TRANSITIONS } from "#/server/superadminTenants";
+import type {
+  TenantDetail,
+  TenantAccountInfo,
+  TenantStatus,
+} from "#/server/superadminTenants.types";
+import { VALID_TRANSITIONS } from "#/server/superadminTenants.types";
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 

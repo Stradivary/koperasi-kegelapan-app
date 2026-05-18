@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
 import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
+import { API_BASE_URL } from "../lib/api";
 
 const REFRESH_BUFFER_SECONDS = 300;
 
@@ -12,7 +13,7 @@ async function fetchSessionGrant(
 ): Promise<SessionGrant> {
   const params = new URLSearchParams({ tenantId, deviceId });
   if (role) params.set("role", role);
-  const res = await fetch(`/api/session-grant?${params}`, {
+  const res = await fetch(`${API_BASE_URL}/api/session-grant?${params}`, {
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) throw new Error(`Failed to fetch session grant: ${res.status}`);

@@ -16,22 +16,12 @@ import { Route as DevIndexRouteImport } from './routes/dev.index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
 import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
-import { Route as ApiSessionGrantRouteImport } from './routes/api/session-grant'
-import { Route as ApiReconcileRouteImport } from './routes/api/reconcile'
-import { Route as ApiPolicyRouteImport } from './routes/api/policy'
-import { Route as ApiAccountsRouteImport } from './routes/api/accounts'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
 import { Route as TenantTenantIdStationRouteImport } from './routes/tenant.$tenantId.station'
 import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
 import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
 import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantId.gate'
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
-import { Route as ApiTenantsSyncRouteImport } from './routes/api/tenants/sync'
-import { Route as ApiTenantsSearchRouteImport } from './routes/api/tenants/search'
-import { Route as ApiAuthTokenRouteImport } from './routes/api/auth/token'
-import { Route as ApiSuperadminTenantsIndexRouteImport } from './routes/api/superadmin/tenants/index'
-import { Route as ApiSuperadminTenantsTenantIdRouteImport } from './routes/api/superadmin/tenants/$tenantId'
-import { Route as ApiSuperadminTenantsTenantIdStatusRouteImport } from './routes/api/superadmin/tenants/$tenantId.status'
 
 const SuperadminRoute = SuperadminRouteImport.update({
   id: '/superadmin',
@@ -68,26 +58,6 @@ const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
   path: '/dev/issuance-test',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSessionGrantRoute = ApiSessionGrantRouteImport.update({
-  id: '/api/session-grant',
-  path: '/api/session-grant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiReconcileRoute = ApiReconcileRouteImport.update({
-  id: '/api/reconcile',
-  path: '/api/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPolicyRoute = ApiPolicyRouteImport.update({
-  id: '/api/policy',
-  path: '/api/policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAccountsRoute = ApiAccountsRouteImport.update({
-  id: '/api/accounts',
-  path: '/api/accounts',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
@@ -118,115 +88,52 @@ const TenantTenantIdAdminRoute = TenantTenantIdAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const ApiTenantsSyncRoute = ApiTenantsSyncRouteImport.update({
-  id: '/api/tenants/sync',
-  path: '/api/tenants/sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTenantsSearchRoute = ApiTenantsSearchRouteImport.update({
-  id: '/api/tenants/search',
-  path: '/api/tenants/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthTokenRoute = ApiAuthTokenRouteImport.update({
-  id: '/api/auth/token',
-  path: '/api/auth/token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSuperadminTenantsIndexRoute =
-  ApiSuperadminTenantsIndexRouteImport.update({
-    id: '/api/superadmin/tenants/',
-    path: '/api/superadmin/tenants/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSuperadminTenantsTenantIdRoute =
-  ApiSuperadminTenantsTenantIdRouteImport.update({
-    id: '/api/superadmin/tenants/$tenantId',
-    path: '/api/superadmin/tenants/$tenantId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSuperadminTenantsTenantIdStatusRoute =
-  ApiSuperadminTenantsTenantIdStatusRouteImport.update({
-    id: '/status',
-    path: '/status',
-    getParentRoute: () => ApiSuperadminTenantsTenantIdRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/devices': typeof DevicesRoute
   '/superadmin': typeof SuperadminRoute
-  '/api/accounts': typeof ApiAccountsRoute
-  '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
-  '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
-  '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/tenants/search': typeof ApiTenantsSearchRoute
-  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/api/superadmin/tenants/$tenantId': typeof ApiSuperadminTenantsTenantIdRouteWithChildren
-  '/api/superadmin/tenants/': typeof ApiSuperadminTenantsIndexRoute
-  '/api/superadmin/tenants/$tenantId/status': typeof ApiSuperadminTenantsTenantIdStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/devices': typeof DevicesRoute
   '/superadmin': typeof SuperadminRoute
-  '/api/accounts': typeof ApiAccountsRoute
-  '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
-  '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev': typeof DevIndexRoute
-  '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/tenants/search': typeof ApiTenantsSearchRoute
-  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/api/superadmin/tenants/$tenantId': typeof ApiSuperadminTenantsTenantIdRouteWithChildren
-  '/api/superadmin/tenants': typeof ApiSuperadminTenantsIndexRoute
-  '/api/superadmin/tenants/$tenantId/status': typeof ApiSuperadminTenantsTenantIdStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/devices': typeof DevicesRoute
   '/superadmin': typeof SuperadminRoute
-  '/api/accounts': typeof ApiAccountsRoute
-  '/api/policy': typeof ApiPolicyRoute
-  '/api/reconcile': typeof ApiReconcileRoute
-  '/api/session-grant': typeof ApiSessionGrantRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
-  '/api/auth/token': typeof ApiAuthTokenRoute
-  '/api/tenants/search': typeof ApiTenantsSearchRoute
-  '/api/tenants/sync': typeof ApiTenantsSyncRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/api/superadmin/tenants/$tenantId': typeof ApiSuperadminTenantsTenantIdRouteWithChildren
-  '/api/superadmin/tenants/': typeof ApiSuperadminTenantsIndexRoute
-  '/api/superadmin/tenants/$tenantId/status': typeof ApiSuperadminTenantsTenantIdStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -234,95 +141,56 @@ export interface FileRouteTypes {
     | '/'
     | '/devices'
     | '/superadmin'
-    | '/api/accounts'
-    | '/api/policy'
-    | '/api/reconcile'
-    | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
     | '/tenant/$tenantId'
     | '/dev/'
-    | '/api/auth/token'
-    | '/api/tenants/search'
-    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
-    | '/api/superadmin/tenants/$tenantId'
-    | '/api/superadmin/tenants/'
-    | '/api/superadmin/tenants/$tenantId/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/devices'
     | '/superadmin'
-    | '/api/accounts'
-    | '/api/policy'
-    | '/api/reconcile'
-    | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
     | '/tenant/$tenantId'
     | '/dev'
-    | '/api/auth/token'
-    | '/api/tenants/search'
-    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
-    | '/api/superadmin/tenants/$tenantId'
-    | '/api/superadmin/tenants'
-    | '/api/superadmin/tenants/$tenantId/status'
   id:
     | '__root__'
     | '/'
     | '/devices'
     | '/superadmin'
-    | '/api/accounts'
-    | '/api/policy'
-    | '/api/reconcile'
-    | '/api/session-grant'
     | '/dev/issuance-test'
     | '/dev/nfc-test'
     | '/tenant/$tenantId'
     | '/dev/'
-    | '/api/auth/token'
-    | '/api/tenants/search'
-    | '/api/tenants/sync'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
-    | '/api/superadmin/tenants/$tenantId'
-    | '/api/superadmin/tenants/'
-    | '/api/superadmin/tenants/$tenantId/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DevicesRoute: typeof DevicesRoute
   SuperadminRoute: typeof SuperadminRoute
-  ApiAccountsRoute: typeof ApiAccountsRoute
-  ApiPolicyRoute: typeof ApiPolicyRoute
-  ApiReconcileRoute: typeof ApiReconcileRoute
-  ApiSessionGrantRoute: typeof ApiSessionGrantRoute
   DevIssuanceTestRoute: typeof DevIssuanceTestRoute
   DevNfcTestRoute: typeof DevNfcTestRoute
   TenantTenantIdRoute: typeof TenantTenantIdRouteWithChildren
   DevIndexRoute: typeof DevIndexRoute
-  ApiAuthTokenRoute: typeof ApiAuthTokenRoute
-  ApiTenantsSearchRoute: typeof ApiTenantsSearchRoute
-  ApiTenantsSyncRoute: typeof ApiTenantsSyncRoute
-  ApiSuperadminTenantsTenantIdRoute: typeof ApiSuperadminTenantsTenantIdRouteWithChildren
-  ApiSuperadminTenantsIndexRoute: typeof ApiSuperadminTenantsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -376,34 +244,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevIssuanceTestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/session-grant': {
-      id: '/api/session-grant'
-      path: '/api/session-grant'
-      fullPath: '/api/session-grant'
-      preLoaderRoute: typeof ApiSessionGrantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/reconcile': {
-      id: '/api/reconcile'
-      path: '/api/reconcile'
-      fullPath: '/api/reconcile'
-      preLoaderRoute: typeof ApiReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/policy': {
-      id: '/api/policy'
-      path: '/api/policy'
-      fullPath: '/api/policy'
-      preLoaderRoute: typeof ApiPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/accounts': {
-      id: '/api/accounts'
-      path: '/api/accounts'
-      fullPath: '/api/accounts'
-      preLoaderRoute: typeof ApiAccountsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/tenant/$tenantId/terminal': {
       id: '/tenant/$tenantId/terminal'
       path: '/terminal'
@@ -446,48 +286,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdAdminRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
-    '/api/tenants/sync': {
-      id: '/api/tenants/sync'
-      path: '/api/tenants/sync'
-      fullPath: '/api/tenants/sync'
-      preLoaderRoute: typeof ApiTenantsSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/tenants/search': {
-      id: '/api/tenants/search'
-      path: '/api/tenants/search'
-      fullPath: '/api/tenants/search'
-      preLoaderRoute: typeof ApiTenantsSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/token': {
-      id: '/api/auth/token'
-      path: '/api/auth/token'
-      fullPath: '/api/auth/token'
-      preLoaderRoute: typeof ApiAuthTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/superadmin/tenants/': {
-      id: '/api/superadmin/tenants/'
-      path: '/api/superadmin/tenants'
-      fullPath: '/api/superadmin/tenants/'
-      preLoaderRoute: typeof ApiSuperadminTenantsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/superadmin/tenants/$tenantId': {
-      id: '/api/superadmin/tenants/$tenantId'
-      path: '/api/superadmin/tenants/$tenantId'
-      fullPath: '/api/superadmin/tenants/$tenantId'
-      preLoaderRoute: typeof ApiSuperadminTenantsTenantIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/superadmin/tenants/$tenantId/status': {
-      id: '/api/superadmin/tenants/$tenantId/status'
-      path: '/status'
-      fullPath: '/api/superadmin/tenants/$tenantId/status'
-      preLoaderRoute: typeof ApiSuperadminTenantsTenantIdStatusRouteImport
-      parentRoute: typeof ApiSuperadminTenantsTenantIdRoute
-    }
   }
 }
 
@@ -513,49 +311,15 @@ const TenantTenantIdRouteWithChildren = TenantTenantIdRoute._addFileChildren(
   TenantTenantIdRouteChildren,
 )
 
-interface ApiSuperadminTenantsTenantIdRouteChildren {
-  ApiSuperadminTenantsTenantIdStatusRoute: typeof ApiSuperadminTenantsTenantIdStatusRoute
-}
-
-const ApiSuperadminTenantsTenantIdRouteChildren: ApiSuperadminTenantsTenantIdRouteChildren =
-  {
-    ApiSuperadminTenantsTenantIdStatusRoute:
-      ApiSuperadminTenantsTenantIdStatusRoute,
-  }
-
-const ApiSuperadminTenantsTenantIdRouteWithChildren =
-  ApiSuperadminTenantsTenantIdRoute._addFileChildren(
-    ApiSuperadminTenantsTenantIdRouteChildren,
-  )
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DevicesRoute: DevicesRoute,
   SuperadminRoute: SuperadminRoute,
-  ApiAccountsRoute: ApiAccountsRoute,
-  ApiPolicyRoute: ApiPolicyRoute,
-  ApiReconcileRoute: ApiReconcileRoute,
-  ApiSessionGrantRoute: ApiSessionGrantRoute,
   DevIssuanceTestRoute: DevIssuanceTestRoute,
   DevNfcTestRoute: DevNfcTestRoute,
   TenantTenantIdRoute: TenantTenantIdRouteWithChildren,
   DevIndexRoute: DevIndexRoute,
-  ApiAuthTokenRoute: ApiAuthTokenRoute,
-  ApiTenantsSearchRoute: ApiTenantsSearchRoute,
-  ApiTenantsSyncRoute: ApiTenantsSyncRoute,
-  ApiSuperadminTenantsTenantIdRoute:
-    ApiSuperadminTenantsTenantIdRouteWithChildren,
-  ApiSuperadminTenantsIndexRoute: ApiSuperadminTenantsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

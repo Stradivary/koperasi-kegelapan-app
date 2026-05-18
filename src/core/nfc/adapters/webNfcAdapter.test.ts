@@ -26,12 +26,10 @@ type ErrorHandler = (event: MockNDEFErrorEvent) => void;
 class MockNDEFReader {
   private readingHandlers: ReadingHandler[] = [];
   private errorHandlers: ErrorHandler[] = [];
-  private scanPromiseResolve: (() => void) | null = null;
   private scanPromiseReject: ((error: Error) => void) | null = null;
 
   scan(options?: { signal?: AbortSignal }): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.scanPromiseResolve = resolve;
       this.scanPromiseReject = reject;
 
       if (options?.signal) {
@@ -179,7 +177,7 @@ describe("WebNfcAdapter", () => {
   describe("scan", () => {
     it("starts scanning and invokes onReading callback when tag is detected", async () => {
       const adapter = new WebNfcAdapter();
-      const onReading = vi.fn<[NfcReadingEvent], void>();
+      const onReading = vi.fn<(event: NfcReadingEvent) => void>();
       adapter.onReading = onReading;
 
       const scanPromise = adapter.scan();
@@ -201,7 +199,7 @@ describe("WebNfcAdapter", () => {
 
     it("invokes onError callback when reading error occurs", async () => {
       const adapter = new WebNfcAdapter();
-      const onError = vi.fn<[NfcErrorEvent], void>();
+      const onError = vi.fn<(event: NfcErrorEvent) => void>();
       adapter.onError = onError;
 
       await adapter.scan();
@@ -256,7 +254,7 @@ describe("WebNfcAdapter", () => {
 
     it("handles records with null data", async () => {
       const adapter = new WebNfcAdapter();
-      const onReading = vi.fn<[NfcReadingEvent], void>();
+      const onReading = vi.fn<(event: NfcReadingEvent) => void>();
       adapter.onReading = onReading;
 
       await adapter.scan();
@@ -345,7 +343,7 @@ describe("WebNfcAdapter", () => {
   describe("error message translation", () => {
     it("translates permission denied error", async () => {
       const adapter = new WebNfcAdapter();
-      const onError = vi.fn<[NfcErrorEvent], void>();
+      const onError = vi.fn<(event: NfcErrorEvent) => void>();
       adapter.onError = onError;
 
       await adapter.scan();
@@ -358,7 +356,7 @@ describe("WebNfcAdapter", () => {
 
     it("translates NDEF compatibility error", async () => {
       const adapter = new WebNfcAdapter();
-      const onError = vi.fn<[NfcErrorEvent], void>();
+      const onError = vi.fn<(event: NfcErrorEvent) => void>();
       adapter.onError = onError;
 
       await adapter.scan();
@@ -371,7 +369,7 @@ describe("WebNfcAdapter", () => {
 
     it("translates I/O error (card moved too fast)", async () => {
       const adapter = new WebNfcAdapter();
-      const onError = vi.fn<[NfcErrorEvent], void>();
+      const onError = vi.fn<(event: NfcErrorEvent) => void>();
       adapter.onError = onError;
 
       await adapter.scan();
@@ -386,7 +384,7 @@ describe("WebNfcAdapter", () => {
   describe("multiple records handling", () => {
     it("handles multiple NDEF records", async () => {
       const adapter = new WebNfcAdapter();
-      const onReading = vi.fn<[NfcReadingEvent], void>();
+      const onReading = vi.fn<(event: NfcReadingEvent) => void>();
       adapter.onReading = onReading;
 
       await adapter.scan();

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-
+import { API_BASE_URL } from "../lib/api";
 export interface TenantSearchResult {
   tenantId: string;
   slug: string;
@@ -42,7 +42,9 @@ export function useServerTenantSearch(): UseServerTenantSearchReturn {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/tenants/search?q=${encodeURIComponent(query)}&limit=10`);
+        const res = await fetch(
+          `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(query)}&limit=10`,
+        );
         if (!res.ok) throw new Error(`Search failed: ${res.status}`);
         const data = await res.json();
         cacheRef.current.set(query, data.tenants);

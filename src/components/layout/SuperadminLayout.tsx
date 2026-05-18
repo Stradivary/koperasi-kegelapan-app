@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, LogOut, Menu, ShieldCheck, Users } from "lucide-react";
+import { Building2, Leaf, LogOut, Menu, Users } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { Button } from "../ui/button";
@@ -42,7 +42,7 @@ export function SuperadminLayout({
         {/* Sidebar header */}
         <div className="flex items-center gap-2.5 px-4 py-5 border-b border-white/10">
           <div className="size-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
-            <ShieldCheck size={16} className="text-white" />
+            <Leaf size={16} className="text-white" />
           </div>
           <div className="min-w-0">
             <p className="type-h6 text-white leading-tight truncate">{BRAND.APP_NAME}</p>
@@ -119,7 +119,7 @@ export function SuperadminLayout({
           <SheetHeader className="px-4 py-5 border-b border-white/10">
             <SheetTitle className="flex items-center gap-2.5 text-white">
               <div className="size-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
-                <ShieldCheck size={16} className="text-white" />
+                <Leaf size={16} className="text-white" />
               </div>
               <div className="min-w-0">
                 <p className="type-h6 text-white leading-tight truncate">{BRAND.APP_NAME}</p>

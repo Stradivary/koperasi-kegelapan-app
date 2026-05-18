@@ -5,6 +5,7 @@ import { tenantContextStore } from "../../lib/indexeddb";
 import { localLogin, hasLocalTenant } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { BRAND } from "../../lib/brand";
+import { API_BASE_URL } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
 import { ServerTenantSelectionSection } from "./ServerTenantSelectionSection";
@@ -119,7 +120,7 @@ export function LoginSection() {
       }
 
       // 3. Try server login as fallback (online only)
-      const res = await fetch("/api/auth/token", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

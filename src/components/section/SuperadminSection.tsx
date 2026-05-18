@@ -14,7 +14,8 @@ import {
   type CreateTenantRequest,
   type CreateTenantError,
 } from "../block/TenantCreateDialog";
-import type { TenantDetail, TenantStatus } from "#/server/superadminTenants";
+import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
+import { API_BASE_URL } from "#/lib/api";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ export function SuperadminSection() {
         params.set("search", searchQuery.trim());
       }
 
-      const res = await fetch(`/api/superadmin/tenants?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/tenants?${params.toString()}`, {
         headers: authHeaders(),
       });
 
@@ -117,7 +118,7 @@ export function SuperadminSection() {
     queryFn: async () => {
       if (!selectedTenantId) throw new Error("No tenant selected");
 
-      const res = await fetch(`/api/superadmin/tenants/${selectedTenantId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/tenants/${selectedTenantId}`, {
         headers: authHeaders(),
       });
 
@@ -142,7 +143,7 @@ export function SuperadminSection() {
     CreateTenantRequest
   >({
     mutationFn: async (data) => {
-      const res = await fetch("/api/superadmin/tenants", {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/tenants`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(data),
@@ -201,7 +202,7 @@ export function SuperadminSection() {
     { tenantId: string; newStatus: TenantStatus }
   >({
     mutationFn: async ({ tenantId, newStatus }) => {
-      const res = await fetch(`/api/superadmin/tenants/${tenantId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/tenants/${tenantId}/status`, {
         method: "PATCH",
         headers: authHeaders(),
         body: JSON.stringify({ status: newStatus }),

@@ -1,33 +1,22 @@
 import { defineConfig } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from "vite-plugin-pwa";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true, dedupe: ["react", "react-dom"] },
-  build: {
-    rollupOptions: {
-      external: [/^cloudflare:/],
-    },
-  },
   plugins: [
     devtools(),
     basicSsl(),
-    cloudflare({
-      viteEnvironment: { name: "ssr" },
-      remoteBindings:
-        process.env.CF_REMOTE_BINDINGS === "1" || process.env.CF_REMOTE_BINDINGS === "true",
-    }),
     tailwindcss(),
-    tanstackStart(),
+    TanStackRouterVite(),
     viteReact(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: 'auto',
+      injectRegister: "auto",
+      strategies: "generateSW",
       includeAssets: [
         "favicon.ico",
         "logo192.png",
@@ -35,7 +24,6 @@ const config = defineConfig({
         "assets/TelkomselBatikSans-Bold.woff2",
         "assets/TelkomselBatikSans-Regular.woff2",
       ],
-      strategies: "generateSW",
       manifest: {
         name: "Koperasi Kegelapan",
         short_name: "KK Wallet",
@@ -52,18 +40,17 @@ const config = defineConfig({
         ],
       },
       workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,json}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
-        navigateFallbackAllowlist: [/^(?!\/(api|_server)\/).*$/],
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/.*\/(api|_server)\/.*/i,
+            urlPattern: /^https?:\/\/.*\/api\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "api-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
               networkTimeoutSeconds: 5,
             },
           },
@@ -74,8 +61,17 @@ const config = defineConfig({
       },
     }),
   ],
+  resolve: {
+    dedupe: ["react", "react-dom"],
+  },
   server: {
-    host: true, // This enables LAN access
+    host: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8787",
+        changeOrigin: true,
+      },
+    },
   },
 });
 

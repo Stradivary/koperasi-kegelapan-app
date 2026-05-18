@@ -12,6 +12,7 @@ import {
   CardStatus,
 } from "../../core/payload/types";
 import type { CardPayload, SessionGrant } from "../../core/payload/types";
+import { API_BASE_URL } from "../../lib/api";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -79,7 +80,7 @@ async function fetchDevGrant(tenantId: string): Promise<SessionGrant> {
   // Fetch a session grant using the specified tenant ID
   const params = new URLSearchParams({ tenantId, deviceId: "dev-issuance" });
   params.set("role", "station");
-  const res = await fetch(`/api/session-grant?${params}`);
+  const res = await fetch(`${API_BASE_URL}/api/session-grant?${params}`);
   if (!res.ok) throw new Error(`Failed to fetch dev grant: ${res.status}`);
   const data = await res.json();
   const b64ToBytes = (b64: string): Uint8Array => {

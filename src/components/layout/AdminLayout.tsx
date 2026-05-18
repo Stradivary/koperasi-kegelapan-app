@@ -1,14 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  BookOpen,
-  ChevronLeft,
-  CreditCard,
-  LogOut,
-  Menu,
-  ShieldCheck,
-  UserCheck,
-  X,
-} from "lucide-react";
+import { BookOpen, ChevronLeft, CreditCard, Leaf, LogOut, Menu, UserCheck, X } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
@@ -54,7 +45,7 @@ export function AdminLayout({
 }: AdminLayoutProps) {
   const navigate = useNavigate();
   const { isOnline } = useOnlineStatus();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
@@ -84,7 +75,7 @@ export function AdminLayout({
           {!collapsed && (
             <div className="flex-1 min-w-0 flex items-center gap-2.5">
               <div className="size-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
-                <ShieldCheck size={16} className="text-white" />
+                <Leaf size={16} className="text-white" />
               </div>
               <div className="min-w-0">
                 <p className="type-h6 text-white leading-tight truncate">{BRAND.APP_NAME}</p>
@@ -156,7 +147,9 @@ export function AdminLayout({
       {/* ── Tablet Sidebar (icon-only, hover expands via CSS) ── */}
       <aside className="hidden md:flex lg:hidden flex-col bg-brand-dark text-white w-16 shrink-0">
         <div className="flex items-center justify-center py-4 border-b border-white/10">
-          <span className="type-h6 text-white">KK</span>
+          <div className="size-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
+            <Leaf size={16} className="text-white" />
+          </div>
         </div>
         {/* Connectivity status */}
         <div className="flex justify-center py-2 border-b border-white/10">

@@ -4,10 +4,9 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 /**
  * PWA update prompt UI component.
  *
- * NOTE: Service worker registration is handled eagerly at the root level
- * (see `__root.tsx`). This component uses `useRegisterSW` to detect updates
- * on the already-registered SW — it does NOT duplicate registration since
- * `navigator.serviceWorker.register()` is idempotent for the same script URL.
+ * Service worker registration is handled automatically by VitePWA's
+ * `injectRegister: 'auto'` configuration. This component uses `useRegisterSW`
+ * to detect updates and prompt the user to reload.
  */
 export function PwaUpdatePrompt() {
   const {

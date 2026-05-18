@@ -51,7 +51,7 @@ import type { SessionValidationResult } from "./payloadTypes";
  */
 export function validateSession(
   sessionGrant: SessionGrant | null,
-  tenantId: string,
+  _tenantId: string,
   cardTenantId?: string,
 ): SessionValidationResult {
   // Check 1: Null session grant → "NO_SESSION"

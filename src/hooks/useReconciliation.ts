@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { reconciliationOutbox } from "../lib/indexeddb";
+import { API_BASE_URL } from "../lib/api";
 
 export type ReconciliationStatus = "idle" | "syncing" | "success" | "error";
 
@@ -39,7 +40,7 @@ export function useReconciliation(tenantId: string, terminalId: number) {
         idempotencyKey: e.idempotencyKey,
       }));
 
-      const res = await fetch("/api/reconcile", {
+      const res = await fetch(`${API_BASE_URL}/api/reconcile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ terminalId, events }),

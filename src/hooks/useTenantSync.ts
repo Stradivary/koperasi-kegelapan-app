@@ -4,6 +4,7 @@ import {
   localAccountStore,
   type LocalTenantConfig,
 } from "../lib/indexeddb";
+import { API_BASE_URL } from "../lib/api";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
 
@@ -60,11 +61,10 @@ export function useTenantSync(): UseTenantSyncReturn {
         // Resolve the actual admin username from IndexedDB instead of hardcoding
         const accounts = await localAccountStore.getByTenant(config.tenantId);
         const admin = accounts.find((a) => a.role === "admin");
-        const adminUsername =
-          adminUsernameOverride ?? admin?.username ?? config.slug + "-admin";
+        const adminUsername = adminUsernameOverride ?? admin?.username ?? config.slug + "-admin";
         const slug = slugOverride ?? config.slug;
 
-        const res = await fetch("/api/tenants/sync", {
+        const res = await fetch(`${API_BASE_URL}/api/tenants/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

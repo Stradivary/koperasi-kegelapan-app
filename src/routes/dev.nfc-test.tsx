@@ -8,6 +8,7 @@ import { makeFreshCard } from "../components/section/IssuanceTestSection";
 import { prepareWrite } from "../core/nfc/pipelineEngine";
 import { encodePayloadWire } from "../core/payload/engine";
 import type { SessionGrant } from "../core/payload/types";
+import { API_BASE_URL } from "../lib/api";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,
@@ -179,7 +180,7 @@ function NfcTestPage() {
           deviceId: "dev-nfc-test",
           role: "station",
         });
-        const res = await fetch(`/api/session-grant?${params}`);
+        const res = await fetch(`${API_BASE_URL}/api/session-grant?${params}`);
         if (res.ok) {
           const data = await res.json();
           const b64ToBytes = (b64: string): Uint8Array => {

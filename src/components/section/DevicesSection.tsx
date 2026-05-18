@@ -17,6 +17,7 @@ import {
   type TenantContext,
   type LocalTenantConfig,
 } from "../../lib/indexeddb";
+import { API_BASE_URL } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
@@ -103,7 +104,7 @@ export function DevicesSection() {
         await load();
         return;
       }
-      const res = await fetch("/api/reconcile", {
+      const res = await fetch(`${API_BASE_URL}/api/reconcile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ terminalId: 0, events: pending }),

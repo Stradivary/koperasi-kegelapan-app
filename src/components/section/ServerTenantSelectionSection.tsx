@@ -3,6 +3,7 @@ import { ArrowLeft, Search, RotateCcw } from "lucide-react";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
+import { API_BASE_URL } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -82,7 +83,7 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
     const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
 
     try {
-      const res = await fetch("/api/auth/token", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
