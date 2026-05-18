@@ -1,5 +1,9 @@
 import { useCallback, useRef, useState } from "react";
-import { localTenantConfigStore, type LocalTenantConfig } from "../lib/indexeddb";
+import {
+  localTenantConfigStore,
+  localAccountStore,
+  type LocalTenantConfig,
+} from "../lib/indexeddb";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
 
@@ -34,6 +38,11 @@ export function useTenantSync(): UseTenantSyncReturn {
       setError(null);
 
       try {
+        // Resolve the actual admin username from IndexedDB instead of hardcoding
+        const accounts = await localAccountStore.getByTenant(config.tenantId);
+        const admin = accounts.find((a) => a.role === "admin");
+        const adminUsername = admin?.username ?? config.slug + "-admin";
+
         const res = await fetch("/api/tenants/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -41,7 +50,7 @@ export function useTenantSync(): UseTenantSyncReturn {
             slug: config.slug,
             name: config.name,
             timezone: config.timezone,
-            adminUsername: config.slug + "-admin",
+            adminUsername,
             adminPasswordHash: adminPassword,
           }),
         });
@@ -70,6 +79,17 @@ export function useTenantSync(): UseTenantSyncReturn {
           statusRef.current = "conflict";
           setStatus("conflict");
           setConflict(syncConflict);
+        } else if (res.status === 400) {
+          // Parse validation errors from server for actionable feedback
+          const data = await res.json().catch(() => null);
+          let msg = "Data tenant tidak valid.";
+          if (data?.errors?.length > 0) {
+            const fields = data.errors.map((e: { field: string; message: string }) => e.message);
+            msg = fields.join("; ");
+          }
+          statusRef.current = "error";
+          setStatus("error");
+          setError(msg);
         } else {
           statusRef.current = "error";
           setStatus("error");
