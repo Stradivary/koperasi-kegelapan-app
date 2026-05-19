@@ -126,7 +126,7 @@ export function AdminCardsPanel({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Daftar Kartu</h2>
+          <h2 className="type-title-bold text-foreground">Daftar Kartu</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {cards.length} kartu · {activeCount} aktif · {blockedCount} diblokir
           </p>
@@ -169,7 +169,7 @@ export function AdminCardsPanel({
 
       {/* Loading */}
       {isLoading && (
-        <div className="rounded-lg border divide-y">
+        <div className="rounded-2xl border divide-y">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
@@ -195,7 +195,7 @@ export function AdminCardsPanel({
 
       {/* Card list */}
       {!isLoading && !error && (
-        <div className="rounded-lg border divide-y overflow-hidden">
+        <div className="rounded-2xl border divide-y overflow-hidden">
           {paginated.map((card) => {
             const config = getStatusConfig(card.status);
             const isBlocked = card.status !== "active";
@@ -289,10 +289,10 @@ export function AdminCardsPanel({
             );
           })}
           {paginated.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
               {search || statusFilter !== "all" ? (
                 <>
-                  <Search size={32} className="text-muted-foreground/40" />
+                  <Search size={40} className="text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">Tidak ditemukan kartu yang cocok</p>
                   <Button
                     variant="ghost"
@@ -307,7 +307,7 @@ export function AdminCardsPanel({
                 </>
               ) : (
                 <>
-                  <CreditCard size={32} className="text-muted-foreground/40" />
+                  <CreditCard size={40} className="text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">Belum ada kartu terdaftar</p>
                   <p className="text-xs text-muted-foreground/70">
                     Gunakan tombol Scan Kartu NFC untuk mendaftarkan kartu baru

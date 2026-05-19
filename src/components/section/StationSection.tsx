@@ -74,7 +74,12 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   const [fixCardId, setFixCardId] = useState<string | null>(null);
   const [overwriteDialog, setOverwriteDialog] = useState<{
     existingCard: CardOwnerInfo;
-    pendingIssue: { name: string; userId: number | null; balance: number; expiresAt: number | null };
+    pendingIssue: {
+      name: string;
+      userId: number | null;
+      balance: number;
+      expiresAt: number | null;
+    };
   } | null>(null);
   const [isOverwriting, setIsOverwriting] = useState(false);
   const qc = useQueryClient();
@@ -447,7 +452,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Station</h1>
+        <h1 className="type-title-bold text-foreground">Station</h1>
         <div className="flex rounded-lg border overflow-hidden">
           <button
             onClick={() => setTab("cards")}

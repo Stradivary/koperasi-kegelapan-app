@@ -133,7 +133,7 @@ export function useSyncEngine(
         setSyncStatus("idle");
         errorRetryCountRef.current = 0;
       }
-    } catch (error: unknown) {
+    } catch {
       if (mountedRef.current) {
         setSyncStatus("error");
         errorRetryCountRef.current += 1;

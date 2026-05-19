@@ -6,6 +6,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { PwaUpdatePrompt } from "../components/block/PwaUpdatePrompt";
 import { PwaInstallPrompt } from "../components/block/PwaInstallPrompt";
 import { DeviceBlockListener } from "../components/block/DeviceBlockListener";
+import { RootOfflineBanner } from "../components/block/OfflineIndicator";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "#/components/ui/tooltip";
 
@@ -22,6 +23,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 function RootComponent() {
   return (
     <TooltipProvider>
+      <RootOfflineBanner />
       <Outlet />
       <Toaster />
       <DeviceBlockListener />

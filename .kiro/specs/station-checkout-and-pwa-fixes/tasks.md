@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - Expired Session & No-Op Checkout
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bugs exist
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -17,7 +17,7 @@
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.6, 2.1, 2.6_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - Normal Sessions, Gate Mode, and Failed NFC Ops
   - **IMPORTANT**: Follow observation-first methodology
   - **Observe on UNFIXED code**:
@@ -37,7 +37,6 @@
   - _Requirements: 3.1, 3.2, 3.6, 3.7_
 
 - [ ] 3. Fix Bug 1 & 6: Real Checkout with 24h Auto Force-Checkout
-
   - [ ] 3.1 Implement `applyForceCheckout` in state-machine engine
     - Add `applyForceCheckout(payload, nowSeconds)` function to `src/core/state-machine/engine.ts`
     - Cap fee at `min(24 * PARKING_RATE_PER_HOUR, payload.wallet.balance)`
@@ -47,7 +46,7 @@
     - Build log entry with `deltaTime: 0xffff` (max, capped at 24h) and `flags: TxType.CHECKOUT`
     - Export the function for use in StationSection
     - _Bug_Condition: isBugCondition_SessionExpired(input) where isSessionExpired(payload, nowSeconds) = true AND state IN {CHECKED_IN, STATION_OPERATION}_
-    - _Expected_Behavior: result.wallet.state = CHECKED_OUT AND fee = min(24 * PARKING_RATE_PER_HOUR, balance) AND auditType = "missed_checkout"_
+    - _Expected_Behavior: result.wallet.state = CHECKED_OUT AND fee = min(24 \* PARKING_RATE_PER_HOUR, balance) AND auditType = "missed_checkout"_
     - _Preservation: Normal checkout (non-expired) must remain unchanged; applyCheckout function untouched_
     - _Requirements: 2.1, 2.6_
 
@@ -86,7 +85,6 @@
     - _Requirements: 3.1, 3.6, 3.7_
 
 - [ ] 4. Fix Bug 2: Card Sync After NFC Operations
-
   - [ ] 4.1 Extract `syncCardToLocalDb` utility function
     - Create utility function in `src/components/section/StationSection.tsx` (or separate util file)
     - Function accepts `tenantId`, `cardId`, `payload: CardPayload`
@@ -106,7 +104,6 @@
     - _Requirements: 2.2, 3.2_
 
 - [ ] 5. Fix Bug 3: UI Styling Polish
-
   - [ ] 5.1 Standardize Lucide icon sizes across components
     - Audit all Lucide icon usages in Station, Admin, and shared components
     - Apply consistent sizing: `size={16}` inline/body, `size={20}` buttons, `size={24}` section headers, `size={40}` hero/empty states
@@ -121,7 +118,6 @@
     - _Requirements: 2.3_
 
 - [ ] 6. Fix Bug 4: Offline Mode — Graceful Degradation
-
   - [ ] 6.1 Create `useOnlineStatus` hook
     - Create `src/hooks/useOnlineStatus.ts`
     - Track `navigator.onLine` state with event listeners for "online"/"offline" events
@@ -146,7 +142,6 @@
     - _Requirements: 2.4, 3.3_
 
 - [ ] 7. Fix Bug 5: PWA Hardening
-
   - [ ] 7.1 Harden Vite PWA configuration
     - Update `vite.config.ts` workbox config:
       - Add `skipWaiting: true` for immediate SW activation

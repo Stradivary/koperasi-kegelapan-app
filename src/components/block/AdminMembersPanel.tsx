@@ -87,7 +87,7 @@ export function AdminMembersPanel({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Anggota</h2>
+          <h2 className="type-title-bold text-foreground">Anggota</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {members.length} anggota · {activeCount} aktif · {suspendedCount} ditangguhkan
           </p>
@@ -108,7 +108,7 @@ export function AdminMembersPanel({
 
       {/* Create form */}
       {showForm && (
-        <div className="rounded-lg border p-4 space-y-3">
+        <div className="rounded-xl border p-4 space-y-3">
           <h3 className="text-sm font-medium">Anggota Baru</h3>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="space-y-1.5">
@@ -155,7 +155,7 @@ export function AdminMembersPanel({
 
       {/* List */}
       {isLoading && (
-        <div className="rounded-lg border divide-y">
+        <div className="rounded-2xl border divide-y">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
@@ -175,7 +175,7 @@ export function AdminMembersPanel({
       )}
 
       {!isLoading && (
-        <div className="rounded-lg border divide-y overflow-hidden">
+        <div className="rounded-2xl border divide-y overflow-hidden">
           {paginated.map((m) => (
             <div
               key={m.userId}
@@ -245,17 +245,17 @@ export function AdminMembersPanel({
             </div>
           ))}
           {paginated.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
               {search ? (
                 <>
-                  <Search size={32} className="text-muted-foreground/40" />
+                  <Search size={40} className="text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">
                     Tidak ditemukan anggota untuk "{search}"
                   </p>
                 </>
               ) : (
                 <>
-                  <UserCheck size={32} className="text-muted-foreground/40" />
+                  <UserCheck size={40} className="text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">Belum ada anggota terdaftar</p>
                   <p className="text-xs text-muted-foreground/70">
                     Tambahkan anggota pertama menggunakan tombol di atas

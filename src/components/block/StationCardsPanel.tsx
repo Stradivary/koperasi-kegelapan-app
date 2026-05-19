@@ -1,5 +1,14 @@
 import { useState, useMemo } from "react";
-import { Ban, CreditCard, MoreHorizontal, RotateCcw, Search, ShieldAlert, Trash2, Unlock } from "lucide-react";
+import {
+  Ban,
+  CreditCard,
+  MoreHorizontal,
+  RotateCcw,
+  Search,
+  ShieldAlert,
+  Trash2,
+  Unlock,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -187,7 +196,7 @@ export function StationCardsPanel({
 
           {isLoading && <LoadingState variant="inline" />}
 
-          <div className="rounded-lg border divide-y overflow-hidden">
+          <div className="rounded-2xl border divide-y overflow-hidden">
             {paginated.map((card) => {
               const isBlocked = card.status !== "active";
               return (
@@ -291,17 +300,17 @@ export function StationCardsPanel({
               );
             })}
             {paginated.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
                 {search ? (
                   <>
-                    <Search size={24} className="text-muted-foreground/40" />
+                    <Search size={40} className="text-muted-foreground/40" />
                     <p className="text-sm text-muted-foreground">
                       Tidak ditemukan untuk "{search}"
                     </p>
                   </>
                 ) : (
                   <>
-                    <CreditCard size={24} className="text-muted-foreground/40" />
+                    <CreditCard size={40} className="text-muted-foreground/40" />
                     <p className="text-sm text-muted-foreground">Belum ada kartu terdaftar</p>
                   </>
                 )}
@@ -344,7 +353,7 @@ export function StationCardsPanel({
 
       {/* Issue fresh card — write to blank NFC card */}
       {cardView === "issue" && (
-        <div className="rounded-lg border p-4 space-y-4 max-w-sm bg-card">
+        <div className="rounded-xl border p-4 space-y-4 max-w-sm bg-card">
           <h2 className="font-medium">Cetak Kartu Baru</h2>
           <p className="text-xs text-muted-foreground">
             Siapkan kartu NFC kosong. Data akan ditulis ke kartu dan didaftarkan otomatis.
@@ -433,7 +442,6 @@ export function StationCardsPanel({
           )}
         </div>
       )}
-
     </div>
   );
 }

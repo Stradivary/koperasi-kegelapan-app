@@ -74,13 +74,13 @@ export function StationFixCardPanel({
 
   if (phase === "success") {
     return (
-      <div className="rounded-lg border p-6 max-w-sm space-y-4">
+      <div className="rounded-xl border p-6 max-w-sm space-y-4">
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-500 flex items-center justify-center">
-            <CheckCircle2 size={40} className="text-green-500" />
+          <div className="w-20 h-20 rounded-full bg-signal-bg-valid border-2 border-signal-valid flex items-center justify-center">
+            <CheckCircle2 size={40} className="text-signal-valid" />
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-green-600">Kartu Berhasil Diperbaiki</p>
+            <p className="text-lg font-bold text-signal-valid">Kartu Berhasil Diperbaiki</p>
             <p className="text-sm text-muted-foreground mt-1">
               Kartu <span className="font-mono">{cardId}</span> telah ditulis ulang
             </p>
@@ -95,7 +95,7 @@ export function StationFixCardPanel({
 
   if (phase === "scanning") {
     return (
-      <div className="rounded-lg border p-6 max-w-sm space-y-4">
+      <div className="rounded-xl border p-6 max-w-sm space-y-4">
         <div className="flex flex-col items-center gap-4 py-6">
           <div className="relative flex items-center justify-center w-32 h-32">
             <span className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" />
@@ -115,10 +115,10 @@ export function StationFixCardPanel({
 
   if (phase === "error") {
     return (
-      <div className="rounded-lg border p-6 max-w-sm space-y-4">
+      <div className="rounded-xl border p-6 max-w-sm space-y-4">
         <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-20 h-20 rounded-full bg-red-50 border-2 border-red-500 flex items-center justify-center">
-            <XCircle size={40} className="text-red-500" />
+          <div className="w-20 h-20 rounded-full bg-signal-bg-error border-2 border-signal-error flex items-center justify-center">
+            <XCircle size={40} className="text-signal-error" />
           </div>
           <div className="text-center">
             <p className="font-bold text-destructive">Gagal Memperbaiki Kartu</p>
@@ -138,7 +138,7 @@ export function StationFixCardPanel({
   }
 
   return (
-    <div className="rounded-lg border p-4 space-y-4 max-w-sm">
+    <div className="rounded-xl border p-4 space-y-4 max-w-sm">
       <div className="flex items-center gap-2">
         <AlertTriangle size={20} className="text-destructive shrink-0" />
         <h2 className="font-medium">Perbaiki Kartu Rusak</h2>

@@ -94,7 +94,7 @@ export function StationMembersPanel({
       )}
 
       {memberView === "add" && (
-        <div className="rounded-lg border p-4 space-y-3 max-w-sm">
+        <div className="rounded-xl border p-4 space-y-3 max-w-sm">
           <h2 className="font-medium">Anggota Baru</h2>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="space-y-1.5">
@@ -142,7 +142,7 @@ export function StationMembersPanel({
           </div>
 
           {/* List */}
-          <div className="rounded-lg border divide-y overflow-hidden">
+          <div className="rounded-2xl border divide-y overflow-hidden">
             {isLoading && <LoadingState variant="inline" />}
             {!isLoading &&
               paginated.map((m) => (
@@ -197,17 +197,17 @@ export function StationMembersPanel({
                 </div>
               ))}
             {!isLoading && paginated.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
                 {search ? (
                   <>
-                    <Search size={24} className="text-muted-foreground/40" />
+                    <Search size={40} className="text-muted-foreground/40" />
                     <p className="text-sm text-muted-foreground">
                       Tidak ditemukan untuk "{search}"
                     </p>
                   </>
                 ) : (
                   <>
-                    <UserCheck size={24} className="text-muted-foreground/40" />
+                    <UserCheck size={40} className="text-muted-foreground/40" />
                     <p className="text-sm text-muted-foreground">Belum ada anggota terdaftar</p>
                   </>
                 )}

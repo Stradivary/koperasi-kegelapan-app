@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { useInstallPrompt } from "../../hooks/useInstallPrompt";
 
 export function PwaInstallPrompt() {
-  const { canInstall, install } = useInstallPrompt();
-  const [dismissed, setDismissed] = useState(false);
+  const { canInstall, install, dismiss } = useInstallPrompt();
 
-  if (!canInstall || dismissed) return null;
+  if (!canInstall) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto">
@@ -18,7 +16,7 @@ export function PwaInstallPrompt() {
         </div>
         <div className="flex gap-2 shrink-0">
           <button
-            onClick={() => setDismissed(true)}
+            onClick={dismiss}
             className="px-3 py-1.5 rounded-lg type-body2 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           >
             Nanti

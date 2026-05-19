@@ -79,11 +79,11 @@ export function TopupDrawer({
             {isError && "Gagal"}
           </DrawerTitle>
           {isScanning && (
-            <DrawerDescription>Dekatkan kartu NFC ke perangkat untuk membaca saldo</DrawerDescription>
+            <DrawerDescription>
+              Dekatkan kartu NFC ke perangkat untuk membaca saldo
+            </DrawerDescription>
           )}
-          {hasCard && payload && (
-            <DrawerDescription>Masukkan nominal top-up</DrawerDescription>
-          )}
+          {hasCard && payload && <DrawerDescription>Masukkan nominal top-up</DrawerDescription>}
           {isWriting && (
             <DrawerDescription>Tempelkan kartu NFC untuk menyimpan top-up</DrawerDescription>
           )}
@@ -105,7 +105,7 @@ export function TopupDrawer({
                   )}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="type-body1 text-muted-foreground text-center">
                 {phase === "validating" ? "Memvalidasi kartu..." : "Menunggu kartu..."}
               </p>
             </div>
@@ -168,8 +168,10 @@ export function TopupDrawer({
                 </span>
               </div>
               <div className="text-center space-y-1">
-                <p className="font-medium text-signal-warning">Tempelkan kartu untuk menulis</p>
-                <p className="text-sm text-muted-foreground">Dekatkan kartu NFC ke perangkat dan tahan sampai selesai</p>
+                <p className="type-body1-bold text-signal-warning">Tempelkan kartu untuk menulis</p>
+                <p className="type-body1 text-muted-foreground">
+                  Dekatkan kartu NFC ke perangkat dan tahan sampai selesai
+                </p>
               </div>
             </div>
           )}
