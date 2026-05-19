@@ -4,7 +4,6 @@ import {
   batchEntries,
   calculateBackoff,
   generateIdempotencyKey,
-  MAX_BATCH_SIZE,
   MAX_RETRY_ATTEMPTS,
   INITIAL_BACKOFF_MS,
   MAX_BACKOFF_MS,

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock } from "lucide-react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState, CardStatus } from "../../core/payload/types";
 import { localDb } from "../../db/local-db";
@@ -28,6 +29,7 @@ export function GateSection({
 }: GateSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
+  const syncEngine = useSyncEngineContext();
 
   // Simulation mode: date+time picker
   const [simulationMode, setSimulationMode] = useState(false);
@@ -130,12 +132,14 @@ export function GateSection({
   // Auto-reset after success
   useEffect(() => {
     if (state.phase === "success") {
+      // Notify sync engine that an Outbox write occurred (triggers debounced sync)
+      syncEngine?.notifyMutation();
       const timer = setTimeout(() => {
         reset();
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, reset]);
+  }, [state.phase, reset, syncEngine]);
 
   // Reset the auto-checkin flag when going back to idle
   useEffect(() => {

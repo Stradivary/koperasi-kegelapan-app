@@ -3,7 +3,7 @@ import { ArrowLeft, Search, RotateCcw } from "lucide-react";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
-import { API_BASE_URL } from "../../lib/api";
+import { API_BASE_URL, setCurrentDeviceId } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -54,16 +54,19 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
       role: string;
     }) => {
       try {
+        const deviceId = await getDeviceFingerprint();
         await tenantContextStore.put({
           tenantId: data.tenantId,
           tenantSlug: data.tenantSlug,
           tenantName: data.tenantName,
-          deviceId: await getDeviceFingerprint(),
+          deviceId,
           accountId: data.accountId,
           role: data.role,
           terminalId: 0,
           updatedAt: Date.now(),
         });
+        // Set deviceId in API client for all subsequent requests
+        setCurrentDeviceId(deviceId);
         onComplete(data.tenantId, data.role);
       } catch {
         setPendingAuthData(data);

@@ -9,7 +9,7 @@ vi.mock("../../db/local-db", () => {
   return {
     localDb: {
       transactionLog: {
-        where: vi.fn((index: string) => {
+        where: vi.fn((_index: string) => {
           return {
             equals: vi.fn(),
             between: vi.fn(),

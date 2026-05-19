@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useSyncEngine, DEBOUNCE_MS } from "../useSyncEngine";
+import { useSyncEngine } from "../useSyncEngine";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
@@ -235,7 +235,7 @@ describe("useSyncEngine", () => {
   it("triggers immediate sync on visibility change to visible", async () => {
     // Start with hidden state so the visibility change triggers
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    const { result } = renderHook(() => useSyncEngine("tenant-1", true));
+    renderHook(() => useSyncEngine("tenant-1", true));
 
     // Clear mocks before the action we want to test
     mockSyncPush.mockClear();
@@ -250,7 +250,7 @@ describe("useSyncEngine", () => {
   });
 
   it("does not trigger sync on visibility change to hidden", async () => {
-    const { result } = renderHook(() => useSyncEngine("tenant-1", true));
+    renderHook(() => useSyncEngine("tenant-1", true));
 
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     await act(async () => {

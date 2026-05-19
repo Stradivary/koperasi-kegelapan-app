@@ -8,9 +8,7 @@ import {
   subscribeToRateLimit,
   onRateLimitResume,
   handleRateLimitResponse,
-  MAX_PAUSE_SECONDS,
   MAX_PAUSE_MS,
-  type RateLimitState,
 } from "../syncRateLimiter";
 
 describe("syncRateLimiter", () => {

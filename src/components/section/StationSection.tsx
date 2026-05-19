@@ -4,6 +4,7 @@ import { cn } from "../../lib/utils";
 import { localDb, type Card, type User } from "../../db/local-db";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { applyTopup } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import {
@@ -80,6 +81,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId, "station");
   const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
+  const syncEngine = useSyncEngineContext();
 
   // Normalize hardware serial number to consistent hex format
   const normalizeSerial = (sn: string | null): string | null => {
@@ -106,6 +108,9 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       });
 
+      // Notify sync engine that an Outbox write occurred (triggers debounced sync)
+      syncEngine?.notifyMutation();
+
       const timer = setTimeout(() => {
         reset();
         setIsDrawerOpen(false);
@@ -113,7 +118,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc]);
+  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc, syncEngine]);
 
   // Auto-sync card data to local DB when scanned (always, including topup)
   useEffect(() => {

@@ -39,10 +39,10 @@ const mockDevices = [
 ];
 
 // Track mock calls
-const mockBlockDevice = vi.fn();
-const mockRevokeDeviceSessions = vi.fn(() => 2);
-const mockUnblockDevice = vi.fn();
-const mockGetDevicesByTenant = vi.fn(() => mockDevices);
+const mockBlockDevice = vi.fn<(...args: any[]) => any>();
+const mockRevokeDeviceSessions = vi.fn<(...args: any[]) => any>(() => 2);
+const mockUnblockDevice = vi.fn<(...args: any[]) => any>();
+const mockGetDevicesByTenant = vi.fn<(...args: any[]) => any>(() => mockDevices);
 
 // Mock modules
 vi.mock("#/server/superadminAuth", () => ({
@@ -99,10 +99,10 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 vi.mock("#/server/deviceRegistry", () => ({
-  getDevicesByTenant: (...args: unknown[]) => mockGetDevicesByTenant(...args),
-  blockDevice: (...args: unknown[]) => mockBlockDevice(...args),
-  unblockDevice: (...args: unknown[]) => mockUnblockDevice(...args),
-  revokeDeviceSessions: (...args: unknown[]) => mockRevokeDeviceSessions(...args),
+  getDevicesByTenant: (...args: any[]) => mockGetDevicesByTenant(...args),
+  blockDevice: (...args: any[]) => mockBlockDevice(...args),
+  unblockDevice: (...args: any[]) => mockUnblockDevice(...args),
+  revokeDeviceSessions: (...args: any[]) => mockRevokeDeviceSessions(...args),
 }));
 
 // Import after mocks

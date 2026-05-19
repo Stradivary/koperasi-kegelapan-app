@@ -115,14 +115,11 @@ export function useSyncEngine(
     isSyncingRef.current = true;
     queuedSyncRef.current = false;
 
-    let pullNeeded = false;
-
     try {
       // Phase 1: Push
       if (mountedRef.current) setSyncStatus("pushing");
 
-      const pushResult = await syncPush(tid);
-      pullNeeded = pushResult.pullNeeded;
+      await syncPush(tid);
 
       // Phase 2: Pull (always run after push; required if pullNeeded)
       if (mountedRef.current) setSyncStatus("pulling");

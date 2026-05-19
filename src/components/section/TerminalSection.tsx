@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useReconciliation } from "../../hooks/useReconciliation";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import {
   applyCheckout,
   validateTransition,
@@ -39,6 +40,7 @@ export function TerminalSection({
   } = useSessionGrant(tenantId, accountId, deviceId, "terminal");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
+  const syncEngine = useSyncEngineContext();
   const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
@@ -122,12 +124,14 @@ export function TerminalSection({
   // Auto-reset after success
   useEffect(() => {
     if (state.phase === "success") {
+      // Notify sync engine that an Outbox write occurred (triggers debounced sync)
+      syncEngine?.notifyMutation();
       const timer = setTimeout(() => {
         reset();
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, reset]);
+  }, [state.phase, reset, syncEngine]);
 
   // Reset the auto-checkout flag when going back to idle
   useEffect(() => {

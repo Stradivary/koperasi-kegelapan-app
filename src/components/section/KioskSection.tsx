@@ -1,5 +1,6 @@
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
@@ -30,6 +31,7 @@ export function KioskSection({
 }: KioskSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId);
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
+  const syncEngine = useSyncEngineContext();
   const [amount, setAmount] = useState("");
   const [txError, setTxError] = useState<string | null>(null);
   const [step, setStep] = useState<"tap" | "confirm" | "register" | "done">("tap");
@@ -65,7 +67,10 @@ export function KioskSection({
     }
     const now = Math.floor(Date.now() / 1000);
     const ok = await write(applyDebit(state.payload, amt, now), "debit");
-    if (ok) setStep("done");
+    if (ok) {
+      syncEngine?.notifyMutation();
+      setStep("done");
+    }
   }
 
   function handleReset() {

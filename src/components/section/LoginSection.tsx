@@ -6,7 +6,7 @@ import { localLogin, hasLocalTenant } from "../../lib/localTenant";
 import { generateDeviceFingerprint } from "../../lib/deviceFingerprint";
 import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
-import { API_BASE_URL } from "../../lib/api";
+import { API_BASE_URL, setCurrentDeviceId } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
 import { ServerTenantSelectionSection } from "./ServerTenantSelectionSection";
@@ -50,6 +50,10 @@ export function LoginSection() {
         const activeCtx =
           noAuthCtx ?? contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
         if (activeCtx) {
+          // Restore deviceId into API client for subsequent requests
+          if (activeCtx.deviceId) {
+            setCurrentDeviceId(activeCtx.deviceId);
+          }
           const roleRoutes: Record<string, string> = {
             terminal: `/tenant/${activeCtx.tenantId}/terminal`,
             gate: `/tenant/${activeCtx.tenantId}/gate`,
@@ -112,6 +116,8 @@ export function LoginSection() {
           terminalId: 0,
           updatedAt: Date.now(),
         });
+        // Set deviceId in API client for all subsequent requests
+        setCurrentDeviceId(fingerprint.hash);
         redirectToRole(localResult.tenantId, localResult.role);
         return;
       }
@@ -166,6 +172,9 @@ export function LoginSection() {
           });
         }
 
+        // Set deviceId in API client for all subsequent requests
+        setCurrentDeviceId(deviceId);
+
         redirectToRole(data.tenantId, data.role);
         return;
       }
@@ -217,6 +226,8 @@ export function LoginSection() {
       terminalId: 0,
       updatedAt: Date.now(),
     });
+    // Set deviceId in API client for all subsequent requests
+    setCurrentDeviceId(fingerprint.hash);
     redirectToRole(pendingContext.tenantId, role);
   }
 

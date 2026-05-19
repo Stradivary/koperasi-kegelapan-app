@@ -174,7 +174,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - **Property 12: Batch Size Invariant**
     - **Validates: Requirements 7.3, 14.3**
 
-- [ ] 8. Checkpoint - Sync engine core
+- [x] 8. Checkpoint - Sync engine core
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 9. Sync orchestration, debouncing, and conflict resolution
@@ -275,15 +275,15 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Apply only to `/api/sync/push` and `/api/sync/pull` endpoints
     - _Requirements: 13.1, 13.2_
 
-- [ ] 14. Integration wiring and final assembly
-  - [ ] 14.1 Wire device fingerprint into existing auth flow
+- [x] 14. Integration wiring and final assembly
+  - [x] 14.1 Wire device fingerprint into existing auth flow
     - Update login page to call `generateDeviceFingerprint()` before submitting credentials
     - Pass fingerprint to auth API
     - Store returned deviceId in IndexedDB tenantContext
     - Include deviceId in all subsequent API request headers
     - _Requirements: 2.1, 2.2, 3.7_
 
-  - [ ] 14.2 Wire sync engine into app lifecycle
+  - [x] 14.2 Wire sync engine into app lifecycle
     - Initialize sync engine on app mount when authenticated
     - Trigger full sync on app resume / online event
     - Connect Outbox writes from existing transaction recording to sync debounce
@@ -296,7 +296,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Test: concurrent sessions from multiple devices
     - _Requirements: 6.1, 7.1, 5.1, 3.1_
 
-- [ ] 15. Final checkpoint - Ensure all tests pass
+- [x] 15. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

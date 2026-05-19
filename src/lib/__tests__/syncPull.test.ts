@@ -26,15 +26,6 @@ vi.mock("../indexeddb", () => ({
 }));
 
 // Mock Dexie localDb
-const mockBulkPut = vi.fn().mockResolvedValue(undefined);
-const mockTransaction = vi.fn().mockImplementation(
-  async (_mode: string, _tables: unknown[], fn: () => Promise<void>) => {
-    await fn();
-  },
-);
-const mockSyncCursorsWhere = vi.fn();
-const mockTransactionLogWhere = vi.fn();
-
 vi.mock("../../db/local-db", () => ({
   localDb: {
     users: { bulkPut: vi.fn().mockResolvedValue(undefined) },
@@ -180,9 +171,9 @@ describe("syncPull", () => {
       }),
     } as any);
     vi.mocked(localDb.transaction).mockImplementation(
-      async (_mode: string, _tables: unknown[], fn: () => Promise<void>) => {
+      (async (_mode: any, _tables: any, fn: any) => {
         await fn();
-      },
+      }) as any,
     );
   });
 

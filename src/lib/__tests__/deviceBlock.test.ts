@@ -7,7 +7,6 @@ import {
   checkDeviceBlockResponse,
   formatBlockedUntil,
   subscribeToDeviceBlock,
-  type DeviceBlockState,
 } from "../deviceBlock";
 
 // Mock the indexeddb module to avoid actual IndexedDB operations in tests

@@ -7,7 +7,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { localTenantConfigStore, localAccountStore } from "../../lib/indexeddb";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
-import { useSyncEngine } from "../../hooks/useSyncEngine";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -103,12 +103,12 @@ export const AdminSection = ({
   } = useTenantSync();
 
   // Sync engine for status indicator (Req 11.1, 11.2, 11.7, 11.8)
-  const {
-    syncStatus: engineSyncStatus,
-    lastSyncedAt: engineLastSyncedAt,
-    pendingCount: enginePendingCount,
-    triggerSync: engineTriggerSync,
-  } = useSyncEngine(tenantId, true);
+  // Uses the shared context from the tenant layout
+  const syncEngineCtx = useSyncEngineContext();
+  const engineSyncStatus = syncEngineCtx?.syncStatus ?? "idle";
+  const engineLastSyncedAt = syncEngineCtx?.lastSyncedAt ?? null;
+  const enginePendingCount = syncEngineCtx?.pendingCount ?? 0;
+  const engineTriggerSync = syncEngineCtx?.triggerSync ?? (() => {});
 
   // Normalize hardware serial number to consistent hex format
   const normalizeSerial = (sn: string | null): string | null => {
@@ -170,6 +170,9 @@ export const AdminSection = ({
         qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       });
 
+      // Notify sync engine that an Outbox write occurred (triggers debounced sync)
+      syncEngineCtx?.notifyMutation();
+
       const timer = setTimeout(() => {
         reset();
         setIsDrawerOpen(false);
@@ -178,7 +181,7 @@ export const AdminSection = ({
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc, resetCardPending]);
+  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc, resetCardPending, syncEngineCtx]);
 
   // Auto-sync card data to local DB when scanned (always, including topup)
   useEffect(() => {
