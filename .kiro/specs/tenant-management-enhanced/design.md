@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design enhances the multitenancy system for the koperasi parking management PWA. The current system has a minimal server-side tenant model (name, slug, timezone, status) with local-first IndexedDB stores handling members, cards, and transaction logs independently. Sync is limited to a one-shot tenant registration (`/api/tenants/sync`) and reconciliation of card events (`/api/reconcile`).
+This design enhances the multitenancy system for the koperasi kegelapan management PWA. The current system has a minimal server-side tenant model (name, slug, timezone, status) with local-first IndexedDB stores handling members, cards, and transaction logs independently. Sync is limited to a one-shot tenant registration (`/api/tenants/sync`) and reconciliation of card events (`/api/reconcile`).
 
 The enhanced system expands the server DB tenant model to include members, cards, and full transaction logs as first-class synced entities. It introduces bidirectional transaction log sync between IndexedDB and D1, a new "Transactions" UI section, multi-device login with device fingerprinting, and superadmin remote invalidation capabilities. The architecture maintains the local-first offline-capable design while adding robust server-side state for cross-device consistency and administrative control.
 
@@ -637,13 +637,79 @@ const { data } = useQuery({
 
 ## Correctness Properties
 
-1. **Tenant Isolation**: ∀ request R, response D: D.tenantId === R.token.tenantId — no cross-tenant data leakage
-2. **Idempotent Sync**: ∀ transaction T pushed N times: server stores exactly 1 copy (enforced by idempotency_key UNIQUE constraint)
-3. **Device Block Enforcement**: ∀ device D where D.blocked_until > now: all API requests from D return 403
-4. **Session Cascade**: ∀ device D blocked: count(active_sessions for D) === 0 after block operation
-5. **Cursor Monotonicity**: ∀ sync pull with cursor C: returned entities have updated_at > C
-6. **Balance Consistency**: ∀ card C: server C.balance === balanceAfter of highest-counter transaction for C
-7. **Offline Durability**: ∀ transaction recorded locally: entry persists in IndexedDB outbox until confirmed synced
+*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+### Property 1: Tenant Isolation
+
+*For any* sync operation (push or pull) and any authenticated request, the response SHALL contain only entities where entity.tenantId matches the authenticated token's tenantId. No entity belonging to a different tenant shall ever appear in a sync response.
+
+**Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
+
+### Property 2: Idempotent Sync
+
+*For any* transaction T pushed N times (N ≥ 1) with the same idempotency_key, the server SHALL store exactly one copy of T. The idempotency_key UNIQUE constraint ensures duplicate pushes are silently skipped without error.
+
+**Validates: Requirements 1.5, 6.2, 6.3**
+
+### Property 3: Device Block Enforcement
+
+*For any* device D and any point in time T, D is allowed access if and only if D.blocked_until is null OR D.blocked_until ≤ T. When D.blocked_until > T, all API requests from D SHALL return 403.
+
+**Validates: Requirements 5.1, 5.3, 5.4**
+
+### Property 4: Session Cascade on Device Block
+
+*For any* device D with N active sessions (where N ≥ 0), after a block operation on D, the count of active (non-revoked) sessions for D SHALL be 0. All sessions SHALL have revoked_at set to the block timestamp.
+
+**Validates: Requirements 4.3, 4.6**
+
+### Property 5: Cursor Monotonicity
+
+*For any* sync pull request with cursor value C, all entities in the response SHALL have updated_at > C. The new cursor returned in the response SHALL be ≥ the maximum updated_at of all returned entities.
+
+**Validates: Requirements 7.2, 7.5, 7.6**
+
+### Property 6: Balance Consistency
+
+*For any* card C on the server, C.balance SHALL equal the balanceAfter value of the transaction with the highest counter for that card. Transactions with counter ≤ the server's known counter for a card SHALL be rejected as stale.
+
+**Validates: Requirements 6.4, 6.6**
+
+### Property 7: Offline Durability
+
+*For any* transaction recorded locally in IndexedDB, the entry SHALL persist in the outbox with syncStatus "pending" until the server confirms acceptance. No local transaction SHALL be removed or lost regardless of sync status, network state, or application restarts.
+
+**Validates: Requirements 9.1, 9.3, 9.5**
+
+### Property 8: Device Fingerprint Determinism
+
+*For any* set of browser attributes (userAgent, screenResolution, timezone, language, platform), the generated Device_Fingerprint hash SHALL be a deterministic 64-character hexadecimal string. Calling the fingerprint function twice with identical inputs SHALL produce identical output.
+
+**Validates: Requirements 2.1, 2.6**
+
+### Property 9: Session Independence
+
+*For any* account with active sessions on devices D1, D2, ..., Dn, creating a new session on device Dn+1 SHALL NOT invalidate or modify sessions on D1 through Dn. Each session SHALL be independently validated against its own device_id and expiry.
+
+**Validates: Requirements 3.1, 3.4, 3.5**
+
+### Property 10: Filter Correctness
+
+*For any* transaction query with filter predicates (cardId, type, dateFrom, dateTo), all returned transactions SHALL satisfy every specified predicate. No transaction that fails any predicate SHALL appear in the results.
+
+**Validates: Requirements 10.3, 10.4, 10.5**
+
+### Property 11: Sync Debounce Coalescence
+
+*For any* sequence of N local mutations occurring within a 5-second window, the Sync_Engine SHALL trigger exactly one sync operation (not N operations). The sync SHALL fire after 5 seconds of mutation quiescence.
+
+**Validates: Requirements 14.1**
+
+### Property 12: Batch Size Invariant
+
+*For any* sync push or pull operation, each HTTP request SHALL contain at most 500 entities per entity type. Datasets larger than 500 entities SHALL be split across multiple requests.
+
+**Validates: Requirements 7.3, 14.3**
 
 ## Error Handling
 

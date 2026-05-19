@@ -8,6 +8,34 @@
       "when": 1778628039233,
       "tag": "0000_young_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778628100000,
+      "tag": "0001_add_auth_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778628100001,
+      "tag": "0001_add_devices_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778628100002,
+      "tag": "0001_add_transaction_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1778628100003,
+      "tag": "0001_sync_cursors_cards_updated_at",
+      "breakpoints": true
     }
   ]
 }

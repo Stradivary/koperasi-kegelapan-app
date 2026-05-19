@@ -5,6 +5,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { PwaUpdatePrompt } from "../components/block/PwaUpdatePrompt";
 import { PwaInstallPrompt } from "../components/block/PwaInstallPrompt";
+import { DeviceBlockListener } from "../components/block/DeviceBlockListener";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "#/components/ui/tooltip";
 
@@ -23,6 +24,7 @@ function RootComponent() {
     <TooltipProvider>
       <Outlet />
       <Toaster />
+      <DeviceBlockListener />
       <PwaInstallPrompt />
       <PwaUpdatePrompt />
       <TanStackDevtools

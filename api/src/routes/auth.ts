@@ -3,6 +3,8 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { accounts, tenants } from "../../../src/db/schema";
+import { registerDevice } from "../../../src/server/deviceRegistry";
+import { createSession } from "../../../src/server/authSession";
 
 type Env = {
   DB: D1Database;
@@ -76,11 +78,49 @@ authRoutes.post("/token", async (c) => {
     return c.json({ error: "Tenant inactive" }, 401);
   }
 
+  // Device fingerprint integration: register device and create auth session
+  const deviceFingerprint = json.deviceFingerprint as
+    | { hash: string; userAgent: string; platform: string }
+    | undefined;
+
+  let deviceId: string | undefined;
+  let sessionId: string | undefined;
+  let refreshToken: string | undefined;
+  let expiresAt: number | undefined;
+
+  if (deviceFingerprint?.hash) {
+    // Register/upsert device in the Device Registry
+    const device = await registerDevice(db, {
+      tenantId: account.tenantId,
+      accountId: account.accountId,
+      fingerprintHash: deviceFingerprint.hash,
+      userAgent: deviceFingerprint.userAgent || "unknown",
+      platform: deviceFingerprint.platform || "unknown",
+    });
+
+    deviceId = device.deviceId;
+
+    // Create an auth session bound to this device
+    const session = await createSession(db, {
+      tenantId: account.tenantId,
+      accountId: account.accountId,
+      deviceId: device.deviceId,
+    });
+
+    sessionId = session.sessionId;
+    refreshToken = session.refreshToken;
+    expiresAt = session.expiresAt;
+  }
+
   return c.json({
     accountId: account.accountId,
     tenantId: account.tenantId,
     tenantSlug: tenant.slug,
     tenantName: tenant.name,
     role: account.role,
+    ...(deviceId && { deviceId }),
+    ...(sessionId && { sessionId }),
+    ...(refreshToken && { refreshToken }),
+    ...(expiresAt && { expiresAt }),
   });
 });

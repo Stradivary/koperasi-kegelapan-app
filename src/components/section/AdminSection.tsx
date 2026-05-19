@@ -7,6 +7,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { localTenantConfigStore, localAccountStore } from "../../lib/indexeddb";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
+import { useSyncEngine } from "../../hooks/useSyncEngine";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -100,6 +101,14 @@ export const AdminSection = ({
     retryWithChanges,
     reset: resetSync,
   } = useTenantSync();
+
+  // Sync engine for status indicator (Req 11.1, 11.2, 11.7, 11.8)
+  const {
+    syncStatus: engineSyncStatus,
+    lastSyncedAt: engineLastSyncedAt,
+    pendingCount: enginePendingCount,
+    triggerSync: engineTriggerSync,
+  } = useSyncEngine(tenantId, true);
 
   // Normalize hardware serial number to consistent hex format
   const normalizeSerial = (sn: string | null): string | null => {
@@ -523,6 +532,10 @@ export const AdminSection = ({
       role={role}
       activeSection={view}
       onSectionChange={setView}
+      syncStatus={engineSyncStatus}
+      lastSyncedAt={engineLastSyncedAt}
+      pendingCount={enginePendingCount}
+      onTriggerSync={engineTriggerSync}
     >
       {state.error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">

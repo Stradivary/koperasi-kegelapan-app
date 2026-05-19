@@ -1,12 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, ChevronLeft, CreditCard, Leaf, LogOut, Menu, UserCheck, X } from "lucide-react";
+import { BookOpen, ChevronLeft, CreditCard, Leaf, LogOut, Menu, Receipt, UserCheck, X } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
+import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
+import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
 
-export type AdminView = "cards" | "members" | "scout";
+export type AdminView = "cards" | "members" | "scout" | "transactions";
 
 interface AdminLayoutProps {
   tenantName: string;
@@ -15,23 +17,34 @@ interface AdminLayoutProps {
   activeSection: AdminView;
   onSectionChange: (section: AdminView) => void;
   children: React.ReactNode;
+  /** Sync engine status for the status indicator */
+  syncStatus?: SyncEngineStatus;
+  /** Timestamp of last successful sync (epoch ms) */
+  lastSyncedAt?: number | null;
+  /** Number of pending Outbox entries */
+  pendingCount?: number;
+  /** Callback to trigger manual sync */
+  onTriggerSync?: () => void;
 }
 
 const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
   { id: "members", icon: UserCheck, label: "Anggota" },
+  { id: "transactions", icon: Receipt, label: "Transaksi" },
   { id: "scout", icon: BookOpen, label: "Scout" },
 ];
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
   { id: "members", icon: UserCheck, label: "Anggota" },
+  { id: "transactions", icon: Receipt, label: "Transaksi" },
   { id: "scout", icon: BookOpen, label: "Scout" },
 ];
 
 const SECTION_LABEL: Record<AdminView, string> = {
   cards: "Kartu",
   members: "Anggota",
+  transactions: "Transaksi",
   scout: "Scout",
 };
 
@@ -42,6 +55,10 @@ export function AdminLayout({
   activeSection,
   onSectionChange,
   children,
+  syncStatus,
+  lastSyncedAt,
+  pendingCount,
+  onTriggerSync,
 }: AdminLayoutProps) {
   const navigate = useNavigate();
   const { isOnline } = useOnlineStatus();
@@ -56,6 +73,8 @@ export function AdminLayout({
   function handleNavClick(id: AdminView) {
     if (id === "scout") {
       navigate({ to: `/tenant/${tenantId}/scout` });
+    } else if (id === "transactions") {
+      navigate({ to: `/tenant/${tenantId}/transactions` });
     } else {
       onSectionChange(id);
     }
@@ -199,6 +218,15 @@ export function AdminLayout({
             </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
           </div>
+          {/* Sync status indicator */}
+          {syncStatus && (
+            <SyncStatusIndicator
+              syncStatus={syncStatus}
+              lastSyncedAt={lastSyncedAt ?? null}
+              pendingCount={pendingCount ?? 0}
+              onSync={onTriggerSync}
+            />
+          )}
           {/* Online indicator */}
           <div className="flex items-center gap-1.5">
             <span

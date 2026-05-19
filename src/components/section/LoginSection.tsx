@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { DoorOpen, MonitorSmartphone, BookOpen, Settings, Layers, Plus, Globe } from "lucide-react";
 import { tenantContextStore } from "../../lib/indexeddb";
 import { localLogin, hasLocalTenant } from "../../lib/localTenant";
-import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
+import { generateDeviceFingerprint } from "../../lib/deviceFingerprint";
+import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
 import { API_BASE_URL } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
@@ -99,11 +100,13 @@ export function LoginSection() {
       // 1. Try local login first
       const localResult = await localLogin(username, password);
       if (localResult) {
+        // Generate device fingerprint for local context storage
+        const fingerprint = await generateDeviceFingerprint();
         await tenantContextStore.put({
           tenantId: localResult.tenantId,
           tenantSlug: localResult.tenantSlug,
           tenantName: localResult.tenantName,
-          deviceId: await getDeviceFingerprint(),
+          deviceId: fingerprint.hash,
           accountId: localResult.accountId,
           role: localResult.role,
           terminalId: 0,
@@ -120,24 +123,49 @@ export function LoginSection() {
       }
 
       // 3. Try server login as fallback (online only)
+      // Generate device fingerprint to send with login request
+      const fingerprint = await generateDeviceFingerprint();
+
       const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          deviceFingerprint: {
+            hash: fingerprint.hash,
+            userAgent: fingerprint.userAgent,
+            platform: fingerprint.platform,
+          },
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        // Use server-returned deviceId if available, otherwise fall back to fingerprint hash
+        const deviceId = data.deviceId || fingerprint.hash;
+
         await tenantContextStore.put({
           tenantId: data.tenantId,
           tenantSlug: data.tenantSlug,
           tenantName: data.tenantName,
-          deviceId: await getDeviceFingerprint(),
+          deviceId,
           accountId: data.accountId,
           role: data.role,
           terminalId: 0,
           updatedAt: Date.now(),
         });
+
+        // Store device registration info in Dexie for sync engine use
+        if (data.deviceId) {
+          await localDb.deviceInfo.put({
+            deviceId: data.deviceId,
+            tenantId: data.tenantId,
+            fingerprintHash: fingerprint.hash,
+            registeredAt: Date.now(),
+          });
+        }
+
         redirectToRole(data.tenantId, data.role);
         return;
       }
@@ -181,9 +209,10 @@ export function LoginSection() {
 
   async function handlePickDeviceRole(role: "gate" | "terminal" | "scout") {
     if (!pendingContext) return;
+    const fingerprint = await generateDeviceFingerprint();
     await tenantContextStore.put({
       ...pendingContext,
-      deviceId: await getDeviceFingerprint(),
+      deviceId: fingerprint.hash,
       role,
       terminalId: 0,
       updatedAt: Date.now(),

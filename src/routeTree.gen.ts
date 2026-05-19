@@ -16,6 +16,7 @@ import { Route as DevIndexRouteImport } from './routes/dev.index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
 import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
+import { Route as TenantTenantIdTransactionsRouteImport } from './routes/tenant.$tenantId.transactions'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
 import { Route as TenantTenantIdStationRouteImport } from './routes/tenant.$tenantId.station'
 import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
@@ -58,6 +59,12 @@ const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
   path: '/dev/issuance-test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TenantTenantIdTransactionsRoute =
+  TenantTenantIdTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => TenantTenantIdRoute,
+  } as any)
 const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
+  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +126,7 @@ export interface FileRoutesByTo {
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
+  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
   '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
+  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
+    | '/tenant/$tenantId/transactions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
+    | '/tenant/$tenantId/transactions'
   id:
     | '__root__'
     | '/'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/scout'
     | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
+    | '/tenant/$tenantId/transactions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevIssuanceTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tenant/$tenantId/transactions': {
+      id: '/tenant/$tenantId/transactions'
+      path: '/transactions'
+      fullPath: '/tenant/$tenantId/transactions'
+      preLoaderRoute: typeof TenantTenantIdTransactionsRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
     '/tenant/$tenantId/terminal': {
       id: '/tenant/$tenantId/terminal'
       path: '/terminal'
@@ -296,6 +316,7 @@ interface TenantTenantIdRouteChildren {
   TenantTenantIdScoutRoute: typeof TenantTenantIdScoutRoute
   TenantTenantIdStationRoute: typeof TenantTenantIdStationRoute
   TenantTenantIdTerminalRoute: typeof TenantTenantIdTerminalRoute
+  TenantTenantIdTransactionsRoute: typeof TenantTenantIdTransactionsRoute
 }
 
 const TenantTenantIdRouteChildren: TenantTenantIdRouteChildren = {
@@ -305,6 +326,7 @@ const TenantTenantIdRouteChildren: TenantTenantIdRouteChildren = {
   TenantTenantIdScoutRoute: TenantTenantIdScoutRoute,
   TenantTenantIdStationRoute: TenantTenantIdStationRoute,
   TenantTenantIdTerminalRoute: TenantTenantIdTerminalRoute,
+  TenantTenantIdTransactionsRoute: TenantTenantIdTransactionsRoute,
 }
 
 const TenantTenantIdRouteWithChildren = TenantTenantIdRoute._addFileChildren(
