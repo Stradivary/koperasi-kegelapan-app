@@ -11,7 +11,7 @@
     "build": "vite build",
     "build:api": "wrangler deploy --config wrangler.api.jsonc --dry-run",
     "preview": "vite preview",
-    "deploy:pages": "pnpm run build && wrangler pages deploy dist/",
+    "deploy:pages": "pnpm run build && wrangler pages deploy",
     "deploy:api": "wrangler deploy --config wrangler.api.jsonc",
     "deploy": "pnpm run deploy:pages && pnpm run deploy:api",
     "test": "vitest run",

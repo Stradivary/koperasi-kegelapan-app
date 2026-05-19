@@ -33,6 +33,7 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
     tenantName: string;
     accountId: string;
     role: string;
+    deviceId?: string;
   } | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -52,9 +53,12 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
       tenantName: string;
       accountId: string;
       role: string;
+      deviceId?: string;
     }) => {
       try {
-        const deviceId = await getDeviceFingerprint();
+        const fingerprintId = await getDeviceFingerprint();
+        // Use server-returned deviceId if available, otherwise fall back to fingerprint
+        const deviceId = data.deviceId || fingerprintId;
         await tenantContextStore.put({
           tenantId: data.tenantId,
           tenantSlug: data.tenantSlug,
@@ -86,6 +90,9 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
     const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
 
     try {
+      // Generate device fingerprint for multi-device login support
+      const deviceFingerprintHash = await getDeviceFingerprint();
+
       const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,6 +100,11 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
           tenantSlug: selectedTenant!.slug,
           username,
           password,
+          deviceFingerprint: {
+            hash: deviceFingerprintHash,
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+          },
         }),
         signal: controller.signal,
       });

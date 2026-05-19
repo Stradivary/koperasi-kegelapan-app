@@ -1,4 +1,3 @@
-// eslint-disable no-console
 import { config } from "dotenv";
 import { getPlatformProxy } from "wrangler";
 import { drizzle } from "drizzle-orm/d1";
@@ -13,61 +12,84 @@ async function seed() {
 
   console.log("🌱 Seeding D1 database...");
 
-  const tenantA = {
+  // ── System tenant (host for superadmin account) ────────────────────────────
+  const systemTenant = {
+    tenantId: generateId(),
+    slug: "system",
+    name: "System",
+    status: "active" as const,
+    timezone: "Asia/Jakarta",
+  };
+
+  await db
+    .insert(schema.tenants)
+    .values(systemTenant)
+    .onConflictDoNothing({ target: schema.tenants.slug });
+
+  const { eq } = await import("drizzle-orm");
+  const persistedSystem = await db
+    .select()
+    .from(schema.tenants)
+    .where(eq(schema.tenants.slug, "system"))
+    .get();
+
+  if (!persistedSystem) throw new Error("Unable to resolve system tenant row");
+
+  // ── Sample tenant ──────────────────────────────────────────────────────────
+  const sampleTenant = {
     tenantId: generateId(),
     slug: "koperasi-a",
     name: "Koperasi A",
     status: "active" as const,
     timezone: "Asia/Jakarta",
   };
-  const tenantB = {
-    tenantId: generateId(),
-    slug: "koperasi-b",
-    name: "Koperasi B",
-    status: "active" as const,
-    timezone: "Asia/Jakarta",
-  };
+
   await db
     .insert(schema.tenants)
-    .values([tenantA, tenantB])
+    .values(sampleTenant)
     .onConflictDoNothing({ target: schema.tenants.slug });
 
-  const { eq } = await import("drizzle-orm");
-  const persistedTenantA = await db
+  const persistedSample = await db
     .select()
     .from(schema.tenants)
-    .where(eq(schema.tenants.slug, tenantA.slug))
-    .get();
-  const persistedTenantB = await db
-    .select()
-    .from(schema.tenants)
-    .where(eq(schema.tenants.slug, tenantB.slug))
+    .where(eq(schema.tenants.slug, "koperasi-a"))
     .get();
 
-  if (!persistedTenantA || !persistedTenantB)
-    throw new Error("Unable to resolve seeded tenant rows");
+  if (!persistedSample) throw new Error("Unable to resolve sample tenant row");
 
-  console.log("✓ Tenants: Koperasi A, Koperasi B");
+  console.log("✓ Tenants: System, Koperasi A");
 
-  const roles = ["admin", "terminal", "gate", "station"] as const;
-  const accounts = [persistedTenantA, persistedTenantB].flatMap((tenant) =>
-    roles.map((role) => ({
-      accountId: generateId(),
-      tenantId: tenant.tenantId,
-      username: `${role}-${tenant.slug.split("-")[1]}`,
-      passwordHash: hashPassword("password"),
-      role,
-      status: "active" as const,
-    })),
-  );
-  await db.insert(schema.accounts).values(accounts).onConflictDoNothing();
-  console.log('✓ Accounts: 4 per tenant (admin, terminal, gate, station) — password: "password"');
+  // ── Superadmin account (on system tenant) ──────────────────────────────────
+  const superadminAccount = {
+    accountId: generateId(),
+    tenantId: persistedSystem.tenantId,
+    username: "superadmin",
+    passwordHash: hashPassword("superadmin"),
+    role: "superadmin",
+    status: "active" as const,
+  };
 
+  await db.insert(schema.accounts).values(superadminAccount).onConflictDoNothing();
+  console.log('✓ Superadmin: username "superadmin", password "superadmin"');
+
+  // ── Admin account (on sample tenant) ───────────────────────────────────────
+  const adminAccount = {
+    accountId: generateId(),
+    tenantId: persistedSample.tenantId,
+    username: "admin-a",
+    passwordHash: hashPassword("password"),
+    role: "admin",
+    status: "active" as const,
+  };
+
+  await db.insert(schema.accounts).values(adminAccount).onConflictDoNothing();
+  console.log('✓ Admin: username "admin-a", password "password" (Koperasi A)');
+
+  // ── Summary ────────────────────────────────────────────────────────────────
   console.log("\n✅ D1 seed complete.");
-  console.log('Accounts (password: "password"):');
-  console.log("  Koperasi A: admin-a, terminal-a, gate-a, station-a");
-  console.log("  Koperasi B: admin-b, terminal-b, gate-b, station-b");
-  console.log("\nNote: Users and cards are stored in IndexedDB (browser-local).");
+  console.log("Accounts:");
+  console.log('  superadmin  — username: "superadmin", password: "superadmin"');
+  console.log('  admin-a     — username: "admin-a", password: "password" (Koperasi A)');
 
   await dispose();
 }

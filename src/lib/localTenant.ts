@@ -72,6 +72,43 @@ export async function isLocalSlugTaken(slug: string): Promise<boolean> {
   return existingTenants.some((t) => t.slug === slug);
 }
 
+/**
+ * Check if a slug already exists on the remote server.
+ * Calls the tenant search endpoint and checks for an exact slug match.
+ * Returns false (not taken) if the network request fails (offline-tolerant).
+ */
+export async function isRemoteSlugTaken(slug: string): Promise<boolean> {
+  try {
+    const { API_BASE_URL } = await import("./api");
+    const res = await fetch(
+      `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(slug)}&limit=10`,
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    const tenants: { slug?: string }[] = data.tenants ?? data.results ?? data ?? [];
+    return tenants.some((t) => t.slug === slug);
+  } catch {
+    // Network error / offline — allow proceeding
+    return false;
+  }
+}
+
+/**
+ * Check if a slug is taken either locally or on the remote server.
+ * Combines both checks for comprehensive slug uniqueness validation.
+ */
+export async function isSlugTaken(
+  slug: string,
+): Promise<{ taken: boolean; source?: "local" | "remote" }> {
+  const localTaken = await isLocalSlugTaken(slug);
+  if (localTaken) return { taken: true, source: "local" };
+
+  const remoteTaken = await isRemoteSlugTaken(slug);
+  if (remoteTaken) return { taken: true, source: "remote" };
+
+  return { taken: false };
+}
+
 export interface SetupLocalTenantParams {
   name: string;
   slug?: string;

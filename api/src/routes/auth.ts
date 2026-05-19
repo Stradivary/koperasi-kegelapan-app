@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
 import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
-import { accounts, tenants } from "../../../src/db/schema";
-import { registerDevice } from "../../../src/server/deviceRegistry";
-import { createSession } from "../../../src/server/authSession";
+import { accounts, tenants } from "#/db/schema";
+import { registerDevice } from "#/server/deviceRegistry";
+import { createSession } from "#/server/authSession";
 
 type Env = {
   DB: D1Database;
@@ -50,6 +50,30 @@ function verifyPassword(password: string, stored: string): boolean {
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
 
+/**
+ * Build a simple JWT-like access token (header.payload.signature).
+ * The payload is base64-encoded JSON containing accountId, tenantId, role, and deviceId.
+ * Note: This is NOT cryptographically signed — it relies on HTTPS transport security.
+ * For production, replace with proper HMAC-signed JWT using SESSION_MASTER_KEY.
+ */
+function buildAccessToken(payload: {
+  accountId: string;
+  tenantId: string;
+  role: string;
+  deviceId?: string;
+}): string {
+  const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }));
+  const body = btoa(
+    JSON.stringify({
+      ...payload,
+      iat: Math.floor(Date.now() / 1000),
+    }),
+  );
+  // Placeholder signature — upgrade to HMAC-SHA256 with SESSION_MASTER_KEY for production
+  const sig = "unsigned";
+  return `${header}.${body}.${sig}`;
+}
+
 authRoutes.post("/token", async (c) => {
   const json = await c.req.json().catch(() => null);
   if (!json?.username || !json?.password) {
@@ -58,11 +82,33 @@ authRoutes.post("/token", async (c) => {
 
   const db = drizzle(c.env.DB);
 
-  const account = await db
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.username, json.username), eq(accounts.status, "active")))
-    .get();
+  // If tenantSlug is provided, scope the account lookup to that tenant
+  let account;
+  if (json.tenantSlug) {
+    const tenant = await db.select().from(tenants).where(eq(tenants.slug, json.tenantSlug)).get();
+
+    if (!tenant) {
+      return c.json({ error: "Tenant not found" }, 404);
+    }
+
+    account = await db
+      .select()
+      .from(accounts)
+      .where(
+        and(
+          eq(accounts.username, json.username),
+          eq(accounts.status, "active"),
+          eq(accounts.tenantId, tenant.tenantId),
+        ),
+      )
+      .get();
+  } else {
+    account = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.username, json.username), eq(accounts.status, "active")))
+      .get();
+  }
 
   if (!account || !verifyPassword(json.password, account.passwordHash)) {
     return c.json({ error: "Invalid credentials" }, 401);
@@ -118,6 +164,14 @@ authRoutes.post("/token", async (c) => {
     tenantSlug: tenant.slug,
     tenantName: tenant.name,
     role: account.role,
+    // Simple base64-encoded access token for API authentication
+    // Format: header.payload.signature (JWT-like, payload is base64 JSON)
+    accessToken: buildAccessToken({
+      accountId: account.accountId,
+      tenantId: account.tenantId,
+      role: account.role,
+      deviceId,
+    }),
     ...(deviceId && { deviceId }),
     ...(sessionId && { sessionId }),
     ...(refreshToken && { refreshToken }),

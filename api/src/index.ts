@@ -7,6 +7,7 @@ import { tenantsRoutes } from "./routes/tenants";
 import { superadminRoutes } from "./routes/superadmin";
 import { accountsRoutes } from "./routes/accounts";
 import { syncRoutes } from "./routes/sync";
+import { corsMiddleware } from "./middleware/cors";
 import { deviceBlockCheck } from "./middleware/deviceBlockCheck";
 import { syncRateLimit } from "./middleware/syncRateLimit";
 
@@ -16,6 +17,9 @@ type Env = {
 };
 
 const app = new Hono<{ Bindings: Env }>();
+
+// CORS must be applied before all other middleware to handle OPTIONS preflight
+app.use("/api/*", corsMiddleware);
 
 // Apply device block enforcement middleware to all API routes.
 // The middleware itself skips requests without a device_id in the token

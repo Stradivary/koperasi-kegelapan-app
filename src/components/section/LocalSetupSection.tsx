@@ -4,7 +4,7 @@ import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { tenantContextStore } from "../../lib/indexeddb";
-import { isLocalSlugTaken, setupLocalTenant } from "../../lib/localTenant";
+import { isSlugTaken, setupLocalTenant } from "../../lib/localTenant";
 import { createSlug, validateSlugFormat } from "../../lib/slugValidation";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { Button } from "../ui/button";
@@ -30,7 +30,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
   const [loading, setLoading] = useState(false);
   const { syncToServer } = useTenantSync();
 
-  // Validate slug uniqueness against local tenants on change
+  // Validate slug uniqueness against local tenants and remote server on change
   const validateSlug = useCallback(async (slug: string) => {
     if (!slug) {
       setSlugError(null);
@@ -43,8 +43,16 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
       return;
     }
 
-    const taken = await isLocalSlugTaken(slug);
-    setSlugError(taken ? `Slug "${slug}" sudah digunakan oleh koperasi lain.` : null);
+    const result = await isSlugTaken(slug);
+    if (result.taken) {
+      const sourceMsg =
+        result.source === "remote"
+          ? `Slug "${slug}" sudah terdaftar di server.`
+          : `Slug "${slug}" sudah digunakan oleh koperasi lain.`;
+      setSlugError(sourceMsg);
+    } else {
+      setSlugError(null);
+    }
   }, []);
 
   // Debounced slug validation
@@ -64,9 +72,13 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
       return;
     }
 
-    const taken = await isLocalSlugTaken(slug);
-    if (taken) {
-      setSlugError(`Slug "${slug}" sudah digunakan oleh koperasi lain.`);
+    const result = await isSlugTaken(slug);
+    if (result.taken) {
+      const sourceMsg =
+        result.source === "remote"
+          ? `Slug "${slug}" sudah terdaftar di server.`
+          : `Slug "${slug}" sudah digunakan oleh koperasi lain.`;
+      setSlugError(sourceMsg);
       return;
     }
     setAdminUsername(`${slug}-admin`);
@@ -145,7 +157,9 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
             <Input
               placeholder="koperasi-maju"
               value={tenantSlug}
-              onChange={(e) => setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+              onChange={(e) =>
+                setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+              }
             />
             {slugError ? (
               <p className="type-body2 text-signal-error">{slugError}</p>
@@ -189,9 +203,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
             />
             <p className="type-body2 text-muted-foreground">
               Disarankan:{" "}
-              <code className="text-xs">
-                {(tenantSlug || createSlug(tenantName)) + "-admin"}
-              </code>
+              <code className="text-xs">{(tenantSlug || createSlug(tenantName)) + "-admin"}</code>
             </p>
           </div>
           <div className="space-y-1.5">

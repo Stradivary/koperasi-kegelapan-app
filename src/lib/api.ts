@@ -1,6 +1,7 @@
 import { checkDeviceBlockResponse, isDeviceBlocked } from "./deviceBlock";
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "https://koperasi-kegelapan-api.ahmad-muzaki-st.workers.dev";
 
 // ── Device ID cache for request headers ────────────────────────────────
 
@@ -81,18 +82,14 @@ function injectDeviceIdHeader(options?: RequestInit): RequestInit | undefined {
     }
   } else if (Array.isArray(existingHeaders)) {
     // Array of [key, value] pairs
-    const hasDeviceId = existingHeaders.some(
-      ([key]) => key.toLowerCase() === "x-device-id",
-    );
+    const hasDeviceId = existingHeaders.some(([key]) => key.toLowerCase() === "x-device-id");
     headers = hasDeviceId
       ? existingHeaders
       : [...existingHeaders, ["X-Device-Id", _cachedDeviceId]];
   } else {
     // Record<string, string> or undefined
     const record = (existingHeaders ?? {}) as Record<string, string>;
-    const hasDeviceId = Object.keys(record).some(
-      (key) => key.toLowerCase() === "x-device-id",
-    );
+    const hasDeviceId = Object.keys(record).some((key) => key.toLowerCase() === "x-device-id");
     headers = hasDeviceId ? record : { ...record, "X-Device-Id": _cachedDeviceId };
   }
 

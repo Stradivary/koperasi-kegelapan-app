@@ -41,15 +41,15 @@ function authHeaders(): HeadersInit {
     : { "Content-Type": "application/json" };
 }
 
-async function handleResponse(res: Response, navigate: ReturnType<typeof useNavigate>) {
+async function handleResponse(res: Response, onAuthFail: () => void) {
   if (res.status === 401 || res.status === 403) {
-    // Clear token and redirect to login
+    // Clear token and show login gate
     try {
       localStorage.removeItem(SUPERADMIN_TOKEN_KEY);
     } catch {
       // ignore
     }
-    navigate({ to: "/" });
+    onAuthFail();
     throw new Error("Unauthorized");
   }
   return res;
@@ -72,6 +72,13 @@ export function SuperadminSection() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // ── Auth state ──
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!getAuthToken());
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
   // ── View state ──
   const [activeSection, setActiveSection] = useState<SuperadminView>("tenants");
   const [activeView, setActiveView] = useState<ActiveView>("list");
@@ -83,6 +90,46 @@ export function SuperadminSection() {
 
   // ── Create dialog state ──
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // ── Superadmin Login Handler ──
+  async function handleSuperadminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword,
+        }),
+      });
+
+      if (!res.ok) {
+        setLoginError("Username atau password salah");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.role !== "superadmin") {
+        setLoginError("Akun ini bukan superadmin");
+        return;
+      }
+
+      if (data.accessToken) {
+        localStorage.setItem(SUPERADMIN_TOKEN_KEY, data.accessToken);
+      }
+
+      setIsAuthenticated(true);
+    } catch {
+      setLoginError("Gagal terhubung ke server");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
 
   // ── Tenant List Query ──
   const tenantListQuery = useQuery<TenantListResponse>({
@@ -100,7 +147,7 @@ export function SuperadminSection() {
         headers: authHeaders(),
       });
 
-      const handled = await handleResponse(res, navigate);
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
 
       if (!handled.ok) {
         throw new Error(`Server error: ${handled.status}`);
@@ -122,7 +169,7 @@ export function SuperadminSection() {
         headers: authHeaders(),
       });
 
-      const handled = await handleResponse(res, navigate);
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
 
       if (!handled.ok) {
         throw new Error(`Server error: ${handled.status}`);
@@ -149,7 +196,7 @@ export function SuperadminSection() {
         body: JSON.stringify(data),
       });
 
-      const handled = await handleResponse(res, navigate);
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
 
       const body = await handled.json();
 
@@ -208,7 +255,7 @@ export function SuperadminSection() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const handled = await handleResponse(res, navigate);
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
       const body = await handled.json();
 
       if (!handled.ok) {
@@ -287,6 +334,73 @@ export function SuperadminSection() {
   const createError: CreateTenantError | null = createTenantMutation.error ?? null;
 
   // ── Render ──
+
+  // Show login gate if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-foreground">Superadmin Login</h1>
+            <p className="text-sm text-muted-foreground mt-1">Masuk dengan akun superadmin</p>
+          </div>
+
+          <form onSubmit={handleSuperadminLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="sa-username" className="text-sm font-medium">
+                Username
+              </label>
+              <input
+                id="sa-username"
+                type="text"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                autoComplete="username"
+                required
+                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="sa-password" className="text-sm font-medium">
+                Password
+              </label>
+              <input
+                id="sa-password"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm"
+              />
+            </div>
+
+            {loginError && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2">
+                <p className="text-sm text-destructive">{loginError}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loginLoading}
+              className="w-full h-11 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50"
+            >
+              {loginLoading ? "Masuk..." : "Masuk"}
+            </button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/" })}
+            className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            Kembali ke halaman utama
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SuperadminLayout activeSection={activeSection} onSectionChange={setActiveSection}>
