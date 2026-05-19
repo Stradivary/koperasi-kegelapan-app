@@ -24,6 +24,10 @@ export const corsMiddleware = cors({
     if (origin.endsWith(".workers.dev")) {
       return origin;
     }
+    // Allow custom production domain and subdomains
+    if (origin.endsWith(".ahmadmuzaki.my.id")) {
+      return origin;
+    }
     return null as unknown as string;
   },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

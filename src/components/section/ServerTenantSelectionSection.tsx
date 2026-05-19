@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { ArrowLeft, Search, RotateCcw } from "lucide-react";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { API_BASE_URL, setCurrentDeviceId } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
@@ -69,6 +69,23 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
           terminalId: 0,
           updatedAt: Date.now(),
         });
+
+        // Ensure a LocalTenantConfig exists so sync/IndexedDB operations work.
+        // Server-authenticated tenants need a local config entry with mode "synced".
+        const existingConfig = await localTenantConfigStore.get(data.tenantId);
+        if (!existingConfig) {
+          await localTenantConfigStore.put({
+            tenantId: data.tenantId,
+            slug: data.tenantSlug,
+            name: data.tenantName,
+            timezone: "Asia/Jakarta",
+            mode: "synced",
+            createdAt: Date.now(),
+            syncedAt: Date.now(),
+            serverTenantId: data.tenantId,
+          });
+        }
+
         // Set deviceId in API client for all subsequent requests
         setCurrentDeviceId(fingerprintId);
         onComplete(data.tenantId, data.role);

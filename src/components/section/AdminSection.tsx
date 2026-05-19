@@ -86,7 +86,12 @@ export const AdminSection = ({
   const [resetCardPending, setResetCardPending] = useState(false);
   const [overwriteDialog, setOverwriteDialog] = useState<{
     existingCard: CardOwnerInfo;
-    pendingIssue: { name: string; userId: number | null; balance: number; expiresAt: number | null };
+    pendingIssue: {
+      name: string;
+      userId: number | null;
+      balance: number;
+      expiresAt: number | null;
+    };
   } | null>(null);
   const [isOverwriting, setIsOverwriting] = useState(false);
   const qc = useQueryClient();
@@ -140,6 +145,11 @@ export const AdminSection = ({
       toast.error("Konfigurasi tenant lokal tidak ditemukan");
       return;
     }
+    // If tenant is already synced (e.g. logged in from server), no need to push again
+    if (config.mode === "synced") {
+      toast.info("Tenant sudah tersinkronisasi dengan server");
+      return;
+    }
     const admin = accounts.find((a) => a.role === "admin");
     if (!admin) {
       toast.error("Akun admin tidak ditemukan");
@@ -181,7 +191,16 @@ export const AdminSection = ({
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [state.phase, state.payload, state.serialNumber, reset, tenantId, qc, resetCardPending, syncEngineCtx]);
+  }, [
+    state.phase,
+    state.payload,
+    state.serialNumber,
+    reset,
+    tenantId,
+    qc,
+    resetCardPending,
+    syncEngineCtx,
+  ]);
 
   // Auto-sync card data to local DB when scanned (always, including topup)
   useEffect(() => {
@@ -555,7 +574,9 @@ export const AdminSection = ({
           isIssuing={issueCard.isPending}
           isUpdatingStatus={updateCardStatus.isPending}
           isDeleting={deleteCard.isPending}
-          isResetting={resetCardPending && (state.phase === "scanning" || state.phase === "writing")}
+          isResetting={
+            resetCardPending && (state.phase === "scanning" || state.phase === "writing")
+          }
           hasGrant={!!grant}
           onTopupCard={handleTopupCard}
           onIssueCard={async (data) => {
