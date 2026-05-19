@@ -1,0 +1,104 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Blocked Card/Member Rejection
+  - **CRITICAL**: This test MUST FAIL on unfixed code — failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior — it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: For each section (Gate, Terminal, Station), demonstrate that a blocked card/suspended member is NOT caught by the current code
+  - Test that `checkLocalBlockedStatus(tenantId, serialNumber, userId)` using the hardware serial number correctly identifies blocked cards, while GateSection's current approach (deriving `cardIdHex` from `payload.header.cardId`) fails to find them
+  - Insert a blocked card record keyed by hardware serial into `localDb.cards`, then verify:
+    - GateSection's lookup using `payload.header.cardId` hex returns `undefined` (wrong key — bug confirmed)
+    - A correct lookup using `state.serialNumber` finds the blocked record
+  - Test userId=0 case: insert blocked card with userId=0, verify card-level check would catch it with correct key
+  - Test Terminal/Station: verify no local DB status check exists (operations proceed for blocked cards)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct — it proves the bug exists)
+  - Document counterexamples: GateSection never finds blocked cards because `cardIdHex` ≠ hardware serial
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Active Card/Member Operations
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe: active cards proceed through gate check-in on unfixed code
+  - Observe: active cards proceed through terminal checkout on unfixed code
+  - Observe: active cards proceed through station topup on unfixed code
+  - Observe: cards not found in localDb are treated as not-blocked (absence = allowed)
+  - Write property-based test: for all inputs where card status is "active" (or card not in localDb) AND (userId=0 OR user status is "active" OR user not in localDb), `checkLocalBlockedStatus` returns `{ blocked: false, reason: null }`
+  - Generate random `(tenantId, serialNumber, userId)` tuples with active/missing records and verify not-blocked
+  - Test userId=0 edge case: only card-level check applies, no member lookup performed
+  - Verify tests pass on UNFIXED code (confirms baseline behavior to preserve)
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. Create shared `checkLocalBlockedStatus` utility
+  - Create new file `src/core/nfc/localStatusCheck.ts`
+  - Export `checkLocalBlockedStatus(tenantId: string, serialNumber: string, userId: number): Promise<{ blocked: boolean; reason: string | null }>`
+  - Normalize `serialNumber` to lowercase hex (strip colons/dashes if present)
+  - Look up `localDb.cards.get([tenantId, normalizedSerial])`
+  - If card found and `status !== "active"` → return `{ blocked: true, reason: "Kartu diblokir: <status>" }`
+  - If `userId > 0` (explicit numeric comparison, not truthiness), look up `localDb.users.get([tenantId, userId])`
+  - If user found and `status !== "active"` → return `{ blocked: true, reason: "Akun anggota ditangguhkan. Hubungi admin." }`
+  - Otherwise return `{ blocked: false, reason: null }`
+  - _Bug_Condition: isBugCondition(input) where cardRecord.status ≠ "active" OR userRecord.status ≠ "active"_
+  - _Expected_Behavior: blocked=true with appropriate reason message_
+  - _Preservation: cards not in DB or with active status return blocked=false_
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+
+- [x] 4. Fix GateSection to use hardware serial number
+  - [x] 4.1 Replace broken lookup in GateSection
+    - Remove the `cardIdHex` derivation from `payload.header.cardId` (lines that do `Array.from(payload.header.cardId).map(...)`)
+    - Remove the inline `Promise.all([localDb.cards.get(...), ...])` block and its `.then()` handler for blocked status
+    - Import `checkLocalBlockedStatus` from `../../core/nfc/localStatusCheck`
+    - Call `checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId)` after the on-card `identity.status` check (keep on-card check as first-line defense)
+    - If result is `{ blocked: true }`, set `blockedReason` to `result.reason` and return
+    - Otherwise proceed with `validateTransition` and the rest of the check-in flow
+    - _Bug_Condition: GateSection uses state.serialNumber instead of payload.header.cardId_
+    - _Preservation: on-card identity.status check remains first-line defense_
+    - _Requirements: 2.1, 2.2, 2.3, 3.2, 3.6_
+
+- [x] 5. Add blocked status check to TerminalSection
+  - [x] 5.1 Integrate checkLocalBlockedStatus into TerminalSection auto-checkout
+    - Import `checkLocalBlockedStatus` from `../../core/nfc/localStatusCheck`
+    - In the auto-checkout `useEffect`, after the card-state check (`cardState !== CHECKED_IN`) and before `validateTransition`, add an async call to `checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId)`
+    - If blocked, set `autoCheckoutTriggered.current = true`, set `blockedReason` to `result.reason`, and return without writing
+    - May need to convert the useEffect body to handle the async call (use `.then()` pattern or extract to async function)
+    - _Bug_Condition: TerminalSection previously had no local DB status check_
+    - _Preservation: active cards proceed through checkout unchanged_
+    - _Requirements: 2.4, 3.3_
+
+- [x] 6. Add blocked status check to StationSection topup
+  - [x] 6.1 Integrate checkLocalBlockedStatus into StationSection topup flow
+    - Import `checkLocalBlockedStatus` from `../../core/nfc/localStatusCheck`
+    - In `handleTopupConfirm` (or equivalent topup write handler), before calling `applyTopup`/`write`, call `checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId)`
+    - If blocked, show error toast/message and return without writing
+    - Do NOT apply this check to the card issuance flow (new card registration must remain unaffected)
+    - _Bug_Condition: StationSection previously had no local DB status check for topup_
+    - _Preservation: card issuance flow is NOT affected; active cards proceed through topup unchanged_
+    - _Requirements: 2.5, 3.4, 3.5_
+
+- [x] 7. Verify fix and preservation
+  - [x] 7.1 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Blocked Card/Member Rejection
+    - **IMPORTANT**: Re-run the SAME test from task 1 — do NOT write a new test
+    - The test from task 1 encodes the expected behavior (blocked cards/members are rejected)
+    - When this test passes, it confirms the expected behavior is satisfied across all three sections
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+
+  - [x] 7.2 Verify preservation tests still pass
+    - **Property 2: Preservation** - Active Card/Member Operations
+    - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm active cards still proceed through all flows unchanged
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 8. Checkpoint — Ensure all tests pass
+  - Run full test suite to confirm no regressions
+  - Verify exploration test (Property 1) passes — blocked cards/members are rejected
+  - Verify preservation test (Property 2) passes — active cards/members proceed normally
+  - Ensure no TypeScript compilation errors
+  - Ask the user if questions arise

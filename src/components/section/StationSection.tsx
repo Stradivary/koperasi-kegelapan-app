@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { cn } from "../../lib/utils";
 import { localDb, type Card, type User } from "../../db/local-db";
 import { useNfcCard } from "../../hooks/useNfcCard";
@@ -7,6 +8,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { applyTopup } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -189,11 +191,25 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   const handleTopupConfirm = useCallback(
     async (amount: number) => {
       if (!state.payload || !grant) return;
+
+      // Check local DB for blocked card or suspended member before writing
+      if (state.serialNumber) {
+        const statusResult = await checkLocalBlockedStatus(
+          tenantId,
+          state.serialNumber,
+          state.payload.identity.userId,
+        );
+        if (statusResult.blocked) {
+          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
+          return;
+        }
+      }
+
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);
       await write(updated, "topup");
     },
-    [state.payload, grant, write],
+    [state.payload, grant, write, state.serialNumber, tenantId],
   );
 
   // Queries

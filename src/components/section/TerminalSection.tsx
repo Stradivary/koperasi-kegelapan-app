@@ -10,6 +10,7 @@ import {
   PARKING_RATE_PER_HOUR,
 } from "../../core/state-machine/engine";
 import { CardState } from "../../core/payload/types";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { OfflineIndicator } from "../block/OfflineIndicator";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -95,31 +96,54 @@ export function TerminalSection({
       }
     }
 
-    const trigger = cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
-    const result = validateTransition(payload, trigger, nowSeconds);
-    if (!result.valid) {
-      autoCheckoutTriggered.current = true;
-      setBlockedReason("Transisi tidak valid");
-      return;
-    }
+    // Check local DB for blocked card or suspended member
+    // Uses hardware serial number (state.serialNumber) as the correct lookup key
+    if (!state.serialNumber) return;
 
-    const durationSeconds = nowSeconds - payload.session.startTime;
-    const hours = Math.ceil(durationSeconds / 3600);
-    const fee = hours * PARKING_RATE_PER_HOUR;
+    checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId).then(
+      (statusResult) => {
+        if (statusResult.blocked) {
+          autoCheckoutTriggered.current = true;
+          setBlockedReason(statusResult.reason);
+          return;
+        }
 
-    // Insufficient balance
-    if (payload.wallet.balance < fee) {
-      autoCheckoutTriggered.current = true;
-      setBlockedReason("Saldo anda kurang untuk checkout, harap isi Saldo terlebih dahulu");
-      return;
-    }
+        const trigger =
+          cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
+        const result = validateTransition(payload, trigger, nowSeconds);
+        if (!result.valid) {
+          autoCheckoutTriggered.current = true;
+          setBlockedReason("Transisi tidak valid");
+          return;
+        }
 
-    autoCheckoutTriggered.current = true;
-    setBlockedReason(null);
-    const actualFee = Math.min(fee, payload.wallet.balance);
-    setLastTx({ durationSeconds, fee: actualFee });
-    write(applyCheckout(payload, nowSeconds));
-  }, [state.phase, state.payload, write, getNowSeconds, enforce24hLimit]);
+        const durationSeconds = nowSeconds - payload.session.startTime;
+        const hours = Math.ceil(durationSeconds / 3600);
+        const fee = hours * PARKING_RATE_PER_HOUR;
+
+        // Insufficient balance
+        if (payload.wallet.balance < fee) {
+          autoCheckoutTriggered.current = true;
+          setBlockedReason("Saldo anda kurang untuk checkout, harap isi Saldo terlebih dahulu");
+          return;
+        }
+
+        autoCheckoutTriggered.current = true;
+        setBlockedReason(null);
+        const actualFee = Math.min(fee, payload.wallet.balance);
+        setLastTx({ durationSeconds, fee: actualFee });
+        write(applyCheckout(payload, nowSeconds));
+      },
+    );
+  }, [
+    state.phase,
+    state.payload,
+    state.serialNumber,
+    write,
+    getNowSeconds,
+    enforce24hLimit,
+    tenantId,
+  ]);
 
   // Auto-reset after success
   useEffect(() => {
@@ -303,7 +327,10 @@ export function TerminalSection({
         {simulationMode && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label htmlFor="sim-datetime-terminal" className="text-sm text-muted-foreground whitespace-nowrap">
+              <label
+                htmlFor="sim-datetime-terminal"
+                className="text-sm text-muted-foreground whitespace-nowrap"
+              >
                 Waktu checkout:
               </label>
               <Input

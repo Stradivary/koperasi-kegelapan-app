@@ -5,7 +5,7 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState, CardStatus } from "../../core/payload/types";
-import { localDb } from "../../db/local-db";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { LoadingState } from "../block/LoadingState";
@@ -78,56 +78,54 @@ export function GateSection({
     }
 
     // Also check local DB for blocked card or suspended member
-    const cardIdHex = Array.from(payload.header.cardId)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    // Uses hardware serial number (state.serialNumber) as the correct lookup key
+    // serialNumber is always present when phase is "ready" (set during scan)
+    if (!state.serialNumber) return;
 
-    Promise.all([
-      localDb.cards.get([tenantId, cardIdHex]),
-      payload.identity.userId
-        ? localDb.users.get([tenantId, payload.identity.userId])
-        : Promise.resolve(null),
-    ]).then(([cardRecord, userRecord]) => {
-      // Check if card is blocked in local DB
-      if (cardRecord && cardRecord.status !== "active") {
+    checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId).then(
+      (statusResult) => {
+        if (statusResult.blocked) {
+          autoCheckinTriggered.current = true;
+          setBlockedReason(statusResult.reason);
+          return;
+        }
+
+        // Proceed with normal transition validation
+        // When enforce24hLimit is disabled, skip session expiry check by using
+        // a "fresh" nowSeconds that won't trigger the expiry logic
+        let validationNow = nowSeconds;
+        if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
+          // Use a timestamp just after lastTimestamp to bypass expiry check
+          validationNow = payload.wallet.lastTimestamp + 1;
+        }
+        const result = validateTransition(payload, "gate_checkin", validationNow);
+        if (!result.valid) {
+          autoCheckinTriggered.current = true;
+          return;
+        }
+
+        // Minimum balance check: reject check-in if balance < 10,000
+        if (payload.wallet.balance < 10_000) {
+          autoCheckinTriggered.current = true;
+          setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+          return;
+        }
+
         autoCheckinTriggered.current = true;
-        setBlockedReason(`Kartu diblokir: ${cardRecord.status.replace("blocked_", "")}`);
-        return;
-      }
-
-      // Check if member account is suspended
-      if (userRecord && userRecord.status !== "active") {
-        autoCheckinTriggered.current = true;
-        setBlockedReason("Akun anggota ditangguhkan. Hubungi admin.");
-        return;
-      }
-
-      // Proceed with normal transition validation
-      // When enforce24hLimit is disabled, skip session expiry check by using
-      // a "fresh" nowSeconds that won't trigger the expiry logic
-      let validationNow = nowSeconds;
-      if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
-        // Use a timestamp just after lastTimestamp to bypass expiry check
-        validationNow = payload.wallet.lastTimestamp + 1;
-      }
-      const result = validateTransition(payload, "gate_checkin", validationNow);
-      if (!result.valid) {
-        autoCheckinTriggered.current = true;
-        return;
-      }
-
-      // Minimum balance check: reject check-in if balance < 10,000
-      if (payload.wallet.balance < 10_000) {
-        autoCheckinTriggered.current = true;
-        setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
-        return;
-      }
-
-      autoCheckinTriggered.current = true;
-      setBlockedReason(null);
-      write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
-    });
-  }, [state.phase, state.payload, write, terminalId, getNowSeconds, tenantId, enforce24hLimit]);
+        setBlockedReason(null);
+        write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
+      },
+    );
+  }, [
+    state.phase,
+    state.payload,
+    state.serialNumber,
+    write,
+    terminalId,
+    getNowSeconds,
+    tenantId,
+    enforce24hLimit,
+  ]);
 
   // Auto-reset after success
   useEffect(() => {
@@ -278,7 +276,10 @@ export function GateSection({
         {simulationMode && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label htmlFor="sim-datetime" className="text-sm text-muted-foreground whitespace-nowrap">
+              <label
+                htmlFor="sim-datetime"
+                className="text-sm text-muted-foreground whitespace-nowrap"
+              >
                 Waktu check-in:
               </label>
               <Input
