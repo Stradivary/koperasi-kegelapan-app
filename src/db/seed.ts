@@ -7,7 +7,9 @@ import { hashPassword, generateId } from "../server/auth";
 config({ path: [".env.local", ".env"] });
 
 async function seed() {
-  const { env, dispose } = await getPlatformProxy<CloudflareEnv>();
+  const { env, dispose } = await getPlatformProxy<CloudflareEnv>({
+    configPath: "wrangler.api.jsonc",
+  });
   const db = drizzle(env.DB, { schema });
 
   console.log("🌱 Seeding D1 database...");

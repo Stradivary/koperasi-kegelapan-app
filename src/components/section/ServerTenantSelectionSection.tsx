@@ -57,20 +57,20 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
     }) => {
       try {
         const fingerprintId = await getDeviceFingerprint();
-        // Use server-returned deviceId if available, otherwise fall back to fingerprint
-        const deviceId = data.deviceId || fingerprintId;
+        // Always use local fingerprint as deviceId for context validation
+        // useTenantContext validates context.deviceId === runtime fingerprint
         await tenantContextStore.put({
           tenantId: data.tenantId,
           tenantSlug: data.tenantSlug,
           tenantName: data.tenantName,
-          deviceId,
+          deviceId: fingerprintId,
           accountId: data.accountId,
           role: data.role,
           terminalId: 0,
           updatedAt: Date.now(),
         });
         // Set deviceId in API client for all subsequent requests
-        setCurrentDeviceId(deviceId);
+        setCurrentDeviceId(fingerprintId);
         onComplete(data.tenantId, data.role);
       } catch {
         setPendingAuthData(data);

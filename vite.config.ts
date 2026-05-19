@@ -17,13 +17,7 @@ const config = defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       strategies: "generateSW",
-      includeAssets: [
-        "favicon.ico",
-        "logo192.png",
-        "logo512.png",
-        "assets/TelkomselBatikSans-Bold.woff2",
-        "assets/TelkomselBatikSans-Regular.woff2",
-      ],
+      includeAssets: ["favicon.ico", "logo192.png", "logo512.png"],
       manifest: {
         name: "Koperasi Kegelapan",
         short_name: "KK Wallet",

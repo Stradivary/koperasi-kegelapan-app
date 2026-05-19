@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = pbkdf2Sync(password, salt, 310_000, 32, "sha256").toString("hex");
+  const hash = pbkdf2Sync(password, salt, 100_000, 32, "sha256").toString("hex");
   return `pbkdf2$${salt}$${hash}`;
 }
 
@@ -14,7 +14,7 @@ export function verifyPassword(password: string, stored: string): boolean {
     const parts = stored.split("$");
     if (parts.length !== 3) return false;
     const [, salt, hash] = parts;
-    const computed = pbkdf2Sync(password, salt, 310_000, 32, "sha256").toString("hex");
+    const computed = pbkdf2Sync(password, salt, 100_000, 32, "sha256").toString("hex");
     try {
       return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(computed, "hex"));
     } catch {
@@ -28,7 +28,14 @@ export function verifyPassword(password: string, stored: string): boolean {
     const [iterStr, saltHex, hashHex] = colonParts;
     const iterations = parseInt(iterStr, 10);
     if (!Number.isInteger(iterations) || iterations <= 0) return false;
-    const computed = pbkdf2Sync(password, Buffer.from(saltHex, "hex"), iterations, 32, "sha256").toString("hex");
+    const safeIterations = Math.min(iterations, 100_000);
+    const computed = pbkdf2Sync(
+      password,
+      Buffer.from(saltHex, "hex"),
+      safeIterations,
+      32,
+      "sha256",
+    ).toString("hex");
     try {
       return timingSafeEqual(Buffer.from(hashHex, "hex"), Buffer.from(computed, "hex"));
     } catch {

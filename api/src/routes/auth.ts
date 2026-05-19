@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
-import { pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { accounts, tenants } from "#/db/schema";
 import { registerDevice } from "#/server/deviceRegistry";
 import { createSession } from "#/server/authSession";
@@ -11,15 +10,60 @@ type Env = {
   SESSION_MASTER_KEY: string;
 };
 
-function verifyPassword(password: string, stored: string): boolean {
+/**
+ * PBKDF2-SHA256 using Web Crypto API.
+ * Uses 100,000 iterations max (Cloudflare Workers limit).
+ */
+async function pbkdf2(
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+  keyLength: number,
+): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: salt.buffer as ArrayBuffer, iterations, hash: "SHA-256" },
+    keyMaterial,
+    keyLength * 8,
+  );
+  return new Uint8Array(derived);
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i] ^ b[i];
+  }
+  return diff === 0;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
   // Format A: server-side hash "pbkdf2$saltHex$hashHex"
   if (stored.startsWith("pbkdf2$")) {
     const parts = stored.split("$");
     if (parts.length !== 3) return false;
     const [, salt, hash] = parts;
-    const computed = pbkdf2Sync(password, salt, 310_000, 32, "sha256").toString("hex");
+    // Salt was stored as hex string and used as-is (UTF-8 encoded) in pbkdf2Sync
+    const saltBytes = new TextEncoder().encode(salt);
+    const computed = await pbkdf2(password, saltBytes, 100_000, 32);
     try {
-      return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(computed, "hex"));
+      return constantTimeEqual(hexToBytes(hash), computed);
     } catch {
       return false;
     }
@@ -31,15 +75,11 @@ function verifyPassword(password: string, stored: string): boolean {
     const [iterStr, saltHex, hashHex] = colonParts;
     const iterations = parseInt(iterStr, 10);
     if (!Number.isInteger(iterations) || iterations <= 0) return false;
-    const computed = pbkdf2Sync(
-      password,
-      Buffer.from(saltHex, "hex"),
-      iterations,
-      32,
-      "sha256",
-    ).toString("hex");
+    const safeIterations = Math.min(iterations, 100_000);
+    const saltBytes = hexToBytes(saltHex);
+    const computed = await pbkdf2(password, saltBytes, safeIterations, 32);
     try {
-      return timingSafeEqual(Buffer.from(hashHex, "hex"), Buffer.from(computed, "hex"));
+      return constantTimeEqual(hexToBytes(hashHex), computed);
     } catch {
       return false;
     }
@@ -110,7 +150,7 @@ authRoutes.post("/token", async (c) => {
       .get();
   }
 
-  if (!account || !verifyPassword(json.password, account.passwordHash)) {
+  if (!account || !(await verifyPassword(json.password, account.passwordHash))) {
     return c.json({ error: "Invalid credentials" }, 401);
   }
 

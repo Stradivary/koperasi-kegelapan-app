@@ -13,7 +13,7 @@ import {
 } from "./indexeddb";
 import { createSlug, validateSlugFormat } from "./slugValidation";
 
-const PBKDF2_ITERATIONS = 310_000;
+const PBKDF2_ITERATIONS = 100_000;
 const PBKDF2_HASH = "SHA-256";
 const KEY_LENGTH_BYTES = 32;
 
