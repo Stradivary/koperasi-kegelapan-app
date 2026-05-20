@@ -128,27 +128,32 @@ export function GateSection({
     enforce24hLimit,
   ]);
 
+  // Keep a ref to syncEngine so the auto-reset effect doesn't re-run when it changes
+  const syncEngineRef = useRef(syncEngine);
+  useEffect(() => {
+    syncEngineRef.current = syncEngine;
+  }, [syncEngine]);
+
   // Auto-reset after success
   useEffect(() => {
-    if (state.phase === "success") {
-      // Notify sync engine that an Outbox write occurred (triggers debounced sync)
-      syncEngine?.notifyMutation();
+    if (state.phase !== "success") return;
 
-      // Trigger immediate sync push for check-in (bypass 5s debounce) — Req 9.1, 9.2
-      if (state.payload) {
-        const cardIdHex = Array.from(state.payload.header.cardId)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-        notifyCheckin(cardIdHex, Date.now());
-      }
+    // Notify sync engine that an Outbox write occurred (triggers debounced sync)
+    syncEngineRef.current?.notifyMutation();
 
-      const timer = setTimeout(() => {
-        reset();
-      }, 2500);
-      return () => clearTimeout(timer);
+    // Trigger immediate sync push for check-in (bypass 5s debounce) — Req 9.1, 9.2
+    if (state.payload) {
+      const cardIdHex = Array.from(state.payload.header.cardId)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      notifyCheckin(cardIdHex, Date.now());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.phase, reset, syncEngine]);
+
+    const timer = setTimeout(() => {
+      reset();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [state.phase, state.payload, reset]);
 
   // Reset the auto-checkin flag when going back to idle
   useEffect(() => {

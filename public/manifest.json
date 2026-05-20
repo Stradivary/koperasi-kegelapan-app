@@ -1,7 +1,7 @@
 {
   "short_name": "KK Wallet",
   "name": "Koperasi Kegelapan",
-  "description": "Dompet NFC Koperasi — By Telkomsel",
+  "description": "Dompet NFC Koperasi — Stradivary",
   "icons": [
     {
       "src": "favicon.ico",
@@ -12,6 +12,12 @@
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192"
+    },
+    {
+      "src": "logo256.png",
+      "type": "image/png",
+      "sizes": "256x256",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
@@ -36,9 +42,37 @@
     }
   ],
   "start_url": "/",
-  "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#FF0025",
   "background_color": "#001A41",
-  "categories": ["finance", "utilities"]
+  "lang": "id",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "display_override": ["standalone", "minimal-ui"],
+  "id": "/?source=pwa",
+  "categories": ["finance", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Scan NFC",
+      "short_name": "Scan",
+      "url": "/scan",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Top Up",
+      "short_name": "TopUp",
+      "url": "/topup",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }
