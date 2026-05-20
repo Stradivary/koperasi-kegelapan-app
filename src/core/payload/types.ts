@@ -1,5 +1,5 @@
 export const MAGIC = 0x4b4f5057; // "KOPW"
-export const CARD_SCHEMA_VERSION = 2;
+export const CARD_SCHEMA_VERSION = 3;
 
 export const BUFFER_SIZE = 216;
 export const TRAILER_SIZE = 64;
@@ -71,7 +71,7 @@ export interface CardPayload {
   };
   identity: {
     name: string;
-    userId: number;
+    userId: string; // 8-char alphanumeric ID (e.g. "GJWt7u3g"), stored as 8 bytes ASCII on card
     gender: number;
     status: number;
     createdAt: number;

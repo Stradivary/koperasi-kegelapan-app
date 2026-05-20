@@ -28,7 +28,7 @@ function makePayload(
       tenantBind: 0,
     },
     identity: {
-      userId: 1,
+      userId: "abc12345",
       name: "Test User",
       gender: 0,
       status: overrides.status ?? CardStatus.ACTIVE,

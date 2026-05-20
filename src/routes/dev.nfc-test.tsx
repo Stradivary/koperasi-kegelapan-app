@@ -167,7 +167,7 @@ function NfcTestPage() {
       const expiresAt = Math.floor(Date.now() / 1000) + parseInt(payloadExpiresOffset, 10) * 86400;
       const payload = makeFreshCard({
         name: payloadName,
-        userId: parseInt(payloadUserId, 10),
+        userId: payloadUserId,
         balance: parseInt(payloadBalance, 10),
         expiresAt,
       });

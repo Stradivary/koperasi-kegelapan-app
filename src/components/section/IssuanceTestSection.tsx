@@ -29,7 +29,7 @@ function randomBytes(n: number): Uint8Array {
 
 export function makeFreshCard(opts: {
   name: string;
-  userId: number;
+  userId: string;
   balance: number;
   expiresAt: number;
 }): CardPayload {
@@ -157,8 +157,8 @@ export function IssuanceTestSection() {
       const version = raw[4];
       let decodableRaw = raw;
 
-      // Decrypt if v2 encrypted card
-      if (version === CARD_SCHEMA_VERSION) {
+      // Decrypt if v2+ encrypted card
+      if (version >= 2) {
         try {
           const devGrant = await fetchDevGrant(tenantId);
           const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
@@ -204,7 +204,7 @@ export function IssuanceTestSection() {
     try {
       originalPayload = makeFreshCard({
         name,
-        userId: parseInt(userId, 10),
+        userId: userId,
         balance: parseInt(balance, 10),
         expiresAt,
       });

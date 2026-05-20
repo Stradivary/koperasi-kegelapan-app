@@ -53,7 +53,7 @@ function makeGrant(overrides: Partial<SessionGrant> = {}): SessionGrant {
 async function issueCard(opts: {
   balance: number;
   name?: string;
-  userId?: number;
+  userId?: string;
 }): Promise<CardPayload> {
   const now = Math.floor(Date.now() / 1000);
   const grant = makeGrant();
@@ -67,7 +67,7 @@ async function issueCard(opts: {
     },
     identity: {
       name: opts.name ?? "Budi Santoso",
-      userId: opts.userId ?? 1001,
+      userId: opts.userId ?? "GJWt7u3g",
       gender: 0,
       status: CardStatus.ACTIVE,
       createdAt: now,
@@ -104,7 +104,7 @@ async function issueLegacyCard(balance: number): Promise<void> {
     header: { magic: MAGIC, version: 1, type: 0, cardId: new Uint8Array(CARD_ID), tenantBind: 0 },
     identity: {
       name: "Legacy User",
-      userId: 2001,
+      userId: "Lgy20001",
       gender: 0,
       status: CardStatus.ACTIVE,
       createdAt: now,

@@ -310,7 +310,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         },
         identity: {
           name: name || "Anggota",
-          userId: 0, // member linkage is maintained in DB, not on card binary
+          userId: userId || "", // 8-char member ID stored on card binary
           gender: 0,
           status: CardStatus.ACTIVE,
           createdAt: now,
@@ -548,9 +548,39 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         updatedAt: Math.floor(Date.now() / 1000),
         syncStatus: "pending",
       });
+
+      // Cascade: block/unblock all cards linked to this member
+      const linkedCards = await localDb.cards
+        .where("tenantId")
+        .equals(tenantId)
+        .filter((card) => card.userId === userId)
+        .toArray();
+
+      for (const card of linkedCards) {
+        if (status === "suspended") {
+          // Only block cards that are currently active
+          if (card.status === "active") {
+            await localDb.cards.update([tenantId, card.cardId], {
+              status: "blocked_admin",
+              lastActivityAt: Math.floor(Date.now() / 1000),
+              syncStatus: "pending",
+            });
+          }
+        } else if (status === "active") {
+          // Unblock cards that were blocked by admin (due to member suspension)
+          if (card.status === "blocked_admin") {
+            await localDb.cards.update([tenantId, card.cardId], {
+              status: "active",
+              lastActivityAt: Math.floor(Date.now() / 1000),
+              syncStatus: "pending",
+            });
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       syncEngine?.notifyMutation();
     },
   });
@@ -632,8 +662,10 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
             } catch (e) {
               if (e instanceof CardAlreadyRegisteredError) {
                 setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
+                throw e; // Re-throw so caller knows issuance didn't complete
               } else if (e instanceof CardNotBlankError) {
                 setNotBlankDialog({ cardSerial: e.cardSerial, pendingIssue: data });
+                throw e; // Re-throw so caller knows issuance didn't complete
               } else {
                 throw e;
               }
@@ -717,13 +749,21 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           if (!overwriteDialog) return;
           setIsOverwriting(true);
           try {
+            toast.info("Tempelkan kartu ke perangkat untuk menulis data...", { duration: 5000 });
             await issueCard.mutateAsync({
               ...overwriteDialog.pendingIssue,
               forceOverwrite: true,
             });
             setOverwriteDialog(null);
-          } catch {
-            // Error will be shown by the mutation's error state
+            toast.success("Kartu berhasil dicetak dan didaftarkan");
+          } catch (e) {
+            if (e instanceof CardNotBlankError) {
+              // Card has data but forceOverwrite should handle it — retry with force
+              setOverwriteDialog(null);
+              toast.error("Gagal menulis kartu. Silakan coba lagi.");
+            } else {
+              toast.error(e instanceof Error ? e.message : "Gagal menulis kartu");
+            }
           } finally {
             setIsOverwriting(false);
           }
@@ -750,15 +790,20 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
                   const pending = notBlankDialog.pendingIssue;
                   setNotBlankDialog(null);
                   try {
+                    toast.info("Tempelkan kartu ke perangkat untuk menulis data...", {
+                      duration: 5000,
+                    });
                     await issueCard.mutateAsync({
                       ...pending,
                       forceOverwrite: true,
                     });
+                    toast.success("Kartu berhasil dicetak dan didaftarkan");
                   } catch (e) {
                     if (e instanceof CardAlreadyRegisteredError) {
                       setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: pending });
+                    } else {
+                      toast.error(e instanceof Error ? e.message : "Gagal menulis kartu");
                     }
-                    // Other errors handled by mutation error state
                   }
                 }}
               >

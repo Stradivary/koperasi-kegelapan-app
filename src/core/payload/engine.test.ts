@@ -12,12 +12,15 @@ function makeMinimalCard(activePtr = 0): Uint8Array {
   view.setUint8(bufOffset + 5, 0);
   for (let i = 0; i < 6; i++) raw[bufOffset + 6 + i] = i + 1;
 
+  // Identity section: name (24 bytes) + userId (8 bytes ASCII) + gender + status + pad + createdAt
   const nameBytes = new TextEncoder().encode("Test User");
   raw.set(nameBytes, bufOffset + 16);
 
-  view.setUint32(bufOffset + 16 + 32, 1001, true);
-  view.setUint8(bufOffset + 16 + 36, 0);
-  view.setUint8(bufOffset + 16 + 37, CardStatus.ACTIVE);
+  const userIdBytes = new TextEncoder().encode("GJWt7u3g");
+  raw.set(userIdBytes, bufOffset + 16 + 24);
+
+  view.setUint8(bufOffset + 16 + 32, 0); // gender
+  view.setUint8(bufOffset + 16 + 33, CardStatus.ACTIVE); // status
 
   view.setUint32(bufOffset + 64, 500000, true);
   view.setUint32(bufOffset + 64 + 4, 500000, true);
@@ -47,7 +50,7 @@ describe("decodePayload", () => {
     expect(payload.header.version).toBe(CARD_SCHEMA_VERSION);
     expect(payload.header.cardId).toEqual(Uint8Array.from([1, 2, 3, 4, 5, 6]));
     expect(payload.identity.name).toBe("Test User");
-    expect(payload.identity.userId).toBe(1001);
+    expect(payload.identity.userId).toBe("GJWt7u3g");
     expect(payload.identity.status).toBe(CardStatus.ACTIVE);
     expect(payload.wallet.balance).toBe(500000);
     expect(payload.wallet.counter).toBe(10n);

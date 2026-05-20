@@ -7,12 +7,7 @@ import {
   decryptBuffer,
 } from "../crypto/engine";
 import type { CardPayload, SessionGrant } from "../payload/types";
-import {
-  BUFFER_SIZE,
-  WIRE_SIZE,
-  CARD_SCHEMA_VERSION,
-  TRAILER_COUNTER_BIND,
-} from "../payload/types";
+import { BUFFER_SIZE, WIRE_SIZE, TRAILER_COUNTER_BIND } from "../payload/types";
 import { isTenantBindValid } from "../payload/tenantBind";
 import { readCard, writeCard } from "./engine";
 
@@ -78,7 +73,7 @@ export async function readAndValidateCard(
   try {
     const version = nfcResult.raw[4];
     let decodableRaw = nfcResult.raw;
-    if (version === CARD_SCHEMA_VERSION) {
+    if (version >= 2) {
       const trailerView = new DataView(
         nfcResult.raw.buffer,
         nfcResult.raw.byteOffset + BUFFER_SIZE,
@@ -209,7 +204,7 @@ export async function prepareWrite(
   const wireBytes = encodePayloadWire(finalPayload);
   const plainBufBytes = wireBytes.slice(0, BUFFER_SIZE);
 
-  const isV2 = finalPayload.header.version === CARD_SCHEMA_VERSION;
+  const isV2 = finalPayload.header.version >= 2;
   const activeBufBytes = isV2
     ? await encryptCardBody(plainBufBytes, sessionGrant.sessionKey, cardId, newCounter)
     : plainBufBytes;

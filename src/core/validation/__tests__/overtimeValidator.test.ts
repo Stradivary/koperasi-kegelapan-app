@@ -34,7 +34,7 @@ function createPayload(overrides: {
     },
     identity: {
       name: "Test User",
-      userId: 1,
+      userId: "abc12345",
       gender: 0,
       status: CardStatus.ACTIVE,
       createdAt: 1700000000,

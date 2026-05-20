@@ -241,7 +241,7 @@ export function IssuanceScanDrawer({
                 {serialNumber && <InfoRow label="Serial number" value={serialNumber} />}
                 <InfoRow label="Card ID" value={toHex(payload.header.cardId)} />
                 <InfoRow label="Version" value={String(payload.header.version)} />
-                <InfoRow label="User ID" value={String(payload.identity.userId)} />
+                <InfoRow label="User ID" value={payload.identity.userId || "—"} />
                 <InfoRow
                   label="Dibuat"
                   value={new Date(payload.identity.createdAt * 1000).toLocaleString("id-ID")}

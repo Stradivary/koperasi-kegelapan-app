@@ -65,11 +65,11 @@ function decodeBuffer(raw: Uint8Array, bufOffset: number): Omit<CardPayload, "tr
   };
 
   const identity = {
-    name: readNullTerminatedUtf8(buf, IDENTITY_OFFSET, 32),
-    userId: view.getUint32(IDENTITY_OFFSET + 32, true),
-    gender: view.getUint8(IDENTITY_OFFSET + 36),
-    status: view.getUint8(IDENTITY_OFFSET + 37),
-    createdAt: view.getUint32(IDENTITY_OFFSET + 40, true),
+    name: readNullTerminatedUtf8(buf, IDENTITY_OFFSET, 24),
+    userId: readNullTerminatedUtf8(buf, IDENTITY_OFFSET + 24, 8),
+    gender: view.getUint8(IDENTITY_OFFSET + 32),
+    status: view.getUint8(IDENTITY_OFFSET + 33),
+    createdAt: view.getUint32(IDENTITY_OFFSET + 36, true),
   };
 
   const wallet = {
@@ -114,11 +114,11 @@ function encodeBuffer(payload: Omit<CardPayload, "trailer">): Uint8Array {
   buf.set(payload.header.cardId.slice(0, 6), HEADER_OFFSET + 6);
   view.setUint32(HEADER_OFFSET + 12, payload.header.tenantBind ?? 0, true);
 
-  writeNullPaddedUtf8(buf, IDENTITY_OFFSET, 32, payload.identity.name);
-  view.setUint32(IDENTITY_OFFSET + 32, payload.identity.userId, true);
-  view.setUint8(IDENTITY_OFFSET + 36, payload.identity.gender);
-  view.setUint8(IDENTITY_OFFSET + 37, payload.identity.status);
-  view.setUint32(IDENTITY_OFFSET + 40, payload.identity.createdAt, true);
+  writeNullPaddedUtf8(buf, IDENTITY_OFFSET, 24, payload.identity.name);
+  writeNullPaddedUtf8(buf, IDENTITY_OFFSET + 24, 8, payload.identity.userId);
+  view.setUint8(IDENTITY_OFFSET + 32, payload.identity.gender);
+  view.setUint8(IDENTITY_OFFSET + 33, payload.identity.status);
+  view.setUint32(IDENTITY_OFFSET + 36, payload.identity.createdAt, true);
 
   view.setUint32(WALLET_OFFSET, payload.wallet.balance, true);
   view.setUint32(WALLET_OFFSET + 4, payload.wallet.lastBalance, true);

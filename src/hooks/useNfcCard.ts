@@ -10,12 +10,7 @@ import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../core/nf
 import { decodePayload } from "../core/payload/engine";
 import { isTenantBindValid } from "../core/payload/tenantBind";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
-import {
-  BUFFER_SIZE,
-  WIRE_SIZE,
-  CARD_SCHEMA_VERSION,
-  TRAILER_COUNTER_BIND,
-} from "../core/payload/types";
+import { BUFFER_SIZE, WIRE_SIZE, TRAILER_COUNTER_BIND } from "../core/payload/types";
 import { reconciliationOutbox, makeIdempotencyKey } from "../lib/indexeddb";
 import { recordTransaction } from "../lib/transactionLogService";
 
@@ -132,10 +127,10 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
         }
 
         try {
-          // Decrypt body first if card uses v2 AES-256-GCM encryption
+          // Decrypt body first if card uses v2+ AES-256-GCM encryption
           const version = raw[4];
           let decodableRaw = raw;
-          if (version === CARD_SCHEMA_VERSION) {
+          if (version >= 2) {
             const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
             const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
             const cardId = raw.slice(6, 12);
@@ -275,9 +270,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             await recordTransaction({
               tenantId,
               cardId: cardIdHex,
-              userId: updatedPayload.identity.userId
-                ? String(updatedPayload.identity.userId)
-                : null,
+              userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
               counter: Number(updatedPayload.wallet.counter),
               type: pending.operationType as
                 | "debit"
@@ -403,9 +396,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
               await recordTransaction({
                 tenantId,
                 cardId: cardIdHex,
-                userId: updatedPayload.identity.userId
-                  ? String(updatedPayload.identity.userId)
-                  : null,
+                userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
                 counter: Number(updatedPayload.wallet.counter),
                 type: operationType as
                   | "debit"

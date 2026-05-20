@@ -67,9 +67,13 @@ export function StationCardsPanel({
     balance: number;
     expiresAt: number | null;
   }) {
-    await onIssueCard(data);
-    setSuccess("Kartu berhasil dicetak dan didaftarkan");
-    setCardView("list");
+    try {
+      await onIssueCard(data);
+      setSuccess("Kartu berhasil dicetak dan didaftarkan");
+      setCardView("list");
+    } catch {
+      // Error is handled upstream (override/not-blank dialogs shown by parent)
+    }
   }
 
   return (

@@ -43,7 +43,7 @@ function createMockPayload(overrides: Partial<CardPayload> = {}): CardPayload {
     },
     identity: {
       name: "Test User",
-      userId: 1,
+      userId: "abc12345",
       gender: 0,
       status: 0,
       createdAt: 1700000000,

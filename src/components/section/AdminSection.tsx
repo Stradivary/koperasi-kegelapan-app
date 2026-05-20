@@ -8,6 +8,7 @@ import { useTenantSync } from "../../hooks/useTenantSync";
 import { localTenantConfigStore, localAccountStore } from "../../lib/indexeddb";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { validateUID } from "../../core/validation/uidGlobalValidator";
 import {
   StationCardsPanel,
@@ -387,7 +388,7 @@ export const AdminSection = ({
         },
         identity: {
           name: name || "Anggota",
-          userId: 0, // member linkage is maintained in DB, not on card binary
+          userId: userId || "", // 8-char member ID stored on card binary
           gender: 0,
           status: CardStatus.ACTIVE,
           createdAt: now,
@@ -609,9 +610,39 @@ export const AdminSection = ({
         updatedAt: Math.floor(Date.now() / 1000),
         syncStatus: "pending",
       });
+
+      // Cascade: block/unblock all cards linked to this member
+      const linkedCards = await localDb.cards
+        .where("tenantId")
+        .equals(tenantId)
+        .filter((card) => card.userId === userId)
+        .toArray();
+
+      for (const card of linkedCards) {
+        if (status === "suspended") {
+          // Only block cards that are currently active
+          if (card.status === "active") {
+            await localDb.cards.update([tenantId, card.cardId], {
+              status: "blocked_admin",
+              lastActivityAt: Math.floor(Date.now() / 1000),
+              syncStatus: "pending",
+            });
+          }
+        } else if (status === "active") {
+          // Unblock cards that were blocked by admin (due to member suspension)
+          if (card.status === "blocked_admin") {
+            await localDb.cards.update([tenantId, card.cardId], {
+              status: "active",
+              lastActivityAt: Math.floor(Date.now() / 1000),
+              syncStatus: "pending",
+            });
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       syncEngineCtx?.notifyMutation();
     },
   });
@@ -660,11 +691,21 @@ export const AdminSection = ({
   const handleTopupConfirm = useCallback(
     async (amount: number) => {
       if (!state.payload || !grant) return;
+
+      // Check local DB for blocked card or suspended member before writing
+      if (state.serialNumber) {
+        const statusResult = await checkLocalBlockedStatus(tenantId, state.serialNumber);
+        if (statusResult.blocked) {
+          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
+          return;
+        }
+      }
+
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);
       await write(updated, "topup");
     },
-    [state.payload, grant, write],
+    [state.payload, grant, write, state.serialNumber, tenantId],
   );
 
   // When card becomes ready and we have a pending reset, trigger write

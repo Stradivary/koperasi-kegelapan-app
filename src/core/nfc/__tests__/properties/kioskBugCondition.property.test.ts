@@ -51,7 +51,7 @@ function createTestPayload(overrides: {
     },
     identity: {
       name: overrides.name ?? "Test Member",
-      userId: 1001,
+      userId: "GJWt7u3g",
       gender: 1,
       status: overrides.status ?? CardStatus.ACTIVE,
       createdAt: now - 86400,
