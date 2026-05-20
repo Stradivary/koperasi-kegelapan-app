@@ -8,6 +8,7 @@ import { useTenantSync } from "../../hooks/useTenantSync";
 import { localTenantConfigStore, localAccountStore } from "../../lib/indexeddb";
 import { AdminLayout, type AdminView } from "../layout/AdminLayout";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { validateUID } from "../../core/validation/uidGlobalValidator";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -388,6 +389,24 @@ export const AdminSection = ({
 
         // Wait for the card to be tapped (reading event fires)
         capturedSerial = await serialPromise;
+
+        // ── Global UID validation (cross-tenant + cloud) ──
+        const uidResult = await validateUID(capturedSerial, tenantId);
+        if (!uidResult.valid) {
+          // If forceOverwrite is set and the UID is registered in the current tenant, skip
+          if (forceOverwrite && uidResult.reason === "UID_ALREADY_REGISTERED") {
+            // Allow overwrite for same-tenant re-registration
+          } else {
+            abort.abort();
+            const uidErrorMessages: Record<string, string> = {
+              UID_ALREADY_REGISTERED: "UID kartu sudah terdaftar di tenant ini",
+              UID_REGISTERED_OTHER_TENANT: "UID kartu sudah terdaftar di tenant lain",
+              NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
+              INVALID_UID_FORMAT: "Format UID tidak valid",
+            };
+            throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
+          }
+        }
 
         // ── Check if card is already registered ──
         if (!forceOverwrite) {

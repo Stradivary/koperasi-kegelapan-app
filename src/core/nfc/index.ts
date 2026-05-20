@@ -9,6 +9,10 @@
  * @see Requirement 3.1
  */
 
+// Block Enforcement for NFC Operations
+export { enforceBlockOnCheckin, enforceBlockOnCheckout, enforceBlockSync } from "./engine";
+export type { BlockGuardResult } from "./engine";
+
 // Generic NFC Layer
 export { GenericNfcLayer } from "./genericNfcLayer";
 export type { GenericNfcLayerOptions } from "./genericNfcLayer";

@@ -6,6 +6,7 @@ import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState, CardStatus } from "../../core/payload/types";
 import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
+import { notifyCheckin } from "../../lib/peerSyncCoordinator";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { LoadingState } from "../block/LoadingState";
@@ -132,11 +133,21 @@ export function GateSection({
     if (state.phase === "success") {
       // Notify sync engine that an Outbox write occurred (triggers debounced sync)
       syncEngine?.notifyMutation();
+
+      // Trigger immediate sync push for check-in (bypass 5s debounce) — Req 9.1, 9.2
+      if (state.payload) {
+        const cardIdHex = Array.from(state.payload.header.cardId)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        notifyCheckin(cardIdHex, Date.now());
+      }
+
       const timer = setTimeout(() => {
         reset();
       }, 2500);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase, reset, syncEngine]);
 
   // Reset the auto-checkin flag when going back to idle

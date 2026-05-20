@@ -9,6 +9,7 @@ import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { applyTopup } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
+import { validateUID } from "../../core/validation/uidGlobalValidator";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -324,6 +325,24 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         // Wait for the card to be tapped (reading event fires)
         capturedSerial = await serialPromise;
 
+        // ── Global UID validation (cross-tenant + cloud) ──
+        const uidResult = await validateUID(capturedSerial, tenantId);
+        if (!uidResult.valid) {
+          // If forceOverwrite is set and the UID is registered in the current tenant, skip
+          if (forceOverwrite && uidResult.reason === "UID_ALREADY_REGISTERED") {
+            // Allow overwrite for same-tenant re-registration
+          } else {
+            abort.abort();
+            const uidErrorMessages: Record<string, string> = {
+              UID_ALREADY_REGISTERED: "UID kartu sudah terdaftar di tenant ini",
+              UID_REGISTERED_OTHER_TENANT: "UID kartu sudah terdaftar di tenant lain",
+              NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
+              INVALID_UID_FORMAT: "Format UID tidak valid",
+            };
+            throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
+          }
+        }
+
         // ── Check if card is already registered ──
         if (!forceOverwrite) {
           const existing = await localDb.cards.get([tenantId, capturedSerial]);
@@ -527,6 +546,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           isUpdatingStatus={updateCardStatus.isPending}
           isDeleting={deleteCard.isPending}
           hasGrant={!!grant}
+          tenantId={tenantId}
           onTopupCard={handleTopupCard}
           onIssueCard={async (data) => {
             try {

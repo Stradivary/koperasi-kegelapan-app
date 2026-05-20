@@ -24,7 +24,10 @@ describe("deviceBlockCheck middleware", () => {
     return `${header}.${body}.fake-signature`;
   }
 
-  function createTestApp(mockDeviceResult: { blockedUntil: number | null } | undefined) {
+  function createTestApp(
+    mockDeviceResult: { blockedUntil: number | null } | undefined,
+    currentTime?: number,
+  ) {
     // We create a fresh Hono app with a mock middleware that simulates the DB lookup
     const app = new Hono();
 
@@ -65,12 +68,9 @@ describe("deviceBlockCheck middleware", () => {
         return;
       }
 
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (device.blockedUntil !== null && device.blockedUntil > currentTime) {
-        return c.json(
-          { error: "device_blocked", blockedUntil: device.blockedUntil },
-          403,
-        );
+      const effectiveTime = currentTime ?? Math.floor(Date.now() / 1000);
+      if (device.blockedUntil !== null && device.blockedUntil > effectiveTime) {
+        return c.json({ error: "device_blocked", blockedUntil: device.blockedUntil }, 403);
       }
 
       await next();
@@ -148,7 +148,7 @@ describe("deviceBlockCheck middleware", () => {
 
   it("returns 403 when blocked_until is exactly 1 second in the future", async () => {
     const barelyBlocked = now + 1;
-    const app = createTestApp({ blockedUntil: barelyBlocked });
+    const app = createTestApp({ blockedUntil: barelyBlocked }, now);
     const token = createToken({ accountId: "acc-1", tenantId: "t-1", deviceId: "dev-1" });
     const res = await app.request("/test", {
       headers: { Authorization: `Bearer ${token}` },
@@ -161,7 +161,7 @@ describe("deviceBlockCheck middleware", () => {
 
   it("passes through when blocked_until equals current time (boundary: not blocked)", async () => {
     // blocked_until <= now means unblocked
-    const app = createTestApp({ blockedUntil: now });
+    const app = createTestApp({ blockedUntil: now }, now);
     const token = createToken({ accountId: "acc-1", tenantId: "t-1", deviceId: "dev-1" });
     const res = await app.request("/test", {
       headers: { Authorization: `Bearer ${token}` },

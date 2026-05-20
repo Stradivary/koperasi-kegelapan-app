@@ -2,11 +2,29 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { usePrintEligibility } from "../../hooks/usePrintEligibility";
 import type { StationUserRow } from "./StationCardsPanel";
+
+/** Map reason codes to user-facing Indonesian messages */
+function getReasonMessage(reason?: string): string | undefined {
+  switch (reason) {
+    case "CARD_NOT_FOUND":
+      return "Kartu tidak ditemukan";
+    case "CARD_BLOCKED":
+      return "Kartu diblokir";
+    case "NO_MEMBER_NO_BALANCE":
+      return "Tidak ada anggota dan saldo kosong";
+    default:
+      return undefined;
+  }
+}
 
 interface StationCardIssuePanelProps {
   members: StationUserRow[];
   isIssuing: boolean;
+  cardId?: string | null;
+  tenantId?: string;
   onIssueCard: (data: {
     name: string;
     userId: number | null;
@@ -19,6 +37,8 @@ interface StationCardIssuePanelProps {
 export function StationCardIssuePanel({
   members,
   isIssuing,
+  cardId,
+  tenantId,
   onIssueCard,
   onCancel,
 }: StationCardIssuePanelProps) {
@@ -27,6 +47,14 @@ export function StationCardIssuePanel({
   const [issueBalance, setIssueBalance] = useState("");
   const [issueExpiry, setIssueExpiry] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Evaluate print eligibility based on current card and form state
+  const printEligibility = usePrintEligibility(
+    cardId ?? null,
+    { withMember: issueUserId !== null },
+    tenantId ?? "",
+  );
+  const reasonMessage = getReasonMessage(printEligibility.reason);
 
   const activeMembers = members.filter((m) => m.status === "active");
 
@@ -134,13 +162,26 @@ export function StationCardIssuePanel({
             />
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={handleIssue}
-              disabled={!issueName.trim() || isIssuing}
-              className="flex-1"
-            >
-              Cetak &amp; Daftarkan
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex-1">
+                    <Button
+                      onClick={handleIssue}
+                      disabled={!issueName.trim() || isIssuing || !printEligibility.enabled}
+                      className="w-full"
+                    >
+                      Cetak &amp; Daftarkan
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!printEligibility.enabled && reasonMessage && (
+                  <TooltipContent>
+                    <p>{reasonMessage}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="outline" onClick={onCancel}>
               Batal
             </Button>

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import { CardState } from "../../core/payload/types";
 import {
-  applyCheckout,
-  PARKING_RATE_PER_HOUR,
-  validateTransition,
-} from "../../core/state-machine/engine";
+  performOvertimeCheckout,
+  DEFAULT_OVERTIME_TARIFF_RATE,
+} from "../../core/nfc/overtimeCheckout";
+import { CardState } from "../../core/payload/types";
+import { validateTransition } from "../../core/state-machine/engine";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useReconciliation } from "../../hooks/useReconciliation";
@@ -25,8 +25,6 @@ interface TerminalSectionProps {
   terminalId: number;
 }
 
-const enforce24hLimit = true;
-
 export function TerminalSection({
   tenantId,
   tenantName,
@@ -42,7 +40,12 @@ export function TerminalSection({
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const syncEngine = useSyncEngineContext();
-  const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
+  const [lastTx, setLastTx] = useState<{
+    durationSeconds: number;
+    fee: number;
+    overtime?: boolean;
+    penaltyAmount?: number;
+  } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   // Track whether we already triggered auto-checkout for this scan cycle
@@ -68,18 +71,6 @@ export function TerminalSection({
       return;
     }
 
-    // Check 24-hour session limit (only if enforced)
-    if (enforce24hLimit) {
-      const SESSION_TIMEOUT_SECONDS = 24 * 60 * 60;
-      const CLOCK_DRIFT_TOLERANCE = 60 * 60;
-      const durationSinceCheckin = nowSeconds - payload.wallet.lastTimestamp;
-      if (durationSinceCheckin > SESSION_TIMEOUT_SECONDS + CLOCK_DRIFT_TOLERANCE) {
-        autoCheckoutTriggered.current = true;
-        setBlockedReason("Sesi melebihi 24 jam. Hubungi admin untuk reset.");
-        return;
-      }
-    }
-
     // Check local DB for blocked card or suspended member
     // Uses hardware serial number (state.serialNumber) as the correct lookup key
     if (!state.serialNumber) return;
@@ -101,33 +92,45 @@ export function TerminalSection({
           return;
         }
 
-        const durationSeconds = nowSeconds - payload.session.startTime;
-        const hours = Math.ceil(durationSeconds / 3600);
-        const fee = hours * PARKING_RATE_PER_HOUR;
-
-        // Insufficient balance
-        if (payload.wallet.balance < fee) {
-          autoCheckoutTriggered.current = true;
-          setBlockedReason("Saldo anda kurang untuk checkout, harap isi Saldo terlebih dahulu");
-          return;
-        }
-
         autoCheckoutTriggered.current = true;
-        setBlockedReason(null);
-        const actualFee = Math.min(fee, payload.wallet.balance);
-        setLastTx({ durationSeconds, fee: actualFee });
-        write(applyCheckout(payload, nowSeconds));
+
+        // Perform overtime-aware checkout
+        performOvertimeCheckout(
+          payload,
+          nowSeconds,
+          tenantId,
+          deviceId,
+          DEFAULT_OVERTIME_TARIFF_RATE,
+        ).then((checkoutResult) => {
+          if (!checkoutResult.success) {
+            // Overtime with insufficient balance or other failure
+            setBlockedReason(checkoutResult.error ?? "Checkout gagal");
+            return;
+          }
+
+          setBlockedReason(null);
+
+          if (checkoutResult.overtime && checkoutResult.action === "PENALTY_DEDUCTED") {
+            // Overtime checkout with penalty deducted
+            setLastTx({
+              durationSeconds: checkoutResult.durationSeconds ?? 0,
+              fee: checkoutResult.penaltyAmount ?? 0,
+              overtime: true,
+              penaltyAmount: checkoutResult.penaltyAmount,
+            });
+          } else {
+            // Normal checkout
+            setLastTx({
+              durationSeconds: checkoutResult.durationSeconds ?? 0,
+              fee: checkoutResult.fee ?? 0,
+            });
+          }
+
+          write(checkoutResult.updatedPayload!, checkoutResult.operationType);
+        });
       },
     );
-  }, [
-    state.phase,
-    state.payload,
-    state.serialNumber,
-    write,
-    getNowSeconds,
-    enforce24hLimit,
-    tenantId,
-  ]);
+  }, [state.phase, state.payload, state.serialNumber, write, getNowSeconds, tenantId, deviceId]);
 
   // Auto-reset after success
   useEffect(() => {
@@ -267,9 +270,17 @@ export function TerminalSection({
                   <span>{formatDuration(lastTx.durationSeconds)}</span>
                 </div>
                 <div className="flex justify-between type-body2">
-                  <span className="text-muted-foreground">Biaya</span>
+                  <span className="text-muted-foreground">
+                    {lastTx.overtime ? "Denda Overtime" : "Biaya"}
+                  </span>
                   <span>Rp {lastTx.fee.toLocaleString("id-ID")}</span>
                 </div>
+                {lastTx.overtime && (
+                  <div className="flex justify-between type-body2">
+                    <span className="text-signal-warning">⚠ Overtime</span>
+                    <span className="text-signal-warning">Denda diterapkan</span>
+                  </div>
+                )}
                 <div className="flex justify-between type-body2">
                   <span className="text-muted-foreground">Saldo</span>
                   <span className="text-brand font-medium">

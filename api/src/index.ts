@@ -7,6 +7,7 @@ import { tenantsRoutes } from "./routes/tenants";
 import { superadminRoutes } from "./routes/superadmin";
 import { accountsRoutes } from "./routes/accounts";
 import { syncRoutes } from "./routes/sync";
+import { cardsRoutes } from "./routes/cards";
 import { corsMiddleware } from "./middleware/cors";
 import { deviceBlockCheck } from "./middleware/deviceBlockCheck";
 import { syncRateLimit } from "./middleware/syncRateLimit";
@@ -37,5 +38,6 @@ app.route("/api/tenants", tenantsRoutes);
 app.route("/api/superadmin", superadminRoutes);
 app.route("/api/accounts", accountsRoutes);
 app.route("/api/sync", syncRoutes);
+app.route("/api/cards", cardsRoutes);
 
 export default app;

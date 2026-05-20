@@ -1,4 +1,6 @@
 import { CARD_SIZE, WIRE_SIZE } from "../payload/types";
+import type { CardPayload, CardStatus } from "../payload/types";
+import { checkBlocked, checkBlockedSync, type BlockCheckResult } from "../validation/blockEnforcer";
 
 export type NfcReadResult =
   | { ok: true; raw: Uint8Array; serialNumber: string }
@@ -145,4 +147,120 @@ export function extractCardBytes(message: NDEFMessage): Uint8Array | null {
     }
   }
   return null;
+}
+
+// ============================================================================
+// Block Enforcement for NFC Operations
+// ============================================================================
+
+/** Result of a pre-operation block check */
+export type BlockGuardResult =
+  | { allowed: true }
+  | { allowed: false; error: string; errorCode: BlockCheckResult["errorCode"] };
+
+/**
+ * Checks whether a card is blocked before a check-in operation.
+ *
+ * Uses both the on-card status (from decoded CardPayload) and the local IndexedDB
+ * record to determine if the card is blocked. If either source indicates a blocked
+ * status, the operation is rejected with the appropriate error message and code.
+ *
+ * This check MUST be called BEFORE any state changes are made to the card.
+ *
+ * @param tenantId - Tenant identifier
+ * @param cardId - Card identifier (hex string, e.g. serialNumber normalized)
+ * @param payload - Decoded CardPayload from NFC read
+ * @returns Promise<BlockGuardResult> - { allowed: true } or { allowed: false, error, errorCode }
+ *
+ * @see Requirement 6.1 - Reject check-in on blocked cards within 200ms
+ * @see Requirement 6.4 - On-card status is authoritative
+ * @see Requirement 6.5 - Local DB record used as fallback
+ * @see Requirement 6.7 - Works regardless of online/offline status
+ */
+export async function enforceBlockOnCheckin(
+  tenantId: string,
+  cardId: string,
+  payload: CardPayload,
+): Promise<BlockGuardResult> {
+  const onCardStatus = payload.identity.status as CardStatus;
+  const result = await checkBlocked(tenantId, cardId, onCardStatus);
+
+  if (result.blocked) {
+    return {
+      allowed: false,
+      error: result.message ?? "Akses Ditolak: Kartu Diblokir",
+      errorCode: result.errorCode,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Checks whether a card is blocked before a check-out operation.
+ *
+ * Uses both the on-card status (from decoded CardPayload) and the local IndexedDB
+ * record to determine if the card is blocked. If either source indicates a blocked
+ * status, the operation is rejected with the appropriate error message and code.
+ *
+ * This check MUST be called BEFORE any state changes are made to the card.
+ *
+ * @param tenantId - Tenant identifier
+ * @param cardId - Card identifier (hex string, e.g. serialNumber normalized)
+ * @param payload - Decoded CardPayload from NFC read
+ * @returns Promise<BlockGuardResult> - { allowed: true } or { allowed: false, error, errorCode }
+ *
+ * @see Requirement 6.2 - Reject check-out on blocked cards within 200ms
+ * @see Requirement 6.4 - On-card status is authoritative
+ * @see Requirement 6.5 - Local DB record used as fallback
+ * @see Requirement 6.7 - Works regardless of online/offline status
+ */
+export async function enforceBlockOnCheckout(
+  tenantId: string,
+  cardId: string,
+  payload: CardPayload,
+): Promise<BlockGuardResult> {
+  const onCardStatus = payload.identity.status as CardStatus;
+  const result = await checkBlocked(tenantId, cardId, onCardStatus);
+
+  if (result.blocked) {
+    return {
+      allowed: false,
+      error: result.message ?? "Akses Ditolak: Kartu Diblokir",
+      errorCode: result.errorCode,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Synchronous block check for when card data and DB record are already available.
+ *
+ * Useful in scenarios where the card payload has been decoded and the local DB
+ * card record has already been fetched (e.g., in the useNfcCard hook flow).
+ *
+ * @param payload - Decoded CardPayload from NFC read
+ * @param dbCard - Optional card record from local IndexedDB (if already fetched)
+ * @returns BlockGuardResult
+ *
+ * @see Requirement 6.4 - On-card status is authoritative
+ * @see Requirement 6.5 - Local DB record used as fallback
+ */
+export function enforceBlockSync(
+  payload: CardPayload,
+  dbCard?: Parameters<typeof checkBlockedSync>[1],
+): BlockGuardResult {
+  const onCardStatus = payload.identity.status as CardStatus;
+  const result = checkBlockedSync(onCardStatus, dbCard);
+
+  if (result.blocked) {
+    return {
+      allowed: false,
+      error: result.message ?? "Akses Ditolak: Kartu Diblokir",
+      errorCode: result.errorCode,
+    };
+  }
+
+  return { allowed: true };
 }

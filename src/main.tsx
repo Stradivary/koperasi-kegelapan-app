@@ -4,6 +4,7 @@ import { routeTree } from "./routeTree.gen";
 import { getContext } from "./integrations/tanstack-query/root-provider";
 import { createRoot } from "react-dom/client";
 import { initDeviceIdFromStorage } from "./lib/initDeviceId";
+import { setQueryClient } from "./lib/realTimeSync";
 import "./styles.css";
 
 // Restore deviceId from IndexedDB into the API client's in-memory cache.
@@ -12,6 +13,10 @@ import "./styles.css";
 initDeviceIdFromStorage();
 
 const { queryClient } = getContext();
+
+// Provide the QueryClient to RealTimeSyncManager for cache invalidation
+// on incoming SSE events (e.g., card_status_change).
+setQueryClient(queryClient);
 
 const router = createRouter({
   routeTree,

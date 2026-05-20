@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { blob, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  blob,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const tenants = sqliteTable("tenants", {
   tenantId: text("tenant_id").primaryKey(),
@@ -68,7 +76,14 @@ export const cards = sqliteTable(
     cardId: blob("card_id").notNull(),
     userId: integer("user_id"),
     status: text("status", {
-      enum: ["active", "ACTIVE", "BLOCKED_TAMPER", "BLOCKED_FRAUD", "BLOCKED_EXPIRED", "BLOCKED_ADMIN"],
+      enum: [
+        "active",
+        "ACTIVE",
+        "BLOCKED_TAMPER",
+        "BLOCKED_FRAUD",
+        "BLOCKED_EXPIRED",
+        "BLOCKED_ADMIN",
+      ],
     })
       .notNull()
       .default("active"),
@@ -143,9 +158,7 @@ export const devices = sqliteTable(
     blockedUntil: integer("blocked_until"),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [
-    index("idx_devices_tenant_account").on(table.tenantId, table.accountId),
-  ],
+  (table) => [index("idx_devices_tenant_account").on(table.tenantId, table.accountId)],
 );
 
 export const authSessions = sqliteTable(
@@ -221,12 +234,33 @@ export const syncCursors = sqliteTable(
     lastCursor: text("last_cursor").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
-  (table) => [
-    primaryKey({ columns: [table.tenantId, table.deviceId, table.entityType] }),
-  ],
+  (table) => [primaryKey({ columns: [table.tenantId, table.deviceId, table.entityType] })],
+);
+
+// --- Card events table for SSE broadcast ---
+
+export const cardEvents = sqliteTable(
+  "card_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.tenantId),
+    cardId: text("card_id").notNull(),
+    eventType: text("event_type", {
+      enum: ["card_status_change", "member_update", "transaction", "checkin", "checkout"],
+    }).notNull(),
+    payload: text("payload").notNull(), // JSON-encoded event payload
+    sourceDeviceId: text("source_device_id"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [index("idx_card_events_tenant_created").on(table.tenantId, table.createdAt)],
 );
 
 // --- Inferred TypeScript types ---
+
+export type CardEvent = typeof cardEvents.$inferSelect;
+export type NewCardEvent = typeof cardEvents.$inferInsert;
 
 export type Device = typeof devices.$inferSelect;
 export type NewDevice = typeof devices.$inferInsert;
