@@ -92,6 +92,10 @@ export function AdminLayout({
       navigate({ to: `/tenant/${tenantId}/scout` });
     } else if (id === "transactions") {
       navigate({ to: `/tenant/${tenantId}/transactions` });
+    } else if (id === "cards") {
+      navigate({ to: `/tenant/${tenantId}/cards` });
+    } else if (id === "members") {
+      navigate({ to: `/tenant/${tenantId}/members` });
     } else {
       onSectionChange(id);
     }

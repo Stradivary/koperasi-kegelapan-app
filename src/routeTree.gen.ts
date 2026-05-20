@@ -18,10 +18,11 @@ import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
 import { Route as TenantTenantIdTransactionsRouteImport } from './routes/tenant.$tenantId.transactions'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
-import { Route as TenantTenantIdStationRouteImport } from './routes/tenant.$tenantId.station'
 import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
+import { Route as TenantTenantIdMembersRouteImport } from './routes/tenant.$tenantId.members'
 import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
 import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantId.gate'
+import { Route as TenantTenantIdCardsRouteImport } from './routes/tenant.$tenantId.cards'
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
 
 const SuperadminRoute = SuperadminRouteImport.update({
@@ -70,14 +71,14 @@ const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
   path: '/terminal',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
-const TenantTenantIdStationRoute = TenantTenantIdStationRouteImport.update({
-  id: '/station',
-  path: '/station',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
 const TenantTenantIdScoutRoute = TenantTenantIdScoutRouteImport.update({
   id: '/scout',
   path: '/scout',
+  getParentRoute: () => TenantTenantIdRoute,
+} as any)
+const TenantTenantIdMembersRoute = TenantTenantIdMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
 const TenantTenantIdKioskRoute = TenantTenantIdKioskRouteImport.update({
@@ -88,6 +89,11 @@ const TenantTenantIdKioskRoute = TenantTenantIdKioskRouteImport.update({
 const TenantTenantIdGateRoute = TenantTenantIdGateRouteImport.update({
   id: '/gate',
   path: '/gate',
+  getParentRoute: () => TenantTenantIdRoute,
+} as any)
+const TenantTenantIdCardsRoute = TenantTenantIdCardsRouteImport.update({
+  id: '/cards',
+  path: '/cards',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
 const TenantTenantIdAdminRoute = TenantTenantIdAdminRouteImport.update({
@@ -105,10 +111,11 @@ export interface FileRoutesByFullPath {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
+  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
+  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -121,10 +128,11 @@ export interface FileRoutesByTo {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
+  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
+  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -138,10 +146,11 @@ export interface FileRoutesById {
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
+  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
   '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
+  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/station': typeof TenantTenantIdStationRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -156,10 +165,11 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev/'
     | '/tenant/$tenantId/admin'
+    | '/tenant/$tenantId/cards'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
+    | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   fileRoutesByTo: FileRoutesByTo
@@ -172,10 +182,11 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev'
     | '/tenant/$tenantId/admin'
+    | '/tenant/$tenantId/cards'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
+    | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   id:
@@ -188,10 +199,11 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId'
     | '/dev/'
     | '/tenant/$tenantId/admin'
+    | '/tenant/$tenantId/cards'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
+    | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/station'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   fileRoutesById: FileRoutesById
@@ -271,18 +283,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdTerminalRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
-    '/tenant/$tenantId/station': {
-      id: '/tenant/$tenantId/station'
-      path: '/station'
-      fullPath: '/tenant/$tenantId/station'
-      preLoaderRoute: typeof TenantTenantIdStationRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
     '/tenant/$tenantId/scout': {
       id: '/tenant/$tenantId/scout'
       path: '/scout'
       fullPath: '/tenant/$tenantId/scout'
       preLoaderRoute: typeof TenantTenantIdScoutRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/members': {
+      id: '/tenant/$tenantId/members'
+      path: '/members'
+      fullPath: '/tenant/$tenantId/members'
+      preLoaderRoute: typeof TenantTenantIdMembersRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
     '/tenant/$tenantId/kiosk': {
@@ -299,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdGateRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
+    '/tenant/$tenantId/cards': {
+      id: '/tenant/$tenantId/cards'
+      path: '/cards'
+      fullPath: '/tenant/$tenantId/cards'
+      preLoaderRoute: typeof TenantTenantIdCardsRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
     '/tenant/$tenantId/admin': {
       id: '/tenant/$tenantId/admin'
       path: '/admin'
@@ -311,20 +330,22 @@ declare module '@tanstack/react-router' {
 
 interface TenantTenantIdRouteChildren {
   TenantTenantIdAdminRoute: typeof TenantTenantIdAdminRoute
+  TenantTenantIdCardsRoute: typeof TenantTenantIdCardsRoute
   TenantTenantIdGateRoute: typeof TenantTenantIdGateRoute
   TenantTenantIdKioskRoute: typeof TenantTenantIdKioskRoute
+  TenantTenantIdMembersRoute: typeof TenantTenantIdMembersRoute
   TenantTenantIdScoutRoute: typeof TenantTenantIdScoutRoute
-  TenantTenantIdStationRoute: typeof TenantTenantIdStationRoute
   TenantTenantIdTerminalRoute: typeof TenantTenantIdTerminalRoute
   TenantTenantIdTransactionsRoute: typeof TenantTenantIdTransactionsRoute
 }
 
 const TenantTenantIdRouteChildren: TenantTenantIdRouteChildren = {
   TenantTenantIdAdminRoute: TenantTenantIdAdminRoute,
+  TenantTenantIdCardsRoute: TenantTenantIdCardsRoute,
   TenantTenantIdGateRoute: TenantTenantIdGateRoute,
   TenantTenantIdKioskRoute: TenantTenantIdKioskRoute,
+  TenantTenantIdMembersRoute: TenantTenantIdMembersRoute,
   TenantTenantIdScoutRoute: TenantTenantIdScoutRoute,
-  TenantTenantIdStationRoute: TenantTenantIdStationRoute,
   TenantTenantIdTerminalRoute: TenantTenantIdTerminalRoute,
   TenantTenantIdTransactionsRoute: TenantTenantIdTransactionsRoute,
 }

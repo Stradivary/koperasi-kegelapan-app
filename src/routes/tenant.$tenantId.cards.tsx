@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { TransactionsSection } from "../components/section/TransactionsSection";
+import { CardSection } from "../components/section/CardSection";
 import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 import { AdminLayout, type AdminView } from "../components/layout/AdminLayout";
 import { useSyncEngineContext } from "../hooks/SyncEngineContext";
 
-export const Route = createFileRoute("/tenant/$tenantId/transactions")({
-  component: TransactionsPage,
+export const Route = createFileRoute("/tenant/$tenantId/cards")({
+  component: CardsPage,
 });
 
-function TransactionsPage() {
+function CardsPage() {
   const { tenantId } = Route.useParams();
   const { tenantContext, loading } = useTenantContext(tenantId);
   const syncEngine = useSyncEngineContext();
@@ -17,11 +17,11 @@ function TransactionsPage() {
   if (loading || !tenantContext) return <TenantRoutePending />;
 
   function handleSectionChange(section: AdminView) {
-    if (section === "transactions") return;
-    if (section === "cards") {
-      navigate({ to: `/tenant/${tenantId}/cards` });
-    } else if (section === "members") {
+    if (section === "cards") return;
+    if (section === "members") {
       navigate({ to: `/tenant/${tenantId}/members` });
+    } else if (section === "transactions") {
+      navigate({ to: `/tenant/${tenantId}/transactions` });
     } else if (section === "scout") {
       navigate({ to: `/tenant/${tenantId}/scout` });
     }
@@ -32,14 +32,19 @@ function TransactionsPage() {
       tenantId={tenantId}
       tenantName={tenantContext.tenantName}
       role={tenantContext.role}
-      activeSection="transactions"
+      activeSection="cards"
       onSectionChange={handleSectionChange}
       syncStatus={syncEngine?.syncStatus ?? "idle"}
       lastSyncedAt={syncEngine?.lastSyncedAt ?? null}
       pendingCount={syncEngine?.pendingCount ?? 0}
       onTriggerSync={syncEngine?.triggerSync ?? (() => {})}
     >
-      <TransactionsSection tenantId={tenantId} />
+      <CardSection
+        tenantId={tenantId}
+        accountId={tenantContext.accountId}
+        deviceId={tenantContext.deviceId}
+        terminalId={tenantContext.terminalId}
+      />
     </AdminLayout>
   );
 }

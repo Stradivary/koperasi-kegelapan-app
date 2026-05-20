@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useImperativeHandle, forwardRef } from "react";
 import { StationCardListPanel } from "./StationCardListPanel";
 import { StationCardIssuePanel } from "./StationCardIssuePanel";
 
@@ -19,6 +19,10 @@ export interface StationUserRow {
 }
 
 type CardView = "list" | "issue";
+
+export interface StationCardsPanelHandle {
+  goToList: () => void;
+}
 
 interface StationCardsPanelProps {
   cards: StationCardRow[];
@@ -42,70 +46,82 @@ interface StationCardsPanelProps {
   onResetCard: (card: StationCardRow) => void;
 }
 
-export function StationCardsPanel({
-  cards,
-  members,
-  isLoading,
-  isTopping: _isTopping,
-  isIssuing,
-  isUpdatingStatus,
-  isDeleting,
-  isResetting,
-  hasGrant: _hasGrant,
-  onTopupCard,
-  onIssueCard,
-  onUpdateCardStatus,
-  onDeleteCard,
-  onResetCard,
-}: StationCardsPanelProps) {
-  const [cardView, setCardView] = useState<CardView>("list");
-  const [success, setSuccess] = useState<string | null>(null);
+export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCardsPanelProps>(
+  function StationCardsPanel(
+    {
+      cards,
+      members,
+      isLoading,
+      isTopping: _isTopping,
+      isIssuing,
+      isUpdatingStatus,
+      isDeleting,
+      isResetting,
+      hasGrant: _hasGrant,
+      onTopupCard,
+      onIssueCard,
+      onUpdateCardStatus,
+      onDeleteCard,
+      onResetCard,
+    },
+    ref,
+  ) {
+    const [cardView, setCardView] = useState<CardView>("list");
+    const [success, setSuccess] = useState<string | null>(null);
 
-  async function handleIssueCard(data: {
-    name: string;
-    userId: string | null;
-    balance: number;
-    expiresAt: number | null;
-  }) {
-    try {
-      await onIssueCard(data);
-      setSuccess("Kartu berhasil dicetak dan didaftarkan");
-      setCardView("list");
-    } catch {
-      // Error is handled upstream (override/not-blank dialogs shown by parent)
+    useImperativeHandle(ref, () => ({
+      goToList: () => {
+        setSuccess("Kartu berhasil dicetak dan didaftarkan");
+        setCardView("list");
+      },
+    }));
+
+    async function handleIssueCard(data: {
+      name: string;
+      userId: string | null;
+      balance: number;
+      expiresAt: number | null;
+    }) {
+      try {
+        await onIssueCard(data);
+        setSuccess("Kartu berhasil dicetak dan didaftarkan");
+        setCardView("list");
+      } catch {
+        // Error is handled upstream (override/not-blank dialogs shown by parent)
+      }
     }
-  }
 
-  return (
-    <div className="space-y-4">
-      {success && <p className="text-sm text-green-600">{success}</p>}
+    return (
+      <div className="space-y-4">
+        {success && <p className="text-sm text-green-600">{success}</p>}
 
-      {cardView === "list" && (
-        <StationCardListPanel
-          cards={cards}
-          isLoading={isLoading}
-          isUpdatingStatus={isUpdatingStatus}
-          isDeleting={isDeleting}
-          isResetting={isResetting}
-          onTopupCard={onTopupCard}
-          onUpdateCardStatus={onUpdateCardStatus}
-          onDeleteCard={onDeleteCard}
-          onResetCard={onResetCard}
-          onIssueNew={() => {
-            setSuccess(null);
-            setCardView("issue");
-          }}
-        />
-      )}
+        {cardView === "list" && (
+          <StationCardListPanel
+            cards={cards}
+            isLoading={isLoading}
+            isUpdatingStatus={isUpdatingStatus}
+            isDeleting={isDeleting}
+            isResetting={isResetting}
+            onTopupCard={onTopupCard}
+            onUpdateCardStatus={onUpdateCardStatus}
+            onDeleteCard={onDeleteCard}
+            onResetCard={onResetCard}
+            onIssueNew={() => {
+              setSuccess(null);
+              setCardView("issue");
+            }}
+          />
+        )}
 
-      {cardView === "issue" && (
-        <StationCardIssuePanel
-          members={members}
-          isIssuing={isIssuing}
-          onIssueCard={handleIssueCard}
-          onCancel={() => setCardView("list")}
-        />
-      )}
-    </div>
-  );
-}
+        {cardView === "issue" && (
+          <StationCardIssuePanel
+            members={members}
+            isIssuing={isIssuing}
+            onIssueCard={handleIssueCard}
+            onCancel={() => setCardView("list")}
+          />
+        )}
+      </div>
+    );
+  },
+);

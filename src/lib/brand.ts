@@ -1,10 +1,10 @@
 export const BRAND = {
   APP_NAME: "Koperasi Kegelapan",
   ORG_NAME: "Telkomsel",
-  TAGLINE: "By Telkomsel",
-  BYLINE: "By Telkomsel",
+  TAGLINE: "By Ahmad Muzaki",
+  BYLINE: "By Ahmad Muzaki",
   SHORT_NAME: "KK Wallet",
-  APP_DESCRIPTION: "Dompet NFC Koperasi — By Telkomsel",
+  APP_DESCRIPTION: "Dompet NFC Koperasi — By Ahmad Muzaki",
 } as const;
 
 export const BRAND_FONTS = {

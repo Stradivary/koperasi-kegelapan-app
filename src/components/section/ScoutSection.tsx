@@ -110,7 +110,7 @@ export function ScoutSection({
                 <div>
                   <p className="type-body2 text-signal-text-secondary">Transaksi ke-</p>
                   <p className="type-title-bold text-foreground">
-                    {state.payload.wallet.counter.toString()}
+                    {(state.payload.wallet.counter - 1n).toString()}
                   </p>
                 </div>
               </div>

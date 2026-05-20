@@ -1,0 +1,115 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Blocked Card Status Not Displayed Across Views
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists in Terminal, Gate, and Scout views
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases:
+    - Terminal: blocked card with cardState IN [IDLE, CHECKED_OUT]
+    - Gate: blocked card with cardState IN [CHECKED_IN, STATION_OPERATION]
+    - Scout: blocked card with onCardStatus == ACTIVE
+  - Mock `checkLocalBlockedStatus` to return `{ blocked: true, reason: "Kartu diblokir oleh admin" }`
+  - For Terminal: render TerminalSection, simulate NFC scan to phase "ready" with cardState=IDLE, assert blocked UI ("Kartu diblokir" / access denied) is shown instead of "Belum Check-in"
+  - For Terminal: repeat with cardState=CHECKED_OUT, assert blocked UI is shown instead of "Sudah Checkout"
+  - For Gate: render GateSection, simulate NFC scan to phase "ready" with cardState=CHECKED_IN, assert blocked UI ("Akses Ditolak") is shown instead of "Sudah Check-in"
+  - For Scout: render ScoutSection, simulate NFC scan to phase "ready" with onCardStatus=ACTIVE, assert "Blocked" badge is shown instead of "Active"
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples:
+    - Terminal IDLE: `blockedReason` never set because effect returns early before `checkLocalBlockedStatus` is called
+    - Terminal CHECKED_OUT: same early return issue
+    - Gate CHECKED_IN: `blockedReason` set too late due to async race, render shows "Sudah Check-in" first
+    - Scout: no call to `checkLocalBlockedStatus` exists at all
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Non-Blocked Card Behavior Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs (cards where `checkLocalBlockedStatus` returns `{ blocked: false }`)
+  - Observe: Terminal with active card in IDLE state shows "Belum Check-in" on unfixed code
+  - Observe: Terminal with active card in CHECKED_OUT state shows "Sudah Checkout" on unfixed code
+  - Observe: Terminal with active card in CHECKED_IN state triggers auto-checkout flow on unfixed code
+  - Observe: Gate with active card in IDLE state triggers auto-checkin flow on unfixed code
+  - Observe: Gate with active card in CHECKED_IN state shows "Sudah Check-in" on unfixed code
+  - Observe: Scout with active card (onCardStatus=ACTIVE) shows "Active" badge on unfixed code
+  - Observe: Gate with on-card blocked status (BLOCKED_TAMPER, BLOCKED_ADMIN) shows on-card blocked reason on unfixed code
+  - Write property-based tests: for all non-blocked card inputs across all views, the rendered output matches the observed behavior patterns:
+    - Terminal: non-blocked IDLE → "Belum Check-in"; non-blocked CHECKED_OUT → "Sudah Checkout"; non-blocked CHECKED_IN → auto-checkout proceeds
+    - Gate: non-blocked IDLE → auto-checkin proceeds; non-blocked CHECKED_IN → "Sudah Check-in"; on-card blocked → on-card blocked reason shown
+    - Scout: non-blocked ACTIVE → "Active" badge with correct member info
+  - Mock `checkLocalBlockedStatus` to return `{ blocked: false, reason: null }` for all preservation tests
+  - Verify tests pass on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [ ] 3. Fix blocked member status display across Terminal, Gate, and Scout views
+  - [ ] 3.1 Fix TerminalSection.tsx - Move blocked check before card-state guard
+    - In the auto-checkout `useEffect`, move `checkLocalBlockedStatus` call to execute BEFORE the card-state early return
+    - When `state.phase === "ready"` and `state.serialNumber` is available, call `checkLocalBlockedStatus(tenantId, state.serialNumber)` first
+    - If blocked, set `blockedReason` and `autoCheckoutTriggered.current = true`, then return immediately
+    - Only after confirming non-blocked status, proceed with existing card-state logic (IDLE/CHECKED_OUT early return, CHECKED_IN/STATION_OPERATION checkout flow)
+    - _Bug_Condition: isBugCondition(input) where input.view = "terminal" AND localBlocked = true AND cardState IN [IDLE, CHECKED_OUT]_
+    - _Expected_Behavior: blocked card always shows "Kartu diblokir" access denied UI regardless of cardState_
+    - _Preservation: non-blocked cards in IDLE still show "Belum Check-in", CHECKED_OUT still show "Sudah Checkout", CHECKED_IN still auto-checkout_
+    - _Requirements: 2.1, 2.2, 3.1, 3.2_
+
+  - [ ] 3.2 Fix GateSection.tsx - Eliminate async race condition for blocked check
+    - Restructure the auto-checkin `useEffect` so that `checkLocalBlockedStatus` resolves BEFORE any card-state render decision is made
+    - For CHECKED_IN/STATION_OPERATION cards: do NOT set `autoCheckinTriggered` until the blocked check completes
+    - Ensure `blockedReason` is set before the render evaluates `isAlreadyCheckedIn` condition
+    - The render already correctly prioritizes `blockedReason` over `isAlreadyCheckedIn` — the fix is ensuring the async check completes first
+    - _Bug_Condition: isBugCondition(input) where input.view = "gate" AND localBlocked = true AND cardState IN [CHECKED_IN, STATION_OPERATION]_
+    - _Expected_Behavior: blocked card always shows "Akses Ditolak" with blocked reason, never "Sudah Check-in"_
+    - _Preservation: non-blocked CHECKED_IN cards still show "Sudah Check-in", non-blocked IDLE cards still auto-checkin, on-card blocked status still shown_
+    - _Requirements: 2.3, 3.3, 3.4, 3.6, 3.7_
+
+  - [ ] 3.3 Fix ScoutSection.tsx - Add local DB blocked check
+    - Add `useState` for `localBlockedReason` (string | null)
+    - Add `useEffect` that calls `checkLocalBlockedStatus(tenantId, state.serialNumber)` when `state.phase === "ready"` and `state.serialNumber` is available
+    - Store the blocked reason in `localBlockedReason` state
+    - Pass `localBlockedReason` to `CardStatusBadge` component as new prop
+    - _Bug_Condition: isBugCondition(input) where input.view = "scout" AND localBlocked = true AND onCardStatus == ACTIVE_
+    - _Expected_Behavior: blocked card shows "Blocked" badge with reason instead of "Active" badge_
+    - _Preservation: non-blocked cards with ACTIVE on-card status still show "Active" badge normally_
+    - _Requirements: 2.4, 3.5_
+
+  - [ ] 3.4 Update CardStatusBadge.tsx - Support local DB override prop
+    - Add optional `localBlockedReason?: string | null` prop to `CardStatusBadge`
+    - When `localBlockedReason` is provided and non-null, display blocked badge styling (red background, "Blocked" or specific reason text) regardless of the `status` prop value
+    - When `localBlockedReason` is null or undefined, fall back to existing behavior using `status` prop
+    - _Bug_Condition: localBlockedReason is non-null but on-card status is ACTIVE_
+    - _Expected_Behavior: badge shows blocked state from local DB override_
+    - _Preservation: when localBlockedReason is null/undefined, badge renders exactly as before based on status prop_
+    - _Requirements: 2.4, 3.5_
+
+  - [ ] 3.5 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Blocked Card Status Always Displayed
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior (blocked UI shown for all bug condition inputs)
+    - When this test passes, it confirms the expected behavior is satisfied across all three views
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+  - [ ] 3.6 Verify preservation tests still pass
+    - **Property 2: Preservation** - Non-Blocked Card Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all non-blocked card behaviors are unchanged after fix:
+      - Terminal: "Belum Check-in" for IDLE, "Sudah Checkout" for CHECKED_OUT, auto-checkout for CHECKED_IN
+      - Gate: auto-checkin for IDLE, "Sudah Check-in" for CHECKED_IN, on-card blocked reason for BLOCKED_TAMPER/ADMIN
+      - Scout: "Active" badge for non-blocked cards
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Run full test suite to confirm no regressions
+  - Verify bug condition exploration test passes (Property 1)
+  - Verify preservation property tests pass (Property 2)
+  - Verify existing unit tests for `checkLocalBlockedStatus`, state machine, and NFC pipeline still pass
+  - Ensure no TypeScript compilation errors across modified files
+  - Ask the user if questions arise
