@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { Button } from "../ui/button";
@@ -23,7 +25,21 @@ export function ScoutSection({
   terminalId,
 }: ScoutSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "scout");
-  const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
+  const [localBlockedReason, setLocalBlockedReason] = useState<string | null>(null);
+  const [notInLocalDb, setNotInLocalDb] = useState(false);
+
+  useEffect(() => {
+    if (state.phase === "ready" && state.serialNumber) {
+      checkLocalBlockedStatus(tenantId, state.serialNumber).then((result) => {
+        setLocalBlockedReason(result.blocked ? result.reason : null);
+        setNotInLocalDb(result.notInLocalDb);
+      });
+    } else {
+      setLocalBlockedReason(null);
+      setNotInLocalDb(false);
+    }
+  }, [state.phase, state.serialNumber, tenantId]);
 
   return (
     <KioskLayout title="Cek Saldo" tenantName={tenantName} tenantId={tenantId} currentMode="scout">
@@ -83,12 +99,24 @@ export function ScoutSection({
         {/* Card info */}
         {(state.phase === "ready" || state.phase === "success") && state.payload && (
           <div className="w-full max-w-xs space-y-4">
+            {(notInLocalDb || state.warning) && (
+              <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3">
+                <p className="type-body2 text-amber-700 text-center">
+                  ⚠️{" "}
+                  {state.warning ??
+                    "Kartu tidak ditemukan di database lokal. Data mungkin belum tersinkronisasi."}
+                </p>
+              </div>
+            )}
             <div className="bg-white rounded-2xl border p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="type-title-bold text-foreground text-lg">
                   {state.payload.identity.name}
                 </p>
-                <CardStatusBadge status={state.payload.identity.status} />
+                <CardStatusBadge
+                  status={state.payload.identity.status}
+                  localBlockedReason={localBlockedReason}
+                />
               </div>
 
               <div className="text-center py-2">

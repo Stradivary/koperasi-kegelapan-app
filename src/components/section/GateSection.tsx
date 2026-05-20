@@ -29,7 +29,7 @@ export function GateSection({
   terminalId,
 }: GateSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
   const syncEngine = useSyncEngineContext();
 
   // Simulation mode: date+time picker
@@ -41,8 +41,13 @@ export function GateSection({
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
   // 24-hour max checkout enforcement (default: enabled)
-  const [enforce24hLimit, setEnforce24hLimit] = useState(true);
+  const enforce24hLimit = false;
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  // Track whether the local DB blocked check has completed for this scan cycle.
+  // This prevents the render from showing "Sudah Check-in" before the async check resolves.
+  const [blockedCheckDone, setBlockedCheckDone] = useState(false);
+  // Warning when card/user not found in local DB (operation still proceeds)
+  const [notInLocalDb, setNotInLocalDb] = useState(false);
 
   // Track whether we already triggered auto-checkin for this scan cycle
   const autoCheckinTriggered = useRef(false);
@@ -75,6 +80,7 @@ export function GateSection({
         [CardStatus.BLOCKED_ADMIN]: "Kartu diblokir oleh admin",
       };
       setBlockedReason(statusNames[payload.identity.status] ?? "Kartu tidak aktif");
+      setBlockedCheckDone(true);
       return;
     }
 
@@ -83,14 +89,30 @@ export function GateSection({
     // serialNumber is always present when phase is "ready" (set during scan)
     if (!state.serialNumber) return;
 
+    // IMPORTANT: checkLocalBlockedStatus MUST resolve BEFORE autoCheckinTriggered is set.
+    // This eliminates the race condition where the render shows "Sudah Check-in" for
+    // CHECKED_IN/STATION_OPERATION cards before the blocked check completes.
     checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
+      // Guard against stale closure: if the component reset while we were awaiting
+      if (autoCheckinTriggered.current) return;
+
       if (statusResult.blocked) {
         autoCheckinTriggered.current = true;
         setBlockedReason(statusResult.reason);
+        setBlockedCheckDone(true);
         return;
       }
 
-      // Proceed with normal transition validation
+      // Flag if card not in local DB (warning only, does not block)
+      setNotInLocalDb(statusResult.notInLocalDb);
+
+      // Card is not blocked — mark blocked check as complete so the render can proceed
+      setBlockedCheckDone(true);
+
+      // For CHECKED_IN/STATION_OPERATION cards, validateTransition will return invalid,
+      // and autoCheckinTriggered is set here (after blocked check resolved).
+      // This ensures blockedReason is definitively null before the render shows "Sudah Check-in".
+
       // When enforce24hLimit is disabled, skip session expiry check by using
       // a "fresh" nowSeconds that won't trigger the expiry logic
       let validationNow = nowSeconds;
@@ -158,12 +180,16 @@ export function GateSection({
     if (state.phase === "idle") {
       autoCheckinTriggered.current = false;
       setBlockedReason(null);
+      setBlockedCheckDone(false);
+      setNotInLocalDb(false);
     }
   }, [state.phase]);
 
   function handleScan() {
     autoCheckinTriggered.current = false;
     setBlockedReason(null);
+    setBlockedCheckDone(false);
+    setNotInLocalDb(false);
     scan();
   }
 
@@ -230,7 +256,7 @@ export function GateSection({
                   Selesai
                 </Button>
               </div>
-            ) : isAlreadyCheckedIn && state.phase === "ready" ? (
+            ) : isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone ? (
               <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
                 <p className="type-body1-bold text-signal-warning">Sudah Check-in</p>
                 <p className="type-body2 text-muted-foreground">
@@ -252,6 +278,15 @@ export function GateSection({
         {state.phase === "success" && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="success" />
+            {(notInLocalDb || state.warning) && (
+              <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
+                <p className="type-body2 text-amber-700 text-center">
+                  ⚠️{" "}
+                  {state.warning ??
+                    "Kartu tidak terdaftar di database lokal. Data mungkin belum tersinkronisasi."}
+                </p>
+              </div>
+            )}
             <div className="bg-white rounded-2xl border p-4 space-y-2 text-center w-full">
               <p className="type-title-bold text-signal-valid">✓ Check-in Berhasil</p>
               <p className="type-body1 text-foreground">{state.payload.identity.name}</p>
@@ -304,15 +339,6 @@ export function GateSection({
                 className="w-auto"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enforce24hLimit}
-                onChange={(e) => setEnforce24hLimit(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              Batasi maks 24 jam checkout
-            </label>
           </div>
         )}
       </div>

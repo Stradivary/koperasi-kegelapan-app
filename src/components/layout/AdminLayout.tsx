@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Receipt,
+  Settings,
   Upload,
   UserCheck,
   X,
@@ -19,7 +20,7 @@ import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
 
-export type AdminView = "cards" | "members" | "scout" | "transactions";
+export type AdminView = "cards" | "members" | "scout" | "transactions" | "settings";
 
 interface AdminLayoutProps {
   tenantName: string;
@@ -47,6 +48,7 @@ const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
   { id: "members", icon: UserCheck, label: "Anggota" },
   { id: "transactions", icon: Receipt, label: "Transaksi" },
   { id: "scout", icon: BookOpen, label: "Scout" },
+  { id: "settings", icon: Settings, label: "Pengaturan" },
 ];
 
 const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = [
@@ -54,6 +56,7 @@ const MOBILE_NAV: { id: AdminView; icon: React.ElementType; label: string }[] = 
   { id: "members", icon: UserCheck, label: "Anggota" },
   { id: "transactions", icon: Receipt, label: "Transaksi" },
   { id: "scout", icon: BookOpen, label: "Scout" },
+  { id: "settings", icon: Settings, label: "Pengaturan" },
 ];
 
 const SECTION_LABEL: Record<AdminView, string> = {
@@ -61,6 +64,7 @@ const SECTION_LABEL: Record<AdminView, string> = {
   members: "Anggota",
   transactions: "Transaksi",
   scout: "Scout",
+  settings: "Pengaturan",
 };
 
 export function AdminLayout({
@@ -96,6 +100,8 @@ export function AdminLayout({
       navigate({ to: `/tenant/${tenantId}/cards` });
     } else if (id === "members") {
       navigate({ to: `/tenant/${tenantId}/members` });
+    } else if (id === "settings") {
+      navigate({ to: `/tenant/${tenantId}/settings` });
     } else {
       onSectionChange(id);
     }

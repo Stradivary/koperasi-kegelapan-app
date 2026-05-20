@@ -29,6 +29,8 @@ export interface NfcCardState {
   serialNumber: string | null;
   error: string | null;
   tamperDetected: boolean;
+  /** Non-blocking warning (e.g. tenant mismatch in lenient mode) */
+  warning: string | null;
 }
 
 interface PendingWrite {
@@ -40,13 +42,29 @@ interface PendingWrite {
   operationType: string;
 }
 
-export function useNfcCard(grant: SessionGrant | null, tenantId: string, terminalId: number) {
+interface UseNfcCardOptions {
+  /**
+   * When true, validation failures that don't indicate tampering (e.g. tenant mismatch,
+   * key version mismatch) will result in "ready" state with a warning instead of "error".
+   * This allows scout/inspection modes to view card content even for unregistered cards.
+   */
+  lenient?: boolean;
+}
+
+export function useNfcCard(
+  grant: SessionGrant | null,
+  tenantId: string,
+  terminalId: number,
+  options?: UseNfcCardOptions,
+) {
+  const lenient = options?.lenient ?? false;
   const [state, setState] = useState<NfcCardState>({
     phase: "idle",
     payload: null,
     serialNumber: null,
     error: null,
     tamperDetected: false,
+    warning: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -79,6 +97,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
       serialNumber: null,
       error: null,
       tamperDetected: false,
+      warning: null,
     });
 
     const reader = new NDEFReader();
@@ -154,6 +173,19 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             // Successful decryption already proves the session key is valid for this card.
             // Only check tenant bind to prevent cross-tenant operations.
             if (!isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
+              if (lenient) {
+                // Lenient mode: show card data with warning
+                phaseRef.current = "ready";
+                setState({
+                  phase: "ready",
+                  payload,
+                  serialNumber: event.serialNumber,
+                  error: null,
+                  tamperDetected: false,
+                  warning: UNREGISTERED_CARD_MESSAGE,
+                });
+                return;
+              }
               phaseRef.current = "error";
               setState((s) => ({
                 ...s,
@@ -161,6 +193,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
                 payload: null,
                 error: UNREGISTERED_CARD_MESSAGE,
                 tamperDetected: false,
+                warning: null,
               }));
               return;
             }
@@ -172,17 +205,37 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
               serialNumber: event.serialNumber,
               error: null,
               tamperDetected: false,
+              warning: null,
             });
           } else {
             // Online mode: perform full validation with server grant
             const validation = await validateCard(payload, raw, grant);
             if (signal.aborted) return;
             if (!validation.valid) {
-              phaseRef.current = "error";
               // Tenant mismatch: show standard unregistered message and suppress card details
               const isTenantMismatch =
                 validation.reason === TENANT_MISMATCH_REASON ||
                 validation.reason === UNREGISTERED_CARD_MESSAGE;
+              const isTamper = validation.tamper ?? false;
+
+              // In lenient mode, non-tamper validation failures (tenant mismatch, key version)
+              // result in "ready" with a warning instead of hard "error"
+              if (lenient && !isTamper) {
+                phaseRef.current = "ready";
+                setState({
+                  phase: "ready",
+                  payload,
+                  serialNumber: event.serialNumber,
+                  error: null,
+                  tamperDetected: false,
+                  warning: isTenantMismatch
+                    ? UNREGISTERED_CARD_MESSAGE
+                    : (validation.reason ?? "Validasi gagal"),
+                });
+                return;
+              }
+
+              phaseRef.current = "error";
               setState((s) => ({
                 ...s,
                 phase: "error",
@@ -190,7 +243,8 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
                 error: isTenantMismatch
                   ? UNREGISTERED_CARD_MESSAGE
                   : (validation.reason ?? "Validasi gagal"),
-                tamperDetected: validation.tamper ?? false,
+                tamperDetected: isTamper,
+                warning: null,
               }));
               return;
             }
@@ -201,6 +255,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
               serialNumber: event.serialNumber,
               error: null,
               tamperDetected: false,
+              warning: null,
             });
           }
         } catch {
@@ -300,6 +355,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             serialNumber,
             error: null,
             tamperDetected: false,
+            warning: null,
           });
         } catch (e) {
           if (signal.aborted) return; // reset/cancel already cleaned up state
@@ -425,6 +481,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
               serialNumber: currentSerial,
               error: null,
               tamperDetected: false,
+              warning: null,
             });
             return true;
           } catch {
@@ -463,6 +520,7 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
       serialNumber: null,
       error: null,
       tamperDetected: false,
+      warning: null,
     });
   }, []);
 

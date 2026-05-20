@@ -37,7 +37,7 @@ export function TerminalSection({
     loading: grantLoading,
     error: grantError,
   } = useSessionGrant(tenantId, accountId, deviceId, "terminal");
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const syncEngine = useSyncEngineContext();
   const [lastTx, setLastTx] = useState<{
@@ -47,6 +47,8 @@ export function TerminalSection({
     penaltyAmount?: number;
   } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  // Warning when card/user not found in local DB (operation still proceeds)
+  const [notInLocalDb, setNotInLocalDb] = useState(false);
 
   // Track whether we already triggered auto-checkout for this scan cycle
   const autoCheckoutTriggered = useRef(false);
@@ -64,14 +66,7 @@ export function TerminalSection({
     const nowSeconds = getNowSeconds();
     const cardState = payload.wallet.state;
 
-    // Card not checked in — nothing to checkout
-    if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
-      autoCheckoutTriggered.current = true;
-      // IDLE or CHECKED_OUT — no action needed, render handles the message
-      return;
-    }
-
-    // Check local DB for blocked card or suspended member
+    // Check local DB for blocked card or suspended member FIRST
     // Uses hardware serial number (state.serialNumber) as the correct lookup key
     if (!state.serialNumber) return;
 
@@ -79,6 +74,16 @@ export function TerminalSection({
       if (statusResult.blocked) {
         autoCheckoutTriggered.current = true;
         setBlockedReason(statusResult.reason);
+        return;
+      }
+
+      // Flag if card not in local DB (warning only, does not block checkout)
+      setNotInLocalDb(statusResult.notInLocalDb);
+
+      // Card not checked in — nothing to checkout
+      if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
+        autoCheckoutTriggered.current = true;
+        // IDLE or CHECKED_OUT — no action needed, render handles the message
         return;
       }
 
@@ -147,6 +152,7 @@ export function TerminalSection({
     if (state.phase === "idle") {
       autoCheckoutTriggered.current = false;
       setBlockedReason(null);
+      setNotInLocalDb(false);
       setLastTx(null);
     }
   }, [state.phase]);
@@ -154,6 +160,7 @@ export function TerminalSection({
   function handleScan() {
     autoCheckoutTriggered.current = false;
     setBlockedReason(null);
+    setNotInLocalDb(false);
     scan();
   }
 
@@ -259,6 +266,15 @@ export function TerminalSection({
         {state.phase === "success" && state.payload && lastTx && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="success" />
+            {(notInLocalDb || state.warning) && (
+              <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
+                <p className="type-body2 text-amber-700 text-center">
+                  ⚠️{" "}
+                  {state.warning ??
+                    "Kartu tidak terdaftar di database lokal. Data mungkin belum tersinkronisasi."}
+                </p>
+              </div>
+            )}
             <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
               <p className="type-title-bold text-signal-valid">✓ Checkout Berhasil</p>
               <p className="type-body1 text-foreground">{state.payload.identity.name}</p>

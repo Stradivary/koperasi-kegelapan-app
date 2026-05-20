@@ -24,6 +24,8 @@ function MembersPage() {
       navigate({ to: `/tenant/${tenantId}/transactions` });
     } else if (section === "scout") {
       navigate({ to: `/tenant/${tenantId}/scout` });
+    } else if (section === "settings") {
+      navigate({ to: `/tenant/${tenantId}/settings` });
     }
   }
 

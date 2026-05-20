@@ -16,7 +16,20 @@ const STATUS_CLASSES: Record<number, string> = {
   [CardStatus.BLOCKED_ADMIN]: "bg-gray-100 text-gray-700",
 };
 
-export function CardStatusBadge({ status }: { status: number }) {
+interface CardStatusBadgeProps {
+  status: number;
+  localBlockedReason?: string | null;
+}
+
+export function CardStatusBadge({ status, localBlockedReason }: CardStatusBadgeProps) {
+  if (localBlockedReason) {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-700">
+        Blocked
+      </span>
+    );
+  }
+
   return (
     <span
       className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_CLASSES[status] ?? "bg-gray-100 text-gray-600"}`}

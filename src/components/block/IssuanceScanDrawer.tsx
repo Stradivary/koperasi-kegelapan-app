@@ -23,6 +23,7 @@ interface IssuanceScanDrawerProps {
   error: string | null;
   onClose: () => void;
   onRetry: () => void;
+  minimal?: boolean;
 }
 
 function formatRupiah(amount: number): string {
@@ -143,6 +144,7 @@ export function IssuanceScanDrawer({
   error,
   onClose,
   onRetry,
+  minimal = false,
 }: IssuanceScanDrawerProps) {
   const isScanning = phase === "scanning";
   const isWriting = phase === "writing";
@@ -236,43 +238,44 @@ export function IssuanceScanDrawer({
               )}
 
               <Separator />
-
-              <div className="rounded-md border bg-muted/40 p-3 space-y-1">
-                {serialNumber && <InfoRow label="Serial number" value={serialNumber} />}
-                <InfoRow label="Card ID" value={toHex(payload.header.cardId)} />
-                <InfoRow label="Version" value={String(payload.header.version)} />
-                <InfoRow label="User ID" value={payload.identity.userId || "—"} />
-                <InfoRow
-                  label="Dibuat"
-                  value={new Date(payload.identity.createdAt * 1000).toLocaleString("id-ID")}
-                />
-                <Separator className="my-1" />
-                <InfoRow
-                  label="Berlaku s/d"
-                  value={new Date(payload.trailer.expiresAt * 1000).toLocaleString("id-ID")}
-                />
-                <InfoRow label="Key version" value={String(payload.trailer.keyVersion)} />
-                <InfoRow label="Active ptr" value={String(payload.trailer.activePtr)} />
-                <InfoRow label="Counter bind" value={String(payload.trailer.counterBind)} />
-                <InfoRow label="HMAC" value={toHex(payload.trailer.hmac)} />
-                <InfoRow label="Root hash" value={toHex(payload.trailer.rootHash)} />
-                {payload.logEntries.length > 0 && (
-                  <>
-                    <Separator className="my-1" />
-                    <p className="text-xs text-muted-foreground">
-                      Log ({payload.logEntries.length} entri)
-                    </p>
-                    {payload.logEntries.map((e, i) => (
-                      <div key={i} className="pl-2 border-l space-y-0.5">
-                        <InfoRow label={`[${i}] amount`} value={String(e.amount)} />
-                        <InfoRow label={`[${i}] balance`} value={String(e.balanceAfter)} />
-                        <InfoRow label={`[${i}] flags`} value={`0x${e.flags.toString(16)}`} />
-                        <InfoRow label={`[${i}] hash`} value={toHex(e.hash)} />
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
+              {minimal && (
+                <div className="rounded-md border bg-muted/40 p-3 space-y-1">
+                  {serialNumber && <InfoRow label="Serial number" value={serialNumber} />}
+                  <InfoRow label="Card ID" value={toHex(payload.header.cardId)} />
+                  <InfoRow label="Version" value={String(payload.header.version)} />
+                  <InfoRow label="User ID" value={payload.identity.userId || "—"} />
+                  <InfoRow
+                    label="Dibuat"
+                    value={new Date(payload.identity.createdAt * 1000).toLocaleString("id-ID")}
+                  />
+                  <Separator className="my-1" />
+                  <InfoRow
+                    label="Berlaku s/d"
+                    value={new Date(payload.trailer.expiresAt * 1000).toLocaleString("id-ID")}
+                  />
+                  <InfoRow label="Key version" value={String(payload.trailer.keyVersion)} />
+                  <InfoRow label="Active ptr" value={String(payload.trailer.activePtr)} />
+                  <InfoRow label="Counter bind" value={String(payload.trailer.counterBind)} />
+                  <InfoRow label="HMAC" value={toHex(payload.trailer.hmac)} />
+                  <InfoRow label="Root hash" value={toHex(payload.trailer.rootHash)} />
+                  {payload.logEntries.length > 0 && (
+                    <>
+                      <Separator className="my-1" />
+                      <p className="text-xs text-muted-foreground">
+                        Log ({payload.logEntries.length} entri)
+                      </p>
+                      {payload.logEntries.map((e, i) => (
+                        <div key={i} className="pl-2 border-l space-y-0.5">
+                          <InfoRow label={`[${i}] amount`} value={String(e.amount)} />
+                          <InfoRow label={`[${i}] balance`} value={String(e.balanceAfter)} />
+                          <InfoRow label={`[${i}] flags`} value={`0x${e.flags.toString(16)}`} />
+                          <InfoRow label={`[${i}] hash`} value={toHex(e.hash)} />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

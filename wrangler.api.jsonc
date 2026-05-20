@@ -1,7 +1,9 @@
 {
   "name": "koperasi-kegelapan-api",
   "compatibility_date": "2025-09-02",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "main": "api/src/index.ts",
   "d1_databases": [
     {
@@ -11,6 +13,13 @@
       "migrations_dir": "drizzle"
     }
   ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "SESSION_MASTER_KEY": "override-in-secrets"
   }

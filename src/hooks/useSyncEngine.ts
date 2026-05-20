@@ -15,6 +15,7 @@ import { syncPull } from "../lib/syncPull";
 import { isDeviceBlocked } from "../lib/deviceBlock";
 import { getSyncableEntries } from "../lib/transactionLogService";
 import { getPendingEntityCount } from "../lib/syncPushEntities";
+import { addSyncLog } from "../lib/syncLogStore";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -136,6 +137,11 @@ export function useSyncEngine(
       } catch (entityErr) {
         // Log but don't abort — entity push is best-effort
         console.warn("[SyncEngine] Entity push failed, continuing with transactions:", entityErr);
+        addSyncLog(
+          "warn",
+          "Entity push gagal, melanjutkan dengan transaksi",
+          entityErr instanceof Error ? entityErr.message : String(entityErr),
+        );
       }
 
       // Phase 2: Push transactions
@@ -155,13 +161,20 @@ export function useSyncEngine(
         setSyncStatus("idle");
         errorRetryCountRef.current = 0;
       }
-    } catch {
+    } catch (err) {
       if (mountedRef.current) {
         // If push succeeded but pull failed, entries already marked "synced"
         // remain synced — do NOT reset them. Set status to "error" to reflect
         // that the full sync cycle did not complete (Req 2.6).
         if (!pushSucceeded) {
           setLastPushSucceeded(false);
+          addSyncLog("error", "Push sync gagal", err instanceof Error ? err.message : String(err));
+        } else {
+          addSyncLog(
+            "error",
+            "Pull sync gagal (push berhasil)",
+            err instanceof Error ? err.message : String(err),
+          );
         }
         setSyncStatus("error");
         errorRetryCountRef.current += 1;
@@ -177,6 +190,12 @@ export function useSyncEngine(
               executeSyncCycle();
             }
           }, backoff);
+        } else {
+          addSyncLog(
+            "error",
+            "Sync gagal setelah semua retry habis",
+            `${MAX_ERROR_RETRIES} percobaan gagal berturut-turut`,
+          );
         }
         // If max retries exhausted, remain in "error" status (Req 11.6)
       }

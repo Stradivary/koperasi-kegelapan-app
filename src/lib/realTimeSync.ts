@@ -16,6 +16,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { syncPull } from "./syncPull";
 import { localDb } from "../db/local-db";
+import { getAccessToken } from "./api";
+import { addSyncLog } from "./syncLogStore";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -269,7 +271,15 @@ function establishSseConnection(): void {
   }
 
   try {
-    _eventSource = new EventSource(_config.sseUrl);
+    // EventSource API doesn't support custom headers, so we pass the
+    // auth token as a query parameter (server accepts ?token= fallback).
+    const token = getAccessToken();
+    const sseUrl = new URL(_config.sseUrl);
+    if (token) {
+      sseUrl.searchParams.set("token", token);
+    }
+
+    _eventSource = new EventSource(sseUrl.toString());
 
     _eventSource.onopen = () => {
       _connected = true;
@@ -296,6 +306,8 @@ function establishSseConnection(): void {
         _eventSource.close();
         _eventSource = null;
       }
+
+      addSyncLog("warn", "SSE koneksi terputus, beralih ke periodic pull");
 
       // Start periodic pull fallback while disconnected
       startPeriodicPull();
@@ -325,6 +337,11 @@ function scheduleReconnect(): void {
   // Check if we've exhausted reconnection attempts
   if (_reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     // Stay in periodic pull mode — don't attempt further reconnections
+    addSyncLog(
+      "error",
+      "SSE reconnect gagal",
+      `${MAX_RECONNECT_ATTEMPTS} percobaan habis, menggunakan periodic pull`,
+    );
     return;
   }
 
@@ -412,6 +429,8 @@ export async function fullSyncOnLogin(tenantId: string): Promise<void> {
       }
     }
   }
+
+  addSyncLog("error", "Full sync saat login gagal", `${MAX_RECONNECT_ATTEMPTS} percobaan gagal`);
 
   throw new RealTimeSyncError(
     `Full sync on login failed after ${MAX_RECONNECT_ATTEMPTS} attempts`,
