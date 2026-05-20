@@ -8,6 +8,7 @@ import {
 } from "../core/nfc/pipelineEngine";
 import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../core/nfc/engine";
 import { decodePayload } from "../core/payload/engine";
+import { isTenantBindValid } from "../core/payload/tenantBind";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
 import {
   BUFFER_SIZE,
@@ -149,33 +150,63 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             decodableRaw = full;
           }
           const payload = decodePayload(decodableRaw);
-          const validation = await validateCard(payload, raw, grant);
-          if (signal.aborted) return;
-          if (!validation.valid) {
-            phaseRef.current = "error";
-            // Tenant mismatch: show standard unregistered message and suppress card details
-            const isTenantMismatch =
-              validation.reason === TENANT_MISMATCH_REASON ||
-              validation.reason === UNREGISTERED_CARD_MESSAGE;
-            setState((s) => ({
-              ...s,
-              phase: "error",
-              payload: isTenantMismatch ? null : s.payload,
-              error: isTenantMismatch
-                ? UNREGISTERED_CARD_MESSAGE
-                : (validation.reason ?? "Validasi gagal"),
-              tamperDetected: validation.tamper ?? false,
-            }));
-            return;
+
+          const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+
+          if (isOffline) {
+            // Offline mode: skip full server-side validation after successful decrypt.
+            // Successful decryption already proves the session key is valid for this card.
+            // Only check tenant bind to prevent cross-tenant operations.
+            if (!isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
+              phaseRef.current = "error";
+              setState((s) => ({
+                ...s,
+                phase: "error",
+                payload: null,
+                error: UNREGISTERED_CARD_MESSAGE,
+                tamperDetected: false,
+              }));
+              return;
+            }
+            if (signal.aborted) return;
+            phaseRef.current = "ready";
+            setState({
+              phase: "ready",
+              payload,
+              serialNumber: event.serialNumber,
+              error: null,
+              tamperDetected: false,
+            });
+          } else {
+            // Online mode: perform full validation with server grant
+            const validation = await validateCard(payload, raw, grant);
+            if (signal.aborted) return;
+            if (!validation.valid) {
+              phaseRef.current = "error";
+              // Tenant mismatch: show standard unregistered message and suppress card details
+              const isTenantMismatch =
+                validation.reason === TENANT_MISMATCH_REASON ||
+                validation.reason === UNREGISTERED_CARD_MESSAGE;
+              setState((s) => ({
+                ...s,
+                phase: "error",
+                payload: isTenantMismatch ? null : s.payload,
+                error: isTenantMismatch
+                  ? UNREGISTERED_CARD_MESSAGE
+                  : (validation.reason ?? "Validasi gagal"),
+                tamperDetected: validation.tamper ?? false,
+              }));
+              return;
+            }
+            phaseRef.current = "ready";
+            setState({
+              phase: "ready",
+              payload,
+              serialNumber: event.serialNumber,
+              error: null,
+              tamperDetected: false,
+            });
           }
-          phaseRef.current = "ready";
-          setState({
-            phase: "ready",
-            payload,
-            serialNumber: event.serialNumber,
-            error: null,
-            tamperDetected: false,
-          });
         } catch {
           if (signal.aborted) return;
           phaseRef.current = "error";

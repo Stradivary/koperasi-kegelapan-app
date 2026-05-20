@@ -25,6 +25,8 @@ export interface SyncEngineState {
   lastSyncedAt: number | null;
   /** Number of pending Outbox entries awaiting push */
   pendingCount: number;
+  /** Whether the last push phase succeeded (true even if pull subsequently failed) */
+  lastPushSucceeded: boolean;
 }
 
 export interface UseSyncEngineReturn extends SyncEngineState {
@@ -64,6 +66,7 @@ export function useSyncEngine(
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [lastPushSucceeded, setLastPushSucceeded] = useState<boolean>(false);
 
   // ── Refs for non-reactive mutable state ────────────────────────────
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -115,18 +118,23 @@ export function useSyncEngine(
     isSyncingRef.current = true;
     queuedSyncRef.current = false;
 
+    // Track push/pull success separately for accurate UI status (Req 2.6, 3.4)
+    let pushSucceeded = false;
+
     try {
       // Phase 1: Push
       if (mountedRef.current) setSyncStatus("pushing");
 
       await syncPush(tid);
+      pushSucceeded = true;
+      if (mountedRef.current) setLastPushSucceeded(true);
 
       // Phase 2: Pull (always run after push; required if pullNeeded)
       if (mountedRef.current) setSyncStatus("pulling");
 
       await syncPull(tid);
 
-      // Success
+      // Success: BOTH push AND pull (local DB update) completed successfully
       const now = Date.now();
       if (mountedRef.current) {
         setLastSyncedAt(now);
@@ -135,6 +143,12 @@ export function useSyncEngine(
       }
     } catch {
       if (mountedRef.current) {
+        // If push succeeded but pull failed, entries already marked "synced"
+        // remain synced — do NOT reset them. Set status to "error" to reflect
+        // that the full sync cycle did not complete (Req 2.6).
+        if (!pushSucceeded) {
+          setLastPushSucceeded(false);
+        }
         setSyncStatus("error");
         errorRetryCountRef.current += 1;
 
@@ -326,6 +340,7 @@ export function useSyncEngine(
     syncStatus,
     lastSyncedAt,
     pendingCount,
+    lastPushSucceeded,
     triggerSync,
     notifyMutation,
   };

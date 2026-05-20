@@ -40,6 +40,7 @@ describe("useSyncEngine", () => {
       totalRejected: 0,
       pullNeeded: false,
       conflictCount: 0,
+      failedCount: 0,
     });
     mockSyncPull.mockResolvedValue({
       membersPulled: 0,
@@ -65,7 +66,11 @@ describe("useSyncEngine", () => {
   });
 
   it("reports offline status when navigator.onLine is false", () => {
-    Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
     const { result } = renderHook(() => useSyncEngine("tenant-1", true));
     expect(result.current.syncStatus).toBe("offline");
   });
@@ -153,11 +158,19 @@ describe("useSyncEngine", () => {
 
   it("queues sync request if cycle already in progress", async () => {
     let pushResolve: () => void;
-    const pushPromise = new Promise<void>((resolve) => { pushResolve = resolve; });
+    const pushPromise = new Promise<void>((resolve) => {
+      pushResolve = resolve;
+    });
 
     mockSyncPush.mockImplementationOnce(async () => {
       await pushPromise;
-      return { totalAccepted: 0, totalRejected: 0, pullNeeded: false, conflictCount: 0 };
+      return {
+        totalAccepted: 0,
+        totalRejected: 0,
+        pullNeeded: false,
+        conflictCount: 0,
+        failedCount: 0,
+      };
     });
 
     const { result } = renderHook(() => useSyncEngine("tenant-1", true));
@@ -202,7 +215,11 @@ describe("useSyncEngine", () => {
   });
 
   it("does not sync when offline", async () => {
-    Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
 
     const { result } = renderHook(() => useSyncEngine("tenant-1", true));
 
@@ -215,7 +232,11 @@ describe("useSyncEngine", () => {
   });
 
   it("triggers immediate sync on online event", async () => {
-    Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
     const { result } = renderHook(() => useSyncEngine("tenant-1", true));
 
     expect(result.current.syncStatus).toBe("offline");
@@ -282,8 +303,40 @@ describe("useSyncEngine", () => {
 
   it("exposes pending count from getSyncableEntries", async () => {
     mockGetSyncableEntries.mockResolvedValue([
-      { id: 1, tenantId: "t1", cardId: "abc", counter: 1, type: "debit", amount: 100, balanceAfter: 900, timestamp: 1000, hash: "aaa", terminalId: null, deviceId: null, syncStatus: "pending", syncedAt: null, createdAt: 1000, userId: null },
-      { id: 2, tenantId: "t1", cardId: "abc", counter: 2, type: "debit", amount: 50, balanceAfter: 850, timestamp: 1001, hash: "bbb", terminalId: null, deviceId: null, syncStatus: "pending", syncedAt: null, createdAt: 1001, userId: null },
+      {
+        id: 1,
+        tenantId: "t1",
+        cardId: "abc",
+        counter: 1,
+        type: "debit",
+        amount: 100,
+        balanceAfter: 900,
+        timestamp: 1000,
+        hash: "aaa",
+        terminalId: null,
+        deviceId: null,
+        syncStatus: "pending",
+        syncedAt: null,
+        createdAt: 1000,
+        userId: null,
+      },
+      {
+        id: 2,
+        tenantId: "t1",
+        cardId: "abc",
+        counter: 2,
+        type: "debit",
+        amount: 50,
+        balanceAfter: 850,
+        timestamp: 1001,
+        hash: "bbb",
+        terminalId: null,
+        deviceId: null,
+        syncStatus: "pending",
+        syncedAt: null,
+        createdAt: 1001,
+        userId: null,
+      },
     ] as any);
 
     const { result } = renderHook(() => useSyncEngine("t1", true));

@@ -2,25 +2,12 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
 import type { TransactionLog } from "../../db/local-db";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface TransactionsSectionProps {
@@ -49,16 +36,21 @@ const TYPE_FILTER_OPTIONS: { label: string; value: TransactionLog["type"] }[] = 
   { label: "Admin", value: "admin" },
 ];
 
-const SYNC_STATUS_VARIANT: Record<TransactionLog["syncStatus"], "default" | "secondary" | "destructive"> = {
+const SYNC_STATUS_VARIANT: Record<
+  TransactionLog["syncStatus"],
+  "default" | "secondary" | "destructive"
+> = {
   pending: "secondary",
   synced: "default",
   conflict: "destructive",
+  failed: "destructive",
 };
 
 const SYNC_STATUS_LABELS: Record<TransactionLog["syncStatus"], string> = {
   pending: "Pending",
   synced: "Synced",
   conflict: "Conflict",
+  failed: "Failed",
 };
 
 function formatDateTime(timestamp: number): string {
@@ -87,10 +79,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const clampedPageSize = useMemo(
-    () => Math.min(Math.max(1, pageSize), PAGE_SIZE_MAX),
-    [pageSize],
-  );
+  const clampedPageSize = useMemo(() => Math.min(Math.max(1, pageSize), PAGE_SIZE_MAX), [pageSize]);
 
   // Convert date strings to unix timestamps (seconds) for the query
   const dateFromTimestamp = useMemo(() => {
@@ -125,7 +114,16 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   );
 
   const { data, isLoading } = useQuery({
-    queryKey: ["transactions", tenantId, page, clampedPageSize, cardIdFilter, typeFilter, dateFrom, dateTo],
+    queryKey: [
+      "transactions",
+      tenantId,
+      page,
+      clampedPageSize,
+      cardIdFilter,
+      typeFilter,
+      dateFrom,
+      dateTo,
+    ],
     queryFn: () => getTransactions(query),
   });
 
@@ -138,7 +136,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   }, []);
 
   const handleTypeChange = useCallback((value: string) => {
-    setTypeFilter(value === "all" ? "" : value as TransactionLog["type"]);
+    setTypeFilter(value === "all" ? "" : (value as TransactionLog["type"]));
     setPage(1);
   }, []);
 
@@ -152,7 +150,8 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
     setPage(1);
   }, []);
 
-  const hasActiveFilters = cardIdFilter.trim() !== "" || typeFilter !== "" || dateFrom !== "" || dateTo !== "";
+  const hasActiveFilters =
+    cardIdFilter.trim() !== "" || typeFilter !== "" || dateFrom !== "" || dateTo !== "";
 
   const handleClearFilters = useCallback(() => {
     setCardIdFilter("");
@@ -166,11 +165,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="type-title-bold text-foreground">Transaksi</h2>
-        {data && (
-          <p className="type-body2 text-muted-foreground">
-            {data.total} transaksi
-          </p>
-        )}
+        {data && <p className="type-body2 text-muted-foreground">{data.total} transaksi</p>}
       </div>
 
       {/* Filter controls */}
@@ -261,12 +256,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
               : "Tidak ada transaksi ditemukan."}
           </p>
           {hasActiveFilters && (
-            <Button
-              variant="link"
-              size="sm"
-              onClick={handleClearFilters}
-              className="mt-2 text-sm"
-            >
+            <Button variant="link" size="sm" onClick={handleClearFilters} className="mt-2 text-sm">
               Reset semua filter
             </Button>
           )}
@@ -289,16 +279,10 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
             <TableBody>
               {data.entries.map((tx) => (
                 <TableRow key={tx.id ?? `${tx.cardId}-${tx.counter}`}>
-                  <TableCell className="type-body2">
-                    {formatDateTime(tx.timestamp)}
-                  </TableCell>
-                  <TableCell className="font-mono type-body2">
-                    {tx.cardId}
-                  </TableCell>
+                  <TableCell className="type-body2">{formatDateTime(tx.timestamp)}</TableCell>
+                  <TableCell className="font-mono type-body2">{tx.cardId}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">
-                      {TYPE_LABELS[tx.type] ?? tx.type}
-                    </Badge>
+                    <Badge variant="outline">{TYPE_LABELS[tx.type] ?? tx.type}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono type-body2">
                     {formatAmount(tx.amount)}

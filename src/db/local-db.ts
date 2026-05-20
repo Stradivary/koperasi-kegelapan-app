@@ -64,7 +64,7 @@ export interface TransactionLog {
   hash: string; // hex string
   terminalId: number | null;
   deviceId: string | null;
-  syncStatus: "pending" | "synced" | "conflict";
+  syncStatus: "pending" | "synced" | "conflict" | "failed";
   syncedAt: number | null;
   createdAt: number;
 }
@@ -108,6 +108,17 @@ class LocalDb extends Dexie {
       sessionGrants: "grantId, tenantId, accountId",
       transactionLog:
         "++id, [tenantId+cardId+counter], [tenantId+syncStatus], [tenantId+timestamp]",
+      syncCursors: "[tenantId+entityType]",
+      deviceInfo: "deviceId, tenantId",
+    });
+
+    this.version(3).stores({
+      users: "[tenantId+userId], tenantId",
+      cards: "[tenantId+cardId], tenantId, userId",
+      auditLog: "++id, tenantId, cardId, [tenantId+timestamp]",
+      sessionGrants: "grantId, tenantId, accountId",
+      transactionLog:
+        "++id, [tenantId+cardId+counter], [tenantId+syncStatus], [tenantId+syncStatus+timestamp], [tenantId+timestamp]",
       syncCursors: "[tenantId+entityType]",
       deviceInfo: "deviceId, tenantId",
     });

@@ -1,0 +1,163 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - PWA Offline Operations Fail
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bugs exist
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the 7 bugs exist in the current codebase
+  - **Scoped PBT Approach**: Scope properties to concrete failing cases for each bug category
+  - Test file: `src/hooks/__tests__/pwaOfflineOperationsBugCondition.property.test.ts`
+  - **Bug 1 - Offline createMember**: Mock `navigator.onLine = false` → call createMember mutation → assert `localDb.users.add()` succeeds AND success toast is shown (will fail: no toast feedback)
+  - **Bug 2 - Offline issueCard with expired grant**: Mock offline + cached grant with `expiresAt <= nowSeconds` → call issueCard → assert grant still usable within grace period (will fail: current code rejects expired grants)
+  - **Bug 3 - Offline topup phase transition**: Mock offline + cached grant → simulate NFC scan + template selection → assert `phase === "ready"` and topup button visible (will fail: validation blocks transition)
+  - **Bug 4 - Balance persistence after offline switch**: Issue card online → mock offline → query `station-cards` → assert balance > 0 (will fail: cache/timing issue)
+  - **Bug 5 - Sync with corrupt entry**: Add corrupt entry (missing cardId/counter) to outbox → trigger `syncPush` → assert corrupt entry marked "failed" AND valid entries synced (will fail: entire batch throws)
+  - **Bug 6 - Sync status accuracy**: Mock `syncPush` success (server 201) + `syncPull` local DB update failure → assert UI status = "error" (will fail: status management not granular)
+  - **Bug 7 - Device setup offline message**: Mock offline + no local account → submit device setup → assert error contains "wajib terhubung internet" (will fail: shows generic error)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bugs exist)
+  - Document counterexamples found to understand root causes
+  - Mark task complete when test is written, run, and failures are documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Online Operations Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Test file: `src/hooks/__tests__/pwaOfflineOperationsPreservation.property.test.ts`
+  - **Observe on UNFIXED code first**, then write property-based tests:
+  - Observe: Online `createMember` with valid data → saves to `localDb.users` + invalidates query (existing behavior)
+  - Observe: Online `issueCard` with fresh server grant → NFC write + `localDb.cards.put()` + transaction logged (existing behavior)
+  - Observe: Online topup with fresh grant → NFC read + validate + write updated balance (existing behavior)
+  - Observe: Sync cycle with all valid entries → push succeeds → pull succeeds → status "idle" (existing behavior)
+  - Observe: Sync with `stale_counter` rejection → entry marked "conflict" → pull triggered (existing behavior)
+  - Observe: Online device setup with valid credentials → server auth → device registered (existing behavior)
+  - **Property-based tests to write**:
+  - For all online operation contexts (random valid member data, card data, topup amounts): operations succeed with server grant and produce same IndexedDB writes
+  - For all valid sync payloads (random entries with required fields: cardId, counter, type, amount, hash): sync completes push→pull→idle without error
+  - For all online device setup attempts (random valid credentials): server authentication attempted and device registered
+  - For all conflict scenarios (stale_counter responses): entries marked "conflict" and pull triggered
+  - Verify all preservation tests PASS on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [x] 3. Fix for PWA offline operations failures
+  - [x] 3.1 Add "failed" syncStatus to local-db schema
+    - File: `src/db/local-db.ts`
+    - Update `TransactionLog.syncStatus` type union from `"pending" | "synced" | "conflict"` to `"pending" | "synced" | "conflict" | "failed"`
+    - Add compound index for querying failed entries efficiently
+    - _Bug_Condition: isBugCondition(input) where input.hasCorruptOrNonRetryableEntry = true_
+    - _Expected_Behavior: corrupt entries marked "failed" and isolated from retry queue_
+    - _Preservation: existing "pending", "synced", "conflict" statuses unchanged_
+    - _Requirements: 2.5_
+
+  - [x] 3.2 Fix offline createMember with success feedback
+    - File: `src/components/section/StationSection.tsx`
+    - Add `toast.success("Anggota berhasil ditambahkan")` in `createMember` mutation `onSuccess` callback
+    - Add `onError` callback with informative toast error message
+    - Improve `nextId` generation using timestamp-based ID or atomic increment to avoid race conditions
+    - Ensure `localDb.users.add()` completes successfully offline with proper error handling
+    - _Bug_Condition: isBugCondition(input) where input.isOffline = true AND input.operation = "createMember"_
+    - _Expected_Behavior: result.savedToLocalDb = true AND result.userFeedback = "success" AND result.pendingSync = true_
+    - _Preservation: Online createMember continues to work with same IndexedDB write + query invalidation_
+    - _Requirements: 2.1, 3.1_
+
+  - [x] 3.3 Fix useSessionGrant offline grace period
+    - File: `src/hooks/useSessionGrant.ts`
+    - Add `OFFLINE_GRACE_PERIOD_SECONDS = 3600` constant
+    - Modify `readGrantFromCache` to allow expired grants when offline (within grace period): if `navigator.onLine === false` AND `expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS`, return cached grant
+    - Ensure `refresh` function does not attempt network fetch when offline
+    - _Bug_Condition: isBugCondition(input) where input.isOffline = true AND input.hasLocalGrant = true (expired within grace)_
+    - _Expected_Behavior: grant returned from cache for offline operations even if technically expired_
+    - _Preservation: Online grant refresh scheduling unchanged; fresh grants fetched when online_
+    - _Requirements: 2.2, 2.3, 3.2, 3.3, 3.7_
+
+  - [x] 3.4 Fix TopupDrawer NFC phase transition offline
+    - File: `src/components/block/TopupDrawer.tsx` and/or `src/hooks/useNfcCard.ts`
+    - When offline and grant available (including grace period), skip server-side validation after NFC read
+    - Allow phase transition to "ready" after successful NFC scan without server validation
+    - Ensure topup button becomes visible when `phase === "ready"` regardless of online status
+    - _Bug_Condition: isBugCondition(input) where input.isOffline = true AND input.templateSelected = true AND input.hasLocalGrant = true_
+    - _Expected_Behavior: result.nfcScanInitiated = true AND result.phase = "ready" AND result.topupButtonVisible = true_
+    - _Preservation: Online topup continues to validate with server grant_
+    - _Requirements: 2.3, 3.3_
+
+  - [x] 3.5 Fix balance persistence after offline switch
+    - File: `src/components/section/StationSection.tsx`
+    - In `issueCard` mutation, ensure `localDb.cards.put()` completes before query invalidation
+    - Use `await qc.invalidateQueries({queryKey: ["station-cards"]})` to ensure cache is updated synchronously
+    - Ensure `station-cards` query reads fresh data from IndexedDB after invalidation (not stale TanStack Query cache)
+    - _Bug_Condition: isBugCondition(input) where input.cardJustIssued = true AND input.switchedToOffline = true_
+    - _Expected_Behavior: balanceAfter = balanceBefore AND balanceAfter > 0_
+    - _Preservation: Online card issuance and query behavior unchanged_
+    - _Requirements: 2.4, 3.2_
+
+  - [x] 3.6 Fix syncPush corrupt entry isolation
+    - File: `src/lib/syncPush.ts`
+    - Add payload validation before push: check required fields (cardId, counter, type, amount, hash) on each entry
+    - Mark entries failing validation as `syncStatus: "failed"` in `localDb.transactionLog`
+    - Remove failed entries from batch before sending to server
+    - Handle non-retryable server rejections (4xx except 429): mark rejected entries as "failed" instead of retrying
+    - Continue syncing remaining valid entries after isolating corrupt ones
+    - _Bug_Condition: isBugCondition(input) where input.hasPendingEntries = true AND input.hasCorruptOrNonRetryableEntry = true_
+    - _Expected_Behavior: result.corruptEntriesMarkedFailed = true AND result.validEntriesSynced = true AND result.noInfiniteRetry = true_
+    - _Preservation: Valid entries sync normally; 5xx retry with exponential backoff unchanged; conflict handling unchanged_
+    - _Requirements: 2.5, 3.4, 3.8_
+
+  - [x] 3.7 Fix useSyncEngine granular status handling
+    - File: `src/hooks/useSyncEngine.ts`
+    - In `executeSyncCycle`: if `syncPush` succeeds but `syncPull` fails, set status to "partial" or "error" with informative message
+    - Do not reset entries already marked "synced" when pull fails
+    - Track push success separately from pull success for accurate UI status
+    - Only set status "idle" (success) when BOTH push AND local DB update complete successfully
+    - _Bug_Condition: isBugCondition(input) where (serverResponse IN {200,201} AND localDbUpdateFailed = true)_
+    - _Expected_Behavior: result.uiStatus reflects (serverSuccess AND localDbSuccess)_
+    - _Preservation: Successful full sync cycles still transition to "idle"; error retry logic unchanged_
+    - _Requirements: 2.6, 3.4_
+
+  - [x] 3.8 Fix LoginSection device setup offline detection
+    - File: `src/components/section/LoginSection.tsx`
+    - In `handleDeviceSetupAuth`: add early check for `navigator.onLine === false` BEFORE attempting any auth
+    - If offline AND `localLogin` returns null (no cached credentials): display educative message "Perangkat baru wajib terhubung internet untuk aktivasi awal. Hubungkan ke jaringan WiFi atau data seluler, lalu coba lagi."
+    - Skip network request entirely when offline for device setup
+    - _Bug_Condition: isBugCondition(input) where input.isOffline = true AND input.action = "device-setup"_
+    - _Expected_Behavior: result.errorMessage CONTAINS "wajib terhubung internet" AND result.networkRequestAttempted = false_
+    - _Preservation: Online device setup with valid credentials continues to authenticate to server normally_
+    - _Requirements: 2.7, 3.6_
+
+  - [x] 3.9 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - PWA Offline Operations Succeed
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior for all 7 bug categories
+    - When this test passes, it confirms all bugs are fixed:
+      - Offline createMember saves locally with success feedback
+      - Offline issueCard works with grace-period grant
+      - Offline topup phase reaches "ready" with cached grant
+      - Balance persists after offline switch
+      - Corrupt sync entries isolated, valid entries synced
+      - Sync status accurately reflects true state
+      - Device setup shows educative offline message
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms all 7 bugs are fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
+
+  - [x] 3.10 Verify preservation tests still pass
+    - **Property 2: Preservation** - Online Operations Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all online operations unchanged:
+      - Online createMember, issueCard, topup work as before
+      - Sync with valid entries completes normally
+      - Conflict handling (stale_counter) unchanged
+      - Online device setup authenticates to server
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run full test suite: `pnpm vitest --run`
+  - Ensure bug condition exploration test (Property 1) passes after fix
+  - Ensure preservation property tests (Property 2) still pass after fix
+  - Ensure no other existing tests are broken by the changes
+  - Verify no TypeScript compilation errors in modified files
+  - Ask the user if questions arise or if manual testing is needed for NFC operations

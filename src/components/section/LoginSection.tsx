@@ -263,8 +263,22 @@ export function LoginSection() {
     setLoading(true);
     setError(null);
     try {
-      // Try local login first, then server (same unified approach)
-      let result = await localLogin(username, password);
+      // Early offline check: device setup requires internet for initial activation
+      // Try local login first to see if cached credentials exist
+      const localResult = await localLogin(username, password);
+
+      if (navigator.onLine === false) {
+        // Offline: if no cached credentials, show educative message and skip network
+        if (!localResult) {
+          setError(
+            "Perangkat baru wajib terhubung internet untuk aktivasi awal. Hubungkan ke jaringan WiFi atau data seluler, lalu coba lagi.",
+          );
+          return;
+        }
+      }
+
+      // Use local result if available
+      let result = localResult;
 
       // If local fails and online, try server + cache
       if (!result && navigator.onLine) {

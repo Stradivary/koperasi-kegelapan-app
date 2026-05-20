@@ -6,15 +6,16 @@
  * stale_counter → "conflict"), and retries on network/5xx errors with
  * exponential backoff.
  *
- * @see Requirements 6.1, 6.2, 6.5, 6.7, 6.8
+ * Corrupt entries (missing required fields) are validated before push and
+ * marked as "failed" to prevent infinite retry loops. Non-retryable server
+ * rejections (4xx except 429) also mark entries as "failed".
+ *
+ * @see Requirements 2.5, 3.4, 3.8, 6.1, 6.2, 6.5, 6.7, 6.8
  */
 
 import { apiFetch, API_BASE_URL, DeviceBlockedError } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
-import {
-  getSyncableEntries,
-  updateSyncStatus,
-} from "./transactionLogService";
+import { getSyncableEntries, updateSyncStatus } from "./transactionLogService";
 import type { TransactionLog } from "../db/local-db";
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -42,6 +43,8 @@ export interface SyncPushResult {
   pullNeeded: boolean;
   /** Number of entries marked as "conflict" */
   conflictCount: number;
+  /** Number of entries marked as "failed" (corrupt or non-retryable rejection) */
+  failedCount: number;
 }
 
 export interface SyncPushRejection {
@@ -142,11 +145,53 @@ function isRetryableError(error: unknown): boolean {
   return true;
 }
 
+// ── Payload Validation ─────────────────────────────────────────────────
+
+/**
+ * Validate that a TransactionLog entry has all required fields for push.
+ * Checks: cardId, counter, type, amount, hash.
+ * Returns true if the entry is valid, false if it's corrupt.
+ */
+export function isValidPushEntry(entry: TransactionLog): boolean {
+  // cardId must be a non-empty string
+  if (!entry.cardId || typeof entry.cardId !== "string") return false;
+  // counter must be a finite number
+  if (typeof entry.counter !== "number" || !Number.isFinite(entry.counter)) return false;
+  // type must be a non-empty string
+  if (!entry.type || typeof entry.type !== "string") return false;
+  // amount must be a finite number
+  if (typeof entry.amount !== "number" || !Number.isFinite(entry.amount)) return false;
+  // hash must be a non-empty string
+  if (!entry.hash || typeof entry.hash !== "string") return false;
+  return true;
+}
+
+/**
+ * Partition entries into valid and corrupt groups.
+ * Corrupt entries are those missing required fields.
+ */
+export function partitionEntries(entries: TransactionLog[]): {
+  valid: TransactionLog[];
+  corrupt: TransactionLog[];
+} {
+  const valid: TransactionLog[] = [];
+  const corrupt: TransactionLog[] = [];
+  for (const entry of entries) {
+    if (isValidPushEntry(entry)) {
+      valid.push(entry);
+    } else {
+      corrupt.push(entry);
+    }
+  }
+  return { valid, corrupt };
+}
+
 // ── Main Push Logic ────────────────────────────────────────────────────
 
 /**
  * Send a single batch to the server with retry logic.
  * Returns the server response or throws after max retries.
+ * Throws NonRetryableServerError for 4xx responses (except 429).
  */
 async function pushBatchWithRetry(
   payload: PushBatchPayload,
@@ -176,15 +221,18 @@ async function pushBatchWithRetry(
         return (await response.json()) as SyncPushResponse;
       }
 
-      // 4xx (except 429): not retryable, return as-is or throw
+      // 4xx (except 429): not retryable — throw NonRetryableServerError
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        // Client errors are not retryable — treat as a failed batch
         const body = await response.json().catch(() => ({
           accepted: 0,
           rejected: [],
           serverCursor: String(Math.floor(Date.now() / 1000)),
         }));
-        return body as SyncPushResponse;
+        throw new NonRetryableServerError(
+          `Server rejected batch with status ${response.status}`,
+          response.status,
+          body as SyncPushResponse,
+        );
       }
 
       // 429: rate limited — respect Retry-After header
@@ -198,6 +246,8 @@ async function pushBatchWithRetry(
       // 5xx: retryable server error
       lastError = new Error(`Server error: ${response.status}`);
     } catch (error: unknown) {
+      // Re-throw non-retryable errors immediately
+      if (error instanceof NonRetryableServerError) throw error;
       if (!isRetryableError(error)) {
         throw error;
       }
@@ -211,23 +261,22 @@ async function pushBatchWithRetry(
     }
   }
 
-  throw new SyncPushError(
-    `Sync push failed after ${MAX_RETRY_ATTEMPTS} attempts`,
-    lastError,
-  );
+  throw new SyncPushError(`Sync push failed after ${MAX_RETRY_ATTEMPTS} attempts`, lastError);
 }
 
 /**
  * Execute the full sync push cycle for a tenant.
  *
  * 1. Gets pending entries from transactionLogService.getSyncableEntries(tenantId)
- * 2. Batches them into groups of max 500
- * 3. Sends each batch to POST /api/sync/push using apiFetch
- * 4. On success: marks accepted entries as "synced" via updateSyncStatus
- * 5. On stale_counter rejection: marks those entries as "conflict"
- * 6. Returns a flag indicating if a pull is needed (when stale_counter conflicts detected)
- * 7. Implements exponential backoff retry on network/5xx errors
- * 8. Checks isDeviceBlocked() before each request and aborts if blocked
+ * 2. Validates entries — marks corrupt ones as "failed" and removes from batch
+ * 3. Batches valid entries into groups of max 500
+ * 4. Sends each batch to POST /api/sync/push using apiFetch
+ * 5. On success: marks accepted entries as "synced" via updateSyncStatus
+ * 6. On stale_counter rejection: marks those entries as "conflict"
+ * 7. On non-retryable 4xx rejection: marks entries as "failed" (no retry)
+ * 8. Returns a flag indicating if a pull is needed (when stale_counter conflicts detected)
+ * 9. Implements exponential backoff retry on network/5xx errors
+ * 10. Checks isDeviceBlocked() before each request and aborts if blocked
  */
 export async function syncPush(tenantId: string): Promise<SyncPushResult> {
   // Check device block before starting
@@ -244,18 +293,43 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       totalRejected: 0,
       pullNeeded: false,
       conflictCount: 0,
+      failedCount: 0,
     };
   }
 
-  // Step 2: Batch into groups of max 500
-  const batches = batchEntries(pendingEntries, MAX_BATCH_SIZE);
+  // Step 2: Validate entries — isolate corrupt ones before push
+  const { valid: validEntries, corrupt: corruptEntries } = partitionEntries(pendingEntries);
+
+  let failedCount = 0;
+
+  // Mark corrupt entries as "failed" so they don't block future syncs
+  for (const entry of corruptEntries) {
+    if (entry.id) {
+      await updateSyncStatus(entry.id, "failed");
+      failedCount++;
+    }
+  }
+
+  // If no valid entries remain after filtering, return early
+  if (validEntries.length === 0) {
+    return {
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount,
+    };
+  }
+
+  // Step 3: Batch valid entries into groups of max 500
+  const batches = batchEntries(validEntries, MAX_BATCH_SIZE);
 
   let totalAccepted = 0;
   let totalRejected = 0;
   let pullNeeded = false;
   let conflictCount = 0;
 
-  // Step 3: Send each batch
+  // Step 4: Send each batch
   for (const batch of batches) {
     // Check device block before each batch
     if (isDeviceBlocked()) {
@@ -267,7 +341,24 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       transactions: batch.map(toPushTransaction),
     };
 
-    const response = await pushBatchWithRetry(payload, tenantId);
+    let response: SyncPushResponse;
+    try {
+      response = await pushBatchWithRetry(payload, tenantId);
+    } catch (error: unknown) {
+      // Handle non-retryable server rejection: mark all entries in batch as "failed"
+      if (error instanceof NonRetryableServerError) {
+        for (const entry of batch) {
+          if (entry.id) {
+            await updateSyncStatus(entry.id, "failed");
+            failedCount++;
+          }
+        }
+        // Continue with next batch instead of aborting entire sync
+        continue;
+      }
+      // Re-throw other errors (DeviceBlockedError, SyncPushError after max retries)
+      throw error;
+    }
 
     totalAccepted += response.accepted;
     totalRejected += response.rejected.length;
@@ -278,7 +369,7 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       rejectionMap.set(rejection.key, rejection.reason);
     }
 
-    // Step 4 & 5: Update sync status for each entry in the batch
+    // Step 5 & 6: Update sync status for each entry in the batch
     for (const entry of batch) {
       const key = generateIdempotencyKey(entry);
       const rejection = rejectionMap.get(key);
@@ -286,16 +377,16 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       if (!entry.id) continue; // Safety: skip entries without an ID
 
       if (rejection === "stale_counter") {
-        // Step 5: Mark as conflict and flag pull needed
+        // Step 6: Mark as conflict and flag pull needed
         await updateSyncStatus(entry.id, "conflict");
         pullNeeded = true;
         conflictCount++;
       } else if (rejection) {
-        // Other rejections: mark as conflict
-        await updateSyncStatus(entry.id, "conflict");
-        conflictCount++;
+        // Other server rejections: mark as "failed" (non-retryable)
+        await updateSyncStatus(entry.id, "failed");
+        failedCount++;
       } else {
-        // Step 4: Accepted — mark as synced
+        // Step 5: Accepted — mark as synced
         await updateSyncStatus(entry.id, "synced");
       }
     }
@@ -306,15 +397,31 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
     totalRejected,
     pullNeeded,
     conflictCount,
+    failedCount,
   };
 }
 
-// ── Error class ────────────────────────────────────────────────────────
+// ── Error classes ──────────────────────────────────────────────────────
 
 /** Error thrown when sync push exhausts all retry attempts. */
 export class SyncPushError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "SyncPushError";
+  }
+}
+
+/** Error thrown when server returns a non-retryable 4xx response (except 429). */
+export class NonRetryableServerError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly responseBody?: SyncPushResponse,
+  ) {
+    super(message);
+    this.name = "NonRetryableServerError";
   }
 }

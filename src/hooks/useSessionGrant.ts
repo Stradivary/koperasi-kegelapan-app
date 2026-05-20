@@ -4,6 +4,7 @@ import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexedd
 import { API_BASE_URL } from "../lib/api";
 
 const REFRESH_BUFFER_SECONDS = 300;
+export const OFFLINE_GRACE_PERIOD_SECONDS = 3600;
 
 async function fetchSessionGrant(
   tenantId: string,
@@ -95,7 +96,8 @@ async function writeGrantToCache(grant: SessionGrant): Promise<void> {
   }
 }
 
-/** Read a session grant from IndexedDB cache. Returns null if not found or expired. */
+/** Read a session grant from IndexedDB cache. Returns null if not found or expired.
+ *  When offline, allows expired grants within the grace period for offline operations. */
 async function readGrantFromCache(
   tenantId: string,
   accountId: string,
@@ -105,7 +107,15 @@ async function readGrantFromCache(
     const cached = await sessionGrantCacheStore.get(tenantId, accountId, deviceId);
     if (!cached) return null;
     const nowSeconds = Math.floor(Date.now() / 1000);
-    if (cached.expiresAt <= nowSeconds) return null; // Expired
+    const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+
+    if (cached.expiresAt <= nowSeconds) {
+      // Grant is expired — allow it if offline and within grace period
+      if (isOffline && cached.expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS) {
+        return fromCachedGrant(cached);
+      }
+      return null; // Expired beyond grace period or online
+    }
     return fromCachedGrant(cached);
   } catch {
     return null;
@@ -150,10 +160,10 @@ export function useSessionGrant(
         }
       }
     } else {
-      // Offline: return cached grant if available, otherwise error
+      // Offline: return cached grant if available (including grace period), otherwise error
       if (cachedGrant) {
         setGrant(cachedGrant);
-        scheduleRefresh(refreshTimerRef, cachedGrant, refresh);
+        // Don't schedule refresh when offline — it would just loop since we can't fetch
       } else {
         setError("Offline dan tidak ada sesi tersimpan");
       }
@@ -172,7 +182,12 @@ export function useSessionGrant(
     };
   }, [tenantId, accountId, deviceId, refresh]);
 
-  const isValid = grant !== null && Math.floor(Date.now() / 1000) < grant.expiresAt;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+  const isValid =
+    grant !== null &&
+    (nowSeconds < grant.expiresAt ||
+      (isOffline && grant.expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS));
 
   return { grant: isValid ? grant : null, loading, error, refresh };
 }

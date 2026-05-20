@@ -36,14 +36,17 @@ export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIn
  * Root-level offline banner displayed at the top of the viewport when
  * the browser reports no network connectivity. Uses the reactive
  * `useOnlineStatus` hook so it appears/disappears in real time.
+ *
+ * Renders as a subtle, in-flow element that pushes the topbar down
+ * rather than overlaying it with fixed positioning.
  */
 export function RootOfflineBanner() {
   const { isOnline } = useOnlineStatus();
   if (isOnline) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-yellow-50 border-b border-yellow-400 px-4 py-2 text-center">
-      <p className="text-sm font-semibold text-yellow-700">Mode Offline — Data lokal digunakan</p>
+    <div className="w-full bg-yellow-500 px-3 py-1 text-center" role="status" aria-live="polite">
+      <p className="text-xs font-medium text-white">Mode Offline</p>
     </div>
   );
 }

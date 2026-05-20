@@ -91,6 +91,7 @@ describe("syncPush", () => {
       totalRejected: 0,
       pullNeeded: false,
       conflictCount: 0,
+      failedCount: 0,
     });
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -122,10 +123,7 @@ describe("syncPush", () => {
   });
 
   it("marks stale_counter rejections as conflict and sets pullNeeded", async () => {
-    const entries = [
-      makeEntry({ id: 1, counter: 1 }),
-      makeEntry({ id: 2, counter: 2 }),
-    ];
+    const entries = [makeEntry({ id: 1, counter: 1 }), makeEntry({ id: 2, counter: 2 })];
     vi.mocked(getSyncableEntries).mockResolvedValue(entries);
     vi.mocked(fetch).mockResolvedValue(
       mockFetchResponse({
@@ -163,9 +161,7 @@ describe("syncPush", () => {
 
   it("batches entries into groups of max 500", async () => {
     // Create 750 entries — should result in 2 batches (500 + 250)
-    const entries = Array.from({ length: 750 }, (_, i) =>
-      makeEntry({ id: i + 1, counter: i + 1 }),
-    );
+    const entries = Array.from({ length: 750 }, (_, i) => makeEntry({ id: i + 1, counter: i + 1 }));
     vi.mocked(getSyncableEntries).mockResolvedValue(entries);
     vi.mocked(fetch)
       .mockResolvedValueOnce(
@@ -227,7 +223,9 @@ describe("syncPush", () => {
 
     // Attach a catch handler immediately to prevent unhandled rejection warning
     let caughtError: unknown;
-    const handled = promise.catch((e) => { caughtError = e; });
+    const handled = promise.catch((e) => {
+      caughtError = e;
+    });
 
     // Advance through all backoff timers
     for (let i = 0; i < MAX_RETRY_ATTEMPTS; i++) {
@@ -239,9 +237,7 @@ describe("syncPush", () => {
   });
 
   it("aborts if device becomes blocked between batches", async () => {
-    const entries = Array.from({ length: 600 }, (_, i) =>
-      makeEntry({ id: i + 1, counter: i + 1 }),
-    );
+    const entries = Array.from({ length: 600 }, (_, i) => makeEntry({ id: i + 1, counter: i + 1 }));
     vi.mocked(getSyncableEntries).mockResolvedValue(entries);
     vi.mocked(fetch).mockResolvedValue(
       mockFetchResponse({ accepted: 500, rejected: [], serverCursor: "1700000001" }),
@@ -288,7 +284,7 @@ describe("syncPush", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("marks other rejection reasons as conflict", async () => {
+  it("marks other rejection reasons as failed (non-retryable)", async () => {
     const entries = [makeEntry({ id: 1, counter: 1 })];
     vi.mocked(getSyncableEntries).mockResolvedValue(entries);
     vi.mocked(fetch).mockResolvedValue(
@@ -301,8 +297,8 @@ describe("syncPush", () => {
 
     const result = await syncPush("t-1");
 
-    expect(result.conflictCount).toBe(1);
-    expect(updateSyncStatus).toHaveBeenCalledWith(1, "conflict");
+    expect(result.failedCount).toBe(1);
+    expect(updateSyncStatus).toHaveBeenCalledWith(1, "failed");
   });
 });
 

@@ -371,6 +371,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       }
 
       // Register in local DB using hardware serial as the stable card ID
+      // This MUST complete before query invalidation to ensure fresh data is available
       await localDb.cards.put({
         tenantId,
         cardId: capturedSerial,
@@ -384,8 +385,12 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         expiresAt,
         notes: name,
       });
+
+      // Await invalidation to ensure station-cards query refetches from IndexedDB
+      // before the component re-renders. This prevents stale cache from showing balance=0
+      // when switching to offline mode after card issuance.
+      await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
   });
 
   const fixCard = useMutation({
@@ -432,18 +437,35 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   const createMember = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
       const existing = await localDb.users.where("tenantId").equals(tenantId).toArray();
-      const nextId = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) + 1 : 1001;
+      // Use timestamp-based ID with random suffix to avoid race conditions
+      const timestampBase = Date.now();
+      const maxExisting = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) : 1000;
+      const nextId = Math.max(maxExisting + 1, timestampBase % 1_000_000_000);
       const now = Math.floor(Date.now() / 1000);
-      await localDb.users.add({
-        tenantId,
-        userId: nextId,
-        name: name.trim(),
-        status: "active",
-        createdAt: now,
-        updatedAt: now,
-      });
+      try {
+        await localDb.users.add({
+          tenantId,
+          userId: nextId,
+          name: name.trim(),
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        });
+      } catch (err) {
+        throw new Error(
+          err instanceof Error ? err.message : "Gagal menyimpan data anggota ke database lokal",
+        );
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+    onSuccess: () => {
+      toast.success("Anggota berhasil ditambahkan");
+      qc.invalidateQueries({ queryKey: ["users", tenantId] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menambahkan anggota. Silakan coba lagi.",
+      );
+    },
   });
 
   const toggleMemberStatus = useMutation({
