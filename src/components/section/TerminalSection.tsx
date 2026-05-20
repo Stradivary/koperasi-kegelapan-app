@@ -4,6 +4,7 @@ import { CardState } from "../../core/payload/types";
 import {
   applyCheckout,
   PARKING_RATE_PER_HOUR,
+  validateCheckoutBalance,
   validateTransition,
 } from "../../core/state-machine/engine";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
@@ -45,6 +46,12 @@ export function TerminalSection({
     fee: number;
   } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  // Insufficient balance info when checkout is blocked
+  const [insufficientBalance, setInsufficientBalance] = useState<{
+    fee: number;
+    deficit: number;
+    currentBalance: number;
+  } | null>(null);
   // Warning when card/user not found in local DB (operation still proceeds)
   const [notInLocalDb, setNotInLocalDb] = useState(false);
 
@@ -96,11 +103,22 @@ export function TerminalSection({
 
       autoCheckoutTriggered.current = true;
 
+      // Check if balance is sufficient for checkout (balance - fee >= 10,000)
+      const balanceCheck = validateCheckoutBalance(payload, nowSeconds);
+      if (!balanceCheck.sufficient) {
+        setInsufficientBalance({
+          fee: balanceCheck.fee,
+          deficit: balanceCheck.deficit,
+          currentBalance: payload.wallet.balance,
+        });
+        return;
+      }
+
       // Perform standard checkout via applyCheckout
       const updatedPayload = applyCheckout(payload, nowSeconds);
       const durationSeconds = nowSeconds - payload.session.startTime;
       const hours = Math.ceil(durationSeconds / 3600);
-      const fee = Math.min(hours * PARKING_RATE_PER_HOUR, payload.wallet.balance);
+      const fee = hours * PARKING_RATE_PER_HOUR;
 
       setBlockedReason(null);
       setLastTx({ durationSeconds, fee });
@@ -125,6 +143,7 @@ export function TerminalSection({
     if (state.phase === "idle") {
       autoCheckoutTriggered.current = false;
       setBlockedReason(null);
+      setInsufficientBalance(null);
       setNotInLocalDb(false);
       setLastTx(null);
     }
@@ -133,6 +152,7 @@ export function TerminalSection({
   function handleScan() {
     autoCheckoutTriggered.current = false;
     setBlockedReason(null);
+    setInsufficientBalance(null);
     setNotInLocalDb(false);
     scan();
   }
@@ -203,6 +223,31 @@ export function TerminalSection({
                 <p className="type-body1-bold text-destructive">⛔ Checkout Ditolak</p>
                 <p className="type-body2 text-muted-foreground">{blockedReason}</p>
                 <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
+                <Button variant="outline" onClick={reset} className="w-full">
+                  Selesai
+                </Button>
+              </div>
+            ) : insufficientBalance && state.phase === "ready" ? (
+              <div className="bg-white rounded-2xl border border-amber-400/50 p-4 space-y-3 text-center w-full">
+                <p className="type-body1-bold text-amber-600">💰 Saldo Tidak Cukup</p>
+                <p className="type-body2 text-foreground">{state.payload.identity.name}</p>
+                <div className="space-y-1 text-left">
+                  <div className="flex justify-between type-body2">
+                    <span className="text-muted-foreground">Saldo saat ini</span>
+                    <span>Rp {insufficientBalance.currentBalance.toLocaleString("id-ID")}</span>
+                  </div>
+                  <div className="flex justify-between type-body2">
+                    <span className="text-muted-foreground">Biaya parkir</span>
+                    <span className="text-destructive">Rp {insufficientBalance.fee.toLocaleString("id-ID")}</span>
+                  </div>
+                  <div className="flex justify-between type-body2 font-medium border-t pt-1">
+                    <span className="text-muted-foreground">Perlu top-up minimal</span>
+                    <span className="text-amber-600">Rp {insufficientBalance.deficit.toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+                <p className="type-body2 text-muted-foreground">
+                  Saldo setelah checkout harus tersisa minimal Rp 10.000
+                </p>
                 <Button variant="outline" onClick={reset} className="w-full">
                   Selesai
                 </Button>

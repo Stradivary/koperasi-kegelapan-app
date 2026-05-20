@@ -6,7 +6,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
 
 ## Tasks
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - Push Ordering Enforcement
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -25,7 +25,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.5_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - Existing Synced Tenant Behavior
   - **IMPORTANT**: Follow observation-first methodology
   - **Observe on UNFIXED code**:
@@ -45,8 +45,8 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 3. Fix for push ordering enforcement during tenant sync
-  - [ ] 3.1 Split `syncPushEntities` into separate `syncPushMembers` and `syncPushCards` functions
+- [x] 3. Fix for push ordering enforcement during tenant sync
+  - [x] 3.1 Split `syncPushEntities` into separate `syncPushMembers` and `syncPushCards` functions
     - Create new exported function `syncPushMembers(tenantId: string): Promise<{ membersAccepted: number; membersRejected: number }>` that only pushes pending members
     - Create new exported function `syncPushCards(tenantId: string): Promise<{ cardsAccepted: number; cardsRejected: number }>` that only pushes pending cards
     - Keep existing `syncPushEntities` function intact for backward compatibility with already-synced tenants
@@ -56,7 +56,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
     - _Preservation: Existing `syncPushEntities` remains unchanged for synced tenants (Requirements 3.1, 3.6)_
     - _Requirements: 2.2, 2.3, 3.1, 3.6_
 
-  - [ ] 3.2 Modify `useTenantSync.ts` to return the access token from `syncToServer`
+  - [x] 3.2 Modify `useTenantSync.ts` to return the access token from `syncToServer`
     - Change `syncToServer` return type from `Promise<void>` to `Promise<{ accessToken: string | null }>` (or a result object)
     - Return the access token received from the server after successful tenant sync (201/200 response)
     - Ensure `setAccessToken` is still called internally for global state
@@ -66,7 +66,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
     - _Preservation: Existing conflict handling, error states, and retry logic remain unchanged (Requirements 3.5, 3.7)_
     - _Requirements: 2.6, 1.5_
 
-  - [ ] 3.3 Add orchestration in `useAdminTenantSync.ts` to call steps sequentially with halt-on-failure
+  - [x] 3.3 Add orchestration in `useAdminTenantSync.ts` to call steps sequentially with halt-on-failure
     - Modify `handleSyncToServer` to orchestrate the full push sequence after tenant sync succeeds
     - Sequence: `syncToServer` â†’ `syncPushMembers` â†’ `syncPushCards` â†’ transaction push (if applicable)
     - Use the returned access token from `syncToServer` to confirm token availability before entity push
@@ -78,7 +78,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
     - _Preservation: Already-synced tenants and server-selected tenants are unaffected (Requirements 3.1, 3.2)_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.7, 3.1, 3.2_
 
-  - [ ] 3.4 Verify bug condition exploration test now passes
+  - [x] 3.4 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - Push Ordering Enforcement
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior (strict sequential ordering)
@@ -91,7 +91,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.7_
 
-  - [ ] 3.5 Verify preservation tests still pass
+  - [x] 3.5 Verify preservation tests still pass
     - **Property 2: Preservation** - Existing Synced Tenant Behavior
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
@@ -104,7 +104,7 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
       - No access token still skips gracefully
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Run full test suite to confirm no regressions
   - Verify bug condition exploration test passes (Property 1)
   - Verify preservation property tests pass (Property 2)
@@ -115,7 +115,13 @@ Fix the tenant sync push ordering to enforce a deterministic sequence: tenant â†
 
 ```json
 {
-  "waves": [["1", "2"], ["3.1", "3.2"], ["3.3"], ["3.4", "3.5"], ["4"]]
+  "waves": [
+    { "id": 0, "tasks": ["1", "2"] },
+    { "id": 1, "tasks": ["3.1", "3.2"] },
+    { "id": 2, "tasks": ["3.3"] },
+    { "id": 3, "tasks": ["3.4", "3.5"] },
+    { "id": 4, "tasks": ["4"] }
+  ]
 }
 ```
 

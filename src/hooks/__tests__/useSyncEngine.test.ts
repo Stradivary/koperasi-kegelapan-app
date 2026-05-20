@@ -21,15 +21,22 @@ vi.mock("../../lib/transactionLogService", () => ({
   getSyncableEntries: vi.fn(),
 }));
 
+vi.mock("../../lib/syncPushEntities", () => ({
+  syncPushEntities: vi.fn(),
+  getPendingEntityCount: vi.fn(),
+}));
+
 import { syncPush } from "../../lib/syncPush";
 import { syncPull } from "../../lib/syncPull";
 import { isDeviceBlocked } from "../../lib/deviceBlock";
 import { getSyncableEntries } from "../../lib/transactionLogService";
+import { getPendingEntityCount } from "../../lib/syncPushEntities";
 
 const mockSyncPush = vi.mocked(syncPush);
 const mockSyncPull = vi.mocked(syncPull);
 const mockIsDeviceBlocked = vi.mocked(isDeviceBlocked);
 const mockGetSyncableEntries = vi.mocked(getSyncableEntries);
+const mockGetPendingEntityCount = vi.mocked(getPendingEntityCount);
 
 describe("useSyncEngine", () => {
   beforeEach(() => {
@@ -50,6 +57,7 @@ describe("useSyncEngine", () => {
     });
     mockIsDeviceBlocked.mockReturnValue(false);
     mockGetSyncableEntries.mockResolvedValue([]);
+    mockGetPendingEntityCount.mockResolvedValue(0);
     Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true });
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
   });

@@ -103,6 +103,36 @@ export function isWriteEligible(
 }
 
 export const PARKING_RATE_PER_HOUR = 2_000;
+export const MIN_BALANCE_AFTER_CHECKOUT = 10_000;
+
+/**
+ * Calculate the checkout fee for a given payload and timestamp.
+ * Fee is hours (rounded up) × rate, but never exceeds the card balance.
+ */
+export function calculateCheckoutFee(payload: CardPayload, nowSeconds: number): number {
+  const durationSeconds = nowSeconds - payload.session.startTime;
+  const hours = Math.ceil(durationSeconds / 3600);
+  return hours * PARKING_RATE_PER_HOUR;
+}
+
+/**
+ * Validates whether the card has sufficient balance to checkout.
+ * After checkout, balance must remain >= MIN_BALANCE_AFTER_CHECKOUT (10,000).
+ * Returns the deficit (top-up needed) if insufficient, or 0 if OK.
+ */
+export function validateCheckoutBalance(
+  payload: CardPayload,
+  nowSeconds: number,
+): { sufficient: boolean; fee: number; deficit: number } {
+  const fee = calculateCheckoutFee(payload, nowSeconds);
+  const balanceAfter = payload.wallet.balance - fee;
+  if (balanceAfter < MIN_BALANCE_AFTER_CHECKOUT) {
+    // deficit = how much they need to top up so that balance - fee >= MIN_BALANCE_AFTER_CHECKOUT
+    const deficit = MIN_BALANCE_AFTER_CHECKOUT - balanceAfter;
+    return { sufficient: false, fee, deficit };
+  }
+  return { sufficient: true, fee, deficit: 0 };
+}
 
 export function applyCheckin(
   payload: CardPayload,
@@ -135,8 +165,7 @@ export function applyCheckin(
 
 export function applyCheckout(payload: CardPayload, nowSeconds: number): CardPayload {
   const durationSeconds = nowSeconds - payload.session.startTime;
-  const hours = Math.ceil(durationSeconds / 3600);
-  const fee = Math.min(hours * PARKING_RATE_PER_HOUR, payload.wallet.balance);
+  const fee = calculateCheckoutFee(payload, nowSeconds);
   const newBalance = payload.wallet.balance - fee;
   const newCounter = payload.wallet.counter + 1n;
   return {

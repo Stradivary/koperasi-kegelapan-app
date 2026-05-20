@@ -28,8 +28,22 @@ vi.mock("../indexeddb", () => ({
 // Mock Dexie localDb
 vi.mock("../../db/local-db", () => ({
   localDb: {
-    users: { bulkPut: vi.fn().mockResolvedValue(undefined) },
-    cards: { bulkPut: vi.fn().mockResolvedValue(undefined) },
+    users: {
+      bulkPut: vi.fn().mockResolvedValue(undefined),
+      where: vi.fn().mockReturnValue({
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    },
+    cards: {
+      bulkPut: vi.fn().mockResolvedValue(undefined),
+      where: vi.fn().mockReturnValue({
+        equals: vi.fn().mockReturnValue({
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    },
     transactionLog: {
       bulkPut: vi.fn().mockResolvedValue(undefined),
       where: vi.fn().mockReturnValue({
@@ -163,7 +177,17 @@ describe("syncPull", () => {
     } as any);
     vi.mocked(localDb.syncCursors.bulkPut).mockResolvedValue(undefined as any);
     vi.mocked(localDb.users.bulkPut).mockResolvedValue(undefined as any);
+    vi.mocked(localDb.users.where).mockReturnValue({
+      equals: vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue([]),
+      }),
+    } as any);
     vi.mocked(localDb.cards.bulkPut).mockResolvedValue(undefined as any);
+    vi.mocked(localDb.cards.where).mockReturnValue({
+      equals: vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue([]),
+      }),
+    } as any);
     vi.mocked(localDb.transactionLog.bulkPut).mockResolvedValue(undefined as any);
     vi.mocked(localDb.transactionLog.where).mockReturnValue({
       equals: vi.fn().mockReturnValue({

@@ -18,11 +18,15 @@ export interface SyncConflict {
   currentAdminUsername: string;
 }
 
+export interface SyncToServerResult {
+  accessToken: string | null;
+}
+
 export interface UseTenantSyncReturn {
   status: SyncStatus;
   conflict: SyncConflict | null;
   error: string | null;
-  syncToServer: (config: LocalTenantConfig, adminPassword: string) => Promise<void>;
+  syncToServer: (config: LocalTenantConfig, adminPassword: string) => Promise<SyncToServerResult>;
   /** Retry sync with a new slug and/or admin username after conflict */
   retryWithChanges: (newSlug: string, newAdminUsername: string) => Promise<void>;
   reset: () => void;
@@ -44,9 +48,9 @@ export function useTenantSync(): UseTenantSyncReturn {
       adminPasswordHash: string,
       slugOverride?: string,
       adminUsernameOverride?: string,
-    ): Promise<void> => {
+    ): Promise<SyncToServerResult> => {
       // Ignore duplicate calls while syncing
-      if (statusRef.current === "syncing") return;
+      if (statusRef.current === "syncing") return { accessToken: null };
 
       statusRef.current = "syncing";
       setStatus("syncing");
@@ -104,6 +108,7 @@ export function useTenantSync(): UseTenantSyncReturn {
 
           statusRef.current = "success";
           setStatus("success");
+          return { accessToken: data.accessToken ?? null };
         } else if (res.status === 409) {
           const data = await res.json();
           const syncConflict: SyncConflict = {
@@ -116,6 +121,7 @@ export function useTenantSync(): UseTenantSyncReturn {
           statusRef.current = "conflict";
           setStatus("conflict");
           setConflict(syncConflict);
+          return { accessToken: null };
         } else if (res.status === 400) {
           // Parse validation errors from server for actionable feedback
           const data = await res.json().catch(() => null);
@@ -127,23 +133,26 @@ export function useTenantSync(): UseTenantSyncReturn {
           statusRef.current = "error";
           setStatus("error");
           setError(msg);
+          return { accessToken: null };
         } else {
           statusRef.current = "error";
           setStatus("error");
           setError("Gagal menyinkronkan tenant ke server. Silakan coba lagi.");
+          return { accessToken: null };
         }
       } catch {
         statusRef.current = "error";
         setStatus("error");
         setError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+        return { accessToken: null };
       }
     },
     [],
   );
 
   const syncToServer = useCallback(
-    async (config: LocalTenantConfig, adminPassword: string): Promise<void> => {
-      await performSync(config, adminPassword);
+    async (config: LocalTenantConfig, adminPassword: string): Promise<SyncToServerResult> => {
+      return await performSync(config, adminPassword);
     },
     [performSync],
   );

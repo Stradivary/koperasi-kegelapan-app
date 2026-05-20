@@ -306,6 +306,16 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
   }
 }
 
+export interface MemberPushResult {
+  membersAccepted: number;
+  membersRejected: number;
+}
+
+export interface CardPushResult {
+  cardsAccepted: number;
+  cardsRejected: number;
+}
+
 async function _pushEntitiesInternal(
   tenantId: string,
   pendingMembers: User[],
@@ -399,6 +409,176 @@ async function _pushEntitiesInternal(
         .filter((id) => !rejectedCardIds.has(id));
       await markCardsSynced(tenantId, acceptedCardIds);
     }
+  }
+
+  return result;
+}
+
+
+// ── Granular Push Functions ────────────────────────────────────────────
+
+/**
+ * Push only pending members to the server for a tenant.
+ * Used by the ordered sync orchestrator to push members before cards.
+ * Respects device-blocked checks, access token checks, batch size limits, and retry logic.
+ */
+export async function syncPushMembers(tenantId: string): Promise<MemberPushResult> {
+  if (isDeviceBlocked()) {
+    throw new DeviceBlockedError("Device is blocked — member push aborted");
+  }
+
+  // Skip if no auth token — means this is a local-only tenant not registered on server
+  const token = getAccessToken();
+  if (!token) {
+    console.log(`[SyncPushMembers] Skipped — no access token (local-only tenant)`);
+    return { membersAccepted: 0, membersRejected: 0 };
+  }
+
+  const pendingMembers = await getPendingMembers(tenantId);
+
+  console.log(
+    `[SyncPushMembers] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}`,
+  );
+
+  // Nothing to push
+  if (pendingMembers.length === 0) {
+    return { membersAccepted: 0, membersRejected: 0 };
+  }
+
+  try {
+    return await _pushMembersInternal(tenantId, pendingMembers);
+  } catch (err) {
+    const baseMsg = err instanceof Error ? err.message : String(err);
+    const enriched = new Error(
+      `pendingMembers=${pendingMembers.length} | ${baseMsg}`,
+    );
+    enriched.name = "SyncPushMembersError";
+    throw enriched;
+  }
+}
+
+/**
+ * Push only pending cards to the server for a tenant.
+ * Used by the ordered sync orchestrator to push cards after members are confirmed.
+ * Respects device-blocked checks, access token checks, batch size limits, and retry logic.
+ */
+export async function syncPushCards(tenantId: string): Promise<CardPushResult> {
+  if (isDeviceBlocked()) {
+    throw new DeviceBlockedError("Device is blocked — card push aborted");
+  }
+
+  // Skip if no auth token — means this is a local-only tenant not registered on server
+  const token = getAccessToken();
+  if (!token) {
+    console.log(`[SyncPushCards] Skipped — no access token (local-only tenant)`);
+    return { cardsAccepted: 0, cardsRejected: 0 };
+  }
+
+  const pendingCards = await getPendingCards(tenantId);
+
+  console.log(
+    `[SyncPushCards] tenantId=${tenantId}, pendingCards=${pendingCards.length}`,
+  );
+
+  // Nothing to push
+  if (pendingCards.length === 0) {
+    return { cardsAccepted: 0, cardsRejected: 0 };
+  }
+
+  try {
+    return await _pushCardsInternal(tenantId, pendingCards);
+  } catch (err) {
+    const baseMsg = err instanceof Error ? err.message : String(err);
+    const enriched = new Error(
+      `pendingCards=${pendingCards.length} | ${baseMsg}`,
+    );
+    enriched.name = "SyncPushCardsError";
+    throw enriched;
+  }
+}
+
+// ── Internal push helpers for granular functions ───────────────────────
+
+async function _pushMembersInternal(
+  tenantId: string,
+  pendingMembers: User[],
+): Promise<MemberPushResult> {
+  const result: MemberPushResult = {
+    membersAccepted: 0,
+    membersRejected: 0,
+  };
+
+  for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE) {
+    const memberBatch = pendingMembers.slice(i, i + MAX_BATCH_SIZE);
+
+    const payload: EntityPushPayload = {
+      tenantId,
+      members: memberBatch.map((m) => ({
+        userId: m.userId,
+        name: m.name,
+        status: m.status,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      })),
+      cards: [],
+    };
+
+    const response = await pushEntitiesWithRetry(payload, tenantId);
+
+    result.membersAccepted += response.membersAccepted;
+    result.membersRejected += response.membersRejected.length;
+
+    // Mark accepted members as synced
+    const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
+    const acceptedMemberIds = memberBatch
+      .map((m) => m.userId)
+      .filter((id) => !rejectedMemberIds.has(id));
+    await markMembersSynced(tenantId, acceptedMemberIds);
+  }
+
+  return result;
+}
+
+async function _pushCardsInternal(
+  tenantId: string,
+  pendingCards: Card[],
+): Promise<CardPushResult> {
+  const result: CardPushResult = {
+    cardsAccepted: 0,
+    cardsRejected: 0,
+  };
+
+  for (let i = 0; i < pendingCards.length; i += MAX_BATCH_SIZE) {
+    const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
+
+    const payload: EntityPushPayload = {
+      tenantId,
+      members: [],
+      cards: cardBatch.map((c) => ({
+        cardId: c.cardId,
+        userId: c.userId,
+        status: c.status,
+        balance: c.balance,
+        counter: c.counter,
+        keyVersion: c.keyVersion,
+        createdAt: c.createdAt,
+        lastActivityAt: c.lastActivityAt,
+        expiresAt: c.expiresAt,
+        notes: c.notes,
+      })),
+    };
+
+    const response = await pushEntitiesWithRetry(payload, tenantId);
+
+    result.cardsAccepted += response.cardsAccepted;
+    result.cardsRejected += response.cardsRejected.length;
+
+    // Mark accepted cards as synced
+    const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
+    const acceptedCardIds = cardBatch
+      .map((c) => c.cardId)
+      .filter((id) => !rejectedCardIds.has(id));
+    await markCardsSynced(tenantId, acceptedCardIds);
   }
 
   return result;

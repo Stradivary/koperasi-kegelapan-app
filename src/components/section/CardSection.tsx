@@ -84,6 +84,7 @@ async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
 export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardSectionProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
+  const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);
   const [fixCardId, setFixCardId] = useState<string | null>(null);
   const [showFixCard, setShowFixCard] = useState(false);
   const [resetCardPending, setResetCardPending] = useState(false);
@@ -169,6 +170,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         reset();
         setIsDrawerOpen(false);
         setTopupDrawerOpen(false);
+        setTopupTargetCardId(null);
         setResetCardPending(false);
       }, 2500);
       return () => clearTimeout(timer);
@@ -228,6 +230,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     }
     setIsDrawerOpen(false);
     setTopupDrawerOpen(false);
+    setTopupTargetCardId(null);
     setResetCardPending(false);
   }, [state.phase, cancel, reset]);
 
@@ -464,11 +467,21 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         if (!uidResult.valid) {
           if (forceOverwrite && uidResult.reason === "UID_ALREADY_REGISTERED") {
             // Allow overwrite for same-tenant re-registration
+          } else if (uidResult.reason === "UID_ALREADY_REGISTERED") {
+            // Keep the NFC session alive — the write might fail, so preserve
+            // issuancePreparedRef for the overwrite dialog retry flow.
+            const existing = await localDb.cards.get([tenantId, capturedSerial]);
+            throw new CardAlreadyRegisteredError({
+              cardId: capturedSerial,
+              ownerName: existing?.notes ?? null,
+              userId: existing?.userId ?? null,
+              balance: existing?.balance ?? 0,
+              status: existing?.status ?? "active",
+            });
           } else {
             abort.abort();
             issuancePreparedRef.current = null;
             const uidErrorMessages: Record<string, string> = {
-              UID_ALREADY_REGISTERED: "UID kartu sudah terdaftar di tenant ini",
               UID_REGISTERED_OTHER_TENANT: "UID kartu sudah terdaftar di tenant lain",
               NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
               INVALID_UID_FORMAT: "Format UID tidak valid",
@@ -635,7 +648,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
   // Top-up flow handler
   const handleTopupCard = useCallback(
-    (_cardId: string) => {
+    (cardId: string) => {
+      setTopupTargetCardId(cardId);
       setTopupDrawerOpen(true);
       scan();
     },
@@ -657,6 +671,13 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     async (amount: number) => {
       if (!state.payload || !grant) return;
 
+      // Validate scanned card matches the selected card
+      const scannedId = normalizeSerial(state.serialNumber);
+      if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
+        toast.error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
+        return;
+      }
+
       if (state.serialNumber) {
         const statusResult = await checkLocalBlockedStatus(tenantId, state.serialNumber);
         if (statusResult.blocked) {
@@ -669,7 +690,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       const updated = applyTopup(state.payload, amount, now);
       await write(updated, "topup");
     },
-    [state.payload, grant, write, state.serialNumber, tenantId],
+    [state.payload, grant, write, state.serialNumber, tenantId, topupTargetCardId],
   );
 
   // When card becomes ready and we have a pending reset, trigger write

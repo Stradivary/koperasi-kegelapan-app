@@ -19,6 +19,13 @@ import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "../ui/drawer";
 
 export type AdminView = "cards" | "members" | "scout" | "transactions" | "settings";
 
@@ -85,6 +92,7 @@ export function AdminLayout({
   const { isOnline } = useOnlineStatus();
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [syncDrawerOpen, setSyncDrawerOpen] = useState(false);
 
   async function handleLogout() {
     await tenantContextStore.delete(tenantId);
@@ -245,49 +253,97 @@ export function AdminLayout({
             </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
           </div>
-          {/* Sync to Server button — shown when tenant is local-only and online */}
-          {onSyncToServer && isOnline && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onSyncToServer}
-              disabled={isSyncingToServer}
-              className="gap-1.5 text-xs"
-            >
-              <Upload size={12} />
-              {isSyncingToServer ? "Syncing..." : "Sync ke Server"}
-            </Button>
-          )}
-          {/* Sync status indicator — hidden when offline */}
-          {syncStatus && isOnline && (
-            <SyncStatusIndicator
-              syncStatus={syncStatus}
-              lastSyncedAt={lastSyncedAt ?? null}
-              pendingCount={pendingCount ?? 0}
-              onSync={onTriggerSync}
-            />
-          )}
-          {/* Online indicator */}
-          <div className="flex items-center gap-1.5">
+          {/* Compact sync status dot — opens drawer on click */}
+          <button
+            type="button"
+            onClick={() => setSyncDrawerOpen(true)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full hover:bg-muted transition-colors"
+            aria-label="Lihat status sinkronisasi"
+          >
             <span
               className={[
-                "size-2 rounded-full shrink-0",
-                isOnline ? "bg-green-500" : "bg-red-500",
+                "size-2.5 rounded-full shrink-0",
+                !isOnline
+                  ? "bg-red-500"
+                  : syncStatus === "error"
+                    ? "bg-red-500"
+                    : syncStatus === "pushing" || syncStatus === "pulling"
+                      ? "bg-blue-500 animate-pulse"
+                      : (pendingCount ?? 0) > 0
+                        ? "bg-amber-500"
+                        : "bg-green-500",
               ].join(" ")}
               aria-hidden="true"
             />
-            <span
-              className={[
-                "type-body2 hidden sm:inline",
-                isOnline ? "text-green-600" : "text-red-600",
-              ].join(" ")}
-              role="status"
-              aria-label={`Connectivity: ${isOnline ? "Online" : "Offline"}`}
-            >
-              {isOnline ? "Online" : "Offline"}
-            </span>
-          </div>
+            {(pendingCount ?? 0) > 0 && (
+              <span className="text-xs text-amber-700 font-medium">{pendingCount}</span>
+            )}
+          </button>
         </header>
+
+        {/* Sync status drawer */}
+        <Drawer open={syncDrawerOpen} onOpenChange={setSyncDrawerOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Status Sinkronisasi</DrawerTitle>
+              <DrawerDescription>
+                Koneksi dan status sync tenant
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 pb-6 space-y-4">
+              {/* Online status */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Koneksi</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={[
+                      "size-2.5 rounded-full",
+                      isOnline ? "bg-green-500" : "bg-red-500",
+                    ].join(" ")}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={[
+                      "text-sm font-medium",
+                      isOnline ? "text-green-600" : "text-red-600",
+                    ].join(" ")}
+                  >
+                    {isOnline ? "Online" : "Offline"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sync engine status */}
+              {syncStatus && isOnline && (
+                <div className="space-y-3">
+                  <SyncStatusIndicator
+                    syncStatus={syncStatus}
+                    lastSyncedAt={lastSyncedAt ?? null}
+                    pendingCount={pendingCount ?? 0}
+                    onSync={onTriggerSync}
+                  />
+                </div>
+              )}
+
+              {/* Sync to Server button — shown when tenant is local-only and online */}
+              {onSyncToServer && isOnline && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onSyncToServer();
+                    setSyncDrawerOpen(false);
+                  }}
+                  disabled={isSyncingToServer}
+                  className="w-full gap-1.5"
+                >
+                  <Upload size={14} />
+                  {isSyncingToServer ? "Syncing..." : "Sync ke Server"}
+                </Button>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
 
         <main className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6">{children}</main>
 

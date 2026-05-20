@@ -93,20 +93,26 @@ describe("POST /api/sync/push", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when payload tenantId does not match token tenantId", async () => {
+  it("uses token tenantId as authoritative when payload tenantId does not match", async () => {
     const app = createApp();
     const token = createToken({ accountId: "acc-1", tenantId: "t-1" });
     const res = await makeRequest(app, token, { tenantId: "t-2", transactions: [] });
-    expect(res.status).toBe(403);
+    // Token tenantId is used as authoritative — mismatch is logged but not rejected
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toContain("tenant_id mismatch");
+    expect(body.accepted).toBe(0);
+    expect(body.rejected).toEqual([]);
   });
 
-  it("returns 403 when payload tenantId is missing", async () => {
+  it("uses token tenantId when payload tenantId is missing", async () => {
     const app = createApp();
     const token = createToken({ accountId: "acc-1", tenantId: "t-1" });
     const res = await makeRequest(app, token, { transactions: [] });
-    expect(res.status).toBe(403);
+    // Token tenantId is used as authoritative — missing payload tenantId is acceptable
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.accepted).toBe(0);
+    expect(body.rejected).toEqual([]);
   });
 
   it("returns 400 when body is malformed JSON", async () => {

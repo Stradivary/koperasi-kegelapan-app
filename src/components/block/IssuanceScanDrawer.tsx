@@ -238,7 +238,7 @@ export function IssuanceScanDrawer({
               )}
 
               <Separator />
-              {minimal && (
+              {!minimal && (
                 <div className="rounded-md border bg-muted/40 p-3 space-y-1">
                   {serialNumber && <InfoRow label="Serial number" value={serialNumber} />}
                   <InfoRow label="Card ID" value={toHex(payload.header.cardId)} />
