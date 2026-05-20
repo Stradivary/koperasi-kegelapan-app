@@ -1,23 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Clock } from "lucide-react";
-import { useNfcCard } from "../../hooks/useNfcCard";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useReconciliation } from "../../hooks/useReconciliation";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
+import { CardState } from "../../core/payload/types";
 import {
   applyCheckout,
-  validateTransition,
   PARKING_RATE_PER_HOUR,
+  validateTransition,
 } from "../../core/state-machine/engine";
-import { CardState } from "../../core/payload/types";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import { OfflineIndicator } from "../block/OfflineIndicator";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { LoadingState } from "../block/LoadingState";
-import { KioskLayout } from "../layout/KioskLayout";
-import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { useNfcCard } from "../../hooks/useNfcCard";
+import { useReconciliation } from "../../hooks/useReconciliation";
+import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { formatDuration } from "../../lib/formatters";
+import { LoadingState } from "../block/LoadingState";
+import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
+import { OfflineIndicator } from "../block/OfflineIndicator";
+import { KioskLayout } from "../layout/KioskLayout";
+import { Button } from "../ui/button";
 
 interface TerminalSectionProps {
   tenantId: string;
@@ -26,6 +24,8 @@ interface TerminalSectionProps {
   deviceId: string;
   terminalId: number;
 }
+
+const enforce24hLimit = true;
 
 export function TerminalSection({
   tenantId,
@@ -45,29 +45,13 @@ export function TerminalSection({
   const [lastTx, setLastTx] = useState<{ durationSeconds: number; fee: number } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
-  // Simulation mode: date+time picker
-  const [simulationMode, setSimulationMode] = useState(false);
-  const [simulatedDateTime, setSimulatedDateTime] = useState(() => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  });
-  // 24-hour max checkout enforcement (default: enabled)
-  const [enforce24hLimit, setEnforce24hLimit] = useState(true);
-
   // Track whether we already triggered auto-checkout for this scan cycle
   const autoCheckoutTriggered = useRef(false);
 
   // Get the current timestamp (real or simulated)
   const getNowSeconds = useCallback(() => {
-    if (simulationMode && simulatedDateTime) {
-      const simDate = new Date(simulatedDateTime);
-      if (!isNaN(simDate.getTime())) {
-        return Math.floor(simDate.getTime() / 1000);
-      }
-    }
     return Math.floor(Date.now() / 1000);
-  }, [simulationMode, simulatedDateTime]);
+  }, []);
 
   // Auto-checkout when card is ready — no confirmation needed (like gate)
   useEffect(() => {
@@ -310,46 +294,6 @@ export function TerminalSection({
             <Button variant="outline" onClick={reset} className="w-full">
               Coba Lagi
             </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Simulation mode toggle & date+time picker */}
-      <div className="border-t bg-white/80 px-4 py-3 space-y-2">
-        <button
-          type="button"
-          onClick={() => setSimulationMode((v) => !v)}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Clock className="size-4" />
-          <span>{simulationMode ? "Mode Simulasi Aktif" : "Mode Simulasi"}</span>
-        </button>
-        {simulationMode && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="sim-datetime-terminal"
-                className="text-sm text-muted-foreground whitespace-nowrap"
-              >
-                Waktu checkout:
-              </label>
-              <Input
-                id="sim-datetime-terminal"
-                type="datetime-local"
-                value={simulatedDateTime}
-                onChange={(e) => setSimulatedDateTime(e.target.value)}
-                className="w-auto"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enforce24hLimit}
-                onChange={(e) => setEnforce24hLimit(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              Batasi maks 24 jam checkout
-            </label>
           </div>
         )}
       </div>
