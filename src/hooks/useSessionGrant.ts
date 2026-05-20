@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
 import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
 import { API_BASE_URL } from "../lib/api";
+import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
 export const OFFLINE_GRACE_PERIOD_SECONDS = 3600;
@@ -156,16 +157,39 @@ export function useSessionGrant(
           setGrant(cachedGrant);
           scheduleRefresh(refreshTimerRef, cachedGrant, refresh);
         } else {
-          setError(String(e));
+          // Last resort: issue a local session grant (for local-only tenants or network issues)
+          try {
+            const localGrant = await issueAndCacheLocalSessionGrant(
+              tenantId,
+              accountId,
+              deviceId,
+              role ?? "terminal",
+            );
+            setGrant(localGrant);
+            scheduleRefresh(refreshTimerRef, localGrant, refresh);
+          } catch {
+            setError(String(e));
+          }
         }
       }
     } else {
-      // Offline: return cached grant if available (including grace period), otherwise error
+      // Offline: return cached grant if available (including grace period), otherwise issue locally
       if (cachedGrant) {
         setGrant(cachedGrant);
         // Don't schedule refresh when offline — it would just loop since we can't fetch
       } else {
-        setError("Offline dan tidak ada sesi tersimpan");
+        // No cached grant while offline — issue locally so NFC operations can proceed
+        try {
+          const localGrant = await issueAndCacheLocalSessionGrant(
+            tenantId,
+            accountId,
+            deviceId,
+            role ?? "terminal",
+          );
+          setGrant(localGrant);
+        } catch {
+          setError("Offline dan tidak ada sesi tersimpan");
+        }
       }
     }
 

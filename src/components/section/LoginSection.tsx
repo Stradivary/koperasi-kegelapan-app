@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   ArrowLeft,
+  WifiOff,
 } from "lucide-react";
 import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
 import { localLogin, cacheServerCredentials } from "../../lib/localTenant";
@@ -16,13 +17,16 @@ import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
 import { API_BASE_URL, setCurrentDeviceId, setAccessToken, restoreAuthState } from "../../lib/api";
+import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { PasswordInput } from "../ui/password-input";
 import { Label } from "../ui/label";
 import { LoadingState } from "../block/LoadingState";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 
 type LoginMode = "detecting" | "login" | "setup" | "device-setup" | "server-browse";
 type DeviceSetupStep = "auth" | "pick-role";
@@ -133,6 +137,18 @@ export function LoginSection() {
           updatedAt: Date.now(),
         });
         setCurrentDeviceId(fingerprintId);
+
+        // Pre-generate and cache session grant so it's available immediately
+        // when the role page loads (avoids race with useSessionGrant hook)
+        issueAndCacheLocalSessionGrant(
+          localResult.tenantId,
+          localResult.accountId,
+          fingerprintId,
+          localResult.role,
+        ).catch(() => {
+          // Non-critical — useSessionGrant will handle fallback
+        });
+
         redirectToRole(localResult.tenantId, localResult.role);
         return;
       }
@@ -368,6 +384,17 @@ export function LoginSection() {
       updatedAt: Date.now(),
     });
     setCurrentDeviceId(fingerprintId);
+
+    // Pre-generate and cache session grant for the device role
+    issueAndCacheLocalSessionGrant(
+      pendingContext.tenantId,
+      pendingContext.accountId,
+      fingerprintId,
+      role,
+    ).catch(() => {
+      // Non-critical — useSessionGrant will handle fallback
+    });
+
     redirectToRole(pendingContext.tenantId, role);
   }
 
@@ -515,9 +542,8 @@ export function LoginSection() {
             <Label htmlFor="setup-password" className="type-body1-bold">
               Password
             </Label>
-            <Input
+            <PasswordInput
               id="setup-password"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -617,10 +643,9 @@ export function LoginSection() {
           <Label htmlFor="password" className="type-body1-bold">
             Password
           </Label>
-          <Input
+          <PasswordInput
             id="password"
             ref={passwordRef}
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -694,8 +719,9 @@ interface ServerBrowsePanelProps {
 
 function ServerBrowsePanel({ onSelect, onBack }: ServerBrowsePanelProps) {
   const { query, setQuery, results, loading, error } = useServerTenantSearch();
+  const { isOnline } = useOnlineStatus();
 
-  const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error;
+  const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error && isOnline;
 
   return (
     <AuthLayout variant="brand-dark" headerSubtitle="Cari Koperasi">
@@ -706,6 +732,20 @@ function ServerBrowsePanel({ onSelect, onBack }: ServerBrowsePanelProps) {
         </p>
       </div>
 
+      {/* Offline status */}
+      {!isOnline && (
+        <div
+          className="flex items-center gap-2 rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2"
+          role="status"
+          aria-live="polite"
+        >
+          <WifiOff size={16} className="text-yellow-600 shrink-0" />
+          <p className="type-body2 text-yellow-700">
+            Kamu sedang offline. Pencarian membutuhkan koneksi internet.
+          </p>
+        </div>
+      )}
+
       {/* Search input */}
       <div className="relative">
         <Search
@@ -714,15 +754,16 @@ function ServerBrowsePanel({ onSelect, onBack }: ServerBrowsePanelProps) {
         />
         <Input
           type="text"
-          placeholder="Cari koperasi..."
+          placeholder={isOnline ? "Cari koperasi..." : "Offline — tidak bisa mencari"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          disabled={!isOnline}
           className="h-11 pl-9"
         />
       </div>
 
       {/* Loading indicator */}
-      {loading && <LoadingState variant="section" text="Mencari..." />}
+      {loading && isOnline && <LoadingState variant="section" text="Mencari..." />}
 
       {/* Error message */}
       {error && (

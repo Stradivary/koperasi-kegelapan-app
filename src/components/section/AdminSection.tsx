@@ -372,7 +372,7 @@ export const AdminSection = ({
       expiresAt: number | null;
       forceOverwrite?: boolean;
     }) => {
-      if (!grant) throw new Error("Sesi tidak aktif");
+      if (!grant) throw new Error("Sesi tidak aktif untuk membuat kartu");
 
       const now = Math.floor(Date.now() / 1000);
       const cardId = generateCardId();
