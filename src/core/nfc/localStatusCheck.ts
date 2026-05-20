@@ -4,17 +4,16 @@ import { localDb } from "../../db/local-db";
  * Check if a card or its linked member is blocked/suspended in the local DB.
  *
  * Uses the hardware serial number (from the NFC scan event) as the lookup key
- * for `localDb.cards`, and performs a member lookup only when userId > 0.
+ * for `localDb.cards`, and performs a member lookup using the card's linked userId
+ * from the local DB (not from the NFC binary payload).
  *
  * @param tenantId - The current tenant identifier
  * @param serialNumber - The hardware NFC serial number (may contain colons/dashes, any case)
- * @param userId - The userId from the card's identity payload (0 = unlinked card)
  * @returns Promise resolving to { blocked, reason } indicating whether the operation should be rejected
  */
 export async function checkLocalBlockedStatus(
   tenantId: string,
   serialNumber: string,
-  userId: number,
 ): Promise<{ blocked: boolean; reason: string | null }> {
   // Normalize serial number to lowercase hex (strip colons/dashes)
   const normalizedSerial = serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
@@ -28,10 +27,10 @@ export async function checkLocalBlockedStatus(
     };
   }
 
-  // Explicit numeric comparison: userId > 0 (not truthiness)
-  // userId=0 means unlinked card — skip member lookup
-  if (userId > 0) {
-    const userRecord = await localDb.users.get([tenantId, userId]);
+  // Use the card's linked userId from local DB for member lookup
+  const linkedUserId = cardRecord?.userId ?? null;
+  if (linkedUserId) {
+    const userRecord = await localDb.users.get([tenantId, linkedUserId]);
     if (userRecord && userRecord.status !== "active") {
       return {
         blocked: true,

@@ -118,7 +118,8 @@ export function LoginSection() {
 
     try {
       // 1. Try local login first (works offline)
-      const localResult = await localLogin(username, password);
+      const effectiveSlug = selectedServerTenant?.slug ?? (tenantSlug || undefined);
+      const localResult = await localLogin(username, password, effectiveSlug);
       if (localResult) {
         const fingerprintId = await getDeviceFingerprint();
         await tenantContextStore.put({
@@ -158,7 +159,6 @@ export function LoginSection() {
       };
 
       // Scope to tenant slug if provided (from server browse or manual input)
-      const effectiveSlug = selectedServerTenant?.slug ?? tenantSlug;
       if (effectiveSlug) {
         body.tenantSlug = effectiveSlug;
       }
@@ -174,6 +174,13 @@ export function LoginSection() {
 
       if (res.ok) {
         const data = await res.json();
+
+        // Validate that the server response matches the selected tenant
+        if (effectiveSlug && data.tenantSlug !== effectiveSlug) {
+          setError("Akun ini bukan milik koperasi yang dipilih");
+          return;
+        }
+
         const deviceId = fingerprintHash;
 
         // Store tenant context

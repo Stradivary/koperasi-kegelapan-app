@@ -175,6 +175,7 @@ export interface LocalLoginResult {
 export async function localLogin(
   username: string,
   password: string,
+  tenantSlug?: string,
 ): Promise<LocalLoginResult | null> {
   const account = await localAccountStore.getByUsername(username);
   if (!account || account.status !== "active") return null;
@@ -184,6 +185,11 @@ export async function localLogin(
 
   const cfg = await localTenantConfigStore.get(account.tenantId);
   if (!cfg) return null;
+
+  // If a tenant slug was specified, verify the account belongs to that tenant
+  if (tenantSlug && cfg.slug !== tenantSlug) {
+    return null;
+  }
 
   return {
     tenantId: cfg.tenantId,

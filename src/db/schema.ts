@@ -52,9 +52,9 @@ export const users = sqliteTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.tenantId),
-    userId: integer("user_id").notNull(),
+    userId: text("user_id").notNull(),
     name: text("name").notNull(),
-    status: text("status", { enum: ["active", "suspended", "closed"] })
+    status: text("status", { enum: ["active", "suspended", "closed", "deleted"] })
       .notNull()
       .default("active"),
     createdAt: integer("created_at", { mode: "timestamp" })
@@ -74,7 +74,7 @@ export const cards = sqliteTable(
       .notNull()
       .references(() => tenants.tenantId),
     cardId: blob("card_id").notNull(),
-    userId: integer("user_id"),
+    userId: text("user_id"),
     status: text("status", {
       enum: [
         "active",
@@ -83,6 +83,7 @@ export const cards = sqliteTable(
         "BLOCKED_FRAUD",
         "BLOCKED_EXPIRED",
         "BLOCKED_ADMIN",
+        "deleted",
       ],
     })
       .notNull()
@@ -193,7 +194,7 @@ export const transactionLog = sqliteTable(
       .notNull()
       .references(() => tenants.tenantId),
     cardId: text("card_id").notNull(),
-    userId: integer("user_id"),
+    userId: text("user_id"),
     counter: integer("counter").notNull(),
     type: text("type", {
       enum: ["debit", "credit", "checkin", "checkout", "topup", "admin"],

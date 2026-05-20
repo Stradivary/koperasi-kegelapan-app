@@ -119,7 +119,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
             });
 
             // The fixed checkLocalBlockedStatus uses hardware serial (correct key)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, userId);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
 
             // Verify the fix correctly detects the blocked card
             expect(result.blocked).toBe(true);
@@ -150,7 +150,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           hardwareSerialArb,
           blockedCardStatusArb,
           async (tenantId, hardwareSerial, blockedStatus) => {
-            const userId = 0; // Unlinked card
+            // userId=0 means unlinked card — no member lookup needed
 
             // Clear stores for each run
             cardsStore.clear();
@@ -165,7 +165,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
             });
 
             // The fixed checkLocalBlockedStatus with userId=0
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, userId);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
 
             // Verify card-level check works even with userId=0
             expect(result.blocked).toBe(true);
@@ -209,7 +209,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
             });
 
             // The shared checkLocalBlockedStatus (now used by TerminalSection)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, userId);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
 
             // Verify blocked card is detected
             expect(result.blocked).toBe(true);
@@ -257,7 +257,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
             });
 
             // The shared checkLocalBlockedStatus (now used by StationSection)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, userId);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
 
             // Verify suspended member is detected
             expect(result.blocked).toBe(true);
@@ -302,7 +302,7 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
               status: "suspended",
             });
 
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, userId);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
 
             expect(result.blocked).toBe(true);
             expect(result.reason).toContain("Akun anggota ditangguhkan");

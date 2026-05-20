@@ -22,7 +22,7 @@ function makeCard(status: Card["status"]): Card {
   return {
     tenantId: "tenant-1",
     cardId: "aabbccdd",
-    userId: 1,
+    userId: "1",
     status,
     balance: 50000,
     counter: 5,

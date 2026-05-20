@@ -175,7 +175,7 @@ async function logPenaltyTransaction(
   const entry: TransactionLog = {
     tenantId,
     cardId: cardIdHex,
-    userId: originalPayload.identity.userId || null,
+    userId: null, // member linkage is resolved via DB, not card binary
     counter: Number(updatedPayload.wallet.counter),
     type: "checkout",
     amount: penaltyAmount,

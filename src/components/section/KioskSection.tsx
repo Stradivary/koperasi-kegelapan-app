@@ -97,7 +97,7 @@ export function KioskSection({
       await localDb.cards.put({
         tenantId,
         cardId: cardIdHex,
-        userId: state.payload.identity.userId || null,
+        userId: null, // member linkage is resolved via DB, not card binary
         status: "active",
         balance,
         counter: Number(state.payload.wallet.counter),
@@ -106,6 +106,7 @@ export function KioskSection({
         lastActivityAt: now,
         expiresAt: null,
         notes: state.payload.identity.name || null,
+        syncStatus: "pending",
       });
       setRegisterSuccess(true);
       setStep("done");

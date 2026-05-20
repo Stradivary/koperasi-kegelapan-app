@@ -9,7 +9,7 @@ interface StationCardIssuePanelProps {
   isIssuing: boolean;
   onIssueCard: (data: {
     name: string;
-    userId: number | null;
+    userId: string | null;
     balance: number;
     expiresAt: number | null;
   }) => Promise<void>;
@@ -23,14 +23,14 @@ export function StationCardIssuePanel({
   onCancel,
 }: StationCardIssuePanelProps) {
   const [issueName, setIssueName] = useState("");
-  const [issueUserId, setIssueUserId] = useState<number | null>(null);
+  const [issueUserId, setIssueUserId] = useState<string | null>(null);
   const [issueBalance, setIssueBalance] = useState("");
   const [issueExpiry, setIssueExpiry] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const activeMembers = members.filter((m) => m.status === "active");
 
-  function handleIssueUserChange(userId: number | null) {
+  function handleIssueUserChange(userId: string | null) {
     setIssueUserId(userId);
     if (userId != null) {
       const member = activeMembers.find((m) => m.userId === userId);
@@ -80,9 +80,7 @@ export function StationCardIssuePanel({
             <Label>Anggota</Label>
             <select
               value={issueUserId ?? ""}
-              onChange={(e) =>
-                handleIssueUserChange(e.target.value ? parseInt(e.target.value, 10) : null)
-              }
+              onChange={(e) => handleIssueUserChange(e.target.value || null)}
               aria-label="Anggota"
               className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             >

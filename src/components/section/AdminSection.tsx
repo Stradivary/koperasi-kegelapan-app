@@ -47,6 +47,17 @@ function generateCardId(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(6));
 }
 
+/** Generate a random 8-char alphanumeric member ID (collision-safe across devices) */
+function generateMemberId(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  let id = "";
+  for (let i = 0; i < 8; i++) {
+    id += chars[bytes[i] % chars.length];
+  }
+  return id;
+}
+
 /** Thrown when a card serial is already registered to another owner */
 class CardAlreadyRegisteredError extends Error {
   constructor(public existingCard: CardOwnerInfo) {
@@ -68,17 +79,19 @@ async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
     localDb.cards.where("tenantId").equals(tenantId).toArray(),
     localDb.users.where("tenantId").equals(tenantId).toArray(),
   ]);
-  const userMap = new Map<number, string>(userRows.map((u) => [u.userId, u.name]));
-  return cardRows.map((c) => ({
-    cardId: c.cardId,
-    userId: c.userId,
-    userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
-    status: c.status,
-    balance: c.balance,
-    counter: c.counter,
-    expiresAt:
-      c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
-  }));
+  const userMap = new Map<string, string>(userRows.map((u) => [u.userId, u.name]));
+  return cardRows
+    .filter((c) => c.status !== "deleted")
+    .map((c) => ({
+      cardId: c.cardId,
+      userId: c.userId,
+      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
+      status: c.status,
+      balance: c.balance,
+      counter: c.counter,
+      expiresAt:
+        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
+    }));
 }
 
 export const AdminSection = ({
@@ -100,7 +113,7 @@ export const AdminSection = ({
     existingCard: CardOwnerInfo;
     pendingIssue: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     };
@@ -110,7 +123,7 @@ export const AdminSection = ({
     cardSerial: string;
     pendingIssue: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     };
@@ -247,12 +260,13 @@ export const AdminSection = ({
           balance: payload.wallet.balance,
           counter: Number(payload.wallet.counter),
           lastActivityAt: Math.floor(Date.now() / 1000),
+          syncStatus: "pending",
         });
       } else {
         localDb.cards.put({
           tenantId,
           cardId,
-          userId: payload.identity.userId || null,
+          userId: null, // member linkage is resolved via DB, not card binary
           status: "active",
           balance: payload.wallet.balance,
           counter: Number(payload.wallet.counter),
@@ -261,6 +275,7 @@ export const AdminSection = ({
           lastActivityAt: Math.floor(Date.now() / 1000),
           expiresAt: payload.trailer.expiresAt < 9_999_999_999 ? payload.trailer.expiresAt : null,
           notes: payload.identity.name,
+          syncStatus: "pending",
         });
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
@@ -308,23 +323,39 @@ export const AdminSection = ({
 
   const members = useQuery<StationUserRow[]>({
     queryKey: ["users", tenantId],
-    queryFn: () =>
-      localDb.users.where("tenantId").equals(tenantId).toArray() as Promise<StationUserRow[]>,
+    queryFn: async () => {
+      const all = await localDb.users.where("tenantId").equals(tenantId).toArray();
+      return all.filter((u) => u.status !== "deleted") as StationUserRow[];
+    },
   });
 
   // Mutations
   const updateCardStatus = useMutation({
     mutationFn: async ({ card, status }: { card: StationCardRow; status: string }) => {
-      await localDb.cards.update([tenantId, card.cardId], { status: status as Card["status"] });
+      await localDb.cards.update([tenantId, card.cardId], {
+        status: status as Card["status"],
+        syncStatus: "pending",
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const deleteCard = useMutation({
     mutationFn: async ({ card }: { card: StationCardRow }) => {
-      await localDb.cards.delete([tenantId, card.cardId]);
+      // Soft delete: mark as "deleted" so it syncs to server and is hidden everywhere
+      await localDb.cards.update([tenantId, card.cardId], {
+        status: "deleted",
+        lastActivityAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const issueCard = useMutation({
@@ -336,7 +367,7 @@ export const AdminSection = ({
       forceOverwrite,
     }: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
       forceOverwrite?: boolean;
@@ -356,7 +387,7 @@ export const AdminSection = ({
         },
         identity: {
           name: name || "Anggota",
-          userId: userId ?? 0,
+          userId: 0, // member linkage is maintained in DB, not on card binary
           gender: 0,
           status: CardStatus.ACTIVE,
           createdAt: now,
@@ -497,9 +528,13 @@ export const AdminSection = ({
         lastActivityAt: now,
         expiresAt,
         notes: name,
+        syncStatus: "pending",
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const fixCard = useMutation({
@@ -510,7 +545,7 @@ export const AdminSection = ({
       expiresAt,
     }: {
       cardId: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     }) => {
@@ -523,6 +558,7 @@ export const AdminSection = ({
           balance,
           expiresAt,
           lastActivityAt: now,
+          syncStatus: "pending",
         });
       } else {
         await localDb.cards.put({
@@ -537,46 +573,62 @@ export const AdminSection = ({
           lastActivityAt: now,
           expiresAt,
           notes: null,
+          syncStatus: "pending",
         });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const createMember = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
-      const existing = await localDb.users.where("tenantId").equals(tenantId).toArray();
-      const nextId = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) + 1 : 1001;
       const now = Math.floor(Date.now() / 1000);
       await localDb.users.add({
         tenantId,
-        userId: nextId,
+        userId: generateMemberId(),
         name: name.trim(),
         status: "active",
         createdAt: now,
         updatedAt: now,
+        syncStatus: "pending",
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const toggleMemberStatus = useMutation({
-    mutationFn: async ({ userId, status }: { userId: number; status: string }) => {
+    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
       await localDb.users.update([tenantId, userId], {
         status: status as User["status"],
         updatedAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngineCtx?.notifyMutation();
+    },
   });
 
   const deleteMember = useMutation({
-    mutationFn: async ({ userId }: { userId: number }) => {
-      await localDb.users.delete([tenantId, userId]);
+    mutationFn: async ({ userId }: { userId: string }) => {
+      // Soft delete: mark as "deleted" so it syncs to server and is hidden everywhere
+      await localDb.users.update([tenantId, userId], {
+        status: "deleted",
+        updatedAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
+      });
     },
     onSuccess: () => {
       toast.success("Anggota berhasil dihapus");
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngineCtx?.notifyMutation();
     },
     onError: (error) => {
       toast.error(

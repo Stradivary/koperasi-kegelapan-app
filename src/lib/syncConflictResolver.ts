@@ -21,7 +21,7 @@ import { syncPull, SyncPullError } from "./syncPull";
 /** Represents a server entity received during pull with metadata for conflict resolution. */
 export interface ServerMemberEntry {
   tenantId: string;
-  userId: number;
+  userId: string;
   name: string;
   status: string;
   createdAt: number;
@@ -33,7 +33,7 @@ export interface ServerMemberEntry {
 export interface ServerCardEntry {
   tenantId: string;
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   status: string;
   balance: number;
   counter: number;

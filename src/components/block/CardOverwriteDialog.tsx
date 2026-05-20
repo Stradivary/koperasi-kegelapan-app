@@ -13,7 +13,7 @@ import { Button } from "../ui/button";
 export interface CardOwnerInfo {
   cardId: string;
   ownerName: string | null;
-  userId: number | null;
+  userId: string | null;
   balance: number;
   status: string;
 }
@@ -38,7 +38,8 @@ export function CardOverwriteDialog({
   if (!existingCard) return null;
 
   const ownerDisplay =
-    existingCard.ownerName ?? (existingCard.userId ? `User #${existingCard.userId}` : "Tanpa Pemilik");
+    existingCard.ownerName ??
+    (existingCard.userId ? `User #${existingCard.userId}` : "Tanpa Pemilik");
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
@@ -63,8 +64,8 @@ export function CardOverwriteDialog({
                 <span className="text-muted-foreground">Pemilik saat ini:</span> {ownerDisplay}
               </p>
               <p>
-                <span className="text-muted-foreground">Saldo:</span>{" "}
-                Rp {existingCard.balance.toLocaleString("id-ID")}
+                <span className="text-muted-foreground">Saldo:</span> Rp{" "}
+                {existingCard.balance.toLocaleString("id-ID")}
               </p>
               <p>
                 <span className="text-muted-foreground">Status:</span>{" "}

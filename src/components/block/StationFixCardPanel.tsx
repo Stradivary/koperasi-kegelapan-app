@@ -15,7 +15,7 @@ interface StationFixCardPanelProps {
   hasGrant: boolean;
   onFixCard: (data: {
     cardId: string;
-    userId: number | null;
+    userId: string | null;
     balance: number;
     expiresAt: number | null;
   }) => Promise<void>;
@@ -33,7 +33,7 @@ export function StationFixCardPanel({
 }: StationFixCardPanelProps) {
   const [phase, setPhase] = useState<FixPhase>("form");
   const [cardId, setCardId] = useState(initialCardId ?? "");
-  const [userId, setUserId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [balance, setBalance] = useState("");
   const [expiry, setExpiry] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -178,7 +178,7 @@ export function StationFixCardPanel({
         <Label>Anggota</Label>
         <select
           value={userId ?? ""}
-          onChange={(e) => setUserId(e.target.value ? parseInt(e.target.value, 10) : null)}
+          onChange={(e) => setUserId(e.target.value || null)}
           aria-label="Anggota"
           className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
         >

@@ -47,21 +47,34 @@ async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
     localDb.cards.where("tenantId").equals(tenantId).toArray(),
     localDb.users.where("tenantId").equals(tenantId).toArray(),
   ]);
-  const userMap = new Map<number, string>(userRows.map((u) => [u.userId, u.name]));
-  return cardRows.map((c) => ({
-    cardId: c.cardId,
-    userId: c.userId,
-    userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
-    status: c.status,
-    balance: c.balance,
-    counter: c.counter,
-    expiresAt:
-      c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
-  }));
+  const userMap = new Map<string, string>(userRows.map((u) => [u.userId, u.name]));
+  return cardRows
+    .filter((c) => c.status !== "deleted")
+    .map((c) => ({
+      cardId: c.cardId,
+      userId: c.userId,
+      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
+      status: c.status,
+      balance: c.balance,
+      counter: c.counter,
+      expiresAt:
+        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
+    }));
 }
 
 function generateCardId(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(6));
+}
+
+/** Generate a random 8-char alphanumeric member ID (collision-safe across devices) */
+function generateMemberId(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  let id = "";
+  for (let i = 0; i < 8; i++) {
+    id += chars[bytes[i] % chars.length];
+  }
+  return id;
 }
 
 /** Thrown when a card serial is already registered to another owner */
@@ -89,7 +102,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     existingCard: CardOwnerInfo;
     pendingIssue: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     };
@@ -99,7 +112,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     cardSerial: string;
     pendingIssue: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     };
@@ -162,13 +175,14 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           balance: payload.wallet.balance,
           counter: Number(payload.wallet.counter),
           lastActivityAt: Math.floor(Date.now() / 1000),
+          syncStatus: "pending",
         });
       } else {
         // Card exists on NFC but not in local DB — register it
         localDb.cards.put({
           tenantId,
           cardId,
-          userId: payload.identity.userId || null,
+          userId: null, // member linkage is resolved via DB, not card binary
           status: "active",
           balance: payload.wallet.balance,
           counter: Number(payload.wallet.counter),
@@ -177,6 +191,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           lastActivityAt: Math.floor(Date.now() / 1000),
           expiresAt: payload.trailer.expiresAt < 9_999_999_999 ? payload.trailer.expiresAt : null,
           notes: payload.identity.name,
+          syncStatus: "pending",
         });
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
@@ -214,11 +229,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
 
       // Check local DB for blocked card or suspended member before writing
       if (state.serialNumber) {
-        const statusResult = await checkLocalBlockedStatus(
-          tenantId,
-          state.serialNumber,
-          state.payload.identity.userId,
-        );
+        const statusResult = await checkLocalBlockedStatus(tenantId, state.serialNumber);
         if (statusResult.blocked) {
           toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
           return;
@@ -240,8 +251,10 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
 
   const members = useQuery<StationUserRow[]>({
     queryKey: ["users", tenantId],
-    queryFn: () =>
-      localDb.users.where("tenantId").equals(tenantId).toArray() as Promise<StationUserRow[]>,
+    queryFn: async () => {
+      const all = await localDb.users.where("tenantId").equals(tenantId).toArray();
+      return all.filter((u) => u.status !== "deleted") as StationUserRow[];
+    },
   });
 
   // Mutations
@@ -254,9 +267,17 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
 
   const deleteCard = useMutation({
     mutationFn: async ({ card }: { card: StationCardRow }) => {
-      await localDb.cards.delete([tenantId, card.cardId]);
+      // Soft delete: mark as "deleted" so it syncs to server and is hidden everywhere
+      await localDb.cards.update([tenantId, card.cardId], {
+        status: "deleted",
+        lastActivityAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
+      });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngine?.notifyMutation();
+    },
   });
 
   const issueCard = useMutation({
@@ -268,7 +289,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       forceOverwrite,
     }: {
       name: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
       forceOverwrite?: boolean;
@@ -289,7 +310,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         },
         identity: {
           name: name || "Anggota",
-          userId: userId ?? 0,
+          userId: 0, // member linkage is maintained in DB, not on card binary
           gender: 0,
           status: CardStatus.ACTIVE,
           createdAt: now,
@@ -433,6 +454,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
         lastActivityAt: now,
         expiresAt,
         notes: name,
+        syncStatus: "pending",
       });
 
       // Await invalidation to ensure station-cards query refetches from IndexedDB
@@ -450,7 +472,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
       expiresAt,
     }: {
       cardId: string;
-      userId: number | null;
+      userId: string | null;
       balance: number;
       expiresAt: number | null;
     }) => {
@@ -463,6 +485,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           balance,
           expiresAt,
           lastActivityAt: now,
+          syncStatus: "pending",
         });
       } else {
         await localDb.cards.put({
@@ -477,28 +500,28 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
           lastActivityAt: now,
           expiresAt,
           notes: null,
+          syncStatus: "pending",
         });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["station-cards", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+      syncEngine?.notifyMutation();
+    },
   });
 
   const createMember = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
-      const existing = await localDb.users.where("tenantId").equals(tenantId).toArray();
-      // Use timestamp-based ID with random suffix to avoid race conditions
-      const timestampBase = Date.now();
-      const maxExisting = existing.length > 0 ? Math.max(...existing.map((u) => u.userId)) : 1000;
-      const nextId = Math.max(maxExisting + 1, timestampBase % 1_000_000_000);
       const now = Math.floor(Date.now() / 1000);
       try {
         await localDb.users.add({
           tenantId,
-          userId: nextId,
+          userId: generateMemberId(),
           name: name.trim(),
           status: "active",
           createdAt: now,
           updatedAt: now,
+          syncStatus: "pending",
         });
       } catch (err) {
         throw new Error(
@@ -509,6 +532,7 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
     onSuccess: () => {
       toast.success("Anggota berhasil ditambahkan");
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngine?.notifyMutation();
     },
     onError: (error) => {
       toast.error(
@@ -518,22 +542,32 @@ export function StationSection({ tenantId, accountId, deviceId, terminalId }: St
   });
 
   const toggleMemberStatus = useMutation({
-    mutationFn: async ({ userId, status }: { userId: number; status: string }) => {
+    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
       await localDb.users.update([tenantId, userId], {
         status: status as User["status"],
         updatedAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngine?.notifyMutation();
+    },
   });
 
   const deleteMember = useMutation({
-    mutationFn: async ({ userId }: { userId: number }) => {
-      await localDb.users.delete([tenantId, userId]);
+    mutationFn: async ({ userId }: { userId: string }) => {
+      // Soft delete: mark as "deleted" so it syncs to server and is hidden everywhere
+      await localDb.users.update([tenantId, userId], {
+        status: "deleted",
+        updatedAt: Math.floor(Date.now() / 1000),
+        syncStatus: "pending",
+      });
     },
     onSuccess: () => {
       toast.success("Anggota berhasil dihapus");
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      syncEngine?.notifyMutation();
     },
     onError: (error) => {
       toast.error(

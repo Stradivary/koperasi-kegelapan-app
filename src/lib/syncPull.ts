@@ -57,7 +57,7 @@ interface SyncPullResponse {
 
 interface MemberPullEntry {
   tenantId: string;
-  userId: number;
+  userId: string;
   name: string;
   status: string;
   createdAt: number;
@@ -67,7 +67,7 @@ interface MemberPullEntry {
 interface CardPullEntry {
   tenantId: string;
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   status: string;
   balance: number;
   counter: number;
@@ -83,7 +83,7 @@ interface TransactionPullEntry {
   id: number;
   tenantId: string;
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   counter: number;
   type: string;
   amount: number;
@@ -101,7 +101,10 @@ interface TransactionPullEntry {
 
 /** Error thrown when sync pull exhausts all retry attempts. */
 export class SyncPullError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "SyncPullError";
   }
@@ -230,6 +233,7 @@ function mapMemberToUser(member: MemberPullEntry): User {
     status: member.status as User["status"],
     createdAt: member.createdAt,
     updatedAt: member.updatedAt,
+    syncStatus: "synced",
   };
 }
 
@@ -249,6 +253,7 @@ function mapCardToLocal(card: CardPullEntry): Card {
     lastActivityAt: card.lastActivityAt,
     expiresAt: card.expiresAt,
     notes: card.notes,
+    syncStatus: "synced",
   };
 }
 
@@ -316,9 +321,7 @@ async function pullWithRetry(
 
       // 4xx (non-401, non-429): not retryable
       if (response.status >= 400 && response.status < 500) {
-        throw new SyncPullError(
-          `Sync pull failed with client error: ${response.status}`,
-        );
+        throw new SyncPullError(`Sync pull failed with client error: ${response.status}`);
       }
 
       // 5xx: retryable server error
@@ -337,10 +340,7 @@ async function pullWithRetry(
     }
   }
 
-  throw new SyncPullError(
-    `Sync pull failed after ${MAX_PULL_RETRY_ATTEMPTS} attempts`,
-    lastError,
-  );
+  throw new SyncPullError(`Sync pull failed after ${MAX_PULL_RETRY_ATTEMPTS} attempts`, lastError);
 }
 
 // ── Main Pull Logic ────────────────────────────────────────────────────
@@ -397,18 +397,45 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
       "rw",
       [localDb.users, localDb.cards, localDb.transactionLog],
       async () => {
-        // Merge members → users table
+        // Merge members → users table (skip locally pending members)
         if (response.members.data.length > 0) {
-          const users = response.members.data.map(mapMemberToUser);
-          await localDb.users.bulkPut(users);
-          totalMembersPulled += users.length;
+          const mappedUsers = response.members.data.map(mapMemberToUser);
+          // Check which members have pending local changes
+          const pendingMemberKeys = new Set<string>();
+          const pendingMembers = await localDb.users
+            .where("[tenantId+syncStatus]")
+            .equals([tenantId, "pending"])
+            .toArray();
+          for (const m of pendingMembers) {
+            pendingMemberKeys.add(`${m.tenantId}:${m.userId}`);
+          }
+          const usersToMerge = mappedUsers.filter(
+            (u) => !pendingMemberKeys.has(`${u.tenantId}:${u.userId}`),
+          );
+          if (usersToMerge.length > 0) {
+            await localDb.users.bulkPut(usersToMerge);
+          }
+          totalMembersPulled += usersToMerge.length;
         }
 
-        // Merge cards → cards table
+        // Merge cards → cards table (skip locally pending cards)
         if (response.cards.data.length > 0) {
-          const cards = response.cards.data.map(mapCardToLocal);
-          await localDb.cards.bulkPut(cards);
-          totalCardsPulled += cards.length;
+          const mappedCards = response.cards.data.map(mapCardToLocal);
+          const pendingCardKeys = new Set<string>();
+          const pendingCards = await localDb.cards
+            .where("[tenantId+syncStatus]")
+            .equals([tenantId, "pending"])
+            .toArray();
+          for (const c of pendingCards) {
+            pendingCardKeys.add(`${c.tenantId}:${c.cardId}`);
+          }
+          const cardsToMerge = mappedCards.filter(
+            (c) => !pendingCardKeys.has(`${c.tenantId}:${c.cardId}`),
+          );
+          if (cardsToMerge.length > 0) {
+            await localDb.cards.bulkPut(cardsToMerge);
+          }
+          totalCardsPulled += cardsToMerge.length;
         }
 
         // Merge transactions → transactionLog table (skip pending outbox entries)
@@ -438,10 +465,7 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
     runningCursors.transactions = response.transactions.cursor;
 
     // Check if any entity type still has more data
-    hasMore =
-      response.members.hasMore ||
-      response.cards.hasMore ||
-      response.transactions.hasMore;
+    hasMore = response.members.hasMore || response.cards.hasMore || response.transactions.hasMore;
   }
 
   // Step 5: Update local sync cursors on success

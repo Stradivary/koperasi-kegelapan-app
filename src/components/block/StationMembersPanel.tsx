@@ -14,7 +14,7 @@ import {
 } from "../ui/dropdown-menu";
 
 export interface StationMemberRow {
-  userId: number;
+  userId: string;
   name: string;
   status: string;
 }
@@ -28,8 +28,8 @@ interface StationMembersPanelProps {
   isToggling: boolean;
   isDeleting?: boolean;
   onCreateMember: (name: string) => Promise<void>;
-  onToggleStatus: (userId: number, currentStatus: string) => void;
-  onDeleteMember?: (userId: number) => void;
+  onToggleStatus: (userId: string, currentStatus: string) => void;
+  onDeleteMember?: (userId: string) => void;
 }
 
 const PAGE_SIZE = 10;

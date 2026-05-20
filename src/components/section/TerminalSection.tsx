@@ -75,61 +75,59 @@ export function TerminalSection({
     // Uses hardware serial number (state.serialNumber) as the correct lookup key
     if (!state.serialNumber) return;
 
-    checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId).then(
-      (statusResult) => {
-        if (statusResult.blocked) {
-          autoCheckoutTriggered.current = true;
-          setBlockedReason(statusResult.reason);
-          return;
-        }
-
-        const trigger =
-          cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
-        const result = validateTransition(payload, trigger, nowSeconds);
-        if (!result.valid) {
-          autoCheckoutTriggered.current = true;
-          setBlockedReason("Transisi tidak valid");
-          return;
-        }
-
+    checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
+      if (statusResult.blocked) {
         autoCheckoutTriggered.current = true;
+        setBlockedReason(statusResult.reason);
+        return;
+      }
 
-        // Perform overtime-aware checkout
-        performOvertimeCheckout(
-          payload,
-          nowSeconds,
-          tenantId,
-          deviceId,
-          DEFAULT_OVERTIME_TARIFF_RATE,
-        ).then((checkoutResult) => {
-          if (!checkoutResult.success) {
-            // Overtime with insufficient balance or other failure
-            setBlockedReason(checkoutResult.error ?? "Checkout gagal");
-            return;
-          }
+      const trigger =
+        cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
+      const result = validateTransition(payload, trigger, nowSeconds);
+      if (!result.valid) {
+        autoCheckoutTriggered.current = true;
+        setBlockedReason("Transisi tidak valid");
+        return;
+      }
 
-          setBlockedReason(null);
+      autoCheckoutTriggered.current = true;
 
-          if (checkoutResult.overtime && checkoutResult.action === "PENALTY_DEDUCTED") {
-            // Overtime checkout with penalty deducted
-            setLastTx({
-              durationSeconds: checkoutResult.durationSeconds ?? 0,
-              fee: checkoutResult.penaltyAmount ?? 0,
-              overtime: true,
-              penaltyAmount: checkoutResult.penaltyAmount,
-            });
-          } else {
-            // Normal checkout
-            setLastTx({
-              durationSeconds: checkoutResult.durationSeconds ?? 0,
-              fee: checkoutResult.fee ?? 0,
-            });
-          }
+      // Perform overtime-aware checkout
+      performOvertimeCheckout(
+        payload,
+        nowSeconds,
+        tenantId,
+        deviceId,
+        DEFAULT_OVERTIME_TARIFF_RATE,
+      ).then((checkoutResult) => {
+        if (!checkoutResult.success) {
+          // Overtime with insufficient balance or other failure
+          setBlockedReason(checkoutResult.error ?? "Checkout gagal");
+          return;
+        }
 
-          write(checkoutResult.updatedPayload!, checkoutResult.operationType);
-        });
-      },
-    );
+        setBlockedReason(null);
+
+        if (checkoutResult.overtime && checkoutResult.action === "PENALTY_DEDUCTED") {
+          // Overtime checkout with penalty deducted
+          setLastTx({
+            durationSeconds: checkoutResult.durationSeconds ?? 0,
+            fee: checkoutResult.penaltyAmount ?? 0,
+            overtime: true,
+            penaltyAmount: checkoutResult.penaltyAmount,
+          });
+        } else {
+          // Normal checkout
+          setLastTx({
+            durationSeconds: checkoutResult.durationSeconds ?? 0,
+            fee: checkoutResult.fee ?? 0,
+          });
+        }
+
+        write(checkoutResult.updatedPayload!, checkoutResult.operationType);
+      });
+    });
   }, [state.phase, state.payload, state.serialNumber, write, getNowSeconds, tenantId, deviceId]);
 
   // Auto-reset after success

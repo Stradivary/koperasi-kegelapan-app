@@ -72,7 +72,7 @@ interface PushTransaction {
   timestamp: number;
   hash: string;
   idempotencyKey: string;
-  userId?: number | null;
+  userId?: string | null;
   terminalId?: number | null;
   deviceId?: string | null;
 }

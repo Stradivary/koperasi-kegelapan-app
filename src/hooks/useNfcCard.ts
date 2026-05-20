@@ -17,6 +17,7 @@ import {
   TRAILER_COUNTER_BIND,
 } from "../core/payload/types";
 import { reconciliationOutbox, makeIdempotencyKey } from "../lib/indexeddb";
+import { recordTransaction } from "../lib/transactionLogService";
 
 export type NfcCardPhase =
   | "idle"
@@ -269,6 +270,35 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
             ),
           });
 
+          // Also record to Dexie transactionLog for sync push
+          try {
+            await recordTransaction({
+              tenantId,
+              cardId: cardIdHex,
+              userId: updatedPayload.identity.userId
+                ? String(updatedPayload.identity.userId)
+                : null,
+              counter: Number(updatedPayload.wallet.counter),
+              type: pending.operationType as
+                | "debit"
+                | "credit"
+                | "checkin"
+                | "checkout"
+                | "topup"
+                | "admin",
+              amount: Math.abs(currentPayload.wallet.balance - updatedPayload.wallet.balance),
+              balanceAfter: updatedPayload.wallet.balance,
+              timestamp: updatedPayload.wallet.lastTimestamp,
+              hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join(""),
+              terminalId,
+              deviceId: null,
+            });
+          } catch {
+            // Duplicate or write error — non-critical, reconciliation outbox is the primary
+          }
+
           const resultPayload = pending.payload;
           phaseRef.current = "success";
           setState({
@@ -367,6 +397,35 @@ export function useNfcCard(grant: SessionGrant | null, tenantId: string, termina
                 Number(updatedPayload.wallet.counter),
               ),
             });
+
+            // Also record to Dexie transactionLog for sync push
+            try {
+              await recordTransaction({
+                tenantId,
+                cardId: cardIdHex,
+                userId: updatedPayload.identity.userId
+                  ? String(updatedPayload.identity.userId)
+                  : null,
+                counter: Number(updatedPayload.wallet.counter),
+                type: operationType as
+                  | "debit"
+                  | "credit"
+                  | "checkin"
+                  | "checkout"
+                  | "topup"
+                  | "admin",
+                amount: Math.abs(currentPayload.wallet.balance - updatedPayload.wallet.balance),
+                balanceAfter: updatedPayload.wallet.balance,
+                timestamp: updatedPayload.wallet.lastTimestamp,
+                hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join(""),
+                terminalId,
+                deviceId: null,
+              });
+            } catch {
+              // Duplicate or write error — non-critical, reconciliation outbox is the primary
+            }
 
             phaseRef.current = "success";
             setState({

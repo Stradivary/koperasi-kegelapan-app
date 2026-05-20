@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, asc, sql } from "drizzle-orm";
 import { transactionLog, cards, users } from "../../../src/db/schema";
+import { syncSseRoutes } from "./sync-sse";
+import { pushEntitiesRoute } from "./push-entities";
 
 type Env = {
   DB: D1Database;
@@ -9,6 +11,12 @@ type Env = {
 };
 
 export const syncRoutes = new Hono<{ Bindings: Env }>();
+
+// Mount SSE sub-routes (provides /sse and /broadcast under /api/sync/)
+syncRoutes.route("/", syncSseRoutes);
+
+// Mount entity push route (provides /push-entities under /api/sync/)
+syncRoutes.route("/", pushEntitiesRoute);
 
 // ─── Token Payload Extraction ────────────────────────────────────────────────
 
@@ -44,7 +52,7 @@ function extractTokenPayload(request: Request): TokenPayload | null {
 
 interface PushTransaction {
   cardId: string;
-  userId?: number | null;
+  userId?: string | null;
   counter: number;
   type: "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin";
   amount: number;
@@ -188,12 +196,7 @@ syncRoutes.post("/push", async (c) => {
       const cardRecord = await db
         .select({ counter: cards.counter })
         .from(cards)
-        .where(
-          and(
-            eq(cards.tenantId, tenantId),
-            eq(cards.cardId, cardIdBlob),
-          ),
-        )
+        .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
         .get();
 
       // If card exists and counter is stale, reject
@@ -271,7 +274,7 @@ interface SyncPullResponse {
 
 interface MemberPullEntry {
   tenantId: string;
-  userId: number;
+  userId: string;
   name: string;
   status: string;
   createdAt: number;
@@ -281,7 +284,7 @@ interface MemberPullEntry {
 interface CardPullEntry {
   tenantId: string;
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   status: string;
   balance: number;
   counter: number;
@@ -297,7 +300,7 @@ interface TransactionPullEntry {
   id: number;
   tenantId: string;
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   counter: number;
   type: string;
   amount: number;
@@ -372,12 +375,7 @@ syncRoutes.get("/pull", async (c) => {
       updatedAt: users.updatedAt,
     })
     .from(users)
-    .where(
-      and(
-        eq(users.tenantId, tenantId),
-        gt(users.updatedAt, new Date(membersCursor * 1000)),
-      ),
-    )
+    .where(and(eq(users.tenantId, tenantId), gt(users.updatedAt, new Date(membersCursor * 1000))))
     .orderBy(asc(users.updatedAt))
     .limit(PULL_LIMIT)
     .all();
@@ -388,12 +386,15 @@ syncRoutes.get("/pull", async (c) => {
     userId: m.userId,
     name: m.name,
     status: m.status,
-    createdAt: m.createdAt instanceof Date ? Math.floor(m.createdAt.getTime() / 1000) : Number(m.createdAt),
-    updatedAt: m.updatedAt instanceof Date ? Math.floor(m.updatedAt.getTime() / 1000) : Number(m.updatedAt),
+    createdAt:
+      m.createdAt instanceof Date ? Math.floor(m.createdAt.getTime() / 1000) : Number(m.createdAt),
+    updatedAt:
+      m.updatedAt instanceof Date ? Math.floor(m.updatedAt.getTime() / 1000) : Number(m.updatedAt),
   }));
-  const newMembersCursor = membersData.length > 0
-    ? String(membersData[membersData.length - 1].updatedAt)
-    : String(membersCursor);
+  const newMembersCursor =
+    membersData.length > 0
+      ? String(membersData[membersData.length - 1].updatedAt)
+      : String(membersCursor);
 
   // 5. Query cards — updatedAt is raw integer (unix timestamp seconds)
   const cardsResult = await db
@@ -412,12 +413,7 @@ syncRoutes.get("/pull", async (c) => {
       updatedAt: cards.updatedAt,
     })
     .from(cards)
-    .where(
-      and(
-        eq(cards.tenantId, tenantId),
-        gt(cards.updatedAt, cardsCursor),
-      ),
-    )
+    .where(and(eq(cards.tenantId, tenantId), gt(cards.updatedAt, cardsCursor)))
     .orderBy(asc(cards.updatedAt))
     .limit(PULL_LIMIT)
     .all();
@@ -431,15 +427,27 @@ syncRoutes.get("/pull", async (c) => {
     balance: card.balance,
     counter: card.counter,
     keyVersion: card.keyVersion,
-    createdAt: card.createdAt instanceof Date ? Math.floor(card.createdAt.getTime() / 1000) : Number(card.createdAt),
-    lastActivityAt: card.lastActivityAt instanceof Date ? Math.floor(card.lastActivityAt.getTime() / 1000) : (card.lastActivityAt != null ? Number(card.lastActivityAt) : null),
-    expiresAt: card.expiresAt instanceof Date ? Math.floor(card.expiresAt.getTime() / 1000) : (card.expiresAt != null ? Number(card.expiresAt) : null),
+    createdAt:
+      card.createdAt instanceof Date
+        ? Math.floor(card.createdAt.getTime() / 1000)
+        : Number(card.createdAt),
+    lastActivityAt:
+      card.lastActivityAt instanceof Date
+        ? Math.floor(card.lastActivityAt.getTime() / 1000)
+        : card.lastActivityAt != null
+          ? Number(card.lastActivityAt)
+          : null,
+    expiresAt:
+      card.expiresAt instanceof Date
+        ? Math.floor(card.expiresAt.getTime() / 1000)
+        : card.expiresAt != null
+          ? Number(card.expiresAt)
+          : null,
     notes: card.notes,
     updatedAt: Number(card.updatedAt),
   }));
-  const newCardsCursor = cardsData.length > 0
-    ? String(cardsData[cardsData.length - 1].updatedAt)
-    : String(cardsCursor);
+  const newCardsCursor =
+    cardsData.length > 0 ? String(cardsData[cardsData.length - 1].updatedAt) : String(cardsCursor);
 
   // 6. Query transactions — createdAt is raw integer (unix timestamp seconds)
   const txResult = await db
@@ -461,12 +469,7 @@ syncRoutes.get("/pull", async (c) => {
       createdAt: transactionLog.createdAt,
     })
     .from(transactionLog)
-    .where(
-      and(
-        eq(transactionLog.tenantId, tenantId),
-        gt(transactionLog.createdAt, txCursor),
-      ),
-    )
+    .where(and(eq(transactionLog.tenantId, tenantId), gt(transactionLog.createdAt, txCursor)))
     .orderBy(asc(transactionLog.createdAt))
     .limit(PULL_LIMIT)
     .all();
@@ -489,9 +492,8 @@ syncRoutes.get("/pull", async (c) => {
     flagged: tx.flagged,
     createdAt: tx.createdAt,
   }));
-  const newTxCursor = txData.length > 0
-    ? String(txData[txData.length - 1].createdAt)
-    : String(txCursor);
+  const newTxCursor =
+    txData.length > 0 ? String(txData[txData.length - 1].createdAt) : String(txCursor);
 
   // 7. Return response
   const response: SyncPullResponse = {

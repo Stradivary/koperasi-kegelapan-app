@@ -10,9 +10,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { syncPush } from "../lib/syncPush";
+import { syncPushEntities } from "../lib/syncPushEntities";
 import { syncPull } from "../lib/syncPull";
 import { isDeviceBlocked } from "../lib/deviceBlock";
 import { getSyncableEntries } from "../lib/transactionLogService";
+import { getPendingEntityCount } from "../lib/syncPushEntities";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -89,9 +91,12 @@ export function useSyncEngine(
       return;
     }
     try {
-      const entries = await getSyncableEntries(tenantIdRef.current);
+      const [txEntries, entityCount] = await Promise.all([
+        getSyncableEntries(tenantIdRef.current),
+        getPendingEntityCount(tenantIdRef.current),
+      ]);
       if (mountedRef.current) {
-        setPendingCount(entries.length);
+        setPendingCount(txEntries.length + entityCount);
       }
     } catch {
       // Non-critical — don't break the hook if IndexedDB read fails
@@ -122,14 +127,23 @@ export function useSyncEngine(
     let pushSucceeded = false;
 
     try {
-      // Phase 1: Push
+      // Phase 1: Push entities (members + cards) — non-blocking
+      // Entity push failure should not prevent transaction push/pull
       if (mountedRef.current) setSyncStatus("pushing");
 
+      try {
+        await syncPushEntities(tid);
+      } catch (entityErr) {
+        // Log but don't abort — entity push is best-effort
+        console.warn("[SyncEngine] Entity push failed, continuing with transactions:", entityErr);
+      }
+
+      // Phase 2: Push transactions
       await syncPush(tid);
       pushSucceeded = true;
       if (mountedRef.current) setLastPushSucceeded(true);
 
-      // Phase 2: Pull (always run after push; required if pullNeeded)
+      // Phase 3: Pull (always run after push; required if pullNeeded)
       if (mountedRef.current) setSyncStatus("pulling");
 
       await syncPull(tid);

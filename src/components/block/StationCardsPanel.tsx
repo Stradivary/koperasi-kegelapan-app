@@ -4,7 +4,7 @@ import { StationCardIssuePanel } from "./StationCardIssuePanel";
 
 export interface StationCardRow {
   cardId: string;
-  userId: number | null;
+  userId: string | null;
   userName: string | null;
   status: string;
   balance: number;
@@ -13,7 +13,7 @@ export interface StationCardRow {
 }
 
 export interface StationUserRow {
-  userId: number;
+  userId: string;
   name: string;
   status: string;
 }
@@ -33,7 +33,7 @@ interface StationCardsPanelProps {
   onTopupCard: (cardId: string) => void;
   onIssueCard: (data: {
     name: string;
-    userId: number | null;
+    userId: string | null;
     balance: number;
     expiresAt: number | null;
   }) => Promise<void>;
@@ -63,7 +63,7 @@ export function StationCardsPanel({
 
   async function handleIssueCard(data: {
     name: string;
-    userId: number | null;
+    userId: string | null;
     balance: number;
     expiresAt: number | null;
   }) {

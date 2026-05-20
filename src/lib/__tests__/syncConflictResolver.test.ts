@@ -31,7 +31,10 @@ vi.mock("../syncPull", () => ({
     authRequired: false,
   }),
   SyncPullError: class SyncPullError extends Error {
-    constructor(message: string, public readonly cause?: unknown) {
+    constructor(
+      message: string,
+      public readonly cause?: unknown,
+    ) {
       super(message);
       this.name = "SyncPullError";
     }
@@ -71,7 +74,7 @@ import { syncPull, SyncPullError } from "../syncPull";
 function makeLocalUser(overrides: Partial<User> = {}): User {
   return {
     tenantId: "t-1",
-    userId: 1,
+    userId: "m001",
     name: "Local User",
     status: "active",
     createdAt: 1700000000,
@@ -83,7 +86,7 @@ function makeLocalUser(overrides: Partial<User> = {}): User {
 function makeServerMember(overrides: Partial<ServerMemberEntry> = {}): ServerMemberEntry {
   return {
     tenantId: "t-1",
-    userId: 1,
+    userId: "m001",
     name: "Server User",
     status: "active",
     createdAt: 1700000000,
@@ -93,7 +96,9 @@ function makeServerMember(overrides: Partial<ServerMemberEntry> = {}): ServerMem
   };
 }
 
-function makeLocalCard(overrides: Partial<Card & { updatedAt?: number }> = {}): Card & { updatedAt?: number } {
+function makeLocalCard(
+  overrides: Partial<Card & { updatedAt?: number }> = {},
+): Card & { updatedAt?: number } {
   return {
     tenantId: "t-1",
     cardId: "aabbccddee01",
@@ -214,7 +219,7 @@ describe("resolveMemberConflicts", () => {
     expect(mockUsersPut).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "t-1",
-        userId: 1,
+        userId: "m001",
         name: "Server User",
         updatedAt: 1700002000,
       }),
@@ -381,9 +386,7 @@ describe("resolveStaleCounterConflicts", () => {
     const conflictEntry = makePendingTransaction({ syncStatus: "conflict" });
     setupTransactionLogMock([conflictEntry]);
 
-    vi.mocked(syncPull).mockRejectedValueOnce(
-      new SyncPullError("Network failure"),
-    );
+    vi.mocked(syncPull).mockRejectedValueOnce(new SyncPullError("Network failure"));
 
     const result = await resolveStaleCounterConflicts("t-1");
 

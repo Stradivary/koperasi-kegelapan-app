@@ -83,40 +83,38 @@ export function GateSection({
     // serialNumber is always present when phase is "ready" (set during scan)
     if (!state.serialNumber) return;
 
-    checkLocalBlockedStatus(tenantId, state.serialNumber, payload.identity.userId).then(
-      (statusResult) => {
-        if (statusResult.blocked) {
-          autoCheckinTriggered.current = true;
-          setBlockedReason(statusResult.reason);
-          return;
-        }
-
-        // Proceed with normal transition validation
-        // When enforce24hLimit is disabled, skip session expiry check by using
-        // a "fresh" nowSeconds that won't trigger the expiry logic
-        let validationNow = nowSeconds;
-        if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
-          // Use a timestamp just after lastTimestamp to bypass expiry check
-          validationNow = payload.wallet.lastTimestamp + 1;
-        }
-        const result = validateTransition(payload, "gate_checkin", validationNow);
-        if (!result.valid) {
-          autoCheckinTriggered.current = true;
-          return;
-        }
-
-        // Minimum balance check: reject check-in if balance < 10,000
-        if (payload.wallet.balance < 10_000) {
-          autoCheckinTriggered.current = true;
-          setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
-          return;
-        }
-
+    checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
+      if (statusResult.blocked) {
         autoCheckinTriggered.current = true;
-        setBlockedReason(null);
-        write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
-      },
-    );
+        setBlockedReason(statusResult.reason);
+        return;
+      }
+
+      // Proceed with normal transition validation
+      // When enforce24hLimit is disabled, skip session expiry check by using
+      // a "fresh" nowSeconds that won't trigger the expiry logic
+      let validationNow = nowSeconds;
+      if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
+        // Use a timestamp just after lastTimestamp to bypass expiry check
+        validationNow = payload.wallet.lastTimestamp + 1;
+      }
+      const result = validateTransition(payload, "gate_checkin", validationNow);
+      if (!result.valid) {
+        autoCheckinTriggered.current = true;
+        return;
+      }
+
+      // Minimum balance check: reject check-in if balance < 10,000
+      if (payload.wallet.balance < 10_000) {
+        autoCheckinTriggered.current = true;
+        setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+        return;
+      }
+
+      autoCheckinTriggered.current = true;
+      setBlockedReason(null);
+      write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
+    });
   }, [
     state.phase,
     state.payload,
