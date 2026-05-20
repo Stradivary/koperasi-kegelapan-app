@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { tenantContextStore, type TenantContext } from "../lib/indexeddb";
 import { getDeviceFingerprint } from "../lib/getOrCreateDeviceId";
-import { setCurrentDeviceId } from "../lib/api";
+import { restoreAuthState } from "../lib/api";
 import { LoadingState } from "../components/block/LoadingState";
 
 function getRoleRoute(tenantId: string, role: string): string {
@@ -57,9 +57,9 @@ export function useTenantContext(tenantId: string, allowedRoles?: readonly strin
         return;
       }
 
-      // Ensure the API client has the deviceId for X-Device-Id header injection
+      // Ensure the API client has the deviceId and access token for requests
       if (context.deviceId) {
-        setCurrentDeviceId(context.deviceId);
+        await restoreAuthState(context.deviceId);
       }
 
       setTenantContext(context);

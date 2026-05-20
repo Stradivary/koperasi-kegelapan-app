@@ -1,31 +1,41 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { DoorOpen, MonitorSmartphone, BookOpen, Settings, Layers, Plus, Globe } from "lucide-react";
-import { tenantContextStore } from "../../lib/indexeddb";
-import { localLogin, hasLocalTenant } from "../../lib/localTenant";
+import { useState, useEffect, useRef } from "react";
+import {
+  DoorOpen,
+  MonitorSmartphone,
+  BookOpen,
+  Settings,
+  Layers,
+  Plus,
+  Search,
+  ArrowLeft,
+} from "lucide-react";
+import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
+import { localLogin, cacheServerCredentials } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
-import { API_BASE_URL, setCurrentDeviceId } from "../../lib/api";
+import { API_BASE_URL, setCurrentDeviceId, setAccessToken, restoreAuthState } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
-import { ServerTenantSelectionSection } from "./ServerTenantSelectionSection";
+import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { LoadingState } from "../block/LoadingState";
 
-type LoginMode = "detecting" | "login" | "setup" | "device-setup" | "server";
+type LoginMode = "detecting" | "login" | "setup" | "device-setup" | "server-browse";
 type DeviceSetupStep = "auth" | "pick-role";
 
 const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
+const AUTH_TIMEOUT_MS = 10_000;
 
 export function LoginSection() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<LoginMode>("detecting");
-  const [hasLocal, setHasLocal] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [tenantSlug, setTenantSlug] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +47,10 @@ export function LoginSection() {
     tenantName: string;
     accountId: string;
   } | null>(null);
+
+  // Server browse state (for "Hubungkan ke Server" flow)
+  const [selectedServerTenant, setSelectedServerTenant] = useState<TenantSearchResult | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function detectMode() {
@@ -50,9 +64,9 @@ export function LoginSection() {
         const activeCtx =
           noAuthCtx ?? contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
         if (activeCtx) {
-          // Restore deviceId into API client for subsequent requests
+          // Restore deviceId and access token from IndexedDB
           if (activeCtx.deviceId) {
-            setCurrentDeviceId(activeCtx.deviceId);
+            await restoreAuthState(activeCtx.deviceId);
           }
           const roleRoutes: Record<string, string> = {
             terminal: `/tenant/${activeCtx.tenantId}/terminal`,
@@ -67,8 +81,6 @@ export function LoginSection() {
         }
       }
 
-      const exists = await hasLocalTenant();
-      setHasLocal(exists);
       setMode("login");
     }
     detectMode();
@@ -95,16 +107,19 @@ export function LoginSection() {
     setMode("device-setup");
   }
 
+  /**
+   * Unified login handler: local-first → server fallback → cache credentials.
+   * Works with optional tenantSlug for scoped server login.
+   */
   async function handleUnifiedLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Try local login first
+      // 1. Try local login first (works offline)
       const localResult = await localLogin(username, password);
       if (localResult) {
-        // Generate device fingerprint for local context storage
         const fingerprintId = await getDeviceFingerprint();
         await tenantContextStore.put({
           tenantId: localResult.tenantId,
@@ -116,42 +131,52 @@ export function LoginSection() {
           terminalId: 0,
           updatedAt: Date.now(),
         });
-        // Set deviceId in API client for all subsequent requests
         setCurrentDeviceId(fingerprintId);
         redirectToRole(localResult.tenantId, localResult.role);
         return;
       }
 
-      // 2. If offline and local login failed, don't attempt server fetch
+      // 2. If offline and local login failed, show appropriate error
       if (!navigator.onLine) {
-        setError("Username atau password salah");
+        setError("Username atau password salah (offline — hanya akun lokal yang tersedia)");
         return;
       }
 
       // 3. Try server login as fallback (online only)
-      // Generate device fingerprint to send with login request
       const fingerprintHash = await getDeviceFingerprint();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+      const body: Record<string, unknown> = {
+        username,
+        password,
+        deviceFingerprint: {
+          hash: fingerprintHash,
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+        },
+      };
+
+      // Scope to tenant slug if provided (from server browse or manual input)
+      const effectiveSlug = selectedServerTenant?.slug ?? tenantSlug;
+      if (effectiveSlug) {
+        body.tenantSlug = effectiveSlug;
+      }
 
       const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          password,
-          deviceFingerprint: {
-            hash: fingerprintHash,
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-          },
-        }),
+        body: JSON.stringify(body),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (res.ok) {
         const data = await res.json();
-        // Always use local fingerprint as deviceId for context validation
-        // The server-assigned deviceId is stored separately for sync engine use
         const deviceId = fingerprintHash;
 
+        // Store tenant context
         await tenantContextStore.put({
           tenantId: data.tenantId,
           tenantSlug: data.tenantSlug,
@@ -163,27 +188,71 @@ export function LoginSection() {
           updatedAt: Date.now(),
         });
 
+        // Ensure LocalTenantConfig exists for sync/offline operations
+        const existingConfig = await localTenantConfigStore.get(data.tenantId);
+        if (!existingConfig) {
+          await localTenantConfigStore.put({
+            tenantId: data.tenantId,
+            slug: data.tenantSlug,
+            name: data.tenantName,
+            timezone: "Asia/Jakarta",
+            mode: "synced",
+            createdAt: Date.now(),
+            syncedAt: Date.now(),
+            serverTenantId: data.tenantId,
+          });
+        }
+
         // Store device registration info in Dexie for sync engine use
         if (data.deviceId) {
           await localDb.deviceInfo.put({
             deviceId: data.deviceId,
             tenantId: data.tenantId,
-            fingerprintHash: fingerprintHash,
+            fingerprintHash,
             registeredAt: Date.now(),
           });
         }
 
-        // Set deviceId in API client for all subsequent requests
         setCurrentDeviceId(deviceId);
+
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+        }
+
+        // Cache credentials locally for offline replay (fire-and-forget)
+        cacheServerCredentials({
+          tenantId: data.tenantId,
+          tenantSlug: data.tenantSlug,
+          tenantName: data.tenantName,
+          accountId: data.accountId,
+          role: data.role,
+          username,
+          password,
+        }).catch(() => {
+          // Non-critical — offline replay won't work but login still succeeds
+        });
 
         redirectToRole(data.tenantId, data.role);
         return;
       }
 
-      // 4. Both failed (online, server rejected credentials)
-      setError("Username atau password salah");
-    } catch {
-      setError("Gagal terhubung ke server. Periksa koneksi Anda.");
+      // Handle error responses
+      const errorBody = await res.json().catch(() => ({ error: "" }));
+      const errorMsg = (errorBody?.error ?? "").toLowerCase();
+
+      if (res.status === 401 && errorMsg.includes("inactive")) {
+        setError("Tenant tidak lagi aktif");
+      } else if (res.status === 404) {
+        setError("Koperasi tidak ditemukan");
+      } else {
+        setError("Username atau password salah");
+      }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Tidak dapat terhubung ke server. Periksa koneksi Anda.");
+      } else {
+        setError("Gagal terhubung ke server. Periksa koneksi Anda.");
+      }
     } finally {
       setLoading(false);
     }
@@ -194,13 +263,63 @@ export function LoginSection() {
     setLoading(true);
     setError(null);
     try {
-      const result = await localLogin(username, password);
+      // Try local login first, then server (same unified approach)
+      let result = await localLogin(username, password);
+
+      // If local fails and online, try server + cache
+      if (!result && navigator.onLine) {
+        const fingerprintHash = await getDeviceFingerprint();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username,
+              password,
+              deviceFingerprint: {
+                hash: fingerprintHash,
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+              },
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+
+          if (res.ok) {
+            const data = await res.json();
+            // Cache for offline use
+            await cacheServerCredentials({
+              tenantId: data.tenantId,
+              tenantSlug: data.tenantSlug,
+              tenantName: data.tenantName,
+              accountId: data.accountId,
+              role: data.role,
+              username,
+              password,
+            });
+            result = {
+              tenantId: data.tenantId,
+              tenantSlug: data.tenantSlug,
+              tenantName: data.tenantName,
+              accountId: data.accountId,
+              role: data.role,
+            };
+          }
+        } catch {
+          clearTimeout(timeout);
+        }
+      }
+
       if (!result) {
         setError("Username atau password salah");
         return;
       }
       if (!["admin", "station"].includes(result.role)) {
-        setError("Diperlukan akun admin untuk mengkonfigurasi perangkat");
+        setError("Diperlukan akun admin atau station untuk mengkonfigurasi perangkat");
         return;
       }
       setPendingContext({
@@ -227,7 +346,6 @@ export function LoginSection() {
       terminalId: 0,
       updatedAt: Date.now(),
     });
-    // Set deviceId in API client for all subsequent requests
     setCurrentDeviceId(fingerprintId);
     redirectToRole(pendingContext.tenantId, role);
   }
@@ -240,7 +358,6 @@ export function LoginSection() {
     return (
       <LocalSetupSection
         onComplete={(tenantId, role) => {
-          setHasLocal(true);
           redirectToRole(tenantId, role);
         }}
         onBack={() => {
@@ -251,11 +368,18 @@ export function LoginSection() {
     );
   }
 
-  if (mode === "server") {
+  if (mode === "server-browse") {
     return (
-      <ServerTenantSelectionSection
-        onComplete={(tenantId, role) => {
-          redirectToRole(tenantId, role);
+      <ServerBrowsePanel
+        onSelect={(tenant) => {
+          setSelectedServerTenant(tenant);
+          setTenantSlug(tenant.slug);
+          setUsername("");
+          setPassword("");
+          setError(null);
+          setMode("login");
+          // Focus password after render
+          setTimeout(() => passwordRef.current?.focus(), 100);
         }}
         onBack={() => {
           setMode("login");
@@ -392,13 +516,7 @@ export function LoginSection() {
             disabled={loading}
             className="w-full h-12 text-white type-title-bold bg-brand-dark hover:bg-brand-dark/90"
           >
-            {loading ? (
-              <>
-                <LoadingState variant="button" />
-              </>
-            ) : (
-              "Lanjut"
-            )}
+            {loading ? <LoadingState variant="button" /> : "Lanjut"}
           </Button>
         </form>
 
@@ -416,11 +534,50 @@ export function LoginSection() {
       <div>
         <h1 className="type-h5 text-foreground">Masuk</h1>
         <p className="type-body2 text-signal-text-secondary mt-0.5">
-          Masuk dengan akun lokal atau server
+          {selectedServerTenant
+            ? `Login ke ${selectedServerTenant.name}`
+            : "Masuk dengan akun lokal atau server"}
         </p>
       </div>
 
       <form onSubmit={handleUnifiedLogin} className="space-y-4">
+        {/* Tenant slug field — shown when user picked from server browse or can type manually */}
+        <div className="space-y-1.5">
+          <Label htmlFor="tenant-slug" className="type-body1-bold">
+            Koperasi{" "}
+            <span className="text-muted-foreground font-normal type-body2">(opsional)</span>
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              id="tenant-slug"
+              type="text"
+              placeholder="slug koperasi"
+              value={tenantSlug}
+              onChange={(e) => {
+                setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                setSelectedServerTenant(null);
+              }}
+              className="h-11 flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 shrink-0"
+              onClick={() => {
+                setMode("server-browse");
+                setError(null);
+              }}
+              title="Cari koperasi di server"
+            >
+              <Search size={16} />
+            </Button>
+          </div>
+          {selectedServerTenant && (
+            <p className="type-body2 text-brand-dark">✓ {selectedServerTenant.name}</p>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="username" className="type-body1-bold">
             Username
@@ -441,6 +598,7 @@ export function LoginSection() {
           </Label>
           <Input
             id="password"
+            ref={passwordRef}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -461,13 +619,7 @@ export function LoginSection() {
           disabled={loading}
           className="w-full h-12 text-white type-title-bold bg-brand hover:bg-brand/90"
         >
-          {loading ? (
-            <>
-              <LoadingState variant="button" />
-            </>
-          ) : (
-            "Masuk"
-          )}
+          {loading ? <LoadingState variant="button" /> : "Masuk"}
         </Button>
       </form>
 
@@ -475,40 +627,25 @@ export function LoginSection() {
         <Button
           type="button"
           onClick={() => {
-            setMode("server");
-            setError(null);
-          }}
-          variant="outline"
-          className="w-full gap-2"
-        >
-          <Globe size={15} />
-          Hubungkan ke Server
-        </Button>
-
-        <Button
-          type="button"
-          onClick={() => {
             setMode("setup");
             setError(null);
           }}
           variant="outline"
-          className="w-full gap-2"
+          className="w-full"
         >
           <Plus size={15} />
           Daftarkan koperasi baru
         </Button>
 
-        {hasLocal && (
-          <Button
-            type="button"
-            onClick={enterDeviceSetup}
-            variant="ghost"
-            className="w-full text-muted-foreground gap-2"
-          >
-            <Settings size={15} />
-            Pasang Perangkat
-          </Button>
-        )}
+        <Button
+          type="button"
+          onClick={enterDeviceSetup}
+          variant="outline"
+          className="w-full text-muted-foreground gap-2"
+        >
+          <Settings size={15} />
+          Pasang Perangkat
+        </Button>
       </div>
 
       <p className="type-body2 text-signal-text-disable text-center">
@@ -523,6 +660,87 @@ export function LoginSection() {
         <Layers size={13} />
         Lihat tenant terdaftar
       </button>
+    </AuthLayout>
+  );
+}
+
+// ─── Server Browse Panel (inline sub-component) ──────────────────────────────
+
+interface ServerBrowsePanelProps {
+  onSelect: (tenant: TenantSearchResult) => void;
+  onBack: () => void;
+}
+
+function ServerBrowsePanel({ onSelect, onBack }: ServerBrowsePanelProps) {
+  const { query, setQuery, results, loading, error } = useServerTenantSearch();
+
+  const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error;
+
+  return (
+    <AuthLayout variant="brand-dark" headerSubtitle="Cari Koperasi">
+      <div>
+        <h1 className="type-h5 text-foreground">Cari Koperasi</h1>
+        <p className="type-body2 text-signal-text-secondary mt-0.5">
+          Temukan koperasi yang terdaftar di server
+        </p>
+      </div>
+
+      {/* Search input */}
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="text"
+          placeholder="Cari koperasi..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-11 pl-9"
+        />
+      </div>
+
+      {/* Loading indicator */}
+      {loading && <LoadingState variant="section" text="Mencari..." />}
+
+      {/* Error message */}
+      {error && (
+        <div className="rounded-lg bg-signal-bg-error border border-signal-error/30 px-3 py-2">
+          <p className="type-body2 text-signal-error">{error}</p>
+        </div>
+      )}
+
+      {/* No results message */}
+      {showNoResults && (
+        <div className="py-6 text-center">
+          <p className="type-body2 text-muted-foreground">Tidak ada koperasi yang cocok</p>
+        </div>
+      )}
+
+      {/* Tenant cards */}
+      {results.length > 0 && (
+        <div className="space-y-2">
+          {results.map((tenant) => (
+            <button
+              key={tenant.tenantId}
+              type="button"
+              onClick={() => onSelect(tenant)}
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border border-border hover:bg-accent active:scale-[0.98] transition-all text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="type-body1-bold text-foreground truncate">{tenant.name}</p>
+                <p className="type-body2 text-muted-foreground truncate">{tenant.slug}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Back button */}
+      <Button type="button" variant="outline" onClick={onBack} className="w-full">
+        <ArrowLeft size={15} className="mr-1.5" />
+        Kembali
+      </Button>
     </AuthLayout>
   );
 }

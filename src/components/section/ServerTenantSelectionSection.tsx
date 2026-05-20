@@ -3,7 +3,7 @@ import { ArrowLeft, Search, RotateCcw } from "lucide-react";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
-import { API_BASE_URL, setCurrentDeviceId } from "../../lib/api";
+import { API_BASE_URL, setCurrentDeviceId, setAccessToken } from "../../lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -34,6 +34,7 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
     accountId: string;
     role: string;
     deviceId?: string;
+    accessToken?: string;
   } | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +55,7 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
       accountId: string;
       role: string;
       deviceId?: string;
+      accessToken?: string;
     }) => {
       try {
         const fingerprintId = await getDeviceFingerprint();
@@ -88,6 +90,12 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
 
         // Set deviceId in API client for all subsequent requests
         setCurrentDeviceId(fingerprintId);
+
+        // Set access token for authenticated API calls (sync, etc.)
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+        }
+
         onComplete(data.tenantId, data.role);
       } catch {
         setPendingAuthData(data);

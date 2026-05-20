@@ -1,4 +1,5 @@
 import { checkDeviceBlockResponse, isDeviceBlocked } from "./deviceBlock";
+import { authTokenCacheStore } from "./indexeddb";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "https://koperasi-kegelapan-api.ahmad-muzaki-st.workers.dev";
@@ -28,6 +29,70 @@ export function getCurrentDeviceId(): string | null {
   return _cachedDeviceId;
 }
 
+// ── Access token cache for Authorization header ────────────────────────
+
+/**
+ * In-memory cache of the current access token (JWT-like).
+ * Set during login (setAccessToken) and included in all apiFetch requests
+ * as the Authorization: Bearer header for server-side authentication.
+ */
+let _cachedAccessToken: string | null = null;
+
+/**
+ * Set the current access token to be included in all subsequent API requests.
+ * Also persists the token to IndexedDB so it survives page refreshes.
+ * Call this after login when the accessToken is obtained from the server.
+ *
+ * @param token - The access token string, or null to clear
+ * @param expiresAt - Optional expiry timestamp in epoch ms (0 = no known expiry, defaults to 24h)
+ */
+export function setAccessToken(token: string | null, expiresAt?: number): void {
+  _cachedAccessToken = token;
+  // Persist to IndexedDB (best-effort, non-blocking)
+  if (token && _cachedDeviceId) {
+    const expiry = expiresAt ?? Date.now() + 24 * 60 * 60 * 1000; // default 24h
+    authTokenCacheStore
+      .put({
+        deviceId: _cachedDeviceId,
+        accessToken: token,
+        expiresAt: expiry,
+        storedAt: Date.now(),
+      })
+      .catch(() => {
+        // Silently fail — persistence is best-effort
+      });
+  } else if (!token && _cachedDeviceId) {
+    authTokenCacheStore.delete(_cachedDeviceId).catch(() => {});
+  }
+}
+
+/**
+ * Get the current cached access token.
+ * Returns null if no token has been set (e.g., before login).
+ */
+export function getAccessToken(): string | null {
+  return _cachedAccessToken;
+}
+
+/**
+ * Restore auth state (deviceId + accessToken) from IndexedDB on app boot.
+ * Call this once during app initialization (e.g., in detectMode or root layout).
+ * Returns true if auth state was successfully restored.
+ */
+export async function restoreAuthState(deviceId: string): Promise<boolean> {
+  _cachedDeviceId = deviceId;
+  try {
+    const entry = await authTokenCacheStore.get(deviceId);
+    if (entry) {
+      _cachedAccessToken = entry.accessToken;
+      return true;
+    }
+  } catch {
+    // IndexedDB unavailable — continue without token
+  }
+  return false;
+}
+
 /**
  * Fetch wrapper that automatically checks for device_blocked 403 responses,
  * suppresses requests while the device is blocked, and injects the X-Device-Id
@@ -50,8 +115,8 @@ export async function apiFetch(
     throw new DeviceBlockedError("Device is blocked — request suppressed");
   }
 
-  // Inject X-Device-Id header if a device ID is cached
-  const mergedOptions = injectDeviceIdHeader(options);
+  // Inject X-Device-Id and Authorization headers if cached
+  const mergedOptions = injectAuthHeaders(options);
 
   const response = await fetch(url, mergedOptions);
 
@@ -65,11 +130,12 @@ export async function apiFetch(
 }
 
 /**
- * Merge the X-Device-Id header into the request options if a device ID is cached.
- * Preserves any existing headers provided by the caller.
+ * Merge the X-Device-Id and Authorization headers into the request options.
+ * Injects X-Device-Id if a device ID is cached, and Authorization: Bearer if
+ * an access token is cached. Preserves any existing headers provided by the caller.
  */
-function injectDeviceIdHeader(options?: RequestInit): RequestInit | undefined {
-  if (!_cachedDeviceId) return options;
+function injectAuthHeaders(options?: RequestInit): RequestInit | undefined {
+  if (!_cachedDeviceId && !_cachedAccessToken) return options;
 
   const existingHeaders = options?.headers;
   let headers: HeadersInit;
@@ -77,20 +143,34 @@ function injectDeviceIdHeader(options?: RequestInit): RequestInit | undefined {
   if (existingHeaders instanceof Headers) {
     // Clone to avoid mutating the caller's Headers object
     headers = new Headers(existingHeaders);
-    if (!headers.has("X-Device-Id")) {
+    if (_cachedDeviceId && !headers.has("X-Device-Id")) {
       headers.set("X-Device-Id", _cachedDeviceId);
+    }
+    if (_cachedAccessToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${_cachedAccessToken}`);
     }
   } else if (Array.isArray(existingHeaders)) {
     // Array of [key, value] pairs
     const hasDeviceId = existingHeaders.some(([key]) => key.toLowerCase() === "x-device-id");
-    headers = hasDeviceId
-      ? existingHeaders
-      : [...existingHeaders, ["X-Device-Id", _cachedDeviceId]];
+    const hasAuth = existingHeaders.some(([key]) => key.toLowerCase() === "authorization");
+    headers = [...existingHeaders];
+    if (_cachedDeviceId && !hasDeviceId) {
+      headers.push(["X-Device-Id", _cachedDeviceId]);
+    }
+    if (_cachedAccessToken && !hasAuth) {
+      headers.push(["Authorization", `Bearer ${_cachedAccessToken}`]);
+    }
   } else {
     // Record<string, string> or undefined
     const record = (existingHeaders ?? {}) as Record<string, string>;
-    const hasDeviceId = Object.keys(record).some((key) => key.toLowerCase() === "x-device-id");
-    headers = hasDeviceId ? record : { ...record, "X-Device-Id": _cachedDeviceId };
+    const keys = Object.keys(record).map((k) => k.toLowerCase());
+    headers = { ...record };
+    if (_cachedDeviceId && !keys.includes("x-device-id")) {
+      (headers as Record<string, string>)["X-Device-Id"] = _cachedDeviceId;
+    }
+    if (_cachedAccessToken && !keys.includes("authorization")) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${_cachedAccessToken}`;
+    }
   }
 
   return { ...options, headers };

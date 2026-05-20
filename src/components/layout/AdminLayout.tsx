@@ -1,5 +1,16 @@
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, ChevronLeft, CreditCard, Leaf, LogOut, Menu, Receipt, UserCheck, X } from "lucide-react";
+import {
+  BookOpen,
+  ChevronLeft,
+  CreditCard,
+  Leaf,
+  LogOut,
+  Menu,
+  Receipt,
+  Upload,
+  UserCheck,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
@@ -25,6 +36,10 @@ interface AdminLayoutProps {
   pendingCount?: number;
   /** Callback to trigger manual sync */
   onTriggerSync?: () => void;
+  /** Callback to sync tenant to server (shown when tenant is local-only) */
+  onSyncToServer?: () => void;
+  /** Whether the tenant-to-server sync is in progress */
+  isSyncingToServer?: boolean;
 }
 
 const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
@@ -59,6 +74,8 @@ export function AdminLayout({
   lastSyncedAt,
   pendingCount,
   onTriggerSync,
+  onSyncToServer,
+  isSyncingToServer,
 }: AdminLayoutProps) {
   const navigate = useNavigate();
   const { isOnline } = useOnlineStatus();
@@ -201,7 +218,7 @@ export function AdminLayout({
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Top bar (mobile hamburger + desktop breadcrumb) */}
         <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
           <Button
@@ -218,8 +235,21 @@ export function AdminLayout({
             </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
           </div>
-          {/* Sync status indicator */}
-          {syncStatus && (
+          {/* Sync to Server button — shown when tenant is local-only and online */}
+          {onSyncToServer && isOnline && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSyncToServer}
+              disabled={isSyncingToServer}
+              className="gap-1.5 text-xs"
+            >
+              <Upload size={12} />
+              {isSyncingToServer ? "Syncing..." : "Sync ke Server"}
+            </Button>
+          )}
+          {/* Sync status indicator — hidden when offline */}
+          {syncStatus && isOnline && (
             <SyncStatusIndicator
               syncStatus={syncStatus}
               lastSyncedAt={lastSyncedAt ?? null}
@@ -249,17 +279,17 @@ export function AdminLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto pb-2">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6">{children}</main>
 
-        {/* Mobile bottom nav */}
-        <nav className="md:hidden bg-white border-t flex items-stretch shrink-0">
+        {/* Mobile bottom nav – floating */}
+        <nav className="md:hidden absolute bottom-2 left-2 right-2 bg-white/30 border rounded-xl shadow-lg flex items-stretch z-20">
           {MOBILE_NAV.map(({ id, icon: Icon, label }) => (
             <Button
               key={id}
               variant="ghost"
               onClick={() => handleNavClick(id)}
               className={[
-                "flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs",
+                "flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs first:rounded-l-2xl last:rounded-r-2xl",
                 activeSection === id
                   ? "text-brand font-semibold hover:text-brand"
                   : "text-muted-foreground",

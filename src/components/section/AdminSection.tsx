@@ -19,7 +19,6 @@ import { SyncConflictDialog } from "../block/SyncConflictDialog";
 import { CardOverwriteDialog, type CardOwnerInfo } from "../block/CardOverwriteDialog";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
 import { TopupDrawer } from "../block/TopupDrawer";
-import { Button } from "../ui/button";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import {
@@ -38,6 +37,7 @@ interface AdminSectionProps {
   deviceId: string;
   terminalId: number;
   role: string;
+  initialView?: AdminView;
 }
 
 function generateCardId(): Uint8Array {
@@ -77,8 +77,9 @@ export const AdminSection = ({
   deviceId,
   terminalId,
   role,
+  initialView,
 }: AdminSectionProps) => {
-  const [view, setView] = useState<AdminView>("cards");
+  const [view, setView] = useState<AdminView>(initialView ?? "cards");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [fixCardId, setFixCardId] = useState<string | null>(null);
@@ -94,6 +95,7 @@ export const AdminSection = ({
     };
   } | null>(null);
   const [isOverwriting, setIsOverwriting] = useState(false);
+  const [tenantMode, setTenantMode] = useState<"local" | "synced" | null>(null);
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId);
@@ -122,10 +124,19 @@ export const AdminSection = ({
     return normalized || null;
   };
 
+  // Load tenant mode on mount to determine if "Sync ke Server" button should show
+  useEffect(() => {
+    localTenantConfigStore.get(tenantId).then((config) => {
+      setTenantMode(config?.mode ?? null);
+    });
+  }, [tenantId]);
+
   // Show toast on sync success
   useEffect(() => {
     if (syncStatus === "success") {
       toast.success("Tenant berhasil disinkronkan ke server");
+      // Update local mode to synced after successful sync
+      setTenantMode("synced");
     }
   }, [syncStatus]);
 
@@ -558,6 +569,8 @@ export const AdminSection = ({
       lastSyncedAt={engineLastSyncedAt}
       pendingCount={enginePendingCount}
       onTriggerSync={engineTriggerSync}
+      onSyncToServer={tenantMode === "local" ? handleSync : undefined}
+      isSyncingToServer={syncStatus === "syncing"}
     >
       {state.error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
@@ -656,15 +669,6 @@ export const AdminSection = ({
         onClose={handleDrawerClose}
         onRetry={scan}
       />
-
-      {/* Sync to Server */}
-      {view === "cards" && !showFixCard && (
-        <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-10">
-          <Button onClick={handleSync} disabled={syncStatus === "syncing"}>
-            {syncStatus === "syncing" ? "Menyinkronkan..." : "Sync ke Server"}
-          </Button>
-        </div>
-      )}
 
       {/* Sync Conflict Dialog */}
       {conflict && (

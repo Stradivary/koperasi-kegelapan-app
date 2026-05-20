@@ -1,7 +1,7 @@
 import type { ReconciliationEvent } from "../core/payload/types";
 
 const DB_NAME = "koperasi-wallet";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export interface TenantContext {
   tenantId: string;
@@ -57,6 +57,19 @@ export interface LocalAccount {
   role: string;
   status: "active" | "inactive";
   createdAt: number;
+}
+
+/**
+ * Persisted auth token for surviving page refreshes.
+ * Keyed by deviceId (one token per device context).
+ */
+export interface PersistedAuthToken {
+  deviceId: string;
+  accessToken: string;
+  /** Epoch ms when this token expires (0 = no expiry known) */
+  expiresAt: number;
+  /** Epoch ms when this entry was stored */
+  storedAt: number;
 }
 
 /**
@@ -121,6 +134,10 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore("sessionGrantCache", {
           keyPath: ["tenantId", "accountId", "deviceId"],
         });
+      }
+      // v4 stores
+      if (!db.objectStoreNames.contains("authTokenCache")) {
+        db.createObjectStore("authTokenCache", { keyPath: "deviceId" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -321,6 +338,44 @@ export const sessionGrantCacheStore = {
     tx<undefined>("sessionGrantCache", "readwrite", (s) =>
       s.delete([tenantId, accountId, deviceId]),
     ),
+};
+
+// ── v4: Auth token persistence store ───────────────────────────────────
+
+export const authTokenCacheStore = {
+  get: async (deviceId: string): Promise<PersistedAuthToken | undefined> => {
+    if (!getIndexedDbFactory()) return undefined;
+    const entry = await tx<PersistedAuthToken | undefined>("authTokenCache", "readonly", (s) =>
+      s.get(deviceId),
+    );
+    if (!entry) return undefined;
+    // Check expiry — if expiresAt is set and passed, discard
+    if (entry.expiresAt > 0 && Date.now() > entry.expiresAt) {
+      // Best-effort cleanup of expired token
+      try {
+        await tx<undefined>("authTokenCache", "readwrite", (s) => s.delete(deviceId));
+      } catch {
+        // ignore
+      }
+      return undefined;
+    }
+    return entry;
+  },
+  put: (entry: PersistedAuthToken) =>
+    tx<IDBValidKey>("authTokenCache", "readwrite", (s) => s.put(entry)),
+  delete: (deviceId: string) =>
+    tx<undefined>("authTokenCache", "readwrite", (s) => s.delete(deviceId)),
+  /** Remove all stored tokens (e.g., on logout). */
+  clear: async (): Promise<void> => {
+    if (!getIndexedDbFactory()) return;
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction("authTokenCache", "readwrite");
+      const req = transaction.objectStore("authTokenCache").clear();
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
 };
 
 export function makeIdempotencyKey(tenantId: string, cardIdHex: string, counter: number): string {

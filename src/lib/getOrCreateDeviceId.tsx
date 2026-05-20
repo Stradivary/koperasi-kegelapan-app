@@ -35,10 +35,10 @@ async function computeFingerprint(): Promise<string> {
 }
 
 export async function getDeviceFingerprint(): Promise<string> {
-  const cached = sessionStorage.getItem(CACHE_KEY);
+  const cached = localStorage.getItem(CACHE_KEY);
   if (cached) return cached;
   const fp = await computeFingerprint();
-  sessionStorage.setItem(CACHE_KEY, fp);
+  localStorage.setItem(CACHE_KEY, fp);
   return fp;
 }
 

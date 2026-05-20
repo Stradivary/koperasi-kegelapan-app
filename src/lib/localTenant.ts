@@ -200,6 +200,83 @@ export async function hasLocalTenant(): Promise<boolean> {
   return all.length > 0;
 }
 
+// ── Cache server credentials for offline replay ──────────────────────────────
+
+export interface CacheServerCredentialsParams {
+  tenantId: string;
+  tenantSlug: string;
+  tenantName: string;
+  accountId: string;
+  role: string;
+  username: string;
+  password: string;
+}
+
+/**
+ * Cache server-authenticated credentials locally so the user can log in
+ * offline on subsequent visits. Upserts both the local account and tenant config.
+ *
+ * - If the account already exists locally (same username), updates the password hash and role.
+ * - If the tenant config doesn't exist, creates one with mode="synced".
+ * - If it exists, updates syncedAt timestamp.
+ *
+ * This is fire-and-forget safe — failures here don't block login.
+ */
+export async function cacheServerCredentials(params: CacheServerCredentialsParams): Promise<void> {
+  const { tenantId, tenantSlug, tenantName, accountId, role, username, password } = params;
+
+  // Hash password client-side using the same PBKDF2 format as local accounts
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordHash = await pbkdf2Hash(password, salt);
+
+  // Upsert local account — check if username already exists
+  const existing = await localAccountStore.getByUsername(username);
+  if (existing) {
+    // Update existing account with fresh password hash and role
+    await localAccountStore.put({
+      ...existing,
+      tenantId,
+      passwordHash,
+      role,
+      status: "active",
+    });
+  } else {
+    // Create new local account entry
+    await localAccountStore.put({
+      accountId,
+      tenantId,
+      username,
+      passwordHash,
+      role,
+      status: "active",
+      createdAt: Date.now(),
+    });
+  }
+
+  // Ensure LocalTenantConfig exists for this tenant
+  const existingConfig = await localTenantConfigStore.get(tenantId);
+  if (!existingConfig) {
+    await localTenantConfigStore.put({
+      tenantId,
+      slug: tenantSlug,
+      name: tenantName,
+      timezone: "Asia/Jakarta",
+      mode: "synced",
+      createdAt: Date.now(),
+      syncedAt: Date.now(),
+      serverTenantId: tenantId,
+    });
+  } else {
+    // Update sync timestamp and name (may have changed on server)
+    await localTenantConfigStore.put({
+      ...existingConfig,
+      name: tenantName,
+      slug: tenantSlug,
+      syncedAt: Date.now(),
+    });
+  }
+}
+
 // ── AES-GCM encryption helpers ───────────────────────────────────────────────
 
 async function deriveAesKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
