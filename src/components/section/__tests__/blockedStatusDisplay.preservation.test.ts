@@ -10,7 +10,7 @@
  * Observations on unfixed code:
  * - Terminal: non-blocked IDLE → "Belum Check-in"
  * - Terminal: non-blocked CHECKED_OUT → "Sudah Checkout"
- * - Terminal: non-blocked CHECKED_IN → auto-checkout proceeds (calls performOvertimeCheckout)
+ * - Terminal: non-blocked CHECKED_IN → auto-checkout proceeds (calls applyCheckout)
  * - Gate: non-blocked IDLE → auto-checkin proceeds (calls write with checkin payload)
  * - Gate: non-blocked CHECKED_IN → "Sudah Check-in"
  * - Scout: non-blocked ACTIVE → "Active" badge with member info
@@ -89,18 +89,8 @@ vi.mock("../../../lib/peerSyncCoordinator", () => ({
 vi.mock("../../../core/state-machine/engine", () => ({
   validateTransition: vi.fn().mockReturnValue({ valid: true }),
   applyCheckin: vi.fn().mockImplementation((payload) => payload),
-}));
-
-// Mock overtimeCheckout (used by TerminalSection)
-vi.mock("../../../core/nfc/overtimeCheckout", () => ({
-  performOvertimeCheckout: vi.fn().mockResolvedValue({
-    success: true,
-    durationSeconds: 3600,
-    fee: 5000,
-    updatedPayload: null,
-    operationType: "checkout",
-  }),
-  DEFAULT_OVERTIME_TARIFF_RATE: 5000,
+  applyCheckout: vi.fn().mockImplementation((payload) => payload),
+  PARKING_RATE_PER_HOUR: 2000,
 }));
 
 // Mock reconciliationOutbox and indexeddb
@@ -123,11 +113,10 @@ vi.mock("../../../lib/transactionLogService", () => ({
 }));
 
 import { useNfcCard } from "../../../hooks/useNfcCard";
-import { performOvertimeCheckout } from "../../../core/nfc/overtimeCheckout";
-import { applyCheckin } from "../../../core/state-machine/engine";
+import { applyCheckin, applyCheckout } from "../../../core/state-machine/engine";
 
 const mockUseNfcCard = vi.mocked(useNfcCard);
-const mockPerformOvertimeCheckout = vi.mocked(performOvertimeCheckout);
+const mockApplyCheckout = vi.mocked(applyCheckout);
 const mockApplyCheckin = vi.mocked(applyCheckin);
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -193,16 +182,8 @@ function setupNfcState(state: NfcCardState) {
 describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset performOvertimeCheckout mock to default success
-    mockPerformOvertimeCheckout.mockResolvedValue({
-      success: true,
-      durationSeconds: 3600,
-      fee: 5000,
-      updatedPayload: undefined,
-      operationType: "checkout",
-      overtime: false,
-      action: "NORMAL_CHECKOUT",
-    });
+    // Reset applyCheckout mock to default (returns the payload as-is)
+    mockApplyCheckout.mockImplementation((payload) => payload);
   });
 
   afterEach(() => {
@@ -220,6 +201,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "a1:b2:c3:d4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { TerminalSection } = await import("../TerminalSection");
@@ -256,6 +238,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "a1:b2:c3:d4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { TerminalSection } = await import("../TerminalSection");
@@ -292,6 +275,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "a1:b2:c3:d4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { TerminalSection } = await import("../TerminalSection");
@@ -308,13 +292,13 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         );
       });
 
-      // Allow microtasks to flush (checkLocalBlockedStatus + performOvertimeCheckout)
+      // Allow microtasks to flush (checkLocalBlockedStatus + applyCheckout)
       await act(async () => {
         await new Promise((r) => setTimeout(r, 100));
       });
 
-      // PRESERVED: auto-checkout flow is triggered (performOvertimeCheckout was called)
-      expect(mockPerformOvertimeCheckout).toHaveBeenCalled();
+      // PRESERVED: auto-checkout flow is triggered (applyCheckout was called)
+      expect(mockApplyCheckout).toHaveBeenCalled();
       // No blocked UI should appear
       expect(screen.queryByText(/Checkout Ditolak/i)).toBeNull();
       expect(screen.queryByText(/diblokir/i)).toBeNull();
@@ -332,6 +316,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "d4:e5:f6:a1",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { GateSection } = await import("../GateSection");
@@ -384,6 +369,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "d4:e5:f6:a1",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { GateSection } = await import("../GateSection");
@@ -428,6 +414,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "d4:e5:f6:a1",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { GateSection } = await import("../GateSection");
@@ -465,6 +452,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "d4:e5:f6:a1",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { GateSection } = await import("../GateSection");
@@ -508,6 +496,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "g7:h8:i9:j0",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { ScoutSection } = await import("../ScoutSection");
@@ -553,6 +542,7 @@ describe("Preservation: Non-Blocked Card Behavior Unchanged", () => {
         serialNumber: "x1:y2:z3:w4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { ScoutSection } = await import("../ScoutSection");

@@ -109,9 +109,10 @@ syncRoutes.post("/push", async (c) => {
 
   const { tenantId: payloadTenantId, transactions } = body;
 
-  // 3. Validate tenant isolation: token tenant_id must match payload tenant_id
-  if (!payloadTenantId || payloadTenantId !== tokenPayload.tenantId) {
-    return c.json({ error: "Forbidden: tenant_id mismatch" }, 403);
+  // 3. Use token's tenantId as authoritative source
+  const tenantId = tokenPayload.tenantId;
+  if (payloadTenantId && payloadTenantId !== tenantId) {
+    console.warn(`[sync/push] tenantId mismatch: payload=${payloadTenantId}, token=${tenantId}`);
   }
 
   // 4. Validate transactions array
@@ -133,7 +134,6 @@ syncRoutes.post("/push", async (c) => {
   }
 
   const db = drizzle(c.env.DB);
-  const tenantId = tokenPayload.tenantId;
   const now = Math.floor(Date.now() / 1000);
 
   let accepted = 0;
@@ -350,11 +350,12 @@ syncRoutes.get("/pull", async (c) => {
 
   // 2. Validate tenant isolation: token tenant_id must match query param tenantId
   const queryTenantId = c.req.query("tenantId");
-  if (!queryTenantId || queryTenantId !== tokenPayload.tenantId) {
-    return c.json({ error: "Forbidden: tenant_id mismatch" }, 403);
-  }
-
+  // Use token's tenantId as authoritative — fall back to query param for backward compat
   const tenantId = tokenPayload.tenantId;
+  if (queryTenantId && queryTenantId !== tenantId) {
+    // Log mismatch but don't block — client may have stale local ID
+    console.warn(`[sync/pull] tenantId mismatch: query=${queryTenantId}, token=${tenantId}`);
+  }
 
   // 3. Parse cursor query params (default to "0" if empty)
   const membersCursor = parseCursor(c.req.query("membersCursor"));

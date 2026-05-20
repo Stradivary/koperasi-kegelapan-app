@@ -36,6 +36,13 @@
       "when": 1778628100003,
       "tag": "0001_sync_cursors_cards_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1778628100004,
+      "tag": "0002_add_card_events",
+      "breakpoints": true
     }
   ]
 }

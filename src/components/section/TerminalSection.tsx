@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import {
-  performOvertimeCheckout,
-  DEFAULT_OVERTIME_TARIFF_RATE,
-} from "../../core/nfc/overtimeCheckout";
 import { CardState } from "../../core/payload/types";
-import { validateTransition } from "../../core/state-machine/engine";
+import {
+  applyCheckout,
+  PARKING_RATE_PER_HOUR,
+  validateTransition,
+} from "../../core/state-machine/engine";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useReconciliation } from "../../hooks/useReconciliation";
@@ -43,8 +43,6 @@ export function TerminalSection({
   const [lastTx, setLastTx] = useState<{
     durationSeconds: number;
     fee: number;
-    overtime?: boolean;
-    penaltyAmount?: number;
   } | null>(null);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   // Warning when card/user not found in local DB (operation still proceeds)
@@ -98,40 +96,15 @@ export function TerminalSection({
 
       autoCheckoutTriggered.current = true;
 
-      // Perform overtime-aware checkout
-      performOvertimeCheckout(
-        payload,
-        nowSeconds,
-        tenantId,
-        deviceId,
-        DEFAULT_OVERTIME_TARIFF_RATE,
-      ).then((checkoutResult) => {
-        if (!checkoutResult.success) {
-          // Overtime with insufficient balance or other failure
-          setBlockedReason(checkoutResult.error ?? "Checkout gagal");
-          return;
-        }
+      // Perform standard checkout via applyCheckout
+      const updatedPayload = applyCheckout(payload, nowSeconds);
+      const durationSeconds = nowSeconds - payload.session.startTime;
+      const hours = Math.ceil(durationSeconds / 3600);
+      const fee = Math.min(hours * PARKING_RATE_PER_HOUR, payload.wallet.balance);
 
-        setBlockedReason(null);
-
-        if (checkoutResult.overtime && checkoutResult.action === "PENALTY_DEDUCTED") {
-          // Overtime checkout with penalty deducted
-          setLastTx({
-            durationSeconds: checkoutResult.durationSeconds ?? 0,
-            fee: checkoutResult.penaltyAmount ?? 0,
-            overtime: true,
-            penaltyAmount: checkoutResult.penaltyAmount,
-          });
-        } else {
-          // Normal checkout
-          setLastTx({
-            durationSeconds: checkoutResult.durationSeconds ?? 0,
-            fee: checkoutResult.fee ?? 0,
-          });
-        }
-
-        write(checkoutResult.updatedPayload!, checkoutResult.operationType);
-      });
+      setBlockedReason(null);
+      setLastTx({ durationSeconds, fee });
+      write(updatedPayload, "checkout");
     });
   }, [state.phase, state.payload, state.serialNumber, write, getNowSeconds, tenantId, deviceId]);
 
@@ -284,17 +257,9 @@ export function TerminalSection({
                   <span>{formatDuration(lastTx.durationSeconds)}</span>
                 </div>
                 <div className="flex justify-between type-body2">
-                  <span className="text-muted-foreground">
-                    {lastTx.overtime ? "Denda Overtime" : "Biaya"}
-                  </span>
+                  <span className="text-muted-foreground">Biaya</span>
                   <span>Rp {lastTx.fee.toLocaleString("id-ID")}</span>
                 </div>
-                {lastTx.overtime && (
-                  <div className="flex justify-between type-body2">
-                    <span className="text-signal-warning">⚠ Overtime</span>
-                    <span className="text-signal-warning">Denda diterapkan</span>
-                  </div>
-                )}
                 <div className="flex justify-between type-body2">
                   <span className="text-muted-foreground">Saldo</span>
                   <span className="text-brand font-medium">

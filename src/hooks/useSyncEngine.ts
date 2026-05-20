@@ -17,6 +17,41 @@ import { getSyncableEntries } from "../lib/transactionLogService";
 import { getPendingEntityCount } from "../lib/syncPushEntities";
 import { addSyncLog } from "../lib/syncLogStore";
 
+// ── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Extract a meaningful detail string from an unknown error value.
+ * Handles Error objects, plain objects (e.g. `{}`), strings, and other types.
+ */
+function extractErrorDetail(err: unknown): string {
+  if (err instanceof Error) {
+    const parts = [err.message];
+    if (err.cause) {
+      parts.push(`cause: ${err.cause instanceof Error ? err.cause.message : String(err.cause)}`);
+    }
+    if (err.stack) {
+      // Extract first meaningful stack line (skip the error message line)
+      const stackLines = err.stack.split("\n").slice(1, 3);
+      const trimmed = stackLines.map((l) => l.trim()).join(" → ");
+      if (trimmed) parts.push(trimmed);
+    }
+    return parts.join(" | ");
+  }
+  if (err === null || err === undefined) return "Unknown error (null/undefined)";
+  if (typeof err === "string") return err || "Empty error string";
+  if (typeof err === "object") {
+    // Handle empty objects like `{}`
+    const keys = Object.keys(err);
+    if (keys.length === 0) return "Empty error object ({})";
+    try {
+      return JSON.stringify(err).slice(0, 300);
+    } catch {
+      return `[Object with keys: ${keys.join(", ")}]`;
+    }
+  }
+  return String(err);
+}
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export type SyncEngineStatus = "idle" | "pushing" | "pulling" | "error" | "offline";
@@ -136,11 +171,15 @@ export function useSyncEngine(
         await syncPushEntities(tid);
       } catch (entityErr) {
         // Log but don't abort — entity push is best-effort
-        console.warn("[SyncEngine] Entity push failed, continuing with transactions:", entityErr);
+        console.warn(
+          "[SyncEngine] Entity push failed, continuing with transactions:",
+          entityErr instanceof Error ? entityErr.message : entityErr,
+        );
+        const errorDetail = extractErrorDetail(entityErr);
         addSyncLog(
           "warn",
           "Entity push gagal, melanjutkan dengan transaksi",
-          entityErr instanceof Error ? entityErr.message : String(entityErr),
+          `tenantId=${tid} | ${errorDetail}`,
         );
       }
 
@@ -166,14 +205,15 @@ export function useSyncEngine(
         // If push succeeded but pull failed, entries already marked "synced"
         // remain synced — do NOT reset them. Set status to "error" to reflect
         // that the full sync cycle did not complete (Req 2.6).
+        const errorDetail = extractErrorDetail(err);
         if (!pushSucceeded) {
           setLastPushSucceeded(false);
-          addSyncLog("error", "Push sync gagal", err instanceof Error ? err.message : String(err));
+          addSyncLog("error", "Push sync gagal", `tenantId=${tid} | ${errorDetail}`);
         } else {
           addSyncLog(
             "error",
             "Pull sync gagal (push berhasil)",
-            err instanceof Error ? err.message : String(err),
+            `tenantId=${tid} | ${errorDetail}`,
           );
         }
         setSyncStatus("error");

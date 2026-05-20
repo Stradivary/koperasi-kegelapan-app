@@ -244,6 +244,7 @@ tenantsRoutes.post("/sync", async (c) => {
     adminUsername: string;
     adminPasswordHash: string;
     serverTenantId?: string;
+    localTenantId?: string;
   };
 
   try {
@@ -327,7 +328,8 @@ tenantsRoutes.post("/sync", async (c) => {
     }
 
     // Step 6: No conflict — create tenant + admin account atomically via D1 batch
-    const tenantId = crypto.randomUUID();
+    // Use the client's localTenantId if provided so local and server IDs match
+    const tenantId = req.localTenantId ?? crypto.randomUUID();
     const accountId = crypto.randomUUID();
 
     try {
@@ -438,13 +440,26 @@ tenantsRoutes.post("/sync", async (c) => {
       throw e;
     }
 
-    // Step 7: Success — return 201
+    // Step 7: Success — return 201 with access token for immediate use
+    const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }));
+    const body = btoa(
+      JSON.stringify({
+        accountId,
+        tenantId,
+        role: "admin",
+        iat: Math.floor(Date.now() / 1000),
+      }),
+    );
+    const accessToken = `${header}.${body}.unsigned`;
+
     return c.json(
       {
         tenantId,
+        accountId,
         slug: req.slug,
         name: req.name,
         synced: true,
+        accessToken,
       },
       201,
     );

@@ -1,6 +1,18 @@
-import { AlertTriangle, Info, RefreshCw, Trash2, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Cloud,
+  CloudOff,
+  Info,
+  RefreshCw,
+  Trash2,
+  Upload,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSyncLogs } from "../../hooks/useSyncLogs";
+import { useAdminTenantSync } from "../../hooks/useAdminTenantSync";
 import { clearSyncLogs, type SyncLogLevel } from "../../lib/syncLogStore";
+import { localTenantConfigStore, type LocalTenantConfig } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 
 interface SettingsSectionProps {
@@ -21,11 +33,69 @@ function formatTimestamp(ts: number): string {
   });
 }
 
-export function SettingsSection({ tenantId: _tenantId }: SettingsSectionProps) {
+export function SettingsSection({ tenantId }: SettingsSectionProps) {
   const logs = useSyncLogs();
+  const { onSyncToServer, isSyncingToServer } = useAdminTenantSync(tenantId);
+  const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
+
+  useEffect(() => {
+    localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
+  }, [tenantId]);
+
+  // Refresh config after sync completes
+  useEffect(() => {
+    if (!isSyncingToServer) {
+      localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
+    }
+  }, [isSyncingToServer, tenantId]);
 
   return (
     <div className="space-y-6">
+      {/* Tenant Sync Status */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="type-title-bold text-foreground">Sinkronisasi Tenant</h2>
+            <p className="type-body2 text-muted-foreground mt-0.5">
+              Status koneksi tenant dengan server
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {tenantConfig?.mode === "synced" ? (
+                <div className="rounded-full p-2 bg-green-50">
+                  <Cloud size={18} className="text-green-600" />
+                </div>
+              ) : (
+                <div className="rounded-full p-2 bg-amber-50">
+                  <CloudOff size={18} className="text-amber-600" />
+                </div>
+              )}
+              <div>
+                <p className="type-body1 text-foreground">
+                  {tenantConfig?.mode === "synced" ? "Tersinkronisasi" : "Lokal saja"}
+                </p>
+                <p className="type-body2 text-muted-foreground">
+                  {tenantConfig?.mode === "synced"
+                    ? `Terakhir sync: ${tenantConfig.syncedAt ? new Date(tenantConfig.syncedAt).toLocaleString("id-ID") : "-"}`
+                    : "Tenant belum terdaftar di server"}
+                </p>
+              </div>
+            </div>
+
+            {onSyncToServer && (
+              <Button onClick={onSyncToServer} disabled={isSyncingToServer} className="gap-1.5">
+                <Upload size={14} />
+                {isSyncingToServer ? "Menyinkronkan..." : "Push ke Server"}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Sync Logs Panel */}
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -74,7 +144,7 @@ export function SettingsSection({ tenantId: _tenantId }: SettingsSectionProps) {
                       </span>
                     </div>
                     {entry.details && (
-                      <p className="type-body2 text-muted-foreground mt-0.5 truncate">
+                      <p className="type-body2 text-muted-foreground mt-1 font-mono text-xs bg-muted/50 rounded px-2 py-1 whitespace-pre-wrap break-all">
                         {entry.details}
                       </p>
                     )}

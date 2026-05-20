@@ -775,6 +775,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         payload={issuancePayload}
         serialNumber={issuanceSerial}
         error={issuanceError}
+        minimal
         onClose={handleIssuanceDrawerClose}
         onRetry={() => {
           const prepared = issuancePreparedRef.current;

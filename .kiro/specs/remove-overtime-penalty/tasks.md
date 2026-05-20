@@ -6,7 +6,7 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
 
 ## Tasks
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - Overtime Sessions Route to Penalty Instead of Normal Checkout
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -26,7 +26,7 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - Non-Overtime Checkout Behavior Unchanged
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for sessions ≤ 86400 seconds using `applyCheckout`:
@@ -46,8 +46,8 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 3. Remove overtime penalty code and simplify checkout flow
-  - [ ] 3.1 Delete overtime penalty modules
+- [x] 3. Remove overtime penalty code and simplify checkout flow
+  - [x] 3.1 Delete overtime penalty modules
     - Delete `src/core/nfc/overtimeCheckout.ts` — orchestrates overtime detection and penalty deduction
     - Delete `src/core/validation/overtimeValidator.ts` — detects sessions exceeding 24 hours
     - Delete `src/core/validation/penaltyCalculator.ts` — computes penalty amount (overtimeHours × tariffRate)
@@ -61,7 +61,7 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
     - _Preservation: Non-overtime checkout paths do not reference these modules_
     - _Requirements: 2.1, 2.4_
 
-  - [ ] 3.2 Modify TerminalSection.tsx to remove overtime logic
+  - [x] 3.2 Modify TerminalSection.tsx to remove overtime logic
     - Remove import of `performOvertimeCheckout` and `DEFAULT_OVERTIME_TARIFF_RATE` from `../../core/nfc/overtimeCheckout`
     - Add import of `applyCheckout` from `../../core/state-machine/engine` (if not already imported)
     - Replace `performOvertimeCheckout(...)` call with direct `applyCheckout(payload, nowSeconds)` call
@@ -73,13 +73,13 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
     - _Preservation: Non-overtime UI elements (member name, duration, fee, balance) remain unchanged_
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.3 Verify no remaining references to deleted modules
+  - [x] 3.3 Verify no remaining references to deleted modules
     - Search codebase for any imports of `overtimeCheckout`, `overtimeValidator`, `penaltyCalculator`, `cardResetHandler`
     - Remove any remaining references found
     - Ensure no TypeScript compilation errors from missing imports
     - _Requirements: 2.4_
 
-  - [ ] 3.4 Verify bug condition exploration test now passes
+  - [x] 3.4 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - Overtime Sessions Use Normal Checkout
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior (standard parking fee for all sessions)
@@ -88,7 +88,7 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
     - **EXPECTED OUTCOME**: Test PASSES (confirms overtime penalty is removed and standard checkout is used)
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.5 Verify preservation tests still pass
+  - [x] 3.5 Verify preservation tests still pass
     - **Property 2: Preservation** - Non-Overtime Checkout Behavior Unchanged
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
@@ -96,7 +96,7 @@ Remove the overtime penalty feature entirely. The fix eliminates the overtime de
     - Confirm all non-overtime checkout behavior is unchanged after fix
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Run full test suite to confirm no regressions
   - Verify TypeScript compilation succeeds with no errors
   - Confirm deleted modules are not referenced anywhere

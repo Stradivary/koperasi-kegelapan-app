@@ -30,7 +30,7 @@ CREATE TABLE `audit_log` (
 CREATE TABLE `cards` (
 	`tenant_id` text NOT NULL,
 	`card_id` blob NOT NULL,
-	`user_id` integer,
+	`user_id` text,
 	`status` text DEFAULT 'active' NOT NULL,
 	`balance` integer DEFAULT 0 NOT NULL,
 	`counter` integer DEFAULT 0 NOT NULL,
@@ -39,6 +39,7 @@ CREATE TABLE `cards` (
 	`last_activity_at` integer,
 	`expires_at` integer,
 	`notes` text,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	PRIMARY KEY(`tenant_id`, `card_id`),
 	FOREIGN KEY (`tenant_id`) REFERENCES `tenants`(`tenant_id`) ON UPDATE no action ON DELETE no action
 );
@@ -69,7 +70,7 @@ CREATE TABLE `tenants` (
 CREATE UNIQUE INDEX `tenants_slug_unique` ON `tenants` (`slug`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`tenant_id` text NOT NULL,
-	`user_id` integer NOT NULL,
+	`user_id` text NOT NULL,
 	`name` text NOT NULL,
 	`status` text DEFAULT 'active' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,

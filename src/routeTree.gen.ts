@@ -18,6 +18,7 @@ import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
 import { Route as TenantTenantIdTransactionsRouteImport } from './routes/tenant.$tenantId.transactions'
 import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
+import { Route as TenantTenantIdSettingsRouteImport } from './routes/tenant.$tenantId.settings'
 import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
 import { Route as TenantTenantIdMembersRouteImport } from './routes/tenant.$tenantId.members'
 import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
@@ -71,6 +72,11 @@ const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
   path: '/terminal',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
+const TenantTenantIdSettingsRoute = TenantTenantIdSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => TenantTenantIdRoute,
+} as any)
 const TenantTenantIdScoutRoute = TenantTenantIdScoutRouteImport.update({
   id: '/scout',
   path: '/scout',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
+  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
+  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
   '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
   '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
+  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
   '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
   '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
 }
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
+    | '/tenant/$tenantId/settings'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   fileRoutesByTo: FileRoutesByTo
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
+    | '/tenant/$tenantId/settings'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   id:
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/tenant/$tenantId/kiosk'
     | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
+    | '/tenant/$tenantId/settings'
     | '/tenant/$tenantId/terminal'
     | '/tenant/$tenantId/transactions'
   fileRoutesById: FileRoutesById
@@ -283,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdTerminalRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
+    '/tenant/$tenantId/settings': {
+      id: '/tenant/$tenantId/settings'
+      path: '/settings'
+      fullPath: '/tenant/$tenantId/settings'
+      preLoaderRoute: typeof TenantTenantIdSettingsRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
     '/tenant/$tenantId/scout': {
       id: '/tenant/$tenantId/scout'
       path: '/scout'
@@ -335,6 +354,7 @@ interface TenantTenantIdRouteChildren {
   TenantTenantIdKioskRoute: typeof TenantTenantIdKioskRoute
   TenantTenantIdMembersRoute: typeof TenantTenantIdMembersRoute
   TenantTenantIdScoutRoute: typeof TenantTenantIdScoutRoute
+  TenantTenantIdSettingsRoute: typeof TenantTenantIdSettingsRoute
   TenantTenantIdTerminalRoute: typeof TenantTenantIdTerminalRoute
   TenantTenantIdTransactionsRoute: typeof TenantTenantIdTransactionsRoute
 }
@@ -346,6 +366,7 @@ const TenantTenantIdRouteChildren: TenantTenantIdRouteChildren = {
   TenantTenantIdKioskRoute: TenantTenantIdKioskRoute,
   TenantTenantIdMembersRoute: TenantTenantIdMembersRoute,
   TenantTenantIdScoutRoute: TenantTenantIdScoutRoute,
+  TenantTenantIdSettingsRoute: TenantTenantIdSettingsRoute,
   TenantTenantIdTerminalRoute: TenantTenantIdTerminalRoute,
   TenantTenantIdTransactionsRoute: TenantTenantIdTransactionsRoute,
 }

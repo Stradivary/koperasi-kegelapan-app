@@ -126,12 +126,11 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
     return c.json({ error: "malformed_payload" }, 400);
   }
 
-  // 3. Validate tenant isolation
-  if (!body.tenantId || body.tenantId !== tokenPayload.tenantId) {
-    return c.json({ error: "Forbidden: tenant_id mismatch" }, 403);
-  }
-
+  // 3. Use token's tenantId as authoritative
   const tenantId = tokenPayload.tenantId;
+  if (body.tenantId && body.tenantId !== tenantId) {
+    console.warn(`[push-entities] tenantId mismatch: body=${body.tenantId}, token=${tenantId}`);
+  }
   const members = body.members ?? [];
   const cardEntries = body.cards ?? [];
 
@@ -209,7 +208,8 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
         // Race condition — treat as accepted
         membersAccepted++;
       } else {
-        membersRejected.push({ userId: member.userId, reason: "internal_error" });
+        console.error(`[push-entities] Member ${member.userId} insert failed:`, msg);
+        membersRejected.push({ userId: member.userId, reason: `internal_error: ${msg}` });
       }
     }
   }
@@ -272,7 +272,8 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
       if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
         cardsAccepted++;
       } else {
-        cardsRejected.push({ cardId: card.cardId, reason: "internal_error" });
+        console.error(`[push-entities] Card ${card.cardId} insert failed:`, msg);
+        cardsRejected.push({ cardId: card.cardId, reason: `internal_error: ${msg}` });
       }
     }
   }

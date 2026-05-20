@@ -8,10 +8,11 @@
  * This complements syncPush.ts which handles transactions only.
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError } from "./api";
+import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
 import { localDb } from "../db/local-db";
 import type { User, Card } from "../db/local-db";
+import { addSyncLog } from "./syncLogStore";
 
 // ── Constants ──────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ import type { User, Card } from "../db/local-db";
 export const MAX_BATCH_SIZE = 200;
 
 /** Maximum retry attempts on network/5xx errors */
-export const MAX_RETRY_ATTEMPTS = 5;
+export const MAX_RETRY_ATTEMPTS = 3;
 
 /** Initial backoff delay in milliseconds */
 export const INITIAL_BACKOFF_MS = 1000;
@@ -149,6 +150,11 @@ async function pushEntitiesWithRetry(
   tenantId: string,
 ): Promise<EntityPushResponse> {
   let lastError: unknown;
+  const url = `${API_BASE_URL}/api/sync/push-entities`;
+
+  console.log(
+    `[SyncPushEntities] POST ${url} | members=${payload.members.length}, cards=${payload.cards.length}`,
+  );
 
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     if (isDeviceBlocked()) {
@@ -156,59 +162,92 @@ async function pushEntitiesWithRetry(
     }
 
     try {
+      const body = JSON.stringify(payload);
+      console.log(
+        `[SyncPushEntities] Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}, payload size=${body.length} bytes`,
+      );
+
       const response = await apiFetch(
-        `${API_BASE_URL}/api/sync/push-entities`,
+        url,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body,
         },
         tenantId,
       );
 
-      console.log(`[SyncPushEntities] Server response status: ${response.status}`);
+      console.log(`[SyncPushEntities] Response: ${response.status} ${response.statusText}`);
 
       if (response.ok) {
         const result = (await response.json()) as EntityPushResponse;
         console.log(
-          `[SyncPushEntities] Accepted: members=${result.membersAccepted}, cards=${result.cardsAccepted}`,
+          `[SyncPushEntities] ✓ Accepted: members=${result.membersAccepted}, cards=${result.cardsAccepted}`,
         );
+        if (result.membersRejected.length > 0) {
+          console.warn(`[SyncPushEntities] Rejected members:`, result.membersRejected);
+        }
+        if (result.cardsRejected.length > 0) {
+          console.warn(`[SyncPushEntities] Rejected cards:`, result.cardsRejected);
+        }
         return result;
       }
 
-      // 4xx (except 429): not retryable
+      // Non-2xx response — read body for diagnostics
+      const errorBody = await response.text().catch(() => "(could not read body)");
+
+      // 4xx (except 429): not retryable — but now we THROW so the caller knows
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        const errorBody = await response.text().catch(() => "");
-        console.warn(`[SyncPushEntities] Non-retryable error ${response.status}: ${errorBody}`);
-        // Return empty response — entities stay pending for next attempt
-        return {
-          membersAccepted: 0,
-          membersRejected: [],
-          cardsAccepted: 0,
-          cardsRejected: [],
-        };
+        const msg = `HTTP ${response.status}: ${errorBody}`;
+        console.error(`[SyncPushEntities] ✗ Non-retryable: ${msg}`);
+        addSyncLog(
+          "error",
+          `Entity push ditolak server (${response.status})`,
+          `${url} | ${errorBody.slice(0, 200)}`,
+        );
+        throw new Error(msg);
       }
 
       // 429: rate limited
       if (response.status === 429) {
         const retryAfter = parseInt(response.headers.get("Retry-After") ?? "5", 10);
+        console.warn(`[SyncPushEntities] Rate limited, retry after ${retryAfter}s`);
         await sleep(Math.min(retryAfter * 1000, 120_000));
         continue;
       }
 
       // 5xx: retryable
-      lastError = new Error(`Server error: ${response.status}`);
+      lastError = new Error(`HTTP ${response.status}: ${errorBody.slice(0, 200)}`);
+      console.warn(
+        `[SyncPushEntities] Server error (attempt ${attempt + 1}): ${(lastError as Error).message}`,
+      );
     } catch (error: unknown) {
       if (error instanceof DeviceBlockedError) throw error;
+      // If it's our own thrown error from 4xx, re-throw immediately
+      if (error instanceof Error && error.message.startsWith("HTTP 4")) throw error;
+
+      const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      console.error(
+        `[SyncPushEntities] ✗ Network/fetch error (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}): ${errMsg}`,
+      );
       lastError = error;
     }
 
     if (attempt < MAX_RETRY_ATTEMPTS - 1) {
-      await sleep(calculateBackoff(attempt));
+      const backoff = calculateBackoff(attempt);
+      console.log(`[SyncPushEntities] Retrying in ${backoff}ms...`);
+      await sleep(backoff);
     }
   }
 
-  throw new Error(`Entity push failed after ${MAX_RETRY_ATTEMPTS} attempts: ${lastError}`);
+  const errorMsg =
+    lastError instanceof Error
+      ? `${lastError.name}: ${lastError.message}`
+      : lastError && typeof lastError === "object" && Object.keys(lastError as object).length === 0
+        ? "Network error (empty error object — likely CORS or DNS failure)"
+        : String(lastError);
+
+  throw new Error(`Entity push failed after ${MAX_RETRY_ATTEMPTS} attempts: ${errorMsg}`);
 }
 
 // ── Main Push Logic ────────────────────────────────────────────────────
@@ -222,6 +261,13 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
     throw new DeviceBlockedError("Device is blocked — entity push aborted");
   }
 
+  // Skip if no auth token — means this is a local-only tenant not registered on server
+  const token = getAccessToken();
+  if (!token) {
+    console.log(`[SyncPushEntities] Skipped — no access token (local-only tenant)`);
+    return { membersAccepted: 0, membersRejected: 0, cardsAccepted: 0, cardsRejected: 0 };
+  }
+
   const [pendingMembers, pendingCards] = await Promise.all([
     getPendingMembers(tenantId),
     getPendingCards(tenantId),
@@ -231,11 +277,40 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
     `[SyncPushEntities] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}, pendingCards=${pendingCards.length}`,
   );
 
+  // Log sample data for debugging
+  if (pendingMembers.length > 0) {
+    console.log(`[SyncPushEntities] Sample member:`, JSON.stringify(pendingMembers[0]));
+  }
+  if (pendingCards.length > 0) {
+    console.log(`[SyncPushEntities] Sample card:`, JSON.stringify(pendingCards[0]));
+  }
+  console.log(
+    `[SyncPushEntities] API_BASE_URL="${API_BASE_URL}", full URL="${API_BASE_URL}/api/sync/push-entities"`,
+  );
+
   // Nothing to push
   if (pendingMembers.length === 0 && pendingCards.length === 0) {
     return { membersAccepted: 0, membersRejected: 0, cardsAccepted: 0, cardsRejected: 0 };
   }
 
+  try {
+    return await _pushEntitiesInternal(tenantId, pendingMembers, pendingCards);
+  } catch (err) {
+    // Enrich error with pending entity counts for better diagnostics
+    const baseMsg = err instanceof Error ? err.message : String(err);
+    const enriched = new Error(
+      `pendingMembers=${pendingMembers.length}, pendingCards=${pendingCards.length} | ${baseMsg}`,
+    );
+    enriched.name = "SyncPushEntitiesError";
+    throw enriched;
+  }
+}
+
+async function _pushEntitiesInternal(
+  tenantId: string,
+  pendingMembers: User[],
+  pendingCards: Card[],
+): Promise<EntityPushResult> {
   const result: EntityPushResult = {
     membersAccepted: 0,
     membersRejected: 0,

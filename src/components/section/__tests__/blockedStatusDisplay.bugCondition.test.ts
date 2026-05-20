@@ -89,18 +89,8 @@ vi.mock("../../../lib/peerSyncCoordinator", () => ({
 vi.mock("../../../core/state-machine/engine", () => ({
   validateTransition: vi.fn().mockReturnValue({ valid: true }),
   applyCheckin: vi.fn().mockImplementation((payload) => payload),
-}));
-
-// Mock overtimeCheckout (used by TerminalSection)
-vi.mock("../../../core/nfc/overtimeCheckout", () => ({
-  performOvertimeCheckout: vi.fn().mockResolvedValue({
-    success: true,
-    durationSeconds: 3600,
-    fee: 5000,
-    updatedPayload: null,
-    operationType: "checkout",
-  }),
-  DEFAULT_OVERTIME_TARIFF_RATE: 5000,
+  applyCheckout: vi.fn().mockImplementation((payload) => payload),
+  PARKING_RATE_PER_HOUR: 2000,
 }));
 
 // Mock reconciliationOutbox and indexeddb
@@ -204,6 +194,7 @@ describe("Bug Condition: Blocked Card Status Not Displayed Across Views", () => 
         serialNumber: "a1:b2:c3:d4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { TerminalSection } = await import("../TerminalSection");
@@ -250,6 +241,7 @@ describe("Bug Condition: Blocked Card Status Not Displayed Across Views", () => 
         serialNumber: "a1:b2:c3:d4",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { TerminalSection } = await import("../TerminalSection");
@@ -299,6 +291,7 @@ describe("Bug Condition: Blocked Card Status Not Displayed Across Views", () => 
         serialNumber: "d4:e5:f6:a1",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { GateSection } = await import("../GateSection");
@@ -347,6 +340,7 @@ describe("Bug Condition: Blocked Card Status Not Displayed Across Views", () => 
         serialNumber: "g7:h8:i9:j0",
         error: null,
         tamperDetected: false,
+        warning: null,
       });
 
       const { ScoutSection } = await import("../ScoutSection");

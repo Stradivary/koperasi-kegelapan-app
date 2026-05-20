@@ -3,6 +3,7 @@ import { MemberSection } from "../components/section/MemberSection";
 import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 import { AdminLayout, type AdminView } from "../components/layout/AdminLayout";
 import { useSyncEngineContext } from "../hooks/SyncEngineContext";
+import { useAdminTenantSync } from "../hooks/useAdminTenantSync";
 
 export const Route = createFileRoute("/tenant/$tenantId/members")({
   component: MembersPage,
@@ -12,6 +13,7 @@ function MembersPage() {
   const { tenantId } = Route.useParams();
   const { tenantContext, loading } = useTenantContext(tenantId);
   const syncEngine = useSyncEngineContext();
+  const { onSyncToServer, isSyncingToServer } = useAdminTenantSync(tenantId);
   const navigate = useNavigate();
 
   if (loading || !tenantContext) return <TenantRoutePending />;
@@ -40,6 +42,8 @@ function MembersPage() {
       lastSyncedAt={syncEngine?.lastSyncedAt ?? null}
       pendingCount={syncEngine?.pendingCount ?? 0}
       onTriggerSync={syncEngine?.triggerSync ?? (() => {})}
+      onSyncToServer={onSyncToServer}
+      isSyncingToServer={isSyncingToServer}
     >
       <MemberSection tenantId={tenantId} />
     </AdminLayout>

@@ -4,7 +4,7 @@ import {
   localAccountStore,
   type LocalTenantConfig,
 } from "../lib/indexeddb";
-import { API_BASE_URL } from "../lib/api";
+import { API_BASE_URL, setAccessToken } from "../lib/api";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
 
@@ -81,6 +81,11 @@ export function useTenantSync(): UseTenantSyncReturn {
 
         if (res.status === 201 || res.status === 200) {
           const data = await res.json();
+
+          // Set access token if returned by server (for immediate API access)
+          if (data.accessToken) {
+            setAccessToken(data.accessToken);
+          }
 
           // Update LocalTenantConfig in IndexedDB with new slug if changed
           const updatedConfig: LocalTenantConfig = {
