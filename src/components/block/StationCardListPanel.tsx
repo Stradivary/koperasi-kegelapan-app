@@ -3,6 +3,7 @@ import {
   Ban,
   CreditCard,
   MoreHorizontal,
+  Plus,
   RotateCcw,
   Search,
   ShieldAlert,
@@ -81,7 +82,8 @@ export function StationCardListPanel({
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{cards.length} kartu</span>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={onIssueNew} disabled={!nfcSupported}>
+          <Button size="sm" onClick={onIssueNew} disabled={!nfcSupported}>
+            <Plus />
             Cetak Kartu Baru
           </Button>
         </div>

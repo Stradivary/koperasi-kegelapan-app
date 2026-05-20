@@ -20,8 +20,10 @@ import { SyncConflictDialog } from "../block/SyncConflictDialog";
 import { CardOverwriteDialog, type CardOwnerInfo } from "../block/CardOverwriteDialog";
 import { NfcScanDrawer } from "../block/NfcScanDrawer";
 import { TopupDrawer } from "../block/TopupDrawer";
+import { Button } from "../ui/button";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
+import { extractCardBytes } from "../../core/nfc/engine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -50,6 +52,14 @@ class CardAlreadyRegisteredError extends Error {
   constructor(public existingCard: CardOwnerInfo) {
     super("Kartu sudah terdaftar");
     this.name = "CardAlreadyRegisteredError";
+  }
+}
+
+/** Thrown when the NFC card already contains data (not blank) */
+class CardNotBlankError extends Error {
+  constructor(public cardSerial: string) {
+    super("Kartu sudah berisi data");
+    this.name = "CardNotBlankError";
   }
 }
 
@@ -96,6 +106,15 @@ export const AdminSection = ({
     };
   } | null>(null);
   const [isOverwriting, setIsOverwriting] = useState(false);
+  const [notBlankDialog, setNotBlankDialog] = useState<{
+    cardSerial: string;
+    pendingIssue: {
+      name: string;
+      userId: number | null;
+      balance: number;
+      expiresAt: number | null;
+    };
+  } | null>(null);
   const [tenantMode, setTenantMode] = useState<"local" | "synced" | null>(null);
   const qc = useQueryClient();
 
@@ -370,14 +389,17 @@ export const AdminSection = ({
       const timeout = setTimeout(() => abort.abort(), 30_000);
 
       let capturedSerial: string | null = null;
+      let cardHasData = false;
 
       try {
         // Start scanning to capture the serial number on tap
-        const serialPromise = new Promise<string>((resolve, reject) => {
+        const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
           reader.addEventListener("reading", (event: NDEFReadingEvent) => {
             const serial = event.serialNumber?.replace(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
             if (serial) {
-              resolve(serial);
+              // Check if card already contains valid data
+              const existingBytes = extractCardBytes(event.message);
+              resolve({ serial, hasData: existingBytes !== null });
             } else {
               reject(new Error("Kartu tidak memiliki serial number"));
             }
@@ -388,7 +410,15 @@ export const AdminSection = ({
         await reader.scan({ signal: abort.signal });
 
         // Wait for the card to be tapped (reading event fires)
-        capturedSerial = await serialPromise;
+        const { serial, hasData } = await scanResult;
+        capturedSerial = serial;
+        cardHasData = hasData;
+
+        // ── Check if card already contains data (not blank) ──
+        if (cardHasData && !forceOverwrite) {
+          abort.abort();
+          throw new CardNotBlankError(capturedSerial);
+        }
 
         // ── Global UID validation (cross-tenant + cloud) ──
         const uidResult = await validateUID(capturedSerial, tenantId);
@@ -540,6 +570,21 @@ export const AdminSection = ({
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
   });
 
+  const deleteMember = useMutation({
+    mutationFn: async ({ userId }: { userId: number }) => {
+      await localDb.users.delete([tenantId, userId]);
+    },
+    onSuccess: () => {
+      toast.success("Anggota berhasil dihapus");
+      qc.invalidateQueries({ queryKey: ["users", tenantId] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menghapus anggota. Silakan coba lagi.",
+      );
+    },
+  });
+
   // Top-up flow handler — opens topup drawer and starts scanning
   const handleTopupCard = useCallback(
     (_cardId: string) => {
@@ -617,6 +662,8 @@ export const AdminSection = ({
             } catch (e) {
               if (e instanceof CardAlreadyRegisteredError) {
                 setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
+              } else if (e instanceof CardNotBlankError) {
+                setNotBlankDialog({ cardSerial: e.cardSerial, pendingIssue: data });
               } else {
                 throw e;
               }
@@ -651,6 +698,7 @@ export const AdminSection = ({
           isLoading={members.isLoading}
           isCreating={createMember.isPending}
           isToggling={toggleMemberStatus.isPending}
+          isDeleting={deleteMember.isPending}
           onCreateMember={(name) => createMember.mutateAsync({ name })}
           onToggleStatus={(userId, currentStatus) =>
             toggleMemberStatus.mutate({
@@ -658,6 +706,7 @@ export const AdminSection = ({
               status: currentStatus === "active" ? "suspended" : "active",
             })
           }
+          onDeleteMember={(userId) => deleteMember.mutate({ userId })}
         />
       )}
 
@@ -725,6 +774,48 @@ export const AdminSection = ({
           }
         }}
       />
+
+      {/* Card Not Blank Warning Dialog */}
+      {notBlankDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-xl border p-6 max-w-sm mx-4 space-y-4">
+            <h3 className="font-medium text-destructive">⚠️ Kartu Tidak Kosong</h3>
+            <p className="text-sm text-muted-foreground">
+              Kartu ini sudah berisi data (kemungkinan dari tenant lain atau penulisan sebelumnya).
+              Melanjutkan akan menimpa semua data yang ada di kartu.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Serial: <code className="bg-muted px-1 rounded">{notBlankDialog.cardSerial}</code>
+            </p>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={async () => {
+                  const pending = notBlankDialog.pendingIssue;
+                  setNotBlankDialog(null);
+                  try {
+                    await issueCard.mutateAsync({
+                      ...pending,
+                      forceOverwrite: true,
+                    });
+                  } catch (e) {
+                    if (e instanceof CardAlreadyRegisteredError) {
+                      setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: pending });
+                    }
+                    // Other errors handled by mutation error state
+                  }
+                }}
+              >
+                Timpa &amp; Lanjutkan
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setNotBlankDialog(null)}>
+                Batal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

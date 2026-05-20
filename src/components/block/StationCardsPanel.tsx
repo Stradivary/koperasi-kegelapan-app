@@ -30,8 +30,6 @@ interface StationCardsPanelProps {
   isDeleting: boolean;
   isResetting: boolean;
   hasGrant: boolean;
-  cardId?: string | null;
-  tenantId?: string;
   onTopupCard: (cardId: string) => void;
   onIssueCard: (data: {
     name: string;
@@ -54,8 +52,6 @@ export function StationCardsPanel({
   isDeleting,
   isResetting,
   hasGrant: _hasGrant,
-  cardId,
-  tenantId,
   onTopupCard,
   onIssueCard,
   onUpdateCardStatus,
@@ -102,8 +98,6 @@ export function StationCardsPanel({
         <StationCardIssuePanel
           members={members}
           isIssuing={isIssuing}
-          cardId={cardId}
-          tenantId={tenantId}
           onIssueCard={handleIssueCard}
           onCancel={() => setCardView("list")}
         />

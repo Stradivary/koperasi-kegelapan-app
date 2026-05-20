@@ -164,12 +164,11 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="type-title-bold text-foreground">Transaksi</h2>
         {data && <p className="type-body2 text-muted-foreground">{data.total} transaksi</p>}
       </div>
 
       {/* Filter controls */}
-      <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-muted/30 p-3">
+      <div className="flex flex-wrap items-end gap-3 bg-white rounded-md border border-border bg-muted/30 p-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="filter-card-id" className="text-xs text-muted-foreground">
             Card ID
@@ -180,7 +179,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
             placeholder="Cari card ID..."
             value={cardIdFilter}
             onChange={handleCardIdChange}
-            className="h-8 w-36 font-mono text-xs"
+            className="h-8 w-38 font-mono text-xs"
           />
         </div>
 
@@ -189,7 +188,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
             Tipe
           </Label>
           <Select value={typeFilter || "all"} onValueChange={handleTypeChange}>
-            <SelectTrigger id="filter-type" size="sm" className="w-36">
+            <SelectTrigger id="filter-type" size="sm" className="w-38">
               <SelectValue placeholder="Semua tipe" />
             </SelectTrigger>
             <SelectContent>
@@ -212,7 +211,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
             type="date"
             value={dateFrom}
             onChange={handleDateFromChange}
-            className="h-8 w-36 text-xs"
+            className="h-8 w-38 text-xs"
           />
         </div>
 
@@ -225,7 +224,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
             type="date"
             value={dateTo}
             onChange={handleDateToChange}
-            className="h-8 w-36 text-xs"
+            className="h-8 w-38 text-xs"
           />
         </div>
 

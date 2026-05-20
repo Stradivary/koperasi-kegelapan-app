@@ -67,7 +67,7 @@ async function seed() {
     tenantId: persistedSystem.tenantId,
     username: "superadmin",
     passwordHash: hashPassword("superadmin"),
-    role: "superadmin",
+    role: "superadmin" as const,
     status: "active" as const,
   };
 
@@ -80,7 +80,7 @@ async function seed() {
     tenantId: persistedSample.tenantId,
     username: "admin-a",
     passwordHash: hashPassword("password"),
-    role: "admin",
+    role: "admin" as const,
     status: "active" as const,
   };
 

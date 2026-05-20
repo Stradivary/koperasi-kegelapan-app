@@ -21,17 +21,18 @@ function makePayload(
 ): CardPayload {
   return {
     header: {
-      magic: new Uint8Array([0x4d, 0x42, 0x43, 0x00]),
+      magic: 0x4d424300,
       version: 2,
       type: 0,
       cardId: new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]),
-      tenantBind: new Uint8Array(4),
+      tenantBind: 0,
     },
     identity: {
       userId: 1,
       name: "Test User",
+      gender: 0,
       status: overrides.status ?? CardStatus.ACTIVE,
-      memberSince: 1700000000,
+      createdAt: 1700000000,
     },
     wallet: {
       balance: overrides.balance ?? 50_000,
@@ -48,8 +49,12 @@ function makePayload(
     },
     logEntries: [],
     trailer: {
+      expiresAt: 9_999_999_999,
+      keyVersion: 1,
+      rootHash: new Uint8Array(6),
       counterBind: 5,
       hmac: new Uint8Array(8),
+      activePtr: 0,
     },
   };
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Ban, CheckCircle2, MoreHorizontal, Plus, Search, UserCheck } from "lucide-react";
+import { Ban, CheckCircle2, MoreHorizontal, Plus, Search, Trash, UserCheck } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -9,6 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
@@ -25,8 +26,10 @@ interface StationMembersPanelProps {
   isLoading: boolean;
   isCreating: boolean;
   isToggling: boolean;
+  isDeleting?: boolean;
   onCreateMember: (name: string) => Promise<void>;
   onToggleStatus: (userId: number, currentStatus: string) => void;
+  onDeleteMember?: (userId: number) => void;
 }
 
 const PAGE_SIZE = 10;
@@ -36,8 +39,10 @@ export function StationMembersPanel({
   isLoading,
   isCreating,
   isToggling,
+  isDeleting,
   onCreateMember,
   onToggleStatus,
+  onDeleteMember,
 }: StationMembersPanelProps) {
   const [memberView, setMemberView] = useState<MemberView>("list");
   const [name, setName] = useState("");
@@ -191,6 +196,23 @@ export function StationMembersPanel({
                           <CheckCircle2 size={14} />
                           Aktifkan
                         </DropdownMenuItem>
+                      )}
+                      {onDeleteMember && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => {
+                              if (confirm(`Hapus anggota "${m.name}" (#${m.userId})?`)) {
+                                onDeleteMember(m.userId);
+                              }
+                            }}
+                            disabled={isDeleting}
+                          >
+                            <Trash size={14} />
+                            Hapus Member
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
