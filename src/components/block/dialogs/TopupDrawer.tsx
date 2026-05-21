@@ -115,11 +115,9 @@ export function TopupDrawer({
               <NfcTapArea phase={nfcPhase} />
               {isWriting && (
                 <div className="text-center space-y-1">
-                  <p className="type-body1-bold text-signal-warning">
-                    Tempelkan kartu untuk menulis
-                  </p>
+                  <p className="type-body1-bold text-signal-warning">Jangan lepas kartu!</p>
                   <p className="type-body1 text-muted-foreground">
-                    Dekatkan kartu NFC ke perangkat dan tahan sampai selesai
+                    Tahan kartu sampai proses selesai
                   </p>
                 </div>
               )}

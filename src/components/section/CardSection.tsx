@@ -443,6 +443,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
             await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
             setIssuancePayload(payload);
             setIssuanceSerial(capturedSerial);
+            // Hold writing phase so user keeps card in place
+            await new Promise((r) => setTimeout(r, 1500));
             setIssuancePhase("done");
             issuancePreparedRef.current = null;
             return;
@@ -593,6 +595,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
         setIssuancePayload(payload);
         setIssuanceSerial(capturedSerial);
+        // Hold writing phase so user keeps card in place
+        await new Promise((r) => setTimeout(r, 1500));
         setIssuancePhase("done");
         issuancePreparedRef.current = null;
       } catch (e) {

@@ -236,10 +236,13 @@ export function useNfcCard(
                   cardId: cardIdHex,
                   counter: Number(pending.updatedPayload.wallet.counter),
                   type: pending.operationType,
-                  amount: pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
+                  amount:
+                    pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
                   balanceAfter: pending.updatedPayload.wallet.balance,
                   timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                  hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                  hash: Array.from(
+                    pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
+                  )
                     .map((b) => b.toString(16).padStart(2, "0"))
                     .join(""),
                   idempotencyKey: makeIdempotencyKey(
@@ -253,7 +256,9 @@ export function useNfcCard(
                   await recordTransaction({
                     tenantId,
                     cardId: cardIdHex,
-                    userId: pending.updatedPayload.identity.userId ? pending.updatedPayload.identity.userId : null,
+                    userId: pending.updatedPayload.identity.userId
+                      ? pending.updatedPayload.identity.userId
+                      : null,
                     counter: Number(pending.updatedPayload.wallet.counter),
                     type: pending.operationType as
                       | "debit"
@@ -262,10 +267,14 @@ export function useNfcCard(
                       | "checkout"
                       | "topup"
                       | "admin",
-                    amount: Math.abs(pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance),
+                    amount: Math.abs(
+                      pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
+                    ),
                     balanceAfter: pending.updatedPayload.wallet.balance,
                     timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                    hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                    hash: Array.from(
+                      pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
+                    )
                       .map((b) => b.toString(16).padStart(2, "0"))
                       .join(""),
                     terminalId,
@@ -274,6 +283,9 @@ export function useNfcCard(
                 } catch {
                   // Non-critical — reconciliation outbox is the primary
                 }
+
+                // Hold "writing" phase briefly so user keeps card in place
+                await new Promise((r) => setTimeout(r, 1500));
 
                 phaseRef.current = "success";
                 setState({
@@ -695,6 +707,9 @@ export function useNfcCard(
             } catch {
               // Duplicate or write error — non-critical, reconciliation outbox is the primary
             }
+
+            // Hold "writing" phase briefly so user keeps card in place
+            await new Promise((r) => setTimeout(r, 1500));
 
             phaseRef.current = "success";
             setState({
