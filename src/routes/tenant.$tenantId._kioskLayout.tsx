@@ -47,6 +47,10 @@ function KioskLayoutRoute() {
       tenantName={tenantContext.tenantName}
       tenantId={tenantId}
       currentMode={currentMode}
+      canAccessStation={
+        tenantContext.canAccessStation ??
+        (tenantContext.role === "admin" || tenantContext.role === "station")
+      }
       trailing={trailing}
     >
       <Outlet />

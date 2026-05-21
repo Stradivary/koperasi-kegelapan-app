@@ -14,6 +14,7 @@ interface DeviceSetupAuthPanelProps {
   onPasswordChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
+  cancelLabel?: string;
 }
 
 export function DeviceSetupAuthPanel({
@@ -25,6 +26,7 @@ export function DeviceSetupAuthPanel({
   onPasswordChange,
   onSubmit,
   onCancel,
+  cancelLabel = "Batal",
 }: DeviceSetupAuthPanelProps) {
   return (
     <AuthLayout variant="brand-dark">
@@ -46,6 +48,7 @@ export function DeviceSetupAuthPanel({
             value={username}
             onChange={(event) => onUsernameChange(event.target.value)}
             autoComplete="username"
+            placeholder="Masukkan username"
             required
             className="h-11"
           />
@@ -60,6 +63,7 @@ export function DeviceSetupAuthPanel({
             onChange={(event) => onPasswordChange(event.target.value)}
             autoComplete="current-password"
             required
+            placeholder="••••••••"
             className="h-11"
           />
         </div>
@@ -80,7 +84,7 @@ export function DeviceSetupAuthPanel({
       </form>
 
       <Button type="button" variant="outline" onClick={onCancel} className="w-full">
-        Batal
+        {cancelLabel}
       </Button>
     </AuthLayout>
   );

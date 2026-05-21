@@ -112,13 +112,5 @@
     "*.{json,md,css,html,yaml,toml}": [
       "oxfmt"
     ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "lightningcss",
-      "sharp",
-      "workerd"
-    ]
   }
 }

@@ -13,6 +13,7 @@ interface KioskLayoutProps {
   tenantName: string;
   tenantId: string;
   currentMode: "terminal" | "kiosk" | "scout" | "gate" | "station";
+  canAccessStation?: boolean;
   trailing?: React.ReactNode;
   /** @deprecated Use mode switching instead. Kept for backward compat. */
   onLogoLongPress?: () => void;
@@ -44,12 +45,16 @@ export function KioskLayout({
   tenantName,
   tenantId,
   currentMode,
+  canAccessStation = false,
   trailing,
 }: KioskLayoutProps) {
   const navigate = useNavigate();
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
   const [showModePicker, setShowModePicker] = useState(false);
+  const modeOptions = canAccessStation
+    ? MODE_OPTIONS
+    : MODE_OPTIONS.filter((option) => option.key !== "admin");
 
   function startHold() {
     setHolding(true);
@@ -68,7 +73,13 @@ export function KioskLayout({
     async (mode: "terminal" | "kiosk" | "scout" | "gate" | "admin") => {
       const ctx = await tenantContextStore.get(tenantId);
       if (ctx) {
-        await tenantContextStore.put({ ...ctx, role: mode, updatedAt: Date.now() });
+        await tenantContextStore.put({
+          ...ctx,
+          role: mode,
+          canAccessStation:
+            ctx.canAccessStation ?? (ctx.role === "admin" || ctx.role === "station"),
+          updatedAt: Date.now(),
+        });
       }
       setShowModePicker(false);
       navigate({ to: `/tenant/${tenantId}/${mode}` });
@@ -117,7 +128,7 @@ export function KioskLayout({
           </DialogHeader>
 
           <div className="px-3 pb-3 space-y-1">
-            {MODE_OPTIONS.map(({ key, label, icon: Icon, description }) => {
+            {modeOptions.map(({ key, label, icon: Icon, description }) => {
               const isActive = key === currentMode;
               return (
                 <button

@@ -32,11 +32,13 @@ interface StationCardsPanelProps {
   isLoading: boolean;
   isTopping: boolean;
   isIssuing: boolean;
+  isRecovering: boolean;
   isUpdatingStatus: boolean;
   isDeleting: boolean;
   isResetting: boolean;
   hasGrant: boolean;
   onTopupCard: (cardId: string) => void;
+  onRecoverCard: (card: StationCardRow) => void;
   onIssueCard: (data: {
     name: string;
     userId: string | null;
@@ -56,9 +58,11 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
       isLoading,
       isTopping: _isTopping,
       isIssuing,
+      isRecovering,
       isDeleting,
       hasGrant: _hasGrant,
       onTopupCard,
+      onRecoverCard,
       onIssueCard,
       onDeleteCard,
     },
@@ -95,8 +99,10 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
           <StationCardListPanel
             cards={cards}
             isLoading={isLoading}
+            isRecovering={isRecovering}
             isDeleting={isDeleting}
             onTopupCard={onTopupCard}
+            onRecoverCard={onRecoverCard}
             onDeleteCard={onDeleteCard}
             onIssueNew={() => {
               setSuccess(null);

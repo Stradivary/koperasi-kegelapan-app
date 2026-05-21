@@ -13,6 +13,7 @@ import {
   getAccessToken,
 } from "../../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
+import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "../../lib/utils";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
@@ -45,6 +46,8 @@ export function LoginSection() {
     tenantName: string;
     accountId: string;
   } | null>(null);
+  const [deviceSetupLaunchContext, setDeviceSetupLaunchContext] =
+    useState<DeviceSetupLaunchContext | null>(null);
 
   // Server browse state (for "Hubungkan ke Server" flow)
   const [selectedServerTenant, setSelectedServerTenant] = useState<TenantSearchResult | null>(null);
@@ -60,6 +63,18 @@ export function LoginSection() {
 
   useEffect(() => {
     async function detectMode() {
+      const launchContext = consumeDeviceSetupLaunchContext();
+      if (launchContext) {
+        setError(null);
+        setUsername("");
+        setPassword("");
+        setPendingContext(null);
+        setSetupStep("auth");
+        setDeviceSetupLaunchContext(launchContext);
+        setMode("device-setup");
+        return;
+      }
+
       // Auto-boot: if this device already has an active session, redirect back
       const contexts = await tenantContextStore.getAll();
       if (contexts.length > 0) {
@@ -110,7 +125,25 @@ export function LoginSection() {
     setPassword("");
     setSetupStep("auth");
     setPendingContext(null);
+    setDeviceSetupLaunchContext(null);
     setMode("device-setup");
+  }
+
+  function exitDeviceSetup() {
+    setError(null);
+    setUsername("");
+    setPassword("");
+    setSetupStep("auth");
+    setPendingContext(null);
+
+    if (deviceSetupLaunchContext) {
+      const { returnTo } = deviceSetupLaunchContext;
+      setDeviceSetupLaunchContext(null);
+      navigate({ to: returnTo });
+      return;
+    }
+
+    setMode("login");
   }
 
   /**
@@ -135,6 +168,7 @@ export function LoginSection() {
           deviceId: fingerprintId,
           accountId: localResult.accountId,
           role: localResult.role,
+          canAccessStation: ["admin", "station"].includes(localResult.role),
           terminalId: 0,
           updatedAt: Date.now(),
         });
@@ -246,6 +280,7 @@ export function LoginSection() {
           deviceId,
           accountId: data.accountId,
           role: data.role,
+          canAccessStation: ["admin", "station"].includes(data.role),
           terminalId: 0,
           updatedAt: Date.now(),
         });
@@ -487,7 +522,12 @@ export function LoginSection() {
       return (
         <DeviceRoleSelectionPanel
           onSelectRole={handlePickDeviceRole}
+          backLabel={deviceSetupLaunchContext?.returnLabel}
           onBack={() => {
+            if (deviceSetupLaunchContext) {
+              exitDeviceSetup();
+              return;
+            }
             setSetupStep("auth");
             setPendingContext(null);
           }}
@@ -505,7 +545,8 @@ export function LoginSection() {
         onUsernameChange={setUsername}
         onPasswordChange={setPassword}
         onSubmit={handleDeviceSetupAuth}
-        onCancel={() => setMode("login")}
+        cancelLabel={deviceSetupLaunchContext?.returnLabel}
+        onCancel={exitDeviceSetup}
       />
     );
   }

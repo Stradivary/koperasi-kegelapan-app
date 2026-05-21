@@ -110,6 +110,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
         deviceId: await getDeviceFingerprint(),
         accountId: cfg.tenantId + "-admin",
         role: "admin",
+        canAccessStation: true,
         terminalId: 0,
         updatedAt: Date.now(),
       });

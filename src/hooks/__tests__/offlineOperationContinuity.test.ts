@@ -80,10 +80,8 @@ import { syncPush } from "../../lib/syncPush";
 import { syncPull } from "../../lib/syncPull";
 import { useSessionGrant, OFFLINE_GRACE_PERIOD_SECONDS } from "../useSessionGrant";
 import { useSyncEngine } from "../useSyncEngine";
-import { toast } from "sonner";
 
 const mockSessionGrantCacheGet = vi.mocked(sessionGrantCacheStore.get);
-const mockSessionGrantCachePut = vi.mocked(sessionGrantCacheStore.put);
 const mockReconciliationOutboxAdd = vi.mocked(reconciliationOutbox.add);
 const mockIssueAndCacheLocalSessionGrant = vi.mocked(issueAndCacheLocalSessionGrant);
 const mockSyncPush = vi.mocked(syncPush);

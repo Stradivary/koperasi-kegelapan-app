@@ -24,11 +24,13 @@ import {
   type TenantContext,
 } from "../../lib/indexeddb";
 import { API_BASE_URL, apiFetch, getAccessToken } from "../../lib/api";
+import { setDeviceSetupLaunchContext } from "../../lib/utils";
 import { localDb } from "../../db/local-db";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { useNavigate } from "@tanstack/react-router";
 
 interface SettingsSectionProps {
   tenantId: string;
@@ -83,6 +85,7 @@ interface ServerDevice {
 }
 
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
+  const navigate = useNavigate();
   const { onSyncToServer, isSyncingToServer, syncStep, syncError } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
@@ -181,6 +184,14 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
       refreshSyncStats();
     }
   }, [isSyncingToServer, loadTenantProfile, refreshSyncStats]);
+
+  function handleStartDeviceSetup() {
+    setDeviceSetupLaunchContext({
+      returnTo: `/tenant/${tenantId}/station`,
+      returnLabel: "Kembali ke Station",
+    });
+    navigate({ to: "/" });
+  }
 
   return (
     <div className="space-y-4">
@@ -454,6 +465,10 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
 
           <CollapsibleContent>
             <CardContent className="p-2 pt-4">
+              <Button type="button" className="w-full mb-3" onClick={handleStartDeviceSetup}>
+                Pasang Perangkat Baru
+              </Button>
+
               {devicesLoading && devices.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-8 text-center">
                   <RefreshCw
@@ -547,7 +562,7 @@ function ProfileRow({ label, value, mono, truncate }: ProfileRowProps) {
     <div className="flex items-center justify-between px-4 py-2.5">
       <span className="type-body2 text-muted-foreground">{label}</span>
       <span
-        className={`type-body1 text-foreground text-right ${mono ? "font-mono text-xs" : ""} ${truncate ? "max-w-[180px] truncate" : ""}`}
+        className={`type-body1 text-foreground text-right ${mono ? "font-mono text-xs" : ""} ${truncate ? "max-w-45 truncate" : ""}`}
       >
         {value}
       </span>

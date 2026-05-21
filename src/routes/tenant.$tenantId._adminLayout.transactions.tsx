@@ -12,5 +12,5 @@ function TransactionsPage() {
 
   if (loading || !tenantContext) return <TenantRoutePending />;
 
-  return <TransactionsSection tenantId={tenantId} />;
+  return <TransactionsSection tenantId={tenantId} accountId={tenantContext.accountId} />;
 }

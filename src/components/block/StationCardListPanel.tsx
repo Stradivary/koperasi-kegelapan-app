@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { CreditCard, MoreHorizontal, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { CreditCard, MoreHorizontal, Plus, RefreshCw, ShieldAlert, Trash2 } from "lucide-react";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -18,8 +18,10 @@ import type { StationCardRow } from "./StationCardsPanel";
 interface StationCardListPanelProps {
   cards: StationCardRow[];
   isLoading: boolean;
+  isRecovering: boolean;
   isDeleting: boolean;
   onTopupCard: (cardId: string) => void;
+  onRecoverCard: (card: StationCardRow) => void;
   onDeleteCard: (card: StationCardRow) => void;
   onIssueNew: () => void;
 }
@@ -80,8 +82,10 @@ const columns = [
 export function StationCardListPanel({
   cards,
   isLoading,
+  isRecovering,
   isDeleting,
   onTopupCard,
+  onRecoverCard,
   onDeleteCard,
   onIssueNew,
 }: StationCardListPanelProps) {
@@ -100,8 +104,10 @@ export function StationCardListPanel({
         return (
           <CardActionsDropdown
             card={card}
+            isRecovering={isRecovering}
             isDeleting={isDeleting}
             onTopup={() => onTopupCard(card.cardId)}
+            onRecover={() => onRecoverCard(card)}
             onDelete={() => setDeleteTarget(card)}
           />
         );
@@ -181,8 +187,10 @@ export function StationCardListPanel({
 
               <CardActionsDropdown
                 card={card}
+                isRecovering={isRecovering}
                 isDeleting={isDeleting}
                 onTopup={() => onTopupCard(card.cardId)}
+                onRecover={() => onRecoverCard(card)}
                 onDelete={() => setDeleteTarget(card)}
               />
             </div>
@@ -228,19 +236,23 @@ export function StationCardListPanel({
 
 function CardActionsDropdown({
   card,
+  isRecovering,
   isDeleting,
   onTopup,
+  onRecover,
   onDelete,
 }: {
   card: StationCardRow;
+  isRecovering: boolean;
   isDeleting: boolean;
   onTopup: () => void;
+  onRecover: () => void;
   onDelete: () => void;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Aksi kartu">
           <MoreHorizontal size={14} />
         </Button>
       </DropdownMenuTrigger>
@@ -248,6 +260,14 @@ function CardActionsDropdown({
         <DropdownMenuItem className="h-10" onClick={onTopup} disabled={card.status !== "active"}>
           <CreditCard size={14} />
           Top-up
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="h-10"
+          onClick={onRecover}
+          disabled={isRecovering || card.syncStatus !== "synced"}
+        >
+          <RefreshCw size={14} />
+          Pulihkan Kartu
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

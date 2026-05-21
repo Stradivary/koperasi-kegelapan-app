@@ -97,6 +97,7 @@ export function LoginFormPanel({
             id="username"
             type="text"
             value={username}
+            placeholder="Masukkan username"
             onChange={(event) => onUsernameChange(event.target.value)}
             autoComplete="username"
             required
@@ -111,6 +112,7 @@ export function LoginFormPanel({
             id="password"
             ref={passwordRef}
             value={password}
+            placeholder="••••••••"
             onChange={(event) => onPasswordChange(event.target.value)}
             autoComplete="current-password"
             required

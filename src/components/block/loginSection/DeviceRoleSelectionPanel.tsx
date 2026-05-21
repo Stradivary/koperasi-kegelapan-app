@@ -5,9 +5,14 @@ import { Button } from "../../ui/button";
 interface DeviceRoleSelectionPanelProps {
   onSelectRole: (role: "gate" | "terminal" | "scout") => void;
   onBack: () => void;
+  backLabel?: string;
 }
 
-export function DeviceRoleSelectionPanel({ onSelectRole, onBack }: DeviceRoleSelectionPanelProps) {
+export function DeviceRoleSelectionPanel({
+  onSelectRole,
+  onBack,
+  backLabel = "Kembali",
+}: DeviceRoleSelectionPanelProps) {
   return (
     <AuthLayout variant="brand-dark">
       <div>
@@ -68,7 +73,7 @@ export function DeviceRoleSelectionPanel({ onSelectRole, onBack }: DeviceRoleSel
       </div>
 
       <Button type="button" variant="outline" onClick={onBack} className="w-full">
-        Kembali
+        {backLabel}
       </Button>
     </AuthLayout>
   );

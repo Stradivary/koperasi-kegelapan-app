@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
-import { localDb } from "../../db/local-db";
+import { localAccountStore } from "../../lib/indexeddb";
 import type { TransactionLog } from "../../db/local-db";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -14,6 +14,7 @@ import { DataTable } from "../block/data-table";
 
 interface TransactionsSectionProps {
   tenantId: string;
+  accountId: string;
 }
 
 const PAGE_SIZE_DEFAULT = 10;
@@ -55,7 +56,7 @@ const SYNC_STATUS_LABELS: Record<TransactionLog["syncStatus"], string> = {
 };
 
 interface TransactionRow extends TransactionLog {
-  userName: string | null;
+  operatorName: string | null;
 }
 
 function formatDateTime(timestamp: number): string {
@@ -85,20 +86,14 @@ const columns = [
     header: "Card ID",
     cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
   }),
-  columnHelper.accessor("userName", {
-    header: "Pengguna",
+  columnHelper.accessor("operatorName", {
+    header: "Operator",
     cell: (info) => {
-      const row = info.row.original;
-      if (!row.userId) {
-        return <span className="text-xs text-muted-foreground">Tanpa anggota</span>;
-      }
-
       return (
         <div className="min-w-0">
           <div className="text-xs font-medium truncate">
-            {info.getValue() ?? "Anggota tidak ditemukan"}
+            {info.getValue() ?? "Operator tidak ditemukan"}
           </div>
-          <div className="text-[11px] text-muted-foreground truncate">#{row.userId}</div>
         </div>
       );
     },
@@ -130,7 +125,7 @@ const columns = [
   }),
 ];
 
-export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
+export function TransactionsSection({ tenantId, accountId }: TransactionsSectionProps) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE_DEFAULT);
 
@@ -183,17 +178,18 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
       dateTo,
     ],
     queryFn: async () => {
-      const [transactions, users] = await Promise.all([
+      const [transactions, accounts] = await Promise.all([
         getTransactions(query),
-        localDb.users.where("tenantId").equals(tenantId).toArray(),
+        localAccountStore.getByTenant(tenantId),
       ]);
-      const userMap = new Map(users.map((user) => [user.userId, user.name]));
+      const operatorName =
+        accounts.find((account) => account.accountId === accountId)?.username ?? null;
 
       return {
         ...transactions,
         entries: transactions.entries.map((entry) => ({
           ...entry,
-          userName: entry.userId ? (userMap.get(entry.userId) ?? null) : null,
+          operatorName,
         })),
       };
     },

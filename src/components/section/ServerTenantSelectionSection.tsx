@@ -68,6 +68,7 @@ export function ServerTenantSelectionSection({ onComplete, onBack }: ServerTenan
           deviceId: fingerprintId,
           accountId: data.accountId,
           role: data.role,
+          canAccessStation: ["admin", "station"].includes(data.role),
           terminalId: 0,
           updatedAt: Date.now(),
         });

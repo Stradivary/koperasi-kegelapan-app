@@ -10,6 +10,7 @@ export interface TenantContext {
   deviceId: string;
   accountId: string;
   role: string;
+  canAccessStation?: boolean;
   terminalId: number;
   updatedAt: number;
 }

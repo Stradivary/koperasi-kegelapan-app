@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { localDb, type Card } from "../../db/local-db";
+import { syncPull } from "../../lib/syncPull";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
@@ -46,6 +47,101 @@ function generateCardId(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(6));
 }
 
+function parseHexBytes(hex: string): Uint8Array {
+  const normalized = hex.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+  if (normalized.length === 0 || normalized.length % 2 !== 0) {
+    throw new Error("ID kartu tidak valid");
+  }
+
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < normalized.length; i += 2) {
+    bytes[i / 2] = parseInt(normalized.slice(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function toPayloadCardId(cardId: string): Uint8Array {
+  const rawBytes = parseHexBytes(cardId);
+  if (rawBytes.length === 6) return rawBytes;
+  if (rawBytes.length > 6) return rawBytes.slice(rawBytes.length - 6);
+
+  const padded = new Uint8Array(6);
+  padded.set(rawBytes, 6 - rawBytes.length);
+  return padded;
+}
+
+function toPayloadStatus(status: Card["status"]): CardStatus {
+  switch (status) {
+    case "active":
+      return CardStatus.ACTIVE;
+    case "blocked_tamper":
+      return CardStatus.BLOCKED_TAMPER;
+    case "blocked_fraud":
+      return CardStatus.BLOCKED_FRAUD;
+    case "blocked_expired":
+      return CardStatus.BLOCKED_EXPIRED;
+    case "blocked_admin":
+      return CardStatus.BLOCKED_ADMIN;
+    case "deleted":
+      throw new Error("Kartu yang dihapus tidak bisa dipulihkan");
+  }
+}
+
+function buildRecoveryPayload({
+  tenantId,
+  card,
+  ownerName,
+  keyVersion,
+}: {
+  tenantId: string;
+  card: Card;
+  ownerName: string;
+  keyVersion: number;
+}): CardPayload {
+  const now = Math.floor(Date.now() / 1000);
+  const counter = Math.max(card.counter, 1);
+  const lastTimestamp = card.lastActivityAt ?? card.createdAt ?? now;
+
+  return {
+    header: {
+      magic: MAGIC,
+      version: CARD_SCHEMA_VERSION,
+      type: 0,
+      cardId: toPayloadCardId(card.cardId),
+      tenantBind: encodeTenantBind(tenantId),
+    },
+    identity: {
+      name: ownerName,
+      userId: card.userId ?? "",
+      gender: 0,
+      status: toPayloadStatus(card.status),
+      createdAt: card.createdAt,
+    },
+    wallet: {
+      balance: card.balance,
+      lastBalance: card.balance,
+      counter: BigInt(counter),
+      lastTimestamp,
+      state: CardState.IDLE,
+      flags: 0,
+    },
+    session: {
+      startTime: 0,
+      endTime: 0,
+      terminalId: 0,
+    },
+    logEntries: [],
+    trailer: {
+      expiresAt: card.expiresAt ?? 9_999_999_999,
+      keyVersion,
+      rootHash: new Uint8Array(6),
+      counterBind: counter,
+      hmac: new Uint8Array(8),
+      activePtr: 0,
+    },
+  };
+}
+
 /** Thrown when a card serial is already registered to another owner */
 class CardAlreadyRegisteredError extends Error {
   constructor(public existingCard: CardOwnerInfo) {
@@ -87,6 +183,14 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);
+  const [recoveryDrawerOpen, setRecoveryDrawerOpen] = useState(false);
+  const [recoveryPhase, setRecoveryPhase] = useState<
+    "idle" | "scanning" | "writing" | "done" | "error"
+  >("idle");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryPayload, setRecoveryPayload] = useState<CardPayload | null>(null);
+  const [recoverySerial, setRecoverySerial] = useState<string | null>(null);
+  const [recoveryTargetCardId, setRecoveryTargetCardId] = useState<string | null>(null);
   const [fixCardId, setFixCardId] = useState<string | null>(null);
   const [showFixCard, setShowFixCard] = useState(false);
   const [resetCardPending, setResetCardPending] = useState(false);
@@ -245,13 +349,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     },
     [handleDrawerClose],
   );
-
-  const handleFixCard = useCallback(() => {
-    const scannedSerial = state.serialNumber;
-    setFixCardId(scannedSerial);
-    handleDrawerClose();
-    setShowFixCard(true);
-  }, [state.serialNumber, handleDrawerClose]);
 
   // Reset: once card is scanned, write reset state to card
   const handleResetWrite = useCallback(async () => {
@@ -713,6 +810,132 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     },
   });
 
+  const recoverCard = useMutation({
+    mutationFn: async ({ cardId }: { cardId: string }) => {
+      if (!grant) throw new Error("Sesi tidak aktif untuk memulihkan kartu");
+      if (!isNfcSupported()) throw new Error("NFC tidak didukung di perangkat ini");
+
+      setRecoveryDrawerOpen(true);
+      setRecoveryPhase("scanning");
+      setRecoveryError(null);
+      setRecoveryPayload(null);
+      setRecoverySerial(null);
+
+      await syncPull(tenantId);
+
+      const latestCard = await localDb.cards.get([tenantId, cardId]);
+      if (!latestCard || latestCard.status === "deleted") {
+        throw new Error("Data kartu tidak ditemukan di penyimpanan lokal");
+      }
+      if (latestCard.syncStatus === "pending") {
+        throw new Error("Perubahan kartu ini belum tersinkron. Sinkronkan dulu sebelum recovery.");
+      }
+
+      const owner = latestCard.userId
+        ? await localDb.users.get([tenantId, latestCard.userId])
+        : null;
+      const payload = buildRecoveryPayload({
+        tenantId,
+        card: latestCard,
+        ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
+        keyVersion: grant.keyVersion,
+      });
+      const { bytes } = await prepareWrite(payload, payload, grant);
+
+      const abort = new AbortController();
+      const reader = new NDEFReader();
+      const timeout = setTimeout(() => abort.abort(), 30_000);
+
+      let scannedSerial: string | null = null;
+
+      try {
+        const scanResult = new Promise<string>((resolve, reject) => {
+          reader.addEventListener("reading", (event: NDEFReadingEvent) => {
+            const serial = event.serialNumber?.replace(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+            if (!serial) {
+              reject(new Error("Kartu tidak memiliki serial number"));
+              return;
+            }
+            resolve(serial);
+          });
+          abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
+        });
+
+        await reader.scan({ signal: abort.signal });
+        scannedSerial = await scanResult;
+
+        if (scannedSerial !== cardId.toLowerCase()) {
+          throw new Error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
+        }
+
+        setRecoveryPhase("writing");
+        await reader.write(
+          {
+            records: [
+              {
+                recordType: "unknown",
+                data: bytes.buffer.slice(
+                  bytes.byteOffset,
+                  bytes.byteOffset + bytes.byteLength,
+                ) as ArrayBuffer,
+              },
+            ],
+          },
+          { signal: abort.signal, overwrite: true },
+        );
+
+        setRecoveryPayload(payload);
+        setRecoverySerial(scannedSerial);
+        await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        setRecoveryPhase("done");
+      } catch (error) {
+        setRecoveryPhase("error");
+        setRecoveryError(error instanceof Error ? error.message : "Gagal memulihkan kartu");
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        abort.abort();
+      }
+    },
+    onSuccess: () => {
+      toast.success("Kartu berhasil dipulihkan dari data server terbaru");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Gagal memulihkan kartu");
+    },
+  });
+
+  const handleRecoveryDrawerClose = useCallback(() => {
+    setRecoveryDrawerOpen(false);
+    setRecoveryPhase("idle");
+    setRecoveryError(null);
+    setRecoveryPayload(null);
+    setRecoverySerial(null);
+    setRecoveryTargetCardId(null);
+  }, []);
+
+  const startCardRecovery = useCallback(
+    (cardId: string) => {
+      setRecoveryTargetCardId(cardId);
+      recoverCard.mutate({ cardId });
+    },
+    [recoverCard],
+  );
+
+  const handleFixCard = useCallback(() => {
+    const scannedSerial = normalizeSerial(state.serialNumber);
+    if (scannedSerial) {
+      handleDrawerClose();
+      startCardRecovery(scannedSerial);
+      return;
+    }
+
+    setFixCardId(state.serialNumber);
+    handleDrawerClose();
+    setShowFixCard(true);
+  }, [state.serialNumber, handleDrawerClose, startCardRecovery]);
+
   // Top-up flow handler
   const handleTopupCard = useCallback(
     (cardId: string) => {
@@ -799,6 +1022,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           isLoading={cards.isLoading}
           isTopping={state.phase === "writing"}
           isIssuing={issueCard.isPending}
+          isRecovering={recoverCard.isPending}
           isUpdatingStatus={updateCardStatus.isPending}
           isDeleting={deleteCard.isPending}
           isResetting={
@@ -806,6 +1030,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           }
           hasGrant={!!grant}
           onTopupCard={handleTopupCard}
+          onRecoverCard={(card) => startCardRecovery(card.cardId)}
           onIssueCard={async (data) => {
             try {
               await issueCard.mutateAsync(data);
@@ -899,6 +1124,24 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           } else {
             handleIssuanceDrawerClose();
           }
+        }}
+      />
+
+      <IssuanceScanDrawer
+        open={recoveryDrawerOpen}
+        onOpenChange={(open) => {
+          if (!open) handleRecoveryDrawerClose();
+        }}
+        phase={recoveryPhase}
+        mode="write"
+        payload={recoveryPayload}
+        serialNumber={recoverySerial}
+        error={recoveryError}
+        minimal
+        onClose={handleRecoveryDrawerClose}
+        onRetry={() => {
+          if (!recoveryTargetCardId) return;
+          recoverCard.mutate({ cardId: recoveryTargetCardId });
         }}
       />
 
