@@ -114,15 +114,32 @@ export function MemberSection({ tenantId }: MemberSectionProps) {
 
   const deleteMember = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
+      const now = Math.floor(Date.now() / 1000);
+
       await localDb.users.update([tenantId, userId], {
         status: "deleted",
-        updatedAt: Math.floor(Date.now() / 1000),
+        updatedAt: now,
         syncStatus: "pending",
       });
+
+      const linkedCards = await localDb.cards
+        .where("tenantId")
+        .equals(tenantId)
+        .filter((card) => card.userId === userId && card.status !== "deleted")
+        .toArray();
+
+      for (const card of linkedCards) {
+        await localDb.cards.update([tenantId, card.cardId], {
+          status: "deleted",
+          lastActivityAt: now,
+          syncStatus: "pending",
+        });
+      }
     },
     onSuccess: () => {
       toast.success("Anggota berhasil dihapus");
       qc.invalidateQueries({ queryKey: ["users", tenantId] });
+      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       syncEngineCtx?.notifyMutation();
     },
     onError: (error) => {

@@ -24,13 +24,11 @@ import {
   type TenantContext,
 } from "../../lib/indexeddb";
 import { API_BASE_URL, apiFetch, getAccessToken } from "../../lib/api";
-import { setDeviceSetupLaunchContext } from "../../lib/utils";
 import { localDb } from "../../db/local-db";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { useNavigate } from "@tanstack/react-router";
 
 interface SettingsSectionProps {
   tenantId: string;
@@ -84,8 +82,49 @@ interface ServerDevice {
   createdAt: number;
 }
 
+interface ServerSyncCounts {
+  members: number;
+  cards: number;
+  transactions: number;
+}
+
+interface LocalSyncStats {
+  membersSynced: number;
+  membersTotal: number;
+  cardsSynced: number;
+  cardsTotal: number;
+  txSynced: number;
+  txTotal: number;
+}
+
+function formatEntitySyncDetail(
+  entityLabel: string,
+  syncedCount: number,
+  totalCount: number,
+  serverCount?: number,
+): string {
+  const localSummary =
+    totalCount > 0
+      ? `${syncedCount} / ${totalCount} ${entityLabel} sudah tersinkron.`
+      : `Belum memiliki ${entityLabel} lokal.`;
+
+  const serverSummary =
+    serverCount === undefined
+      ? "Tidak diketahui jumlah di server."
+      : `${serverCount} ${entityLabel} tercatat di server.`;
+
+  return `${localSummary} ${serverSummary}`;
+}
+
+function isCurrentServerDevice(
+  currentDeviceId: string | null | undefined,
+  device: ServerDevice,
+): boolean {
+  if (!currentDeviceId) return false;
+  return currentDeviceId === device.fingerprintHash || currentDeviceId === device.deviceId;
+}
+
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
-  const navigate = useNavigate();
   const { onSyncToServer, isSyncingToServer, syncStep, syncError } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
@@ -95,24 +134,36 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
   const [syncOpen, setSyncOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(true);
   const [devicesOpen, setDevicesOpen] = useState(false);
-  const [syncStats, setSyncStats] = useState<{
-    membersSynced: number;
-    membersTotal: number;
-    cardsSynced: number;
-    cardsTotal: number;
-    txSynced: number;
-    txTotal: number;
-  } | null>(null);
+  const [syncStats, setSyncStats] = useState<LocalSyncStats | null>(null);
+  const [serverSyncCounts, setServerSyncCounts] = useState<ServerSyncCounts | null>(null);
   const devicesIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentDeviceId = tenantContext?.deviceId ?? null;
+  const displayedLastSyncedAt = syncEngine?.lastSyncedAt ?? tenantConfig?.syncedAt ?? null;
 
   const refreshSyncStats = useCallback(async () => {
     try {
       const [membersTotal, membersSynced, cardsTotal, cardsSynced, txTotal, txSynced] =
         await Promise.all([
-          localDb.users.where("tenantId").equals(tenantId).count(),
-          localDb.users.where("[tenantId+syncStatus]").equals([tenantId, "synced"]).count(),
-          localDb.cards.where("tenantId").equals(tenantId).count(),
-          localDb.cards.where("[tenantId+syncStatus]").equals([tenantId, "synced"]).count(),
+          localDb.users
+            .where("tenantId")
+            .equals(tenantId)
+            .filter((user) => user.status !== "deleted")
+            .count(),
+          localDb.users
+            .where("[tenantId+syncStatus]")
+            .equals([tenantId, "synced"])
+            .filter((user) => user.status !== "deleted")
+            .count(),
+          localDb.cards
+            .where("tenantId")
+            .equals(tenantId)
+            .filter((card) => card.status !== "deleted")
+            .count(),
+          localDb.cards
+            .where("[tenantId+syncStatus]")
+            .equals([tenantId, "synced"])
+            .filter((card) => card.status !== "deleted")
+            .count(),
           localDb.transactionLog
             .where("[tenantId+syncStatus]")
             .between([tenantId, ""], [tenantId, "\uffff"], true, true)
@@ -146,13 +197,19 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
     try {
       const res = await apiFetch(`${API_BASE_URL}/api/sync/devices`);
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as {
+          devices?: ServerDevice[];
+          serverCounts?: ServerSyncCounts;
+        };
         setDevices(data.devices ?? []);
+        setServerSyncCounts(data.serverCounts ?? null);
       } else {
         setDevices([]);
+        setServerSyncCounts(null);
       }
     } catch {
       setDevices([]);
+      setServerSyncCounts(null);
     } finally {
       setDevicesLoading(false);
     }
@@ -182,16 +239,16 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
     if (!isSyncingToServer) {
       loadTenantProfile();
       refreshSyncStats();
+      loadDevices();
     }
-  }, [isSyncingToServer, loadTenantProfile, refreshSyncStats]);
+  }, [isSyncingToServer, loadDevices, loadTenantProfile, refreshSyncStats]);
 
-  function handleStartDeviceSetup() {
-    setDeviceSetupLaunchContext({
-      returnTo: `/tenant/${tenantId}/station`,
-      returnLabel: "Kembali ke Station",
-    });
-    navigate({ to: "/" });
-  }
+  useEffect(() => {
+    if (!syncEngine?.lastSyncedAt) return;
+    loadTenantProfile();
+    refreshSyncStats();
+    loadDevices();
+  }, [syncEngine?.lastSyncedAt, loadDevices, loadTenantProfile, refreshSyncStats]);
 
   return (
     <div className="space-y-4">
@@ -307,7 +364,7 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                       </p>
                       <p className="type-body2 text-muted-foreground">
                         {tenantConfig?.mode === "synced"
-                          ? `Terakhir sync: ${tenantConfig.syncedAt ? new Date(tenantConfig.syncedAt).toLocaleString("id-ID") : "-"}`
+                          ? `Terakhir disinkronisasi: ${displayedLastSyncedAt ? new Date(displayedLastSyncedAt).toLocaleString("id-ID") : "-"}`
                           : "Tenant belum terdaftar di server"}
                       </p>
                     </div>
@@ -376,7 +433,12 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                       syncStats.membersTotal > 0 &&
                       syncStats.membersSynced === syncStats.membersTotal
                     }
-                    detail={`${syncStats.membersSynced} / ${syncStats.membersTotal} synced`}
+                    detail={formatEntitySyncDetail(
+                      "anggota",
+                      syncStats.membersSynced,
+                      syncStats.membersTotal,
+                      serverSyncCounts?.members,
+                    )}
                   />
                   <ChecklistItem
                     icon={CreditCard}
@@ -384,13 +446,23 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                     checked={
                       syncStats.cardsTotal > 0 && syncStats.cardsSynced === syncStats.cardsTotal
                     }
-                    detail={`${syncStats.cardsSynced} / ${syncStats.cardsTotal} synced`}
+                    detail={formatEntitySyncDetail(
+                      "kartu",
+                      syncStats.cardsSynced,
+                      syncStats.cardsTotal,
+                      serverSyncCounts?.cards,
+                    )}
                   />
                   <ChecklistItem
                     icon={Receipt}
                     label="Transaksi tersinkronisasi"
                     checked={syncStats.txTotal > 0 && syncStats.txSynced === syncStats.txTotal}
-                    detail={`${syncStats.txSynced} / ${syncStats.txTotal} synced`}
+                    detail={formatEntitySyncDetail(
+                      "transaksi",
+                      syncStats.txSynced,
+                      syncStats.txTotal,
+                      serverSyncCounts?.transactions,
+                    )}
                   />
                 </div>
               )}
@@ -403,7 +475,6 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                     className="w-full gap-2"
                     onClick={() => {
                       syncEngine.triggerSync();
-                      setTimeout(refreshSyncStats, 3000);
                     }}
                     disabled={
                       syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
@@ -465,10 +536,6 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
 
           <CollapsibleContent>
             <CardContent className="p-2 pt-4">
-              <Button type="button" className="w-full mb-3" onClick={handleStartDeviceSetup}>
-                Pasang Perangkat Baru
-              </Button>
-
               {devicesLoading && devices.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-8 text-center">
                   <RefreshCw
@@ -489,12 +556,12 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                 <div className="rounded-lg border divide-y">
                   {[...devices]
                     .sort((a, b) => {
-                      const aCurrent = tenantContext?.deviceId === a.deviceId ? 1 : 0;
-                      const bCurrent = tenantContext?.deviceId === b.deviceId ? 1 : 0;
+                      const aCurrent = isCurrentServerDevice(currentDeviceId, a) ? 1 : 0;
+                      const bCurrent = isCurrentServerDevice(currentDeviceId, b) ? 1 : 0;
                       return bCurrent - aCurrent;
                     })
                     .map((device) => {
-                      const isCurrent = tenantContext?.deviceId === device.deviceId;
+                      const isCurrent = isCurrentServerDevice(currentDeviceId, device);
                       const deviceName = parseDeviceName(device.userAgent);
                       return (
                         <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
