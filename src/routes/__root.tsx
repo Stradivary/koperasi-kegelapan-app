@@ -25,7 +25,7 @@ function RootComponent() {
     <TooltipProvider>
       <RootOfflineBanner />
       <Outlet />
-      <Toaster />
+      <Toaster position="top-center" />
       <DeviceBlockListener />
       <PwaInstallPrompt />
       <PwaUpdatePrompt />

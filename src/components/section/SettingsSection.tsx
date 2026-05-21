@@ -1,15 +1,12 @@
 import {
-  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   Circle,
   Cloud,
   CloudOff,
-  Info,
   Monitor,
   RefreshCw,
   Smartphone,
-  Trash2,
   Upload,
   User,
   Users,
@@ -17,19 +14,17 @@ import {
   Receipt,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useSyncLogs } from "../../hooks/useSyncLogs";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAdminTenantSync } from "../../hooks/useAdminTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { clearSyncLogs, type SyncLogLevel } from "../../lib/syncLogStore";
 import {
   localTenantConfigStore,
   tenantContextStore,
   type LocalTenantConfig,
   type TenantContext,
 } from "../../lib/indexeddb";
-import { localDb, type DeviceInfo } from "../../db/local-db";
-import { getAccessToken } from "../../lib/api";
+import { API_BASE_URL, apiFetch, getAccessToken } from "../../lib/api";
+import { localDb } from "../../db/local-db";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -37,20 +32,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/colla
 
 interface SettingsSectionProps {
   tenantId: string;
-}
-
-const LEVEL_CONFIG: Record<SyncLogLevel, { icon: React.ElementType; color: string; bg: string }> = {
-  info: { icon: Info, color: "text-blue-600", bg: "bg-blue-50" },
-  warn: { icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
-  error: { icon: XCircle, color: "text-red-600", bg: "bg-red-50" },
-};
-
-function formatTimestamp(ts: number): string {
-  return new Date(ts).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
 }
 
 function formatDate(ts: number): string {
@@ -63,15 +44,26 @@ function formatDate(ts: number): string {
   });
 }
 
+interface ServerDevice {
+  deviceId: string;
+  tenantId: string;
+  accountId: string;
+  fingerprintHash: string;
+  userAgent: string;
+  platform: string;
+  lastSeenAt: number;
+  blockedUntil: number | null;
+  createdAt: number;
+}
+
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
-  const logs = useSyncLogs();
   const { onSyncToServer, isSyncingToServer, syncStep, syncError } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
   const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
-  const [devices, setDevices] = useState<DeviceInfo[]>([]);
+  const [devices, setDevices] = useState<ServerDevice[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
   const [syncOpen, setSyncOpen] = useState(true);
-  const [logsOpen, setLogsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(true);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [syncStats, setSyncStats] = useState<{
@@ -82,6 +74,7 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
     txSynced: number;
     txTotal: number;
   } | null>(null);
+  const devicesIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshSyncStats = useCallback(async () => {
     try {
@@ -120,19 +113,40 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
   }, [tenantId]);
 
   const loadDevices = useCallback(async () => {
+    setDevicesLoading(true);
     try {
-      const deviceList = await localDb.deviceInfo.where("tenantId").equals(tenantId).toArray();
-      setDevices(deviceList);
+      const res = await apiFetch(`${API_BASE_URL}/api/sync/devices`);
+      if (res.ok) {
+        const data = await res.json();
+        setDevices(data.devices ?? []);
+      } else {
+        setDevices([]);
+      }
     } catch {
       setDevices([]);
+    } finally {
+      setDevicesLoading(false);
     }
-  }, [tenantId]);
+  }, []);
 
   useEffect(() => {
     loadTenantProfile();
     refreshSyncStats();
     loadDevices();
   }, [tenantId, loadTenantProfile, refreshSyncStats, loadDevices]);
+
+  // Poll devices every 30s for near-realtime updates
+  useEffect(() => {
+    if (devicesOpen) {
+      devicesIntervalRef.current = setInterval(loadDevices, 30_000);
+    }
+    return () => {
+      if (devicesIntervalRef.current) {
+        clearInterval(devicesIntervalRef.current);
+        devicesIntervalRef.current = null;
+      }
+    };
+  }, [devicesOpen, loadDevices]);
 
   // Refresh config after sync completes
   useEffect(() => {
@@ -141,9 +155,6 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
       refreshSyncStats();
     }
   }, [isSyncingToServer, loadTenantProfile, refreshSyncStats]);
-
-  const errorCount = logs.filter((l) => l.level === "error").length;
-  const warnCount = logs.filter((l) => l.level === "warn").length;
 
   return (
     <div className="space-y-4">
@@ -417,7 +428,15 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
 
           <CollapsibleContent>
             <CardContent className="p-2 pt-4">
-              {devices.length === 0 ? (
+              {devicesLoading && devices.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <RefreshCw
+                    size={32}
+                    className="mx-auto text-muted-foreground/40 mb-3 animate-spin"
+                  />
+                  <p className="type-body1 text-muted-foreground">Memuat perangkat...</p>
+                </div>
+              ) : devices.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-8 text-center">
                   <Smartphone size={32} className="mx-auto text-muted-foreground/40 mb-3" />
                   <p className="type-body1 text-muted-foreground">Belum ada perangkat terdaftar</p>
@@ -451,7 +470,8 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                             )}
                           </div>
                           <p className="type-body2 text-muted-foreground">
-                            Terdaftar {formatDate(device.registeredAt)}
+                            {device.platform} · Terakhir aktif{" "}
+                            {formatDate(device.lastSeenAt * 1000)}
                           </p>
                         </div>
                       </div>
@@ -465,113 +485,11 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                 size="sm"
                 className="w-full mt-3 gap-1.5"
                 onClick={loadDevices}
+                disabled={devicesLoading}
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={14} className={devicesLoading ? "animate-spin" : ""} />
                 Refresh
               </Button>
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
-
-      {/* ─── Sync Logs Panel ───────────────────────────────────────────── */}
-      <Card className="mb-8 p-0">
-        <Collapsible className="p-2" open={logsOpen} onOpenChange={setLogsOpen}>
-          <CardHeader className="p-2 pb-0 ">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center justify-between w-full text-left group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full p-2 bg-slate-100">
-                    <Receipt size={16} className="text-slate-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="group-hover:text-foreground/80 transition-colors">
-                      Log Sinkronisasi
-                    </CardTitle>
-                  </div>
-                  {logs.length > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      {errorCount > 0 && (
-                        <Badge variant="destructive" className="text-[11px] px-1.5 py-0">
-                          {errorCount} error
-                        </Badge>
-                      )}
-                      {warnCount > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[11px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200"
-                        >
-                          {warnCount} warn
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {logs.length > 0 && (
-                    <span className="type-body2 text-muted-foreground">{logs.length} entri</span>
-                  )}
-                  <ChevronDown
-                    size={16}
-                    className={`text-muted-foreground transition-transform duration-200 ${logsOpen ? "rotate-180" : ""}`}
-                  />
-                </div>
-              </button>
-            </CollapsibleTrigger>
-          </CardHeader>
-
-          <CollapsibleContent>
-            <CardContent className="p-2 pt-4">
-              {/* Clear button */}
-              {logs.length > 0 && (
-                <div className="flex justify-end mb-3">
-                  <Button variant="outline" size="sm" onClick={clearSyncLogs} className="gap-1.5">
-                    <Trash2 size={14} />
-                    Hapus Log
-                  </Button>
-                </div>
-              )}
-
-              {logs.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-8 text-center">
-                  <RefreshCw size={32} className="mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="type-body1 text-muted-foreground">Tidak ada log sinkronisasi</p>
-                  <p className="type-body2 text-muted-foreground/70 mt-1">
-                    Log akan muncul di sini ketika terjadi kegagalan sync
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-lg border divide-y max-h-[50vh] overflow-y-auto">
-                  {logs.map((entry) => {
-                    const config = LEVEL_CONFIG[entry.level];
-                    const Icon = config.icon;
-
-                    return (
-                      <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
-                        <div className={`mt-0.5 rounded-full p-1 ${config.bg}`}>
-                          <Icon size={14} className={config.color} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="type-body1 text-foreground">{entry.message}</span>
-                            <span className="type-body2 text-muted-foreground shrink-0">
-                              {formatTimestamp(entry.timestamp)}
-                            </span>
-                          </div>
-                          {entry.details && (
-                            <p className="type-body2 text-muted-foreground mt-1 font-mono text-xs bg-muted/50 rounded px-2 py-1 whitespace-pre-wrap break-all">
-                              {entry.details}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </CardContent>
           </CollapsibleContent>
         </Collapsible>

@@ -130,7 +130,7 @@ export function PromptDialogDrawer({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+      <Drawer open={open} onOpenChange={onOpenChange} direction="bottom" repositionInputs={false}>
         <DrawerContent>
           <DrawerHeader>
             {icon && <div className="flex items-center justify-center mb-2">{icon}</div>}

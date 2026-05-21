@@ -73,6 +73,7 @@ export function TopupDrawer({
         onOpenChange(o);
       }}
       direction="bottom"
+      repositionInputs={false}
     >
       <DrawerContent>
         <DrawerHeader>

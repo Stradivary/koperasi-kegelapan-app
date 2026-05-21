@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, asc, sql } from "drizzle-orm";
-import { transactionLog, cards, users } from "../../../src/db/schema";
+import { transactionLog, cards, users, devices } from "../../../src/db/schema";
 import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
@@ -517,4 +517,26 @@ syncRoutes.get("/pull", async (c) => {
   };
 
   return c.json(response);
+});
+
+// ─── GET /devices — List all devices for the authenticated tenant ────────────
+
+syncRoutes.get("/devices", async (c) => {
+  const tokenPayload = extractTokenPayload(c.req.raw);
+  if (!tokenPayload) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const { tenantId } = tokenPayload;
+
+  try {
+    const db = drizzle(c.env.DB);
+    const deviceList = await db.select().from(devices).where(eq(devices.tenantId, tenantId)).all();
+
+    return c.json({ devices: deviceList });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.error("sync/devices: failed to fetch devices", { tenantId, error: msg });
+    return c.json({ error: "Failed to fetch devices" }, 500);
+  }
 });

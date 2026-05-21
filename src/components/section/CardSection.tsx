@@ -127,6 +127,9 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     payload: CardPayload;
     issueData: { name: string; userId: string | null; balance: number; expiresAt: number | null };
   } | null>(null);
+  // Guard ref: set to true when onConfirm is in progress, prevents onCancel from cleaning up
+  const isConfirmingOverwriteRef = useRef(false);
+  const isConfirmingNotBlankRef = useRef(false);
   const cardsPanelRef = useRef<StationCardsPanelHandle>(null);
 
   const qc = useQueryClient();
@@ -399,8 +402,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
             // Instead of throwing and killing the flow, start a fresh NFC session
             trackError({
               category: "nfc_write_failure",
-              message:
-                writeErr instanceof Error ? writeErr.message : "Unknown NFC write error",
+              message: writeErr instanceof Error ? writeErr.message : "Unknown NFC write error",
               context: {
                 phase: "forceOverwrite",
                 serial: prepared.serial,
@@ -778,11 +780,11 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
   return (
     <>
-      {state.error && (
+      {/* {state.error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
           {state.error}
         </div>
-      )}
+      )} */}
 
       {!showFixCard && (
         <StationCardsPanel
@@ -804,8 +806,18 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
               await issueCard.mutateAsync(data);
             } catch (e) {
               if (e instanceof CardAlreadyRegisteredError) {
+                // Pause the NFC timeout while user reads the overwrite dialog
+                if (issuanceTimeoutRef.current) {
+                  clearTimeout(issuanceTimeoutRef.current);
+                  issuanceTimeoutRef.current = null;
+                }
                 setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
               } else if (e instanceof CardNotBlankError) {
+                // Pause the NFC timeout while user reads the not-blank dialog
+                if (issuanceTimeoutRef.current) {
+                  clearTimeout(issuanceTimeoutRef.current);
+                  issuanceTimeoutRef.current = null;
+                }
                 setNotBlankDialog({ cardSerial: e.cardSerial, pendingIssue: data });
               }
               throw e;
@@ -892,6 +904,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         newUserId={overwriteDialog?.pendingIssue.userId ?? null}
         isProcessing={issuancePhase === "writing"}
         onCancel={() => {
+          // Guard: if onConfirm is in progress, the drawer is closing programmatically — skip cleanup
+          if (isConfirmingOverwriteRef.current) return;
           setOverwriteDialog(null);
           cleanupIssuanceSession();
           setIssuanceDrawerOpen(false);
@@ -900,7 +914,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         onConfirm={async () => {
           if (!overwriteDialog) return;
           const pending = overwriteDialog.pendingIssue;
-          // Close override drawer immediately — IssuanceScanDrawer will show write progress
+          isConfirmingOverwriteRef.current = true;
           setOverwriteDialog(null);
           try {
             await issueCard.mutateAsync({
@@ -915,6 +929,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
               setIssuancePhase("error");
               setIssuanceError(e instanceof Error ? e.message : "Gagal menulis kartu");
             }
+          } finally {
+            isConfirmingOverwriteRef.current = false;
           }
         }}
       />
@@ -924,6 +940,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         cardSerial={notBlankDialog?.cardSerial ?? null}
         isProcessing={issuancePhase === "writing"}
         onCancel={() => {
+          // Guard: if onConfirm is in progress, the drawer is closing programmatically — skip cleanup
+          if (isConfirmingNotBlankRef.current) return;
           setNotBlankDialog(null);
           cleanupIssuanceSession();
           setIssuanceDrawerOpen(false);
@@ -932,6 +950,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         onConfirm={async () => {
           if (!notBlankDialog) return;
           const pending = notBlankDialog.pendingIssue;
+          isConfirmingNotBlankRef.current = true;
           setNotBlankDialog(null);
           try {
             await issueCard.mutateAsync({
@@ -948,6 +967,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
               setIssuancePhase("error");
               setIssuanceError(e instanceof Error ? e.message : "Gagal menulis kartu");
             }
+          } finally {
+            isConfirmingNotBlankRef.current = false;
           }
         }}
       />

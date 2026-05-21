@@ -79,6 +79,9 @@ export interface UseSyncEngineReturn extends SyncEngineState {
 /** Debounce delay in milliseconds after last Outbox write before triggering sync */
 export const DEBOUNCE_MS = 5000;
 
+/** Periodic pull interval in milliseconds (fetch new data from other devices) */
+export const PERIODIC_PULL_INTERVAL_MS = 30_000;
+
 /** Maximum consecutive error retries before giving up */
 const MAX_ERROR_RETRIES = 5;
 
@@ -383,6 +386,24 @@ export function useSyncEngine(
     };
   }, [enabled, tenantId, requestSync]);
 
+  // ── Effect: periodic pull to fetch new data from other devices ───────
+  useEffect(() => {
+    if (!enabled || !tenantId) return;
+
+    const intervalId = setInterval(() => {
+      if (!mountedRef.current || !enabledRef.current || !tenantIdRef.current) return;
+      // Only pull if we're idle (not already syncing) and online
+      if (isSyncingRef.current || !navigator.onLine) return;
+
+      // Trigger a full sync cycle (push + pull) to catch any new remote data
+      executeSyncCycle();
+    }, PERIODIC_PULL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [enabled, tenantId, executeSyncCycle]);
+
   // ── Effect: initial pending count and status ───────────────────────
   useEffect(() => {
     if (!enabled || !tenantId) {
@@ -391,7 +412,19 @@ export function useSyncEngine(
     }
 
     refreshPendingCount();
-  }, [enabled, tenantId, refreshPendingCount]);
+
+    // Trigger an initial sync on mount to pull any new data from other devices
+    // (small delay to avoid racing with other initialization)
+    const initialSyncTimer = setTimeout(() => {
+      if (mountedRef.current && enabledRef.current && tenantIdRef.current && navigator.onLine) {
+        executeSyncCycle();
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(initialSyncTimer);
+    };
+  }, [enabled, tenantId, refreshPendingCount, executeSyncCycle]);
 
   // ── Effect: cleanup on unmount ─────────────────────────────────────
   useEffect(() => {
