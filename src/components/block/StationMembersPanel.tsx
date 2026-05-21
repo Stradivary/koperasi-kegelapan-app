@@ -19,6 +19,7 @@ export interface StationMemberRow {
   userId: string;
   name: string;
   status: string;
+  syncStatus: "pending" | "synced";
 }
 
 type MemberView = "list" | "add";
@@ -35,6 +36,11 @@ interface StationMembersPanelProps {
 }
 
 const columnHelper = createColumnHelper<StationMemberRow>();
+
+const SYNC_BADGE_VARIANT: Record<StationMemberRow["syncStatus"], "default" | "secondary"> = {
+  synced: "default",
+  pending: "secondary",
+};
 
 export function StationMembersPanel({
   members,
@@ -85,6 +91,14 @@ export function StationMembersPanel({
           </Badge>
         );
       },
+    }),
+    columnHelper.accessor("syncStatus", {
+      header: "Sync",
+      cell: (info) => (
+        <Badge variant={SYNC_BADGE_VARIANT[info.getValue()]} className="text-[10px] px-1.5 py-0">
+          {info.getValue() === "synced" ? "Synced" : "Pending"}
+        </Badge>
+      ),
     }),
     columnHelper.display({
       id: "actions",
@@ -188,6 +202,12 @@ export function StationMembersPanel({
                         className="text-[10px] px-1.5 py-0"
                       >
                         {m.status === "active" ? "Aktif" : "Ditangguhkan"}
+                      </Badge>
+                      <Badge
+                        variant={SYNC_BADGE_VARIANT[m.syncStatus]}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {m.syncStatus === "synced" ? "Synced" : "Pending"}
                       </Badge>
                     </div>
                   </div>

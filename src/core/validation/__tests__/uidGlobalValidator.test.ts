@@ -41,10 +41,20 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function mockLocalCards(cards: Array<{ tenantId: string; cardId: string }>) {
-  vi.mocked(localDb.cards.filter).mockReturnValue({
-    toArray: vi.fn().mockResolvedValue(cards),
-  } as any);
+function mockLocalCards(cards: Array<{ tenantId: string; cardId: string; status?: string }>) {
+  vi.mocked(localDb.cards.filter).mockImplementation(
+    (predicate) =>
+      ({
+        toArray: vi.fn().mockResolvedValue(
+          cards.filter((card) =>
+            predicate({
+              ...card,
+              status: card.status ?? "active",
+            } as any),
+          ),
+        ),
+      }) as any,
+  );
 }
 
 describe("normalizeUID", () => {
@@ -146,6 +156,18 @@ describe("validateUID - local DB check (Requirements 7.1, 7.8)", () => {
     await validateUID("04:A2:B3:C4:D5:E6:F7", "tenant-1");
 
     expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("ignores deleted cards in local DB checks", async () => {
+    mockLocalCards([{ tenantId: "tenant-1", cardId: "04a2b3c4d5e6f7", status: "deleted" }]);
+
+    mockedApiFetch.mockResolvedValue({
+      json: () => Promise.resolve({ exists: false }),
+    } as any);
+
+    const result = await validateUID("04:A2:B3:C4:D5:E6:F7", "tenant-1");
+
+    expect(result.valid).toBe(true);
   });
 });
 
@@ -270,5 +292,13 @@ describe("validateUIDLocal (Requirement 7.7)", () => {
     await validateUIDLocal("04A2B3C4D5E6F7", "tenant-1");
 
     expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("ignores deleted cards for local-only validation", async () => {
+    mockLocalCards([{ tenantId: "tenant-1", cardId: "04a2b3c4d5e6f7", status: "deleted" }]);
+
+    const result = await validateUIDLocal("04A2B3C4D5E6F7", "tenant-1");
+
+    expect(result.valid).toBe(true);
   });
 });

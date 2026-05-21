@@ -73,6 +73,13 @@ describe("GET /api/cards/check-uid", () => {
     expect(await r.json()).toEqual({ exists: true, tenantId: "tenant-123" });
   });
 
+  it("returns exists:false when only deleted cards match", async () => {
+    const app = createApp(createMockD1([]));
+    const r = await app.request("/api/cards/check-uid?uid=04a2b3c4d5e6f7");
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ exists: false });
+  });
+
   it("normalizes UID with colons and uppercase", async () => {
     const app = createApp(createMockD1([]));
     const r = await app.request("/api/cards/check-uid?uid=04:A2:B3:C4:D5:E6:F7");

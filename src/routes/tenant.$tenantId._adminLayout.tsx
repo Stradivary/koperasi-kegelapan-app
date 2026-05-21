@@ -1,34 +1,40 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { MemberSection } from "../components/section/MemberSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { AdminLayout, type AdminView } from "../components/layout/AdminLayout";
 import { useSyncEngineContext } from "../hooks/SyncEngineContext";
 import { useAdminTenantSync } from "../hooks/useAdminTenantSync";
+import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 
-export const Route = createFileRoute("/tenant/$tenantId/members")({
-  component: MembersPage,
+const ADMIN_PATHS: Record<Exclude<AdminView, "scout">, string> = {
+  cards: "cards",
+  members: "members",
+  transactions: "transactions",
+  settings: "settings",
+};
+
+export const Route = createFileRoute("/tenant/$tenantId/_adminLayout")({
+  component: AdminLayoutRoute,
 });
 
-function MembersPage() {
+function AdminLayoutRoute() {
   const { tenantId } = Route.useParams();
   const { tenantContext, loading } = useTenantContext(tenantId);
   const syncEngine = useSyncEngineContext();
   const { onSyncToServer, isSyncingToServer } = useAdminTenantSync(tenantId);
   const navigate = useNavigate();
+  const pathname = useLocation({ select: (location) => location.pathname });
 
   if (loading || !tenantContext) return <TenantRoutePending />;
 
+  const activeSection = getAdminView(pathname);
+
   function handleSectionChange(section: AdminView) {
-    if (section === "members") return;
-    if (section === "cards") {
-      navigate({ to: `/tenant/${tenantId}/cards` });
-    } else if (section === "transactions") {
-      navigate({ to: `/tenant/${tenantId}/transactions` });
-    } else if (section === "scout") {
+    if (section === activeSection) return;
+    if (section === "scout") {
       navigate({ to: `/tenant/${tenantId}/scout` });
-    } else if (section === "settings") {
-      navigate({ to: `/tenant/${tenantId}/settings` });
+      return;
     }
+
+    navigate({ to: `/tenant/${tenantId}/${ADMIN_PATHS[section]}` });
   }
 
   return (
@@ -36,7 +42,7 @@ function MembersPage() {
       tenantId={tenantId}
       tenantName={tenantContext.tenantName}
       role={tenantContext.role}
-      activeSection="members"
+      activeSection={activeSection}
       onSectionChange={handleSectionChange}
       syncStatus={syncEngine?.syncStatus ?? "idle"}
       lastSyncedAt={syncEngine?.lastSyncedAt ?? null}
@@ -45,7 +51,14 @@ function MembersPage() {
       onSyncToServer={onSyncToServer}
       isSyncingToServer={isSyncingToServer}
     >
-      <MemberSection tenantId={tenantId} />
+      <Outlet />
     </AdminLayout>
   );
+}
+
+function getAdminView(pathname: string): AdminView {
+  if (pathname.endsWith("/members")) return "members";
+  if (pathname.endsWith("/transactions")) return "transactions";
+  if (pathname.endsWith("/settings")) return "settings";
+  return "cards";
 }

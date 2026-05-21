@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
+import { localDb } from "../../db/local-db";
 import type { TransactionLog } from "../../db/local-db";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -53,6 +54,10 @@ const SYNC_STATUS_LABELS: Record<TransactionLog["syncStatus"], string> = {
   failed: "Failed",
 };
 
+interface TransactionRow extends TransactionLog {
+  userName: string | null;
+}
+
 function formatDateTime(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   return date.toLocaleString("id-ID", {
@@ -69,7 +74,7 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString("id-ID");
 }
 
-const columnHelper = createColumnHelper<TransactionLog>();
+const columnHelper = createColumnHelper<TransactionRow>();
 
 const columns = [
   columnHelper.accessor("timestamp", {
@@ -79,6 +84,24 @@ const columns = [
   columnHelper.accessor("cardId", {
     header: "Card ID",
     cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("userName", {
+    header: "Pengguna",
+    cell: (info) => {
+      const row = info.row.original;
+      if (!row.userId) {
+        return <span className="text-xs text-muted-foreground">Tanpa anggota</span>;
+      }
+
+      return (
+        <div className="min-w-0">
+          <div className="text-xs font-medium truncate">
+            {info.getValue() ?? "Anggota tidak ditemukan"}
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate">#{row.userId}</div>
+        </div>
+      );
+    },
   }),
   columnHelper.accessor("type", {
     header: "Tipe",
@@ -159,7 +182,21 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
       dateFrom,
       dateTo,
     ],
-    queryFn: () => getTransactions(query),
+    queryFn: async () => {
+      const [transactions, users] = await Promise.all([
+        getTransactions(query),
+        localDb.users.where("tenantId").equals(tenantId).toArray(),
+      ]);
+      const userMap = new Map(users.map((user) => [user.userId, user.name]));
+
+      return {
+        ...transactions,
+        entries: transactions.entries.map((entry) => ({
+          ...entry,
+          userName: entry.userId ? (userMap.get(entry.userId) ?? null) : null,
+        })),
+      };
+    },
   });
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
@@ -218,7 +255,7 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
       header={
         <div className="space-y-4">
           {/* Filter controls */}
-          <div className="flex flex-wrap items-end gap-3 rounded-md bg-white border border-border bg-muted/30 p-3">
+          <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-muted/30 p-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="filter-card-id" className="text-xs text-muted-foreground">
                 Card ID

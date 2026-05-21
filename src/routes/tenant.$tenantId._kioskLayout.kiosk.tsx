@@ -1,21 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TerminalSection } from "../components/section/TerminalSection";
+import { KioskSection } from "../components/section/KioskSection";
 import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
 
-export const Route = createFileRoute("/tenant/$tenantId/terminal")({
-  component: TerminalPage,
+export const Route = createFileRoute("/tenant/$tenantId/_kioskLayout/kiosk")({
+  component: KioskPage,
 });
 
-function TerminalPage() {
+function KioskPage() {
   const { tenantId } = Route.useParams();
-  const { tenantContext, loading } = useTenantContext(tenantId);
+  const { tenantContext, loading } = useTenantContext(tenantId, ["admin", "kiosk"]);
 
   if (loading || !tenantContext) return <TenantRoutePending />;
 
   return (
-    <TerminalSection
+    <KioskSection
       tenantId={tenantId}
-      tenantName={tenantContext.tenantName}
       accountId={tenantContext.accountId}
       deviceId={tenantContext.deviceId}
       terminalId={tenantContext.terminalId}

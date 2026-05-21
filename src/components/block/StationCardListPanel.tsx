@@ -26,6 +26,11 @@ interface StationCardListPanelProps {
 
 const columnHelper = createColumnHelper<StationCardRow>();
 
+const SYNC_BADGE_VARIANT: Record<StationCardRow["syncStatus"], "default" | "secondary"> = {
+  synced: "default",
+  pending: "secondary",
+};
+
 const columns = [
   columnHelper.accessor("userName", {
     header: "Pemilik",
@@ -49,6 +54,14 @@ const columns = [
         </Badge>
       );
     },
+  }),
+  columnHelper.accessor("syncStatus", {
+    header: "Sync",
+    cell: (info) => (
+      <Badge variant={SYNC_BADGE_VARIANT[info.getValue()]} className="text-[10px] px-1.5 py-0">
+        {info.getValue() === "synced" ? "Synced" : "Pending"}
+      </Badge>
+    ),
   }),
   columnHelper.accessor("balance", {
     header: () => <span className="text-right w-full block">Saldo</span>,
@@ -152,6 +165,12 @@ export function StationCardListPanel({
                       {card.status === "active"
                         ? "Aktif"
                         : card.status.replace("blocked_", "Blokir ")}
+                    </Badge>
+                    <Badge
+                      variant={SYNC_BADGE_VARIANT[card.syncStatus]}
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {card.syncStatus === "synced" ? "Synced" : "Pending"}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       Rp {card.balance?.toLocaleString("id-ID")}

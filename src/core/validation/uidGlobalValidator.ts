@@ -112,7 +112,9 @@ async function checkLocalDB(
   normalizedUID: string,
   currentTenantId: string,
 ): Promise<UIDValidationResult | null> {
-  const localCards = await localDb.cards.filter((card) => card.cardId === normalizedUID).toArray();
+  const localCards = await localDb.cards
+    .filter((card) => card.cardId === normalizedUID && card.status !== "deleted")
+    .toArray();
 
   if (localCards.length > 0) {
     const existingCard = localCards[0];

@@ -7,6 +7,7 @@ export interface StationCardRow {
   userId: string | null;
   userName: string | null;
   status: string;
+  syncStatus: "pending" | "synced";
   balance: number;
   counter: number;
   expiresAt: string | null;
@@ -16,6 +17,7 @@ export interface StationUserRow {
   userId: string;
   name: string;
   status: string;
+  syncStatus: "pending" | "synced";
 }
 
 type CardView = "list" | "issue";

@@ -75,6 +75,7 @@ async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
       userId: c.userId,
       userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
       status: c.status,
+      syncStatus: c.syncStatus ?? "synced",
       balance: c.balance,
       counter: c.counter,
       expiresAt:

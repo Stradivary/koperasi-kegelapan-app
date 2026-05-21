@@ -16,15 +16,17 @@ import { Route as DevIndexRouteImport } from './routes/dev.index'
 import { Route as TenantTenantIdRouteImport } from './routes/tenant.$tenantId'
 import { Route as DevNfcTestRouteImport } from './routes/dev.nfc-test'
 import { Route as DevIssuanceTestRouteImport } from './routes/dev.issuance-test'
-import { Route as TenantTenantIdTransactionsRouteImport } from './routes/tenant.$tenantId.transactions'
-import { Route as TenantTenantIdTerminalRouteImport } from './routes/tenant.$tenantId.terminal'
-import { Route as TenantTenantIdSettingsRouteImport } from './routes/tenant.$tenantId.settings'
-import { Route as TenantTenantIdScoutRouteImport } from './routes/tenant.$tenantId.scout'
-import { Route as TenantTenantIdMembersRouteImport } from './routes/tenant.$tenantId.members'
-import { Route as TenantTenantIdKioskRouteImport } from './routes/tenant.$tenantId.kiosk'
-import { Route as TenantTenantIdGateRouteImport } from './routes/tenant.$tenantId.gate'
-import { Route as TenantTenantIdCardsRouteImport } from './routes/tenant.$tenantId.cards'
 import { Route as TenantTenantIdAdminRouteImport } from './routes/tenant.$tenantId.admin'
+import { Route as TenantTenantIdKioskLayoutRouteImport } from './routes/tenant.$tenantId._kioskLayout'
+import { Route as TenantTenantIdAdminLayoutRouteImport } from './routes/tenant.$tenantId._adminLayout'
+import { Route as TenantTenantIdKioskLayoutTerminalRouteImport } from './routes/tenant.$tenantId._kioskLayout.terminal'
+import { Route as TenantTenantIdKioskLayoutScoutRouteImport } from './routes/tenant.$tenantId._kioskLayout.scout'
+import { Route as TenantTenantIdKioskLayoutKioskRouteImport } from './routes/tenant.$tenantId._kioskLayout.kiosk'
+import { Route as TenantTenantIdKioskLayoutGateRouteImport } from './routes/tenant.$tenantId._kioskLayout.gate'
+import { Route as TenantTenantIdAdminLayoutTransactionsRouteImport } from './routes/tenant.$tenantId._adminLayout.transactions'
+import { Route as TenantTenantIdAdminLayoutSettingsRouteImport } from './routes/tenant.$tenantId._adminLayout.settings'
+import { Route as TenantTenantIdAdminLayoutMembersRouteImport } from './routes/tenant.$tenantId._adminLayout.members'
+import { Route as TenantTenantIdAdminLayoutCardsRouteImport } from './routes/tenant.$tenantId._adminLayout.cards'
 
 const SuperadminRoute = SuperadminRouteImport.update({
   id: '/superadmin',
@@ -61,52 +63,69 @@ const DevIssuanceTestRoute = DevIssuanceTestRouteImport.update({
   path: '/dev/issuance-test',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TenantTenantIdTransactionsRoute =
-  TenantTenantIdTransactionsRouteImport.update({
-    id: '/transactions',
-    path: '/transactions',
-    getParentRoute: () => TenantTenantIdRoute,
-  } as any)
-const TenantTenantIdTerminalRoute = TenantTenantIdTerminalRouteImport.update({
-  id: '/terminal',
-  path: '/terminal',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdSettingsRoute = TenantTenantIdSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdScoutRoute = TenantTenantIdScoutRouteImport.update({
-  id: '/scout',
-  path: '/scout',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdMembersRoute = TenantTenantIdMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdKioskRoute = TenantTenantIdKioskRouteImport.update({
-  id: '/kiosk',
-  path: '/kiosk',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdGateRoute = TenantTenantIdGateRouteImport.update({
-  id: '/gate',
-  path: '/gate',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
-const TenantTenantIdCardsRoute = TenantTenantIdCardsRouteImport.update({
-  id: '/cards',
-  path: '/cards',
-  getParentRoute: () => TenantTenantIdRoute,
-} as any)
 const TenantTenantIdAdminRoute = TenantTenantIdAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => TenantTenantIdRoute,
 } as any)
+const TenantTenantIdKioskLayoutRoute =
+  TenantTenantIdKioskLayoutRouteImport.update({
+    id: '/_kioskLayout',
+    getParentRoute: () => TenantTenantIdRoute,
+  } as any)
+const TenantTenantIdAdminLayoutRoute =
+  TenantTenantIdAdminLayoutRouteImport.update({
+    id: '/_adminLayout',
+    getParentRoute: () => TenantTenantIdRoute,
+  } as any)
+const TenantTenantIdKioskLayoutTerminalRoute =
+  TenantTenantIdKioskLayoutTerminalRouteImport.update({
+    id: '/terminal',
+    path: '/terminal',
+    getParentRoute: () => TenantTenantIdKioskLayoutRoute,
+  } as any)
+const TenantTenantIdKioskLayoutScoutRoute =
+  TenantTenantIdKioskLayoutScoutRouteImport.update({
+    id: '/scout',
+    path: '/scout',
+    getParentRoute: () => TenantTenantIdKioskLayoutRoute,
+  } as any)
+const TenantTenantIdKioskLayoutKioskRoute =
+  TenantTenantIdKioskLayoutKioskRouteImport.update({
+    id: '/kiosk',
+    path: '/kiosk',
+    getParentRoute: () => TenantTenantIdKioskLayoutRoute,
+  } as any)
+const TenantTenantIdKioskLayoutGateRoute =
+  TenantTenantIdKioskLayoutGateRouteImport.update({
+    id: '/gate',
+    path: '/gate',
+    getParentRoute: () => TenantTenantIdKioskLayoutRoute,
+  } as any)
+const TenantTenantIdAdminLayoutTransactionsRoute =
+  TenantTenantIdAdminLayoutTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => TenantTenantIdAdminLayoutRoute,
+  } as any)
+const TenantTenantIdAdminLayoutSettingsRoute =
+  TenantTenantIdAdminLayoutSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => TenantTenantIdAdminLayoutRoute,
+  } as any)
+const TenantTenantIdAdminLayoutMembersRoute =
+  TenantTenantIdAdminLayoutMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
+    getParentRoute: () => TenantTenantIdAdminLayoutRoute,
+  } as any)
+const TenantTenantIdAdminLayoutCardsRoute =
+  TenantTenantIdAdminLayoutCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => TenantTenantIdAdminLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -114,17 +133,17 @@ export interface FileRoutesByFullPath {
   '/superadmin': typeof SuperadminRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
-  '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
+  '/tenant/$tenantId': typeof TenantTenantIdKioskLayoutRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
-  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
-  '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
-  '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
-  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
-  '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
-  '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
+  '/tenant/$tenantId/cards': typeof TenantTenantIdAdminLayoutCardsRoute
+  '/tenant/$tenantId/members': typeof TenantTenantIdAdminLayoutMembersRoute
+  '/tenant/$tenantId/settings': typeof TenantTenantIdAdminLayoutSettingsRoute
+  '/tenant/$tenantId/transactions': typeof TenantTenantIdAdminLayoutTransactionsRoute
+  '/tenant/$tenantId/gate': typeof TenantTenantIdKioskLayoutGateRoute
+  '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskLayoutKioskRoute
+  '/tenant/$tenantId/scout': typeof TenantTenantIdKioskLayoutScoutRoute
+  '/tenant/$tenantId/terminal': typeof TenantTenantIdKioskLayoutTerminalRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,17 +151,17 @@ export interface FileRoutesByTo {
   '/superadmin': typeof SuperadminRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
-  '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
+  '/tenant/$tenantId': typeof TenantTenantIdKioskLayoutRouteWithChildren
   '/dev': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
-  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
-  '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
-  '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
-  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
-  '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
-  '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
+  '/tenant/$tenantId/cards': typeof TenantTenantIdAdminLayoutCardsRoute
+  '/tenant/$tenantId/members': typeof TenantTenantIdAdminLayoutMembersRoute
+  '/tenant/$tenantId/settings': typeof TenantTenantIdAdminLayoutSettingsRoute
+  '/tenant/$tenantId/transactions': typeof TenantTenantIdAdminLayoutTransactionsRoute
+  '/tenant/$tenantId/gate': typeof TenantTenantIdKioskLayoutGateRoute
+  '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskLayoutKioskRoute
+  '/tenant/$tenantId/scout': typeof TenantTenantIdKioskLayoutScoutRoute
+  '/tenant/$tenantId/terminal': typeof TenantTenantIdKioskLayoutTerminalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -153,15 +172,17 @@ export interface FileRoutesById {
   '/dev/nfc-test': typeof DevNfcTestRoute
   '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
+  '/tenant/$tenantId/_adminLayout': typeof TenantTenantIdAdminLayoutRouteWithChildren
+  '/tenant/$tenantId/_kioskLayout': typeof TenantTenantIdKioskLayoutRouteWithChildren
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
-  '/tenant/$tenantId/cards': typeof TenantTenantIdCardsRoute
-  '/tenant/$tenantId/gate': typeof TenantTenantIdGateRoute
-  '/tenant/$tenantId/kiosk': typeof TenantTenantIdKioskRoute
-  '/tenant/$tenantId/members': typeof TenantTenantIdMembersRoute
-  '/tenant/$tenantId/scout': typeof TenantTenantIdScoutRoute
-  '/tenant/$tenantId/settings': typeof TenantTenantIdSettingsRoute
-  '/tenant/$tenantId/terminal': typeof TenantTenantIdTerminalRoute
-  '/tenant/$tenantId/transactions': typeof TenantTenantIdTransactionsRoute
+  '/tenant/$tenantId/_adminLayout/cards': typeof TenantTenantIdAdminLayoutCardsRoute
+  '/tenant/$tenantId/_adminLayout/members': typeof TenantTenantIdAdminLayoutMembersRoute
+  '/tenant/$tenantId/_adminLayout/settings': typeof TenantTenantIdAdminLayoutSettingsRoute
+  '/tenant/$tenantId/_adminLayout/transactions': typeof TenantTenantIdAdminLayoutTransactionsRoute
+  '/tenant/$tenantId/_kioskLayout/gate': typeof TenantTenantIdKioskLayoutGateRoute
+  '/tenant/$tenantId/_kioskLayout/kiosk': typeof TenantTenantIdKioskLayoutKioskRoute
+  '/tenant/$tenantId/_kioskLayout/scout': typeof TenantTenantIdKioskLayoutScoutRoute
+  '/tenant/$tenantId/_kioskLayout/terminal': typeof TenantTenantIdKioskLayoutTerminalRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -175,13 +196,13 @@ export interface FileRouteTypes {
     | '/dev/'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/cards'
+    | '/tenant/$tenantId/members'
+    | '/tenant/$tenantId/settings'
+    | '/tenant/$tenantId/transactions'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
-    | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/settings'
     | '/tenant/$tenantId/terminal'
-    | '/tenant/$tenantId/transactions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -193,13 +214,13 @@ export interface FileRouteTypes {
     | '/dev'
     | '/tenant/$tenantId/admin'
     | '/tenant/$tenantId/cards'
+    | '/tenant/$tenantId/members'
+    | '/tenant/$tenantId/settings'
+    | '/tenant/$tenantId/transactions'
     | '/tenant/$tenantId/gate'
     | '/tenant/$tenantId/kiosk'
-    | '/tenant/$tenantId/members'
     | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/settings'
     | '/tenant/$tenantId/terminal'
-    | '/tenant/$tenantId/transactions'
   id:
     | '__root__'
     | '/'
@@ -209,15 +230,17 @@ export interface FileRouteTypes {
     | '/dev/nfc-test'
     | '/tenant/$tenantId'
     | '/dev/'
+    | '/tenant/$tenantId/_adminLayout'
+    | '/tenant/$tenantId/_kioskLayout'
     | '/tenant/$tenantId/admin'
-    | '/tenant/$tenantId/cards'
-    | '/tenant/$tenantId/gate'
-    | '/tenant/$tenantId/kiosk'
-    | '/tenant/$tenantId/members'
-    | '/tenant/$tenantId/scout'
-    | '/tenant/$tenantId/settings'
-    | '/tenant/$tenantId/terminal'
-    | '/tenant/$tenantId/transactions'
+    | '/tenant/$tenantId/_adminLayout/cards'
+    | '/tenant/$tenantId/_adminLayout/members'
+    | '/tenant/$tenantId/_adminLayout/settings'
+    | '/tenant/$tenantId/_adminLayout/transactions'
+    | '/tenant/$tenantId/_kioskLayout/gate'
+    | '/tenant/$tenantId/_kioskLayout/kiosk'
+    | '/tenant/$tenantId/_kioskLayout/scout'
+    | '/tenant/$tenantId/_kioskLayout/terminal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -281,62 +304,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevIssuanceTestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tenant/$tenantId/transactions': {
-      id: '/tenant/$tenantId/transactions'
-      path: '/transactions'
-      fullPath: '/tenant/$tenantId/transactions'
-      preLoaderRoute: typeof TenantTenantIdTransactionsRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/terminal': {
-      id: '/tenant/$tenantId/terminal'
-      path: '/terminal'
-      fullPath: '/tenant/$tenantId/terminal'
-      preLoaderRoute: typeof TenantTenantIdTerminalRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/settings': {
-      id: '/tenant/$tenantId/settings'
-      path: '/settings'
-      fullPath: '/tenant/$tenantId/settings'
-      preLoaderRoute: typeof TenantTenantIdSettingsRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/scout': {
-      id: '/tenant/$tenantId/scout'
-      path: '/scout'
-      fullPath: '/tenant/$tenantId/scout'
-      preLoaderRoute: typeof TenantTenantIdScoutRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/members': {
-      id: '/tenant/$tenantId/members'
-      path: '/members'
-      fullPath: '/tenant/$tenantId/members'
-      preLoaderRoute: typeof TenantTenantIdMembersRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/kiosk': {
-      id: '/tenant/$tenantId/kiosk'
-      path: '/kiosk'
-      fullPath: '/tenant/$tenantId/kiosk'
-      preLoaderRoute: typeof TenantTenantIdKioskRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/gate': {
-      id: '/tenant/$tenantId/gate'
-      path: '/gate'
-      fullPath: '/tenant/$tenantId/gate'
-      preLoaderRoute: typeof TenantTenantIdGateRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
-    '/tenant/$tenantId/cards': {
-      id: '/tenant/$tenantId/cards'
-      path: '/cards'
-      fullPath: '/tenant/$tenantId/cards'
-      preLoaderRoute: typeof TenantTenantIdCardsRouteImport
-      parentRoute: typeof TenantTenantIdRoute
-    }
     '/tenant/$tenantId/admin': {
       id: '/tenant/$tenantId/admin'
       path: '/admin'
@@ -344,31 +311,133 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantIdAdminRouteImport
       parentRoute: typeof TenantTenantIdRoute
     }
+    '/tenant/$tenantId/_kioskLayout': {
+      id: '/tenant/$tenantId/_kioskLayout'
+      path: ''
+      fullPath: '/tenant/$tenantId'
+      preLoaderRoute: typeof TenantTenantIdKioskLayoutRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/_adminLayout': {
+      id: '/tenant/$tenantId/_adminLayout'
+      path: ''
+      fullPath: '/tenant/$tenantId'
+      preLoaderRoute: typeof TenantTenantIdAdminLayoutRouteImport
+      parentRoute: typeof TenantTenantIdRoute
+    }
+    '/tenant/$tenantId/_kioskLayout/terminal': {
+      id: '/tenant/$tenantId/_kioskLayout/terminal'
+      path: '/terminal'
+      fullPath: '/tenant/$tenantId/terminal'
+      preLoaderRoute: typeof TenantTenantIdKioskLayoutTerminalRouteImport
+      parentRoute: typeof TenantTenantIdKioskLayoutRoute
+    }
+    '/tenant/$tenantId/_kioskLayout/scout': {
+      id: '/tenant/$tenantId/_kioskLayout/scout'
+      path: '/scout'
+      fullPath: '/tenant/$tenantId/scout'
+      preLoaderRoute: typeof TenantTenantIdKioskLayoutScoutRouteImport
+      parentRoute: typeof TenantTenantIdKioskLayoutRoute
+    }
+    '/tenant/$tenantId/_kioskLayout/kiosk': {
+      id: '/tenant/$tenantId/_kioskLayout/kiosk'
+      path: '/kiosk'
+      fullPath: '/tenant/$tenantId/kiosk'
+      preLoaderRoute: typeof TenantTenantIdKioskLayoutKioskRouteImport
+      parentRoute: typeof TenantTenantIdKioskLayoutRoute
+    }
+    '/tenant/$tenantId/_kioskLayout/gate': {
+      id: '/tenant/$tenantId/_kioskLayout/gate'
+      path: '/gate'
+      fullPath: '/tenant/$tenantId/gate'
+      preLoaderRoute: typeof TenantTenantIdKioskLayoutGateRouteImport
+      parentRoute: typeof TenantTenantIdKioskLayoutRoute
+    }
+    '/tenant/$tenantId/_adminLayout/transactions': {
+      id: '/tenant/$tenantId/_adminLayout/transactions'
+      path: '/transactions'
+      fullPath: '/tenant/$tenantId/transactions'
+      preLoaderRoute: typeof TenantTenantIdAdminLayoutTransactionsRouteImport
+      parentRoute: typeof TenantTenantIdAdminLayoutRoute
+    }
+    '/tenant/$tenantId/_adminLayout/settings': {
+      id: '/tenant/$tenantId/_adminLayout/settings'
+      path: '/settings'
+      fullPath: '/tenant/$tenantId/settings'
+      preLoaderRoute: typeof TenantTenantIdAdminLayoutSettingsRouteImport
+      parentRoute: typeof TenantTenantIdAdminLayoutRoute
+    }
+    '/tenant/$tenantId/_adminLayout/members': {
+      id: '/tenant/$tenantId/_adminLayout/members'
+      path: '/members'
+      fullPath: '/tenant/$tenantId/members'
+      preLoaderRoute: typeof TenantTenantIdAdminLayoutMembersRouteImport
+      parentRoute: typeof TenantTenantIdAdminLayoutRoute
+    }
+    '/tenant/$tenantId/_adminLayout/cards': {
+      id: '/tenant/$tenantId/_adminLayout/cards'
+      path: '/cards'
+      fullPath: '/tenant/$tenantId/cards'
+      preLoaderRoute: typeof TenantTenantIdAdminLayoutCardsRouteImport
+      parentRoute: typeof TenantTenantIdAdminLayoutRoute
+    }
   }
 }
 
+interface TenantTenantIdAdminLayoutRouteChildren {
+  TenantTenantIdAdminLayoutCardsRoute: typeof TenantTenantIdAdminLayoutCardsRoute
+  TenantTenantIdAdminLayoutMembersRoute: typeof TenantTenantIdAdminLayoutMembersRoute
+  TenantTenantIdAdminLayoutSettingsRoute: typeof TenantTenantIdAdminLayoutSettingsRoute
+  TenantTenantIdAdminLayoutTransactionsRoute: typeof TenantTenantIdAdminLayoutTransactionsRoute
+}
+
+const TenantTenantIdAdminLayoutRouteChildren: TenantTenantIdAdminLayoutRouteChildren =
+  {
+    TenantTenantIdAdminLayoutCardsRoute: TenantTenantIdAdminLayoutCardsRoute,
+    TenantTenantIdAdminLayoutMembersRoute:
+      TenantTenantIdAdminLayoutMembersRoute,
+    TenantTenantIdAdminLayoutSettingsRoute:
+      TenantTenantIdAdminLayoutSettingsRoute,
+    TenantTenantIdAdminLayoutTransactionsRoute:
+      TenantTenantIdAdminLayoutTransactionsRoute,
+  }
+
+const TenantTenantIdAdminLayoutRouteWithChildren =
+  TenantTenantIdAdminLayoutRoute._addFileChildren(
+    TenantTenantIdAdminLayoutRouteChildren,
+  )
+
+interface TenantTenantIdKioskLayoutRouteChildren {
+  TenantTenantIdKioskLayoutGateRoute: typeof TenantTenantIdKioskLayoutGateRoute
+  TenantTenantIdKioskLayoutKioskRoute: typeof TenantTenantIdKioskLayoutKioskRoute
+  TenantTenantIdKioskLayoutScoutRoute: typeof TenantTenantIdKioskLayoutScoutRoute
+  TenantTenantIdKioskLayoutTerminalRoute: typeof TenantTenantIdKioskLayoutTerminalRoute
+}
+
+const TenantTenantIdKioskLayoutRouteChildren: TenantTenantIdKioskLayoutRouteChildren =
+  {
+    TenantTenantIdKioskLayoutGateRoute: TenantTenantIdKioskLayoutGateRoute,
+    TenantTenantIdKioskLayoutKioskRoute: TenantTenantIdKioskLayoutKioskRoute,
+    TenantTenantIdKioskLayoutScoutRoute: TenantTenantIdKioskLayoutScoutRoute,
+    TenantTenantIdKioskLayoutTerminalRoute:
+      TenantTenantIdKioskLayoutTerminalRoute,
+  }
+
+const TenantTenantIdKioskLayoutRouteWithChildren =
+  TenantTenantIdKioskLayoutRoute._addFileChildren(
+    TenantTenantIdKioskLayoutRouteChildren,
+  )
+
 interface TenantTenantIdRouteChildren {
+  TenantTenantIdAdminLayoutRoute: typeof TenantTenantIdAdminLayoutRouteWithChildren
+  TenantTenantIdKioskLayoutRoute: typeof TenantTenantIdKioskLayoutRouteWithChildren
   TenantTenantIdAdminRoute: typeof TenantTenantIdAdminRoute
-  TenantTenantIdCardsRoute: typeof TenantTenantIdCardsRoute
-  TenantTenantIdGateRoute: typeof TenantTenantIdGateRoute
-  TenantTenantIdKioskRoute: typeof TenantTenantIdKioskRoute
-  TenantTenantIdMembersRoute: typeof TenantTenantIdMembersRoute
-  TenantTenantIdScoutRoute: typeof TenantTenantIdScoutRoute
-  TenantTenantIdSettingsRoute: typeof TenantTenantIdSettingsRoute
-  TenantTenantIdTerminalRoute: typeof TenantTenantIdTerminalRoute
-  TenantTenantIdTransactionsRoute: typeof TenantTenantIdTransactionsRoute
 }
 
 const TenantTenantIdRouteChildren: TenantTenantIdRouteChildren = {
+  TenantTenantIdAdminLayoutRoute: TenantTenantIdAdminLayoutRouteWithChildren,
+  TenantTenantIdKioskLayoutRoute: TenantTenantIdKioskLayoutRouteWithChildren,
   TenantTenantIdAdminRoute: TenantTenantIdAdminRoute,
-  TenantTenantIdCardsRoute: TenantTenantIdCardsRoute,
-  TenantTenantIdGateRoute: TenantTenantIdGateRoute,
-  TenantTenantIdKioskRoute: TenantTenantIdKioskRoute,
-  TenantTenantIdMembersRoute: TenantTenantIdMembersRoute,
-  TenantTenantIdScoutRoute: TenantTenantIdScoutRoute,
-  TenantTenantIdSettingsRoute: TenantTenantIdSettingsRoute,
-  TenantTenantIdTerminalRoute: TenantTenantIdTerminalRoute,
-  TenantTenantIdTransactionsRoute: TenantTenantIdTransactionsRoute,
 }
 
 const TenantTenantIdRouteWithChildren = TenantTenantIdRoute._addFileChildren(

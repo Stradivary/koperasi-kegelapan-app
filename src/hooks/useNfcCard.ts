@@ -7,12 +7,107 @@ import {
   UNREGISTERED_CARD_MESSAGE,
 } from "../core/nfc/pipelineEngine";
 import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../core/nfc/engine";
-import { decodePayload } from "../core/payload/engine";
+import { decodePayload, encodePayloadWire } from "../core/payload/engine";
 import { isTenantBindValid } from "../core/payload/tenantBind";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
 import { BUFFER_SIZE, WIRE_SIZE, TRAILER_COUNTER_BIND } from "../core/payload/types";
 import { reconciliationOutbox, makeIdempotencyKey } from "../lib/indexeddb";
 import { recordTransaction } from "../lib/transactionLogService";
+
+const WRITE_VERIFICATION_FAILED_MESSAGE = "Gagal menulis kartu";
+
+function arraysEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) return false;
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function decodeCardPayloadForVerification(
+  raw: Uint8Array,
+  grant: SessionGrant,
+): Promise<CardPayload> {
+  const version = raw[4];
+  let decodableRaw = raw;
+
+  if (version >= 2) {
+    const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
+    const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
+    const cardId = raw.slice(6, 12);
+    const decryptedBuf = await decryptCardBody(
+      raw.slice(0, BUFFER_SIZE),
+      grant.sessionKey,
+      cardId,
+      BigInt(counterBind),
+    );
+    const full = new Uint8Array(WIRE_SIZE);
+    full.set(decryptedBuf, 0);
+    full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
+    decodableRaw = full;
+  }
+
+  return decodePayload(decodableRaw);
+}
+
+async function verifyWrittenPayload(
+  expectedPayload: CardPayload,
+  grant: SessionGrant,
+): Promise<void> {
+  const verificationAbort = new AbortController();
+
+  return new Promise((resolve, reject) => {
+    const verificationReader = new NDEFReader();
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(verificationTimeout);
+      verificationAbort.abort();
+      callback();
+    };
+
+    const verificationTimeout = setTimeout(() => {
+      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+    }, 1500);
+
+    verificationReader.addEventListener("reading", (event: NDEFReadingEvent) => {
+      void (async () => {
+        const raw = extractCardBytes(event.message);
+        if (!raw) {
+          throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
+        }
+
+        const actualPayload = await decodeCardPayloadForVerification(raw, grant);
+        const payloadMatches = arraysEqual(
+          encodePayloadWire(actualPayload),
+          encodePayloadWire(expectedPayload),
+        );
+
+        if (!payloadMatches) {
+          throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
+        }
+      })()
+        .then(() => finish(resolve))
+        .catch(() => finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE))));
+    });
+
+    verificationReader.addEventListener("readingerror", () => {
+      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+    });
+
+    verificationReader.scan({ signal: verificationAbort.signal }).catch(() => {
+      if (settled || verificationAbort.signal.aborted) {
+        return;
+      }
+      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+    });
+  });
+}
 
 export type NfcCardPhase =
   | "idle"
@@ -284,8 +379,7 @@ export function useNfcCard(
                   // Non-critical — reconciliation outbox is the primary
                 }
 
-                // Hold "writing" phase briefly so user keeps card in place
-                await new Promise((r) => setTimeout(r, 1500));
+                await verifyWrittenPayload(pending.payload, grant);
 
                 phaseRef.current = "success";
                 setState({
@@ -302,7 +396,14 @@ export function useNfcCard(
             } catch (e) {
               if (signal.aborted) return;
               phaseRef.current = "error";
-              setState((s) => ({ ...s, phase: "error", error: friendlyWriteError(e) }));
+              setState((s) => ({
+                ...s,
+                phase: "error",
+                error:
+                  e instanceof Error && e.message === WRITE_VERIFICATION_FAILED_MESSAGE
+                    ? WRITE_VERIFICATION_FAILED_MESSAGE
+                    : friendlyWriteError(e),
+              }));
               return;
             }
             return;
@@ -708,8 +809,7 @@ export function useNfcCard(
               // Duplicate or write error — non-critical, reconciliation outbox is the primary
             }
 
-            // Hold "writing" phase briefly so user keeps card in place
-            await new Promise((r) => setTimeout(r, 1500));
+            await verifyWrittenPayload(payload, grant);
 
             phaseRef.current = "success";
             setState({
@@ -741,7 +841,14 @@ export function useNfcCard(
         return true;
       } catch (e) {
         phaseRef.current = "error";
-        setState((s) => ({ ...s, phase: "error", error: String(e) }));
+        setState((s) => ({
+          ...s,
+          phase: "error",
+          error:
+            e instanceof Error && e.message === WRITE_VERIFICATION_FAILED_MESSAGE
+              ? WRITE_VERIFICATION_FAILED_MESSAGE
+              : friendlyWriteError(e),
+        }));
         return false;
       }
     },

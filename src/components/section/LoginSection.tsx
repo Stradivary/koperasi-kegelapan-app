@@ -1,16 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import {
-  DoorOpen,
-  MonitorSmartphone,
-  BookOpen,
-  Settings,
-  Layers,
-  Plus,
-  Search,
-  ArrowLeft,
-  WifiOff,
-} from "lucide-react";
 import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
 import { localLogin, cacheServerCredentials } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
@@ -24,13 +13,12 @@ import {
   getAccessToken,
 } from "../../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
-import { AuthLayout } from "../layout/AuthLayout";
+import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
+import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
+import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
+import { ServerBrowsePanel } from "../block/loginSection/ServerBrowsePanel";
 import { LocalSetupSection } from "./LocalSetupSection";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { PasswordInput } from "../ui/password-input";
-import { Label } from "../ui/label";
 import { LoadingState } from "../block/LoadingState";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 
@@ -61,6 +49,14 @@ export function LoginSection() {
   // Server browse state (for "Hubungkan ke Server" flow)
   const [selectedServerTenant, setSelectedServerTenant] = useState<TenantSearchResult | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const {
+    query: serverTenantQuery,
+    setQuery: setServerTenantQuery,
+    results: serverTenantResults,
+    loading: serverTenantLoading,
+    error: serverTenantError,
+  } = useServerTenantSearch();
+  const { isOnline } = useOnlineStatus();
 
   useEffect(() => {
     async function detectMode() {
@@ -462,6 +458,12 @@ export function LoginSection() {
   if (mode === "server-browse") {
     return (
       <ServerBrowsePanel
+        query={serverTenantQuery}
+        results={serverTenantResults}
+        loading={serverTenantLoading}
+        error={serverTenantError}
+        isOnline={isOnline}
+        onQueryChange={setServerTenantQuery}
         onSelect={(tenant) => {
           setSelectedServerTenant(tenant);
           setTenantSlug(tenant.slug);
@@ -483,369 +485,59 @@ export function LoginSection() {
   if (mode === "device-setup") {
     if (setupStep === "pick-role") {
       return (
-        <AuthLayout variant="brand-dark">
-          <div>
-            <h1 className="type-h5 text-foreground">Pilih Peran Perangkat</h1>
-            <p className="type-body2 text-signal-text-secondary mt-0.5">
-              Perangkat ini akan selalu berjalan dalam peran yang dipilih
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => handlePickDeviceRole("gate")}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
-            >
-              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <DoorOpen size={20} className="text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="type-body1-bold text-foreground">Gerbang (Gate)</p>
-                <p className="type-body2 text-muted-foreground">
-                  Mencatat waktu masuk ke kartu anggota
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handlePickDeviceRole("terminal")}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
-            >
-              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <MonitorSmartphone size={20} className="text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="type-body1-bold text-foreground">Terminal (Exit)</p>
-                <p className="type-body2 text-muted-foreground">
-                  Menghitung durasi dan memotong saldo anggota
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handlePickDeviceRole("scout")}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 border-transparent hover:bg-accent active:scale-[0.98] transition-all text-left"
-            >
-              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <BookOpen size={20} className="text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="type-body1-bold text-foreground">Buku Saku (Scout)</p>
-                <p className="type-body2 text-muted-foreground">
-                  Anggota melihat saldo dan riwayat kartu
-                </p>
-              </div>
-            </button>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setSetupStep("auth");
-              setPendingContext(null);
-            }}
-            className="w-full"
-          >
-            Kembali
-          </Button>
-        </AuthLayout>
+        <DeviceRoleSelectionPanel
+          onSelectRole={handlePickDeviceRole}
+          onBack={() => {
+            setSetupStep("auth");
+            setPendingContext(null);
+          }}
+        />
       );
     }
 
     // setupStep === 'auth'
     return (
-      <AuthLayout variant="brand-dark">
-        <div>
-          <h1 className="type-h5 text-foreground">Pasang Perangkat</h1>
-          <p className="type-body2 text-signal-text-secondary mt-0.5">
-            Login sebagai admin untuk mengkonfigurasi perangkat ini
-          </p>
-        </div>
-
-        <form onSubmit={handleDeviceSetupAuth} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="setup-username" className="type-body1-bold">
-              Username Admin
-            </Label>
-            <Input
-              id="setup-username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              required
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="setup-password" className="type-body1-bold">
-              Password
-            </Label>
-            <PasswordInput
-              id="setup-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              className="h-11"
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-lg bg-signal-bg-error border border-signal-error/30 px-3 py-2">
-              <p className="type-body2 text-signal-error">{error}</p>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 text-white type-title-bold bg-brand-dark hover:bg-brand-dark/90"
-          >
-            {loading ? <LoadingState variant="button" /> : "Lanjut"}
-          </Button>
-        </form>
-
-        <Button type="button" variant="outline" onClick={() => setMode("login")} className="w-full">
-          Batal
-        </Button>
-      </AuthLayout>
+      <DeviceSetupAuthPanel
+        username={username}
+        password={password}
+        error={error}
+        loading={loading}
+        onUsernameChange={setUsername}
+        onPasswordChange={setPassword}
+        onSubmit={handleDeviceSetupAuth}
+        onCancel={() => setMode("login")}
+      />
     );
   }
 
-  // ─── Unified Login Form ────────────────────────────────────────────────────
-
   return (
-    <AuthLayout variant="brand-dark">
-      <div>
-        <h1 className="type-h5 text-foreground">Masuk</h1>
-        <p className="type-body2 text-signal-text-secondary mt-0.5">
-          {selectedServerTenant
-            ? `Login ke ${selectedServerTenant.name}`
-            : "Masuk dengan akun lokal atau server"}
-        </p>
-      </div>
-
-      <form onSubmit={handleUnifiedLogin} className="space-y-4">
-        {/* Tenant slug field — shown when user picked from server browse or can type manually */}
-        <div className="space-y-1.5">
-          <Label htmlFor="tenant-slug" className="type-body1-bold">
-            Koperasi{" "}
-            <span className="text-muted-foreground font-normal type-body2">(opsional)</span>
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              id="tenant-slug"
-              type="text"
-              placeholder="slug koperasi"
-              value={tenantSlug}
-              onChange={(e) => {
-                setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                setSelectedServerTenant(null);
-              }}
-              className="h-11 flex-1"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 shrink-0"
-              onClick={() => {
-                setMode("server-browse");
-                setError(null);
-              }}
-              title="Cari koperasi di server"
-            >
-              <Search size={16} />
-            </Button>
-          </div>
-          {selectedServerTenant && (
-            <p className="type-body2 text-brand-dark">✓ {selectedServerTenant.name}</p>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="username" className="type-body1-bold">
-            Username
-          </Label>
-          <Input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            required
-            className="h-11"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="password" className="type-body1-bold">
-            Password
-          </Label>
-          <PasswordInput
-            id="password"
-            ref={passwordRef}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-            className="h-11"
-          />
-        </div>
-
-        {error && (
-          <div className="rounded-lg bg-signal-bg-error border border-signal-error/30 px-3 py-2">
-            <p className="type-body2 text-signal-error">{error}</p>
-          </div>
-        )}
-
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full h-12 text-white type-title-bold bg-brand hover:bg-brand/90"
-        >
-          {loading ? <LoadingState variant="button" /> : "Masuk"}
-        </Button>
-      </form>
-
-      <div className="pt-1 border-t space-y-2">
-        <Button
-          type="button"
-          onClick={() => {
-            setMode("setup");
-            setError(null);
-          }}
-          variant="outline"
-          className="w-full"
-        >
-          <Plus size={15} />
-          Daftarkan koperasi baru
-        </Button>
-
-        <Button
-          type="button"
-          onClick={enterDeviceSetup}
-          variant="outline"
-          className="w-full text-muted-foreground gap-2"
-        >
-          <Settings size={15} />
-          Pasang Perangkat
-        </Button>
-      </div>
-
-      <p className="type-body2 text-signal-text-disable text-center">
-        {BRAND.APP_NAME} · {BRAND.BYLINE}
-      </p>
-
-      <button
-        type="button"
-        onClick={() => navigate({ to: "/devices" })}
-        className="w-full text-center type-body2 text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
-      >
-        <Layers size={13} />
-        Lihat tenant terdaftar
-      </button>
-    </AuthLayout>
-  );
-}
-
-// ─── Server Browse Panel (inline sub-component) ──────────────────────────────
-
-interface ServerBrowsePanelProps {
-  onSelect: (tenant: TenantSearchResult) => void;
-  onBack: () => void;
-}
-
-function ServerBrowsePanel({ onSelect, onBack }: ServerBrowsePanelProps) {
-  const { query, setQuery, results, loading, error } = useServerTenantSearch();
-  const { isOnline } = useOnlineStatus();
-
-  const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error && isOnline;
-
-  return (
-    <AuthLayout variant="brand-dark" headerSubtitle="Cari Koperasi">
-      <div>
-        <h1 className="type-h5 text-foreground">Cari Koperasi</h1>
-        <p className="type-body2 text-signal-text-secondary mt-0.5">
-          Temukan koperasi yang terdaftar di server
-        </p>
-      </div>
-
-      {/* Offline status */}
-      {!isOnline && (
-        <div
-          className="flex items-center gap-2 rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2"
-          role="status"
-          aria-live="polite"
-        >
-          <WifiOff size={16} className="text-yellow-600 shrink-0" />
-          <p className="type-body2 text-yellow-700">
-            Kamu sedang offline. Pencarian membutuhkan koneksi internet.
-          </p>
-        </div>
-      )}
-
-      {/* Search input */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="text"
-          placeholder={isOnline ? "Cari koperasi..." : "Offline — tidak bisa mencari"}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          disabled={!isOnline}
-          className="h-11 pl-9"
-        />
-      </div>
-
-      {/* Loading indicator */}
-      {loading && isOnline && <LoadingState variant="section" text="Mencari..." />}
-
-      {/* Error message */}
-      {error && (
-        <div className="rounded-lg bg-signal-bg-error border border-signal-error/30 px-3 py-2">
-          <p className="type-body2 text-signal-error">{error}</p>
-        </div>
-      )}
-
-      {/* No results message */}
-      {showNoResults && (
-        <div className="py-6 text-center">
-          <p className="type-body2 text-muted-foreground">Tidak ada koperasi yang cocok</p>
-        </div>
-      )}
-
-      {/* Tenant cards */}
-      {results.length > 0 && (
-        <div className="space-y-2">
-          {results.map((tenant) => (
-            <button
-              key={tenant.tenantId}
-              type="button"
-              onClick={() => onSelect(tenant)}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border border-border hover:bg-accent active:scale-[0.98] transition-all text-left"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="type-body1-bold text-foreground truncate">{tenant.name}</p>
-                <p className="type-body2 text-muted-foreground truncate">{tenant.slug}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Back button */}
-      <Button type="button" variant="outline" onClick={onBack} className="w-full">
-        <ArrowLeft size={15} className="mr-1.5" />
-        Kembali
-      </Button>
-    </AuthLayout>
+    <LoginFormPanel
+      username={username}
+      password={password}
+      tenantSlug={tenantSlug}
+      error={error}
+      loading={loading}
+      selectedServerTenant={selectedServerTenant}
+      appName={BRAND.APP_NAME}
+      byline={BRAND.BYLINE}
+      passwordRef={passwordRef}
+      onUsernameChange={setUsername}
+      onPasswordChange={setPassword}
+      onTenantSlugChange={(value) => {
+        setTenantSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+        setSelectedServerTenant(null);
+      }}
+      onSubmit={handleUnifiedLogin}
+      onOpenServerBrowse={() => {
+        setMode("server-browse");
+        setError(null);
+      }}
+      onStartSetup={() => {
+        setMode("setup");
+        setError(null);
+      }}
+      onStartDeviceSetup={enterDeviceSetup}
+      onViewRegisteredTenants={() => navigate({ to: "/devices" })}
+    />
   );
 }

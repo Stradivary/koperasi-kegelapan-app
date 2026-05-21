@@ -11,25 +11,17 @@ import { notifyCheckin } from "../../lib/peerSyncCoordinator";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { LoadingState } from "../block/LoadingState";
-import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
 
 interface GateSectionProps {
   tenantId: string;
-  tenantName: string;
   accountId: string;
   deviceId: string;
   terminalId: number;
 }
 
-export function GateSection({
-  tenantId,
-  tenantName,
-  accountId,
-  deviceId,
-  terminalId,
-}: GateSectionProps) {
+export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
   const syncEngine = useSyncEngineContext();
@@ -217,13 +209,7 @@ export function GateSection({
   const blockedCheckDone = !blockedCheck.isChecking && state.phase === "ready";
 
   return (
-    <KioskLayout
-      title="Gerbang Masuk"
-      subtitle="Check-in"
-      tenantName={tenantName}
-      tenantId={tenantId}
-      currentMode="gate"
-    >
+    <>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
         {!grant && !loading && (
           <div className="w-full max-w-xs rounded-xl bg-signal-bg-error border border-signal-error/30 p-4">
@@ -267,9 +253,7 @@ export function GateSection({
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
             {blockedCheck.isChecking && state.phase === "ready" ? (
-              <p className="type-body2 text-muted-foreground animate-pulse">
-                Memproses...
-              </p>
+              <p className="type-body2 text-muted-foreground animate-pulse">Memproses...</p>
             ) : effectiveBlockedReason && state.phase === "ready" ? (
               <FeedbackCard
                 variant="blocked"
@@ -362,6 +346,6 @@ export function GateSection({
           </div>
         )}
       </div>
-    </KioskLayout>
+    </>
   );
 }

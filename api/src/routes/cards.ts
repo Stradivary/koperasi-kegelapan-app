@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { cards, cardEvents } from "../../../src/db/schema";
 
 type Env = {
@@ -94,7 +94,7 @@ cardsRoutes.get("/check-uid", async (c) => {
   const existingCard = await db
     .select({ tenantId: cards.tenantId })
     .from(cards)
-    .where(eq(cards.cardId, cardIdBlob))
+    .where(and(eq(cards.cardId, cardIdBlob), ne(cards.status, "deleted")))
     .get();
 
   if (existingCard) {
