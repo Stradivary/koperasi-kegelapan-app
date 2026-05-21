@@ -13,6 +13,12 @@
       "migrations_dir": "drizzle"
     }
   ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "SYNC_ANALYTICS",
+      "dataset": "koperasi_sync_events"
+    }
+  ],
   "observability": {
     "enabled": true,
     "logs": {

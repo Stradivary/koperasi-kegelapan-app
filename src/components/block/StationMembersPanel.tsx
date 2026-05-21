@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
-import { Ban, CheckCircle2, MoreHorizontal, Plus, Search, Trash, UserCheck } from "lucide-react";
+import { useState } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Ban, CheckCircle2, MoreHorizontal, Plus, Trash, UserCheck } from "lucide-react";
+import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import { LoadingState } from "./LoadingState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { DataTable } from "./data-table";
 
 export interface StationMemberRow {
   userId: string;
@@ -32,7 +34,7 @@ interface StationMembersPanelProps {
   onDeleteMember?: (userId: string) => void;
 }
 
-const PAGE_SIZE = 10;
+const columnHelper = createColumnHelper<StationMemberRow>();
 
 export function StationMembersPanel({
   members,
@@ -47,27 +49,7 @@ export function StationMembersPanel({
   const [memberView, setMemberView] = useState<MemberView>("list");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-
-  // Filter
-  const filtered = useMemo(() => {
-    if (!search.trim()) return members;
-    const q = search.toLowerCase();
-    return members.filter((m) => m.name.toLowerCase().includes(q) || String(m.userId).includes(q));
-  }, [members, search]);
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
+  const [deleteTarget, setDeleteTarget] = useState<StationMemberRow | null>(null);
 
   async function handleCreate() {
     setError(null);
@@ -79,6 +61,49 @@ export function StationMembersPanel({
       setError(String(e instanceof Error ? e.message : e));
     }
   }
+
+  // Build columns with action handlers in closure
+  const columns = [
+    columnHelper.accessor("name", {
+      header: "Nama",
+      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("userId", {
+      header: "ID",
+      cell: (info) => <span className="text-xs text-muted-foreground">#{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("status", {
+      header: "Status",
+      cell: (info) => {
+        const status = info.getValue();
+        return (
+          <Badge
+            variant={status === "active" ? "default" : "destructive"}
+            className="text-[10px] px-1.5 py-0"
+          >
+            {status === "active" ? "Aktif" : "Ditangguhkan"}
+          </Badge>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: (info) => {
+        const m = info.row.original;
+        return (
+          <MemberActionsDropdown
+            member={m}
+            isToggling={isToggling}
+            isDeleting={isDeleting}
+            onToggleStatus={() => onToggleStatus(m.userId, m.status)}
+            onDelete={onDeleteMember ? () => setDeleteTarget(m) : undefined}
+          />
+        );
+      },
+    }),
+  ];
 
   return (
     <div className="space-y-4">
@@ -131,144 +156,134 @@ export function StationMembersPanel({
       )}
 
       {memberView === "list" && (
-        <>
-          {/* Search */}
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              placeholder="Cari anggota..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          {/* List */}
-          <div className="rounded-2xl border divide-y overflow-hidden">
-            {isLoading && <LoadingState variant="inline" />}
-            {!isLoading &&
-              paginated.map((m) => (
-                <div
-                  key={m.userId}
-                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs font-semibold text-primary">
-                      {m.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{m.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-muted-foreground">#{m.userId}</span>
-                        <Badge
-                          variant={m.status === "active" ? "default" : "destructive"}
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {m.status === "active" ? "Aktif" : "Ditangguhkan"}
-                        </Badge>
-                      </div>
+        <DataTable
+          columns={columns}
+          data={members}
+          isLoading={isLoading}
+          paginationMode="client"
+          pageSize={10}
+          searchPlaceholder="Cari anggota..."
+          showSearch={true}
+          getRowId={(row) => row.userId}
+          emptyState={
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <UserCheck size={40} className="text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">Belum ada anggota terdaftar</p>
+            </div>
+          }
+          renderMobileItem={(row) => {
+            const m = row.original;
+            return (
+              <div className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs font-semibold text-primary">
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{m.name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xs text-muted-foreground">#{m.userId}</span>
+                      <Badge
+                        variant={m.status === "active" ? "default" : "destructive"}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {m.status === "active" ? "Aktif" : "Ditangguhkan"}
+                      </Badge>
                     </div>
                   </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreHorizontal size={14} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {m.status === "active" ? (
-                        <DropdownMenuItem
-                          onClick={() => onToggleStatus(m.userId, m.status)}
-                          disabled={isToggling}
-                        >
-                          <Ban size={14} />
-                          Tangguhkan
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          onClick={() => onToggleStatus(m.userId, m.status)}
-                          disabled={isToggling}
-                        >
-                          <CheckCircle2 size={14} />
-                          Aktifkan
-                        </DropdownMenuItem>
-                      )}
-                      {onDeleteMember && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => {
-                              if (confirm(`Hapus anggota "${m.name}" (#${m.userId})?`)) {
-                                onDeleteMember(m.userId);
-                              }
-                            }}
-                            disabled={isDeleting}
-                          >
-                            <Trash size={14} />
-                            Hapus Member
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
-              ))}
-            {!isLoading && paginated.length === 0 && (
-              <div className="flex flex-col items-center gap-3 py-8 text-center">
-                {search ? (
-                  <>
-                    <Search size={40} className="text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">
-                      Tidak ditemukan untuk "{search}"
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <UserCheck size={40} className="text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">Belum ada anggota terdaftar</p>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-muted-foreground">
-                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} dari{" "}
-                {filtered.length}
-              </p>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  ‹
-                </Button>
-                <span className="text-xs text-muted-foreground px-2">
-                  {page}/{totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  ›
-                </Button>
+                <MemberActionsDropdown
+                  member={m}
+                  isToggling={isToggling}
+                  isDeleting={isDeleting}
+                  onToggleStatus={() => onToggleStatus(m.userId, m.status)}
+                  onDelete={onDeleteMember ? () => setDeleteTarget(m) : undefined}
+                />
               </div>
-            </div>
-          )}
-        </>
+            );
+          }}
+        />
       )}
+
+      <ConfirmationDialogDrawer
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Hapus Anggota?"
+        description={
+          <p>
+            Anggota <strong>"{deleteTarget?.name}"</strong> (#{deleteTarget?.userId}) akan dihapus
+            secara permanen.
+          </p>
+        }
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        confirmVariant="destructive"
+        processingLabel="Menghapus..."
+        isProcessing={isDeleting}
+        icon={
+          <div className="flex items-center justify-center size-12 rounded-full bg-red-100">
+            <Trash size={24} className="text-red-600" />
+          </div>
+        }
+        onConfirm={() => {
+          if (deleteTarget && onDeleteMember) {
+            onDeleteMember(deleteTarget.userId);
+            setDeleteTarget(null);
+          }
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
+  );
+}
+
+// ─── Extracted Dropdown ──────────────────────────────────────────────────────
+
+function MemberActionsDropdown({
+  member,
+  isToggling,
+  isDeleting,
+  onToggleStatus,
+  onDelete,
+}: {
+  member: StationMemberRow;
+  isToggling: boolean;
+  isDeleting?: boolean;
+  onToggleStatus: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <MoreHorizontal size={14} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {member.status === "active" ? (
+          <DropdownMenuItem onClick={onToggleStatus} disabled={isToggling}>
+            <Ban size={14} />
+            Tangguhkan
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={onToggleStatus} disabled={isToggling}>
+            <CheckCircle2 size={14} />
+            Aktifkan
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={onDelete} disabled={isDeleting}>
+              <Trash size={14} />
+              Hapus Member
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -1,17 +1,8 @@
-import { useState, useMemo } from "react";
-import {
-  Ban,
-  CreditCard,
-  MoreHorizontal,
-  Plus,
-  RotateCcw,
-  Search,
-  ShieldAlert,
-  Trash2,
-  Unlock,
-} from "lucide-react";
+import { useState } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import { CreditCard, MoreHorizontal, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import {
   DropdownMenu,
@@ -20,99 +11,121 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { LoadingState } from "../block/LoadingState";
 import { cn } from "../../lib/utils";
+import { DataTable } from "./data-table";
 import type { StationCardRow } from "./StationCardsPanel";
 
 interface StationCardListPanelProps {
   cards: StationCardRow[];
   isLoading: boolean;
-  isUpdatingStatus: boolean;
   isDeleting: boolean;
-  isResetting: boolean;
   onTopupCard: (cardId: string) => void;
-  onUpdateCardStatus: (card: StationCardRow, newStatus: string) => void;
   onDeleteCard: (card: StationCardRow) => void;
-  onResetCard: (card: StationCardRow) => void;
   onIssueNew: () => void;
 }
+
+const columnHelper = createColumnHelper<StationCardRow>();
+
+const columns = [
+  columnHelper.accessor("userName", {
+    header: "Pemilik",
+    cell: (info) => {
+      const row = info.row.original;
+      return row.userName ?? (row.userId ? `User #${row.userId}` : "Tanpa Pemilik");
+    },
+  }),
+  columnHelper.accessor("cardId", {
+    header: "Card ID",
+    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    cell: (info) => {
+      const status = info.getValue();
+      const isBlocked = status !== "active";
+      return (
+        <Badge variant={isBlocked ? "destructive" : "default"} className="text-[10px] px-1.5 py-0">
+          {status === "active" ? "Aktif" : status.replace("blocked_", "Blokir ")}
+        </Badge>
+      );
+    },
+  }),
+  columnHelper.accessor("balance", {
+    header: () => <span className="text-right w-full block">Saldo</span>,
+    cell: (info) => (
+      <span className="text-right block">Rp {info.getValue()?.toLocaleString("id-ID")}</span>
+    ),
+  }),
+  columnHelper.display({
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    cell: () => null, // Actions handled via renderMobileItem and row-level dropdown
+  }),
+];
 
 export function StationCardListPanel({
   cards,
   isLoading,
-  isUpdatingStatus,
   isDeleting,
-  isResetting,
   onTopupCard,
-  onUpdateCardStatus,
   onDeleteCard,
-  onResetCard,
   onIssueNew,
 }: StationCardListPanelProps) {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-
-  const PAGE_SIZE = 10;
+  const [deleteTarget, setDeleteTarget] = useState<StationCardRow | null>(null);
   const nfcSupported = typeof globalThis !== "undefined" && "NDEFReader" in globalThis;
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return cards;
-    const q = search.toLowerCase();
-    return cards.filter(
-      (c) =>
-        c.cardId.toLowerCase().includes(q) ||
-        (c.userName?.toLowerCase().includes(q) ?? false) ||
-        String(c.userId).includes(q),
-    );
-  }, [cards, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
+  // Build columns with actions (needs closure over handlers)
+  const columnsWithActions = [
+    ...columns.slice(0, -1), // remove placeholder actions column
+    columnHelper.display({
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: (info) => {
+        const card = info.row.original;
+        return (
+          <CardActionsDropdown
+            card={card}
+            isDeleting={isDeleting}
+            onTopup={() => onTopupCard(card.cardId)}
+            onDelete={() => setDeleteTarget(card)}
+          />
+        );
+      },
+    }),
+  ];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{cards.length} kartu</span>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={onIssueNew} disabled={!nfcSupported}>
-            <Plus />
-            Cetak Kartu Baru
-          </Button>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search
-          size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          placeholder="Cari kartu..."
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {isLoading && <LoadingState variant="inline" />}
-
-      <div className="rounded-2xl border divide-y overflow-hidden">
-        {paginated.map((card) => {
+    <>
+      <DataTable
+        columns={columnsWithActions}
+        data={cards}
+        isLoading={isLoading}
+        paginationMode="client"
+        pageSize={10}
+        searchPlaceholder="Cari kartu..."
+        getRowId={(row) => row.cardId}
+        header={
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{cards.length} kartu</span>
+            <Button size="sm" onClick={onIssueNew} disabled={!nfcSupported}>
+              <Plus />
+              Cetak Kartu Baru
+            </Button>
+          </div>
+        }
+        emptyState={
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <CreditCard size={40} className="text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Belum ada kartu terdaftar</p>
+          </div>
+        }
+        renderMobileItem={(row) => {
+          const card = row.original;
           const isBlocked = card.status !== "active";
           return (
-            <div
-              key={card.cardId}
-              className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
-            >
+            <div className="px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
@@ -147,109 +160,82 @@ export function StationCardListPanel({
                 </div>
               </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreHorizontal size={14} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => onTopupCard(card.cardId)}
-                    disabled={card.status !== "active"}
-                  >
-                    <CreditCard size={14} />
-                    Top-up
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {card.status === "active" ? (
-                    <DropdownMenuItem
-                      onClick={() => onUpdateCardStatus(card, "blocked_admin")}
-                      disabled={isUpdatingStatus}
-                    >
-                      <Ban size={14} />
-                      Blokir Kartu
-                    </DropdownMenuItem>
-                  ) : (
-                    <>
-                      <DropdownMenuItem onClick={() => onResetCard(card)} disabled={isResetting}>
-                        <RotateCcw size={14} />
-                        Reset Status Kartu
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onUpdateCardStatus(card, "active")}
-                        disabled={isUpdatingStatus}
-                      >
-                        <Unlock size={14} />
-                        Buka Blokir
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      if (confirm(`Hapus kartu ${card.cardId}?`)) {
-                        onDeleteCard(card);
-                      }
-                    }}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 size={14} />
-                    Hapus Kartu
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CardActionsDropdown
+                card={card}
+                isDeleting={isDeleting}
+                onTopup={() => onTopupCard(card.cardId)}
+                onDelete={() => setDeleteTarget(card)}
+              />
             </div>
           );
-        })}
-        {paginated.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center gap-3 py-8 text-center">
-            {search ? (
-              <>
-                <Search size={40} className="text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Tidak ditemukan untuk "{search}"</p>
-              </>
-            ) : (
-              <>
-                <CreditCard size={40} className="text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Belum ada kartu terdaftar</p>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+        }}
+      />
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-muted-foreground">
-            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} dari{" "}
-            {filtered.length}
+      <ConfirmationDialogDrawer
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Hapus Kartu?"
+        description={
+          <p>
+            Kartu <strong className="font-mono">{deleteTarget?.cardId}</strong> akan dihapus secara
+            permanen.
           </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              ‹
-            </Button>
-            <span className="text-xs text-muted-foreground px-2">
-              {page}/{totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              ›
-            </Button>
+        }
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        confirmVariant="destructive"
+        processingLabel="Menghapus..."
+        isProcessing={isDeleting}
+        icon={
+          <div className="flex items-center justify-center size-12 rounded-full bg-red-100">
+            <Trash2 size={24} className="text-red-600" />
           </div>
-        </div>
-      )}
-    </div>
+        }
+        onConfirm={() => {
+          if (deleteTarget) {
+            onDeleteCard(deleteTarget);
+            setDeleteTarget(null);
+          }
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
+  );
+}
+
+// ─── Extracted Dropdown ──────────────────────────────────────────────────────
+
+function CardActionsDropdown({
+  card,
+  isDeleting,
+  onTopup,
+  onDelete,
+}: {
+  card: StationCardRow;
+  isDeleting: boolean;
+  onTopup: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <MoreHorizontal size={14} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={onTopup} disabled={card.status !== "active"}>
+          <CreditCard size={14} />
+          Top-up
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={onDelete} disabled={isDeleting}>
+          <Trash2 size={14} />
+          Hapus Kartu
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

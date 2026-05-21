@@ -20,6 +20,7 @@ import {
 import { useTenantSync } from "./useTenantSync";
 import { syncPushMembers, syncPushCards } from "../lib/syncPushEntities";
 import { syncPush } from "../lib/syncPush";
+import { toast } from "sonner";
 
 export type SyncStep =
   | "syncing-tenant"
@@ -55,19 +56,24 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
     if (!localConfig) return;
 
     // Reset state
-    se 
+    setSyncStep(null);
+    setSyncError(null);
+
     // Get admin account's password hash for the sync request
     const accounts = await localAccountStore.getByTenant(tenantId);
     const admin = accounts.find((a) => a.role === "admin");
     if (!admin) {
       console.warn("[AdminTenantSync] No admin account found for tenant", tenantId);
+      setSyncError("No admin account found for this tenant");
       return;
     }
 
     // Only local-only tenants get the full orchestrated sequence
     if (localConfig.mode === "local") {
       try {
-        // Step 1: Sync t g, admin.passwordHash);
+        // Step 1: Sync tenant to server (register it)
+        setSyncStep("syncing-tenant");
+        const result = await syncToServer(localConfig, admin.passwordHash);
 
         // Verify we got an access token back — required for subsequent push calls
         if (!result.accessToken) {
@@ -91,10 +97,14 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
 
         // All steps completed successfully
         setSyncStep("complete");
+        toast.success("Tenant berhasil disinkronkan ke server");
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error("[AdminTenantSync] Orchestrated sync failed:", errorMsg);
         setSyncError(errorMsg);
+        toast.error("Gagal menyinkronkan ke server", {
+          description: errorMsg.length > 100 ? errorMsg.slice(0, 100) + "..." : errorMsg,
+        });
         // syncStep remains at the step that failed, providing context
         return;
       }

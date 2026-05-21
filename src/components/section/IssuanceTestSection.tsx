@@ -17,7 +17,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Separator } from "../ui/separator";
-import { IssuanceScanDrawer } from "../block/IssuanceScanDrawer";
+import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

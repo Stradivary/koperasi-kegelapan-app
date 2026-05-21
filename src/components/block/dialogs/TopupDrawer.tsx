@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Wifi, CheckCircle2, XCircle, Loader2, CreditCard } from "lucide-react";
-import type { NfcCardPhase } from "../../hooks/useNfcCard";
-import type { CardPayload } from "../../core/payload/types";
+import { CheckCircle2, XCircle, CreditCard } from "lucide-react";
+import type { NfcCardPhase } from "../../../hooks/useNfcCard";
+import type { CardPayload } from "../../../core/payload/types";
+import type { NfcPhase } from "../../../core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,
@@ -9,10 +10,11 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-} from "../ui/drawer";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+} from "../../ui/drawer";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
+import { NfcTapArea, StepIndicator } from "../UnifiedNfcScanner";
 
 interface TopupDrawerProps {
   open: boolean;
@@ -44,6 +46,9 @@ export function TopupDrawer({
   onRetry,
 }: TopupDrawerProps) {
   const [amount, setAmount] = useState("");
+
+  // Cast NfcCardPhase to NfcPhase (compatible subset)
+  const nfcPhase = phase as NfcPhase;
 
   const isScanning = phase === "scanning" || phase === "validating";
   const hasCard = phase === "ready";
@@ -89,25 +94,34 @@ export function TopupDrawer({
           )}
         </DrawerHeader>
 
+        {/* Step Indicator — uses shared sub-component */}
+        <div className="px-4 py-2">
+          <StepIndicator
+            phase={nfcPhase}
+            labels={{
+              step1: "Scan Kartu",
+              step2: "Isi Nominal",
+              step3: "Tulis Kartu",
+              step4: "Selesai",
+            }}
+          />
+        </div>
+
         <div className="px-4 overflow-y-auto flex-1 min-h-0">
-          {/* Scanning */}
-          {isScanning && (
+          {/* Scanning / Writing — uses shared NfcTapArea */}
+          {(isScanning || isWriting) && (
             <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <div className="relative flex items-center justify-center w-40 h-40">
-                <span className="absolute inset-0 rounded-full border-2 border-brand/20 animate-ping" />
-                <span className="absolute inset-4 rounded-full border-2 border-brand/30 animate-ping [animation-delay:300ms]" />
-                <span className="absolute inset-8 rounded-full border-2 border-brand/40 animate-ping [animation-delay:600ms]" />
-                <span className="relative z-10 w-24 h-24 rounded-full bg-brand/10 border-2 border-brand flex items-center justify-center">
-                  {phase === "validating" ? (
-                    <Loader2 size={40} className="text-brand animate-spin" />
-                  ) : (
-                    <Wifi size={40} className="text-brand animate-pulse" />
-                  )}
-                </span>
-              </div>
-              <p className="type-body1 text-muted-foreground text-center">
-                {phase === "validating" ? "Memvalidasi kartu..." : "Menunggu kartu..."}
-              </p>
+              <NfcTapArea phase={nfcPhase} />
+              {isWriting && (
+                <div className="text-center space-y-1">
+                  <p className="type-body1-bold text-signal-warning">
+                    Tempelkan kartu untuk menulis
+                  </p>
+                  <p className="type-body1 text-muted-foreground">
+                    Dekatkan kartu NFC ke perangkat dan tahan sampai selesai
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -153,26 +167,6 @@ export function TopupDrawer({
                   </span>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Writing */}
-          {isWriting && (
-            <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <div className="relative flex items-center justify-center w-40 h-40">
-                <span className="absolute inset-0 rounded-full border-2 border-signal-warning/30 animate-ping" />
-                <span className="absolute inset-4 rounded-full border-2 border-signal-warning/40 animate-ping [animation-delay:300ms]" />
-                <span className="absolute inset-8 rounded-full border-2 border-signal-warning/50 animate-ping [animation-delay:600ms]" />
-                <span className="relative z-10 w-24 h-24 rounded-full bg-signal-bg-warning border-2 border-signal-warning flex items-center justify-center">
-                  <CreditCard size={40} className="text-signal-warning animate-pulse" />
-                </span>
-              </div>
-              <div className="text-center space-y-1">
-                <p className="type-body1-bold text-signal-warning">Tempelkan kartu untuk menulis</p>
-                <p className="type-body1 text-muted-foreground">
-                  Dekatkan kartu NFC ke perangkat dan tahan sampai selesai
-                </p>
-              </div>
             </div>
           )}
 

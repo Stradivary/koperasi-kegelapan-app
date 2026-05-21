@@ -1,7 +1,8 @@
-import { Wifi, CheckCircle2, XCircle, Loader2, LogIn, LogOut } from "lucide-react";
-import type { NfcCardPhase } from "../../hooks/useNfcCard";
-import type { CardPayload } from "../../core/payload/types";
-import { CardStatus } from "../../core/payload/types";
+import { CheckCircle2, LogIn, LogOut } from "lucide-react";
+import type { NfcCardPhase } from "../../../hooks/useNfcCard";
+import type { CardPayload } from "../../../core/payload/types";
+import { CardStatus } from "../../../core/payload/types";
+import type { NfcPhase } from "../../../core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,
@@ -9,9 +10,10 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-} from "../ui/drawer";
-import { Button } from "../ui/button";
-import { CardStatusBadge } from "./CardStatusBadge";
+} from "../../ui/drawer";
+import { Button } from "../../ui/button";
+import { CardStatusBadge } from "../CardStatusBadge";
+import { NfcTapArea, StepIndicator } from "../UnifiedNfcScanner";
 
 interface NfcScanDrawerProps {
   open: boolean;
@@ -39,47 +41,6 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
-const STEPS = ["Tap Kartu", "Kartu Ditemukan", "Tulis Kartu", "Selesai"] as const;
-
-function stepIndex(phase: NfcCardPhase): number {
-  if (phase === "idle") return -1;
-  if (phase === "scanning" || phase === "validating") return 0;
-  if (phase === "ready") return 1;
-  if (phase === "writing") return 2;
-  if (phase === "success") return 3;
-  return -1;
-}
-
-function StepIndicator({ phase }: { phase: NfcCardPhase }) {
-  const active = stepIndex(phase);
-  if (active < 0) return null;
-  return (
-    <div className="flex items-center justify-center gap-1 px-4 py-2">
-      {STEPS.map((label, i) => (
-        <div key={label} className="flex items-center gap-1">
-          <div
-            className={[
-              "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0",
-              i < active
-                ? "bg-brand text-white"
-                : i === active
-                  ? "bg-brand text-white ring-2 ring-brand/30"
-                  : "bg-muted text-muted-foreground",
-            ].join(" ")}
-          >
-            {i < active ? "✓" : i + 1}
-          </div>
-          {i < STEPS.length - 1 && (
-            <div
-              className={["h-0.5 w-6 shrink-0", i < active ? "bg-brand" : "bg-muted"].join(" ")}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function NfcScanDrawer({
   open,
   onOpenChange,
@@ -96,6 +57,9 @@ export function NfcScanDrawer({
   syncMode = false,
   syncSuccess = false,
 }: NfcScanDrawerProps) {
+  // Cast NfcCardPhase to NfcPhase (compatible subset)
+  const nfcPhase = phase as NfcPhase;
+
   const isScanning = phase === "scanning" || phase === "validating";
   const hasCard = phase === "ready";
   const isWriting = phase === "writing";
@@ -138,27 +102,16 @@ export function NfcScanDrawer({
           )}
         </DrawerHeader>
 
-        <StepIndicator phase={phase} />
+        {/* Step Indicator — uses shared sub-component */}
+        <div className="px-4 py-2">
+          <StepIndicator phase={nfcPhase} />
+        </div>
 
         <div className="px-4">
-          {/* Scanning / Validating */}
-          {isScanning && (
+          {/* Scanning / Validating / Writing — uses shared NfcTapArea */}
+          {(isScanning || isWriting) && (
             <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <div className="relative flex items-center justify-center w-40 h-40">
-                <span className="absolute inset-0 rounded-full border-2 border-brand/20 animate-ping" />
-                <span className="absolute inset-4 rounded-full border-2 border-brand/30 animate-ping [animation-delay:300ms]" />
-                <span className="absolute inset-8 rounded-full border-2 border-brand/40 animate-ping [animation-delay:600ms]" />
-                <span className="relative z-10 w-24 h-24 rounded-full bg-brand/10 border-2 border-brand flex items-center justify-center">
-                  {phase === "validating" ? (
-                    <Loader2 size={40} className="text-brand animate-spin" />
-                  ) : (
-                    <Wifi size={40} className="text-brand animate-pulse" />
-                  )}
-                </span>
-              </div>
-              <p className="type-body1 text-muted-foreground text-center">
-                {phase === "validating" ? "Memvalidasi kartu..." : "Menunggu kartu..."}
-              </p>
+              <NfcTapArea phase={nfcPhase} />
             </div>
           )}
 
@@ -220,24 +173,6 @@ export function NfcScanDrawer({
             </div>
           )}
 
-          {/* Writing — user must tap card again */}
-          {isWriting && (
-            <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <div className="relative flex items-center justify-center w-40 h-40">
-                <span className="absolute inset-0 rounded-full border-2 border-signal-warning/30 animate-ping" />
-                <span className="absolute inset-4 rounded-full border-2 border-signal-warning/40 animate-ping [animation-delay:300ms]" />
-                <span className="absolute inset-8 rounded-full border-2 border-signal-warning/50 animate-ping [animation-delay:600ms]" />
-                <span className="relative z-10 w-24 h-24 rounded-full bg-signal-bg-warning border-2 border-signal-warning flex items-center justify-center">
-                  <Wifi size={40} className="text-signal-warning animate-pulse" />
-                </span>
-              </div>
-              <div className="text-center space-y-1">
-                <p className="type-body1-bold text-signal-warning">Tap kartu ke perangkat</p>
-                <p className="text-sm text-muted-foreground">Tahan kartu sampai proses selesai</p>
-              </div>
-            </div>
-          )}
-
           {/* Success */}
           {isSuccess && (
             <div className="flex flex-col items-center py-8 gap-4">
@@ -259,9 +194,7 @@ export function NfcScanDrawer({
           {/* Error */}
           {isError && (
             <div className="flex flex-col items-center py-8 gap-4">
-              <div className="w-24 h-24 rounded-full bg-signal-bg-error border-2 border-signal-error flex items-center justify-center">
-                <XCircle size={48} className="text-signal-error" />
-              </div>
+              <NfcTapArea phase="error" />
               <div className="text-center">
                 <p className="font-bold text-signal-error">
                   {tamperDetected ? "⚠ Kartu Terdeteksi Rusak" : "Gagal"}

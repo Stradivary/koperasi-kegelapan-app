@@ -15,13 +15,13 @@ import {
   type StationCardsPanelHandle,
 } from "../block/StationCardsPanel";
 import { StationFixCardPanel } from "../block/StationFixCardPanel";
-import { SyncConflictDialog } from "../block/SyncConflictDialog";
-import { type CardOwnerInfo } from "../block/CardOverwriteDialog";
-import { CardOverwriteDrawer } from "../block/CardOverwriteDrawer";
-import { CardNotBlankDrawer } from "../block/CardNotBlankDrawer";
-import { NfcScanDrawer } from "../block/NfcScanDrawer";
-import { IssuanceScanDrawer } from "../block/IssuanceScanDrawer";
-import { TopupDrawer } from "../block/TopupDrawer";
+import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
+import { type CardOwnerInfo } from "../block/dialogs/CardOverwriteDialog";
+import { CardOverwriteDrawer } from "../block/dialogs/CardOverwriteDrawer";
+import { CardNotBlankDrawer } from "../block/dialogs/CardNotBlankDrawer";
+import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
+import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
+import { TopupDrawer } from "../block/dialogs/TopupDrawer";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
@@ -666,31 +666,47 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     [scan],
   );
 
+  // Top-up: validate card/user status immediately after scan (before nominal input)
+  useEffect(() => {
+    if (state.phase !== "ready" || !topupDrawerOpen) return;
+
+    const scannedId = normalizeSerial(state.serialNumber);
+
+    // Validate scanned card matches the selected card
+    if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
+      toast.error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
+      handleDrawerClose();
+      return;
+    }
+
+    // Check if card/user is blocked
+    if (state.serialNumber) {
+      checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
+        if (statusResult.blocked) {
+          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
+          handleDrawerClose();
+        }
+      });
+    }
+  }, [
+    state.phase,
+    topupDrawerOpen,
+    state.serialNumber,
+    topupTargetCardId,
+    tenantId,
+    handleDrawerClose,
+  ]);
+
   // Top-up: user confirmed amount in the drawer
   const handleTopupConfirm = useCallback(
     async (amount: number) => {
       if (!state.payload || !grant) return;
 
-      // Validate scanned card matches the selected card
-      const scannedId = normalizeSerial(state.serialNumber);
-      if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
-        toast.error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
-        return;
-      }
-
-      if (state.serialNumber) {
-        const statusResult = await checkLocalBlockedStatus(tenantId, state.serialNumber);
-        if (statusResult.blocked) {
-          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
-          return;
-        }
-      }
-
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);
       await write(updated, "topup");
     },
-    [state.payload, grant, write, state.serialNumber, tenantId, topupTargetCardId],
+    [state.payload, grant, write],
   );
 
   // When card becomes ready and we have a pending reset, trigger write
@@ -813,6 +829,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         open={overwriteDialog != null}
         existingCard={overwriteDialog?.existingCard ?? null}
         newOwnerName={overwriteDialog?.pendingIssue.name ?? ""}
+        newUserId={overwriteDialog?.pendingIssue.userId ?? null}
         isProcessing={issuancePhase === "writing"}
         onCancel={() => {
           setOverwriteDialog(null);

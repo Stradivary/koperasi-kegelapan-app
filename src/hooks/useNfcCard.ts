@@ -74,6 +74,8 @@ export function useNfcCard(
   const pendingWriteRef = useRef<PendingWrite | null>(null);
   // Rapid-tap debounce: ignore reading events within 1s of the last valid scan
   const lastScanTimestamp = useRef<number>(0);
+  // Track last successful write timestamp to distinguish transient read errors from unregistered cards
+  const lastWriteTimestamp = useRef<number>(0);
 
   const scan = useCallback(async () => {
     if (!grant) {
@@ -134,12 +136,19 @@ export function useNfcCard(
 
         const raw = extractCardBytes(event.message);
         if (!raw) {
+          // If a write just succeeded, this is likely the NFC subsystem returning
+          // a stale/empty read. Show a friendlier message instead of "tidak terdaftar".
+          const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
+          const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
+
           phaseRef.current = "error";
           setState((s) => ({
             ...s,
             phase: "error",
             payload: null,
-            error: UNREGISTERED_CARD_MESSAGE,
+            error: isPostWriteReadError
+              ? "Gagal membaca kartu setelah operasi. Lepas kartu sebentar lalu tap ulang."
+              : UNREGISTERED_CARD_MESSAGE,
             tamperDetected: false,
           }));
           return;
@@ -260,12 +269,21 @@ export function useNfcCard(
           }
         } catch {
           if (signal.aborted) return;
+
+          // If a write succeeded recently (within 10s), this is likely a transient NFC read
+          // error (corrupted data after write). Show a friendlier message and allow retry
+          // instead of the confusing "tidak terdaftar" message.
+          const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
+          const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
+
           phaseRef.current = "error";
           setState((s) => ({
             ...s,
             phase: "error",
             payload: null,
-            error: UNREGISTERED_CARD_MESSAGE,
+            error: isPostWriteReadError
+              ? "Gagal membaca kartu setelah operasi. Lepas kartu sebentar lalu tap ulang."
+              : UNREGISTERED_CARD_MESSAGE,
             tamperDetected: false,
           }));
         }
@@ -357,6 +375,7 @@ export function useNfcCard(
             tamperDetected: false,
             warning: null,
           });
+          lastWriteTimestamp.current = Date.now();
         } catch (e) {
           if (signal.aborted) return; // reset/cancel already cleaned up state
           phaseRef.current = "error";
@@ -387,7 +406,7 @@ export function useNfcCard(
         setState((s) => ({ ...s, phase: "error", error: e.message }));
       }
     });
-  }, [grant, tenantId, terminalId]);
+  }, [grant, tenantId, terminalId, lenient]);
 
   const write = useCallback(
     async (updatedPayload: CardPayload, operationType: string = "debit"): Promise<boolean> => {
@@ -483,6 +502,7 @@ export function useNfcCard(
               tamperDetected: false,
               warning: null,
             });
+            lastWriteTimestamp.current = Date.now();
             return true;
           } catch {
             // Immediate write failed (card removed too fast) — fall back to re-tap

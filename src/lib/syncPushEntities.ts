@@ -328,10 +328,14 @@ async function _pushEntitiesInternal(
     cardsRejected: 0,
   };
 
-  // Batch members
+  // Track how many cards have been included in member batches
+  let cardsSentWithMembers = 0;
+
+  // Batch members — include cards in the first batch (up to MAX_BATCH_SIZE)
   for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE) {
     const memberBatch = pendingMembers.slice(i, i + MAX_BATCH_SIZE);
     const cardBatch = i === 0 ? pendingCards.slice(0, MAX_BATCH_SIZE) : [];
+    if (i === 0) cardsSentWithMembers = cardBatch.length;
 
     const payload: EntityPushPayload = {
       tenantId,
@@ -376,9 +380,13 @@ async function _pushEntitiesInternal(
     await markCardsSynced(tenantId, acceptedCardIds);
   }
 
-  // Handle remaining card batches if there are more cards than fit in the first batch
-  if (pendingCards.length > MAX_BATCH_SIZE) {
-    for (let i = MAX_BATCH_SIZE; i < pendingCards.length; i += MAX_BATCH_SIZE) {
+  // Push remaining cards that weren't included in member batches.
+  // This handles two cases:
+  // 1. pendingMembers is empty → cardsSentWithMembers is 0, so ALL cards need pushing
+  // 2. pendingCards > MAX_BATCH_SIZE → overflow cards beyond the first batch need pushing
+  const remainingCardsStart = cardsSentWithMembers;
+  if (remainingCardsStart < pendingCards.length) {
+    for (let i = remainingCardsStart; i < pendingCards.length; i += MAX_BATCH_SIZE) {
       const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
 
       const payload: EntityPushPayload = {
@@ -414,7 +422,6 @@ async function _pushEntitiesInternal(
   return result;
 }
 
-
 // ── Granular Push Functions ────────────────────────────────────────────
 
 /**
@@ -436,9 +443,7 @@ export async function syncPushMembers(tenantId: string): Promise<MemberPushResul
 
   const pendingMembers = await getPendingMembers(tenantId);
 
-  console.log(
-    `[SyncPushMembers] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}`,
-  );
+  console.log(`[SyncPushMembers] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}`);
 
   // Nothing to push
   if (pendingMembers.length === 0) {
@@ -449,9 +454,7 @@ export async function syncPushMembers(tenantId: string): Promise<MemberPushResul
     return await _pushMembersInternal(tenantId, pendingMembers);
   } catch (err) {
     const baseMsg = err instanceof Error ? err.message : String(err);
-    const enriched = new Error(
-      `pendingMembers=${pendingMembers.length} | ${baseMsg}`,
-    );
+    const enriched = new Error(`pendingMembers=${pendingMembers.length} | ${baseMsg}`);
     enriched.name = "SyncPushMembersError";
     throw enriched;
   }
@@ -476,9 +479,7 @@ export async function syncPushCards(tenantId: string): Promise<CardPushResult> {
 
   const pendingCards = await getPendingCards(tenantId);
 
-  console.log(
-    `[SyncPushCards] tenantId=${tenantId}, pendingCards=${pendingCards.length}`,
-  );
+  console.log(`[SyncPushCards] tenantId=${tenantId}, pendingCards=${pendingCards.length}`);
 
   // Nothing to push
   if (pendingCards.length === 0) {
@@ -489,9 +490,7 @@ export async function syncPushCards(tenantId: string): Promise<CardPushResult> {
     return await _pushCardsInternal(tenantId, pendingCards);
   } catch (err) {
     const baseMsg = err instanceof Error ? err.message : String(err);
-    const enriched = new Error(
-      `pendingCards=${pendingCards.length} | ${baseMsg}`,
-    );
+    const enriched = new Error(`pendingCards=${pendingCards.length} | ${baseMsg}`);
     enriched.name = "SyncPushCardsError";
     throw enriched;
   }
@@ -539,10 +538,7 @@ async function _pushMembersInternal(
   return result;
 }
 
-async function _pushCardsInternal(
-  tenantId: string,
-  pendingCards: Card[],
-): Promise<CardPushResult> {
+async function _pushCardsInternal(tenantId: string, pendingCards: Card[]): Promise<CardPushResult> {
   const result: CardPushResult = {
     cardsAccepted: 0,
     cardsRejected: 0,
@@ -575,9 +571,7 @@ async function _pushCardsInternal(
 
     // Mark accepted cards as synced
     const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-    const acceptedCardIds = cardBatch
-      .map((c) => c.cardId)
-      .filter((id) => !rejectedCardIds.has(id));
+    const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
     await markCardsSynced(tenantId, acceptedCardIds);
   }
 

@@ -54,15 +54,11 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
       isLoading,
       isTopping: _isTopping,
       isIssuing,
-      isUpdatingStatus,
       isDeleting,
-      isResetting,
       hasGrant: _hasGrant,
       onTopupCard,
       onIssueCard,
-      onUpdateCardStatus,
       onDeleteCard,
-      onResetCard,
     },
     ref,
   ) {
@@ -99,13 +95,9 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
           <StationCardListPanel
             cards={cards}
             isLoading={isLoading}
-            isUpdatingStatus={isUpdatingStatus}
             isDeleting={isDeleting}
-            isResetting={isResetting}
             onTopupCard={onTopupCard}
-            onUpdateCardStatus={onUpdateCardStatus}
             onDeleteCard={onDeleteCard}
-            onResetCard={onResetCard}
             onIssueNew={() => {
               setSuccess(null);
               setCardView("issue");

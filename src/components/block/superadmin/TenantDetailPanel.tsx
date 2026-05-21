@@ -1,19 +1,11 @@
 import { useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../ui/alert-dialog";
-import { LoadingState } from "./LoadingState";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
+import { ConfirmationDialogDrawer } from "../../ui/confirmation-dialog-drawer";
+import { LoadingState } from "../LoadingState";
+import { DataTable } from "../data-table";
 import type {
   TenantDetail,
   TenantAccountInfo,
@@ -80,6 +72,27 @@ function getAvailableTransitions(currentStatus: string): TenantStatus[] {
   if (!transitions) return [];
   return Array.from(transitions);
 }
+
+const accountColumnHelper = createColumnHelper<TenantAccountInfo>();
+
+const accountColumns = [
+  accountColumnHelper.accessor("username", {
+    header: "Username",
+    cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+  }),
+  accountColumnHelper.accessor("role", {
+    header: "Role",
+    cell: (info) => <Badge variant="outline">{info.getValue()}</Badge>,
+  }),
+  accountColumnHelper.accessor("status", {
+    header: "Status",
+    cell: (info) => getStatusBadge(info.getValue()),
+  }),
+  accountColumnHelper.accessor("createdAt", {
+    header: "Created",
+    cell: (info) => <span className="text-muted-foreground">{formatDate(info.getValue())}</span>,
+  }),
+];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -199,81 +212,70 @@ export function TenantDetailPanel({
         <h3 className="text-sm font-semibold text-foreground">
           Accounts ({tenant.accounts.length})
         </h3>
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tenant.accounts.map((account: TenantAccountInfo) => (
-                <TableRow key={account.accountId}>
-                  <TableCell className="font-medium">{account.username}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{account.role}</Badge>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(account.status)}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(account.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {tenant.accounts.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                    No accounts found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          columns={accountColumns}
+          data={tenant.accounts}
+          paginationMode="client"
+          pageSize={10}
+          showSearch={false}
+          enableSorting={false}
+          getRowId={(row) => row.accountId}
+          emptyState={
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <p className="text-sm text-muted-foreground">No accounts found</p>
+            </div>
+          }
+          renderMobileItem={(row) => {
+            const account = row.original;
+            return (
+              <div className="px-4 py-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{account.username}</span>
+                  {getStatusBadge(account.status)}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline">{account.role}</Badge>
+                  <span>{formatDate(account.createdAt)}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
       </div>
 
       {/* Confirmation dialog */}
-      <AlertDialog
+      <ConfirmationDialogDrawer
         open={confirmTarget !== null}
         onOpenChange={(open) => {
           if (!open) setConfirmTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to change the status of{" "}
-              <span className="font-semibold">{tenant.name}</span> from{" "}
-              <span className="font-semibold">{tenant.status}</span> to{" "}
-              <span className="font-semibold">{confirmTarget}</span>?
-              {confirmTarget === "archived" && (
-                <span className="block mt-2 text-destructive">
-                  This action cannot be undone. Archived tenants cannot be reactivated.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant={confirmTarget === "archived" ? "destructive" : "default"}
-              disabled={isUpdating}
-              onClick={() => {
-                if (confirmTarget) {
-                  onStatusChange(confirmTarget);
-                  setConfirmTarget(null);
-                }
-              }}
-            >
-              {isUpdating && <Loader2 size={14} className="mr-1 animate-spin" />}
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Confirm Status Change"
+        description={
+          <div>
+            Are you sure you want to change the status of{" "}
+            <span className="font-semibold">{tenant.name}</span> from{" "}
+            <span className="font-semibold">{tenant.status}</span> to{" "}
+            <span className="font-semibold">{confirmTarget}</span>?
+            {confirmTarget === "archived" && (
+              <span className="block mt-2 text-destructive">
+                This action cannot be undone. Archived tenants cannot be reactivated.
+              </span>
+            )}
+          </div>
+        }
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        confirmVariant={confirmTarget === "archived" ? "destructive" : "default"}
+        onConfirm={() => {
+          if (confirmTarget) {
+            onStatusChange(confirmTarget);
+            setConfirmTarget(null);
+          }
+        }}
+        onCancel={() => setConfirmTarget(null)}
+        isProcessing={isUpdating}
+        processingLabel="Confirm"
+      />
     </div>
   );
 }

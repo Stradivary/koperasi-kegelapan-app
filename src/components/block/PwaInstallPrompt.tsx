@@ -1,4 +1,5 @@
 import { useInstallPrompt } from "../../hooks/useInstallPrompt";
+import { Button } from "../ui/button";
 
 export function PwaInstallPrompt() {
   const { canInstall, install, dismiss } = useInstallPrompt();
@@ -15,18 +16,12 @@ export function PwaInstallPrompt() {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={dismiss}
-            className="px-3 py-1.5 rounded-lg type-body2 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          >
+          <Button onClick={dismiss} variant="ghost">
             Nanti
-          </button>
-          <button
-            onClick={() => install()}
-            className="px-3 py-1.5 rounded-lg type-body2-bold bg-brand text-white hover:bg-brand/90 transition-colors"
-          >
+          </Button>
+          <Button onClick={() => install()} variant="default">
             Install
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,3 +1,16 @@
+// Main component
+export { UnifiedNfcScanner, DEFAULT_LABELS } from "./UnifiedNfcScanner";
+export type {
+  UnifiedNfcScannerProps,
+  NfcLabels,
+  ScannerRenderContext,
+  ReadyRenderProps,
+  SuccessRenderProps,
+  ErrorRenderProps,
+  HeaderRenderProps,
+  FooterRenderProps,
+} from "./UnifiedNfcScanner";
+
 // Sub-components
 export { NfcTapArea } from "./NfcTapArea";
 export { StepIndicator } from "./StepIndicator";

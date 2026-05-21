@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
-import type { SyncConflict } from "../../hooks/useTenantSync";
-import { validateSlugFormat } from "../../lib/slugValidation";
+import type { SyncConflict } from "../../../hooks/useTenantSync";
+import { validateSlugFormat } from "../../../lib/slugValidation";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -10,10 +10,10 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-} from "../ui/alert-dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+} from "../../ui/alert-dialog";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 
 export interface SyncConflictDialogProps {
   conflict: SyncConflict;
@@ -94,7 +94,9 @@ export function SyncConflictDialog({
         setUsernameError("Username tidak boleh mengandung spasi");
         hasError = true;
       } else if (!/^[a-z0-9_-]+$/.test(newAdminUsername)) {
-        setUsernameError("Username hanya boleh berisi huruf kecil, angka, underscore, dan tanda hubung");
+        setUsernameError(
+          "Username hanya boleh berisi huruf kecil, angka, underscore, dan tanda hubung",
+        );
         hasError = true;
       } else if (newAdminUsername === conflict.currentAdminUsername) {
         setUsernameError("Username harus berbeda dari yang sebelumnya");
@@ -110,14 +112,7 @@ export function SyncConflictDialog({
       showSlugField ? newSlug : conflict.currentSlug,
       showUsernameField ? newAdminUsername : conflict.currentAdminUsername,
     );
-  }, [
-    newSlug,
-    newAdminUsername,
-    conflict,
-    showSlugField,
-    showUsernameField,
-    onRetryWithChanges,
-  ]);
+  }, [newSlug, newAdminUsername, conflict, showSlugField, showUsernameField, onRetryWithChanges]);
 
   return (
     <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onDismiss()}>
@@ -146,9 +141,7 @@ export function SyncConflictDialog({
                 placeholder="slug-baru"
                 aria-invalid={!!slugError}
               />
-              {slugError && (
-                <p className="text-xs text-destructive">{slugError}</p>
-              )}
+              {slugError && <p className="text-xs text-destructive">{slugError}</p>}
             </div>
           )}
 
@@ -167,9 +160,7 @@ export function SyncConflictDialog({
                 placeholder="username-baru"
                 aria-invalid={!!usernameError}
               />
-              {usernameError && (
-                <p className="text-xs text-destructive">{usernameError}</p>
-              )}
+              {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
             </div>
           )}
         </div>

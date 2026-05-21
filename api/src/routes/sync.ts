@@ -4,6 +4,7 @@ import { eq, and, gt, asc, sql } from "drizzle-orm";
 import { transactionLog, cards, users } from "../../../src/db/schema";
 import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
+import { logger } from "../lib/logger";
 
 type Env = {
   DB: D1Database;
@@ -112,7 +113,7 @@ syncRoutes.post("/push", async (c) => {
   // 3. Use token's tenantId as authoritative source
   const tenantId = tokenPayload.tenantId;
   if (payloadTenantId && payloadTenantId !== tenantId) {
-    console.warn(`[sync/push] tenantId mismatch: payload=${payloadTenantId}, token=${tenantId}`);
+    logger.warn("sync/push: tenantId mismatch", { payloadTenantId, tokenTenantId: tenantId });
   }
 
   // 4. Validate transactions array
@@ -354,7 +355,7 @@ syncRoutes.get("/pull", async (c) => {
   const tenantId = tokenPayload.tenantId;
   if (queryTenantId && queryTenantId !== tenantId) {
     // Log mismatch but don't block — client may have stale local ID
-    console.warn(`[sync/pull] tenantId mismatch: query=${queryTenantId}, token=${tenantId}`);
+    logger.warn("sync/pull: tenantId mismatch", { queryTenantId, tokenTenantId: tenantId });
   }
 
   // 3. Parse cursor query params (default to "0" if empty)

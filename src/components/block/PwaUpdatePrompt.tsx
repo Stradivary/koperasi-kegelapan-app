@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "../ui/button";
 
 const MAX_RETRIES = 3;
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -99,18 +100,12 @@ export function PwaUpdatePrompt() {
           <p className="type-body2 text-white/70">Versi baru aplikasi siap diinstal</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => setDismissed(true)}
-            className="px-3 py-1.5 rounded-lg type-body2 text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          >
+          <Button onClick={() => setDismissed(true)} variant="ghost">
             Nanti
-          </button>
-          <button
-            onClick={() => updateServiceWorker(true)}
-            className="px-3 py-1.5 rounded-lg type-body2-bold bg-brand text-white hover:bg-brand/90 transition-colors"
-          >
-            Update
-          </button>
+          </Button>
+          <Button onClick={() => updateServiceWorker(true)} variant="default">
+            Install
+          </Button>
         </div>
       </div>
     </div>

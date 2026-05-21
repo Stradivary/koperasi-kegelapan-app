@@ -1,6 +1,7 @@
-import { Wifi, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import type { CardPayload } from "../../core/payload/types";
-import { CardState, CardStatus } from "../../core/payload/types";
+import { CheckCircle2, XCircle } from "lucide-react";
+import type { CardPayload } from "../../../core/payload/types";
+import { CardState, CardStatus } from "../../../core/payload/types";
+import type { NfcPhase } from "../../../core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,
@@ -8,10 +9,11 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-} from "../ui/drawer";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
-import { Separator } from "../ui/separator";
+} from "../../ui/drawer";
+import { Button } from "../../ui/button";
+import { Badge } from "../../ui/badge";
+import { Separator } from "../../ui/separator";
+import { NfcTapArea, StepIndicator } from "../UnifiedNfcScanner";
 
 interface IssuanceScanDrawerProps {
   open: boolean;
@@ -49,89 +51,32 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-type Phase = IssuanceScanDrawerProps["phase"];
-
-const READ_STEPS = ["Tap Kartu", "Baca", "Selesai"] as const;
-const WRITE_STEPS = ["Tap & Tahan", "Tulis", "Selesai"] as const;
-
-function readStepIndex(phase: Phase): number {
-  if (phase === "scanning") return 0;
-  if (phase === "done") return 2;
-  return -1;
+/**
+ * Maps the issuance-specific phase to NfcPhase for sub-component compatibility.
+ */
+function toNfcPhase(phase: IssuanceScanDrawerProps["phase"]): NfcPhase {
+  switch (phase) {
+    case "idle":
+      return "idle";
+    case "scanning":
+      return "scanning";
+    case "writing":
+      return "writing";
+    case "done":
+      return "success";
+    case "error":
+      return "error";
+  }
 }
 
-function writeStepIndex(phase: Phase): number {
-  if (phase === "writing") return 0;
-  if (phase === "done") return 2;
-  return -1;
-}
-
-function StepIndicator({ phase, mode }: { phase: Phase; mode: "read" | "write" }) {
-  const steps = mode === "read" ? READ_STEPS : WRITE_STEPS;
-  const active = mode === "read" ? readStepIndex(phase) : writeStepIndex(phase);
-  if (active < 0) return null;
-  return (
-    <div className="flex items-center justify-center gap-1 px-4 py-2">
-      {steps.map((label, i) => (
-        <div key={label} className="flex items-center gap-1">
-          <div className={["flex flex-col items-center gap-0.5"].join(" ")}>
-            <div
-              className={[
-                "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0",
-                i < active
-                  ? "bg-primary text-primary-foreground"
-                  : i === active
-                    ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                    : "bg-muted text-muted-foreground",
-              ].join(" ")}
-            >
-              {i < active ? "✓" : i + 1}
-            </div>
-            <span
-              className={[
-                "text-[9px] whitespace-nowrap",
-                i === active ? "text-primary font-semibold" : "text-muted-foreground",
-              ].join(" ")}
-            >
-              {label}
-            </span>
-          </div>
-          {i < steps.length - 1 && (
-            <div
-              className={["h-0.5 w-8 shrink-0 mb-3", i < active ? "bg-primary" : "bg-muted"].join(
-                " ",
-              )}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function NfcPulse({ color = "primary" }: { color?: "primary" | "warning" }) {
-  const ring = color === "warning" ? "border-signal-warning" : "border-primary";
-  const bg =
-    color === "warning"
-      ? "bg-signal-bg-warning border-signal-warning"
-      : "bg-primary/10 border-primary";
-  const icon = color === "warning" ? "text-signal-warning" : "text-primary";
-  return (
-    <div className="relative flex items-center justify-center w-40 h-40">
-      <span className={`absolute inset-0 rounded-full border-2 ${ring}/20 animate-ping`} />
-      <span
-        className={`absolute inset-4 rounded-full border-2 ${ring}/30 animate-ping [animation-delay:300ms]`}
-      />
-      <span
-        className={`absolute inset-8 rounded-full border-2 ${ring}/40 animate-ping [animation-delay:600ms]`}
-      />
-      <span
-        className={`relative z-10 w-24 h-24 rounded-full ${bg} border-2 flex items-center justify-center`}
-      >
-        <Wifi size={40} className={`${icon} animate-pulse`} />
-      </span>
-    </div>
-  );
+/**
+ * Custom step labels for read vs write mode.
+ */
+function getStepLabels(mode: "read" | "write") {
+  if (mode === "read") {
+    return { step1: "Tap Kartu", step2: "Baca", step3: "—", step4: "Selesai" };
+  }
+  return { step1: "Tap & Tahan", step2: "Tulis", step3: "—", step4: "Selesai" };
 }
 
 export function IssuanceScanDrawer({
@@ -146,6 +91,8 @@ export function IssuanceScanDrawer({
   onRetry,
   minimal = false,
 }: IssuanceScanDrawerProps) {
+  const nfcPhase = toNfcPhase(phase);
+
   const isScanning = phase === "scanning";
   const isWriting = phase === "writing";
   const isBusy = isScanning || isWriting;
@@ -176,40 +123,35 @@ export function IssuanceScanDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        <StepIndicator phase={phase} mode={mode} />
+        {/* Step Indicator — uses shared sub-component */}
+        <div className="px-4 py-2">
+          <StepIndicator phase={nfcPhase} labels={getStepLabels(mode)} />
+        </div>
 
         <div className="px-4 overflow-y-auto max-h-[60vh]">
-          {/* Scanning state */}
-          {isScanning && (
+          {/* Scanning / Writing — uses shared NfcTapArea */}
+          {(isScanning || isWriting) && (
             <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <NfcPulse color="primary" />
+              <NfcTapArea phase={nfcPhase} />
               <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-foreground">Menunggu kartu...</p>
-                <p className="text-xs text-muted-foreground">
-                  Dekatkan kartu ke bagian belakang perangkat
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Writing state */}
-          {isWriting && (
-            <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <div className="relative flex items-center justify-center w-40 h-40">
-                <span className="absolute inset-0 rounded-full border-2 border-signal-warning/20 animate-ping" />
-                <span className="absolute inset-4 rounded-full border-2 border-signal-warning/30 animate-ping [animation-delay:300ms]" />
-                <span className="absolute inset-8 rounded-full border-2 border-signal-warning/40 animate-ping [animation-delay:600ms]" />
-                <span className="relative z-10 w-24 h-24 rounded-full bg-signal-bg-warning border-2 border-signal-warning flex items-center justify-center">
-                  <Loader2 size={40} className="text-signal-warning animate-spin" />
-                </span>
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-signal-warning">
-                  Tap & tahan kartu ke perangkat
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Jangan pindahkan kartu sampai proses selesai
-                </p>
+                {isScanning && (
+                  <>
+                    <p className="text-sm font-medium text-foreground">Menunggu kartu...</p>
+                    <p className="text-xs text-muted-foreground">
+                      Dekatkan kartu ke bagian belakang perangkat
+                    </p>
+                  </>
+                )}
+                {isWriting && (
+                  <>
+                    <p className="text-sm font-medium text-signal-warning">
+                      Tap & tahan kartu ke perangkat
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Jangan pindahkan kartu sampai proses selesai
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

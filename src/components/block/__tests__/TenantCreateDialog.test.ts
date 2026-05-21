@@ -7,7 +7,7 @@ import {
   validateAdminUsername,
   validateAdminPassword,
   generateSlugFromName,
-} from "../TenantCreateDialog";
+} from "../dialogs/TenantCreateDialog";
 
 describe("TenantCreateDialog - generateSlugFromName", () => {
   it("should convert name to lowercase", () => {

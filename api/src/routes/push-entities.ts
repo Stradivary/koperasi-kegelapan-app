@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, sql } from "drizzle-orm";
 import { users, cards } from "../../../src/db/schema";
+import { logger } from "../lib/logger";
 
 type Env = {
   DB: D1Database;
@@ -129,10 +130,20 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
   // 3. Use token's tenantId as authoritative
   const tenantId = tokenPayload.tenantId;
   if (body.tenantId && body.tenantId !== tenantId) {
-    console.warn(`[push-entities] tenantId mismatch: body=${body.tenantId}, token=${tenantId}`);
+    logger.warn("push-entities: tenantId mismatch", {
+      bodyTenantId: body.tenantId,
+      tokenTenantId: tenantId,
+    });
   }
   const members = body.members ?? [];
   const cardEntries = body.cards ?? [];
+
+  logger.info("push-entities: processing batch", {
+    tenantId,
+    deviceId: tokenPayload.deviceId,
+    membersCount: members.length,
+    cardsCount: cardEntries.length,
+  });
 
   // Enforce batch limits
   if (members.length > 200) {
@@ -208,7 +219,11 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
         // Race condition — treat as accepted
         membersAccepted++;
       } else {
-        console.error(`[push-entities] Member ${member.userId} insert failed:`, msg);
+        logger.error("push-entities: member insert failed", {
+          userId: member.userId,
+          error: msg,
+          tenantId,
+        });
         membersRejected.push({ userId: member.userId, reason: `internal_error: ${msg}` });
       }
     }
@@ -272,11 +287,24 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
       if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
         cardsAccepted++;
       } else {
-        console.error(`[push-entities] Card ${card.cardId} insert failed:`, msg);
+        logger.error("push-entities: card insert failed", {
+          cardId: card.cardId,
+          error: msg,
+          tenantId,
+        });
         cardsRejected.push({ cardId: card.cardId, reason: `internal_error: ${msg}` });
       }
     }
   }
+
+  logger.info("push-entities: completed", {
+    tenantId,
+    deviceId: tokenPayload.deviceId,
+    membersAccepted,
+    membersRejected: membersRejected.length,
+    cardsAccepted,
+    cardsRejected: cardsRejected.length,
+  });
 
   return c.json({
     membersAccepted,

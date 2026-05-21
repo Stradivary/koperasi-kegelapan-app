@@ -111,14 +111,15 @@ export function StationCardIssuePanel({
             />
             <div className="grid gap-1.5 grid-cols-3">
               {[10_000, 20_000, 50_000, 100_000, 150_000, 200_000].map((v) => (
-                <button
+                <Button
                   key={v}
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIssueBalance(String(v))}
-                  className="flex-1 rounded border px-2 py-1 text-xs hover:bg-muted transition-colors"
                 >
                   {v / 1000}k
-                </button>
+                </Button>
               ))}
             </div>
           </div>

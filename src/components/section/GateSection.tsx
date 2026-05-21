@@ -51,6 +51,8 @@ export function GateSection({
 
   // Track whether we already triggered auto-checkin for this scan cycle
   const autoCheckinTriggered = useRef(false);
+  // Track whether we've completed at least one scan cycle (to distinguish initial mount from post-reset)
+  const hasCompletedCycle = useRef(false);
 
   // Get the current timestamp (real or simulated)
   const getNowSeconds = useCallback(() => {
@@ -175,15 +177,36 @@ export function GateSection({
     return () => clearTimeout(timer);
   }, [state.phase, state.payload, reset]);
 
+  // Auto-reset after transient post-write read errors (shorter delay)
+  useEffect(() => {
+    if (state.phase !== "error") return;
+    // Only auto-reset for the specific transient read error message
+    if (state.error?.includes("Lepas kartu sebentar")) {
+      const timer = setTimeout(() => {
+        reset();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.phase, state.error, reset]);
+
   // Reset the auto-checkin flag when going back to idle
+  // and auto-restart scanning so the gate is always ready for the next card
   useEffect(() => {
     if (state.phase === "idle") {
       autoCheckinTriggered.current = false;
       setBlockedReason(null);
       setBlockedCheckDone(false);
       setNotInLocalDb(false);
+
+      // Auto-restart scanning after a completed cycle (success/error → reset → idle)
+      // so the gate kiosk is always ready for the next card tap without pressing button
+      if (hasCompletedCycle.current && grant && !loading) {
+        scan();
+      }
+    } else if (state.phase === "success" || state.phase === "error") {
+      hasCompletedCycle.current = true;
     }
-  }, [state.phase]);
+  }, [state.phase, grant, loading, scan]);
 
   function handleScan() {
     autoCheckinTriggered.current = false;

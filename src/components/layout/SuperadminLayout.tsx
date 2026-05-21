@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import { MobileBottomNav, type MobileNavItem } from "./MobileBottomNav";
 
 export type SuperadminView = "tenants" | "accounts";
 
@@ -13,7 +14,7 @@ export interface SuperadminLayoutProps {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS: { id: SuperadminView; icon: React.ElementType; label: string }[] = [
+const NAV_ITEMS: MobileNavItem<SuperadminView>[] = [
   { id: "tenants", icon: Building2, label: "Tenants" },
   { id: "accounts", icon: Users, label: "Accounts" },
 ];
@@ -72,7 +73,7 @@ export function SuperadminLayout({
       </aside>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Top bar (mobile only) */}
         <header className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10 md:hidden">
           <Button variant="ghost" size="icon-sm" onClick={() => setDrawerOpen(true)}>
@@ -89,24 +90,7 @@ export function SuperadminLayout({
         <main className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6">{children}</main>
 
         {/* Mobile bottom nav (below 768px) */}
-        <nav className="md:hidden bg-white border-t flex items-stretch fixed bottom-0 left-0 right-0 z-10">
-          {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
-            <Button
-              key={id}
-              variant="ghost"
-              onClick={() => onSectionChange(id)}
-              className={[
-                "flex-1 h-auto flex-col gap-1 py-2 rounded-none text-xs",
-                activeSection === id
-                  ? "text-brand font-semibold hover:text-brand"
-                  : "text-muted-foreground",
-              ].join(" ")}
-            >
-              <Icon size={20} />
-              <span>{label}</span>
-            </Button>
-          ))}
-        </nav>
+        <MobileBottomNav items={NAV_ITEMS} activeId={activeSection} onSelect={onSectionChange} />
       </div>
 
       {/* ── Mobile slide-in drawer (Sheet) ── */}

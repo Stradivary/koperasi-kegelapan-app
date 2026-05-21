@@ -7,13 +7,13 @@ import {
   TenantListPanel,
   type TenantListItem,
   type PaginationState,
-} from "../block/TenantListPanel";
-import { TenantDetailPanel } from "../block/TenantDetailPanel";
+} from "../block/superadmin/TenantListPanel";
+import { TenantDetailPanel } from "../block/superadmin/TenantDetailPanel";
 import {
   TenantCreateDialog,
   type CreateTenantRequest,
   type CreateTenantError,
-} from "../block/TenantCreateDialog";
+} from "../block/dialogs/TenantCreateDialog";
 import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
 import { API_BASE_URL } from "#/lib/api";
 

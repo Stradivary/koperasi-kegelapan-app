@@ -19,7 +19,7 @@
  * @module lib/__tests__/syncPushEntitiesPreservation.property.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
 
 // ============================================================================
@@ -198,77 +198,11 @@ function simulateSyncPushEntities(params: {
   };
 }
 
-/**
- * Calculates expected number of batch calls for a given set of members and cards.
- * Follows the current _pushEntitiesInternal batching logic.
- */
-function calculateExpectedBatchCount(memberCount: number, cardCount: number): number {
-  if (memberCount === 0 && cardCount === 0) return 0;
-
-  let batches = 0;
-
-  if (memberCount > 0) {
-    // Member batches (first one includes up to MAX_BATCH_SIZE cards)
-    batches += Math.ceil(memberCount / MAX_BATCH_SIZE);
-  }
-
-  // Additional card-only batches for overflow
-  if (memberCount === 0) {
-    // No member loop runs, only overflow cards (>200) get batched
-    if (cardCount > MAX_BATCH_SIZE) {
-      batches += Math.ceil((cardCount - MAX_BATCH_SIZE) / MAX_BATCH_SIZE);
-    }
-  } else {
-    // Cards beyond MAX_BATCH_SIZE get their own batches
-    if (cardCount > MAX_BATCH_SIZE) {
-      batches += Math.ceil((cardCount - MAX_BATCH_SIZE) / MAX_BATCH_SIZE);
-    }
-  }
-
-  return batches;
-}
-
 // ============================================================================
 // Generators
 // ============================================================================
 
 const tenantIdArb = fc.uuid();
-
-const simUserArb = (tenantId: string) =>
-  fc.record({
-    tenantId: fc.constant(tenantId),
-    userId: fc.uuid(),
-    name: fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
-    status: fc.constantFrom("active" as const, "suspended" as const, "deleted" as const),
-    createdAt: fc.integer({ min: 1700000000000, max: 1800000000000 }),
-    updatedAt: fc.integer({ min: 1700000000000, max: 1800000000000 }),
-    syncStatus: fc.constant("pending" as const),
-  });
-
-const simCardArb = (tenantId: string) =>
-  fc.record({
-    tenantId: fc.constant(tenantId),
-    cardId: fc.hexaString({ minLength: 8, maxLength: 16 }),
-    userId: fc.option(fc.uuid(), { nil: null }),
-    status: fc.constantFrom(
-      "active",
-      "blocked_tamper",
-      "blocked_fraud",
-      "blocked_expired",
-      "blocked_admin",
-      "deleted",
-    ),
-    balance: fc.integer({ min: 0, max: 10000000 }),
-    counter: fc.integer({ min: 0, max: 999999 }),
-    keyVersion: fc.integer({ min: 1, max: 10 }),
-    createdAt: fc.integer({ min: 1700000000000, max: 1800000000000 }),
-    lastActivityAt: fc.option(fc.integer({ min: 1700000000000, max: 1800000000000 }), {
-      nil: null,
-    }),
-    expiresAt: fc.option(fc.integer({ min: 1800000000000, max: 1900000000000 }), { nil: null }),
-    notes: fc.option(fc.string({ maxLength: 100 }), { nil: null }),
-    syncStatus: fc.constant("pending" as const),
-  });
 
 // ============================================================================
 // Property 2.1: Synced Tenants Push Without Re-Syncing
@@ -366,7 +300,7 @@ describe("Property 2: Preservation - Existing Synced Tenant Behavior", () => {
        * without making any network requests or throwing errors.
        */
       await fc.assert(
-        fc.asyncProperty(tenantIdArb, async (tenantId) => {
+        fc.asyncProperty(tenantIdArb, async (_tenantId) => {
           const sim = simulateSyncPushEntities({
             isDeviceBlocked: false,
             hasAccessToken: true,
@@ -568,10 +502,7 @@ describe("Property 2: Preservation - Existing Synced Tenant Behavior", () => {
             }
 
             // Total members across all batches equals input
-            const totalMembersPushed = sim.batchCalls.reduce(
-              (sum, b) => sum + b.members.length,
-              0,
-            );
+            const totalMembersPushed = sim.batchCalls.reduce((sum, b) => sum + b.members.length, 0);
             expect(totalMembersPushed).toBe(memberCount);
           },
         ),

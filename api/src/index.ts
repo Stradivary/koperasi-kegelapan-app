@@ -11,10 +11,14 @@ import { cardsRoutes } from "./routes/cards";
 import { corsMiddleware } from "./middleware/cors";
 import { deviceBlockCheck } from "./middleware/deviceBlockCheck";
 import { syncRateLimit } from "./middleware/syncRateLimit";
+import { syncAnalytics } from "./middleware/syncAnalytics";
 
 type Env = {
   DB: D1Database;
   SESSION_MASTER_KEY: string;
+  SYNC_ANALYTICS?: {
+    writeDataPoint(data: { indexes?: string[]; blobs?: string[]; doubles?: number[] }): void;
+  };
 };
 
 const app = new Hono<{ Bindings: Env }>();
@@ -29,6 +33,9 @@ app.use("/api/*", deviceBlockCheck);
 
 // Apply rate limiting only to sync endpoints (60 req/min per device_id)
 app.use("/api/sync/*", syncRateLimit);
+
+// Apply analytics tracking to sync endpoints (Cloudflare Analytics Engine)
+app.use("/api/sync/*", syncAnalytics);
 
 app.route("/api/auth", authRoutes);
 app.route("/api/session-grant", sessionGrantRoute);

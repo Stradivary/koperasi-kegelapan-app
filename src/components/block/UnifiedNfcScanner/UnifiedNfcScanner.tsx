@@ -18,7 +18,7 @@ import { AlertTriangle, CheckCircle2, WifiOff, Wrench, XCircle } from "lucide-re
 import type { NfcError } from "#/core/nfc/adapters/types.ts";
 import type { PayloadError, OperationHandler } from "#/core/nfc/payloadTypes.ts";
 import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
-import type { RawNfcResult } from "#/core/nfc/types.ts";
+import type { RawNfcResult, CardClassification } from "#/core/nfc/types.ts";
 import type { CardPayload, SessionGrant } from "#/core/payload/types.ts";
 import { useUnifiedNfc } from "#/hooks/useUnifiedNfc.ts";
 import { Button } from "#/components/ui/button.tsx";
@@ -31,7 +31,7 @@ import {
   ActionButtons,
   RawDataInspector,
   type ActionRenderProps,
-} from "./UnifiedNfcScanner/index.ts";
+} from "./index.ts";
 
 // ============================================================================
 // NfcLabels Interface
@@ -135,6 +135,96 @@ export const DEFAULT_LABELS: NfcLabels = {
 };
 
 // ============================================================================
+// Render Props Interfaces
+// ============================================================================
+
+/**
+ * Common state passed to all render prop functions.
+ * Provides access to scanner state and control functions.
+ */
+export interface ScannerRenderContext {
+  /** Current phase of the NFC state machine */
+  phase: NfcPhase;
+  /** Decoded card payload (null if not yet read or invalid) */
+  payload: CardPayload | null;
+  /** Raw NFC scan result */
+  rawResult: RawNfcResult | null;
+  /** Whether the card is currently checked in */
+  isCheckedIn: boolean;
+  /** Card classification result */
+  classification: CardClassification | null;
+  /** Serial number from the raw scan */
+  serialNumber: string | null;
+  /** Whether tamper was detected */
+  tamperDetected: boolean;
+  /** Current error (if in error phase) */
+  error: (NfcError | PayloadError) | null;
+  /** Trigger a new scan */
+  scan: () => Promise<void>;
+  /** Reset to idle state */
+  reset: () => void;
+  /** Cancel the current operation */
+  cancel: () => void;
+}
+
+/**
+ * Props passed to renderReady — shown when a card is scanned and ready for action.
+ * Use this to render custom card info, balance displays, amount inputs, etc.
+ */
+export interface ReadyRenderProps extends ScannerRenderContext {
+  /** Default card info content (can be rendered alongside custom content) */
+  defaultCardInfo: React.ReactNode;
+  /** Default action buttons (can be rendered alongside custom content) */
+  defaultActions: React.ReactNode;
+}
+
+/**
+ * Props passed to renderSuccess — shown after a successful operation.
+ * Use this to render custom success messages, card details, sync status, etc.
+ */
+export interface SuccessRenderProps extends ScannerRenderContext {
+  /** Default success content (icon + label + countdown) */
+  defaultContent: React.ReactNode;
+}
+
+/**
+ * Props passed to renderError — shown when an error occurs.
+ * Use this to render custom error UI, recovery options, etc.
+ */
+export interface ErrorRenderProps extends ScannerRenderContext {
+  /** Default error content (icon + message + action buttons) */
+  defaultContent: React.ReactNode;
+  /** Retry handler (reset + rescan) */
+  onRetry: () => void;
+  /** Skip handler (if allowSkip is enabled) */
+  onSkip: () => void;
+  /** Fix card handler (if onFixCard is provided) */
+  onFixCard: () => void;
+}
+
+/**
+ * Props passed to renderHeader — shown at the top of the drawer.
+ * Use this to render custom titles, descriptions, badges, etc.
+ */
+export interface HeaderRenderProps extends ScannerRenderContext {
+  /** Merged labels for reference */
+  labels: NfcLabels;
+}
+
+/**
+ * Props passed to renderFooter — shown at the bottom of the drawer.
+ * Use this to render custom footer buttons (cancel, close, retry, etc.)
+ */
+export interface FooterRenderProps extends ScannerRenderContext {
+  /** Merged labels for reference */
+  labels: NfcLabels;
+  /** Close/cancel handler */
+  onClose: () => void;
+  /** Retry handler (reset + rescan) */
+  onRetry: () => void;
+}
+
+// ============================================================================
 // Props Interface
 // ============================================================================
 
@@ -213,8 +303,18 @@ export interface UnifiedNfcScannerProps {
   operations?: OperationHandler[];
 
   // Custom rendering
-  /** Custom render function for action buttons */
+  /** Custom render function for action buttons (ready phase only) */
   renderActions?: (props: ActionRenderProps) => React.ReactNode;
+  /** Custom render for the ready phase (replaces default card info + actions) */
+  renderReady?: (props: ReadyRenderProps) => React.ReactNode;
+  /** Custom render for the success phase (replaces default success UI) */
+  renderSuccess?: (props: SuccessRenderProps) => React.ReactNode;
+  /** Custom render for the error phase (replaces default error UI) */
+  renderError?: (props: ErrorRenderProps) => React.ReactNode;
+  /** Custom render for the drawer header (drawer mode only) */
+  renderHeader?: (props: HeaderRenderProps) => React.ReactNode;
+  /** Custom render for the drawer footer (drawer mode only) */
+  renderFooter?: (props: FooterRenderProps) => React.ReactNode;
 
   // Labels customization
   /** Custom labels to override defaults (merged with DEFAULT_LABELS) */
@@ -273,6 +373,9 @@ interface ScannerContentProps {
   onFixCard?: (result: RawNfcResult, payload?: CardPayload) => Promise<void>;
   onError?: (error: NfcError | PayloadError) => void;
   renderActions?: (props: ActionRenderProps) => React.ReactNode;
+  renderReady?: (props: ReadyRenderProps) => React.ReactNode;
+  renderSuccess?: (props: SuccessRenderProps) => React.ReactNode;
+  renderError?: (props: ErrorRenderProps) => React.ReactNode;
 }
 
 /**
@@ -302,6 +405,9 @@ function ScannerContent({
   onFixCard,
   onError: _onErrorProp,
   renderActions,
+  renderReady,
+  renderSuccess,
+  renderError,
 }: ScannerContentProps) {
   const { rawResult, payload, classification, isCheckedIn, error, tamperDetected } = state;
 
@@ -349,6 +455,24 @@ function ScannerContent({
   // Handler for cancel
   const handleCancel = () => {
     cancel();
+  };
+
+  // ============================================================================
+  // Shared render context — passed to all render prop functions
+  // ============================================================================
+
+  const renderContext: ScannerRenderContext = {
+    phase,
+    payload,
+    rawResult,
+    isCheckedIn,
+    classification,
+    serialNumber: rawResult?.serialNumber ?? null,
+    tamperDetected,
+    error,
+    scan,
+    reset,
+    cancel,
   };
 
   // ============================================================================
@@ -466,123 +590,166 @@ function ScannerContent({
       )}
 
       {/* Success State — shown during success phase */}
-      {phase === "success" && (
-        <div
-          className="flex flex-col items-center gap-3 py-6"
-          role="status"
-          aria-live="polite"
-          aria-label={mergedLabels.success}
-        >
-          <CheckCircle2 className="h-16 w-16 text-signal-valid" aria-hidden="true" />
-          <span className="type-body1-bold text-signal-valid">{mergedLabels.success}</span>
+      {phase === "success" &&
+        (() => {
+          const defaultContent = (
+            <div
+              className="flex flex-col items-center gap-3 py-6"
+              role="status"
+              aria-live="polite"
+              aria-label={mergedLabels.success}
+            >
+              <CheckCircle2 className="h-16 w-16 text-signal-valid" aria-hidden="true" />
+              <span className="type-body1-bold text-signal-valid">{mergedLabels.success}</span>
 
-          {/* Continuous scan countdown indicator */}
-          {continuousScan && countdown !== null && (
-            <div className="flex flex-col items-center gap-2">
-              <span
-                className="type-body2 text-muted-foreground"
-                aria-live="polite"
-                aria-atomic="true"
-              >
-                {mergedLabels.continuousScanCountdown.replace("{countdown}", String(countdown))}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManualResetDuringCountdown}
-                aria-label={mergedLabels.scanNow}
-              >
-                {mergedLabels.scanNow}
-              </Button>
+              {/* Continuous scan countdown indicator */}
+              {continuousScan && countdown !== null && (
+                <div className="flex flex-col items-center gap-2">
+                  <span
+                    className="type-body2 text-muted-foreground"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {mergedLabels.continuousScanCountdown.replace("{countdown}", String(countdown))}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualResetDuringCountdown}
+                    aria-label={mergedLabels.scanNow}
+                  >
+                    {mergedLabels.scanNow}
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          );
+
+          if (renderSuccess) {
+            return renderSuccess({ ...renderContext, defaultContent });
+          }
+          return defaultContent;
+        })()}
 
       {/* Error State — shown during error phase */}
-      {phase === "error" && (
-        <div className="flex flex-col items-center gap-3 py-6" role="alert" aria-live="assertive">
-          {/* Tamper detection warning */}
-          {tamperDetected ? (
+      {phase === "error" &&
+        (() => {
+          const defaultContent = (
+            <div
+              className="flex flex-col items-center gap-3 py-6"
+              role="alert"
+              aria-live="assertive"
+            >
+              {/* Tamper detection warning */}
+              {tamperDetected ? (
+                <>
+                  <AlertTriangle className="h-16 w-16 text-signal-error" aria-hidden="true" />
+                  <span className="type-body1-bold text-signal-error">
+                    {mergedLabels.tamperDetected}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-16 w-16 text-signal-error" aria-hidden="true" />
+                  <span className="type-body1-bold text-signal-error">
+                    {error?.message ?? mergedLabels.error}
+                  </span>
+                </>
+              )}
+
+              {/* Action buttons for error recovery */}
+              <div className="flex gap-2">
+                {/* Retry button — only for recoverable errors */}
+                {error?.recoverable && (
+                  <Button variant="outline" onClick={handleRetry} aria-label={mergedLabels.retry}>
+                    {mergedLabels.retry}
+                  </Button>
+                )}
+
+                {/* Skip button — shown when allowSkip is enabled */}
+                {allowSkip && (
+                  <Button variant="ghost" onClick={handleSkip} aria-label={mergedLabels.skip}>
+                    {mergedLabels.skip}
+                  </Button>
+                )}
+
+                {/* Fix card button — shown when tamper detected and onFixCard provided */}
+                {tamperDetected && onFixCard && (
+                  <Button
+                    variant="default"
+                    onClick={handleFixCard}
+                    aria-label={mergedLabels.fixCard}
+                  >
+                    <Wrench className="size-4" aria-hidden="true" />
+                    {mergedLabels.fixCard}
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+
+          if (renderError) {
+            return renderError({
+              ...renderContext,
+              defaultContent,
+              onRetry: handleRetry,
+              onSkip: handleSkip,
+              onFixCard: handleFixCard,
+            });
+          }
+          return defaultContent;
+        })()}
+
+      {/* Card Info + Actions — shown during ready phase */}
+      {CARD_INFO_PHASES.has(phase) &&
+        (() => {
+          const defaultCardInfo = (
+            <CardInfoDisplay
+              classification={classification}
+              payload={payload}
+              serialNumber={rawResult?.serialNumber}
+              isCheckedIn={isCheckedIn}
+              showCheckInStatus={showCheckInStatus}
+              labels={{
+                empty: mergedLabels.empty,
+                foreign: mergedLabels.foreign,
+                invalidFormat: mergedLabels.invalidFormat,
+                unknown: mergedLabels.unknown,
+                checkedIn: mergedLabels.checkedIn,
+                notCheckedIn: mergedLabels.notCheckedIn,
+              }}
+            />
+          );
+
+          const defaultActions = (
+            <ActionButtons
+              phase={phase}
+              classification={classification}
+              payload={payload}
+              isCheckedIn={isCheckedIn}
+              onCheckin={onCheckin ? handleCheckin : undefined}
+              onCheckout={onCheckout ? handleCheckout : undefined}
+              onInitializeCard={onInitializeCard ? handleInitializeCard : undefined}
+              renderActions={renderActions}
+              labels={{
+                checkin: mergedLabels.checkin,
+                checkout: mergedLabels.checkout,
+                initializeCard: mergedLabels.initializeCard,
+              }}
+            />
+          );
+
+          if (renderReady) {
+            return renderReady({ ...renderContext, defaultCardInfo, defaultActions });
+          }
+
+          return (
             <>
-              <AlertTriangle className="h-16 w-16 text-signal-error" aria-hidden="true" />
-              <span className="type-body1-bold text-signal-error">
-                {mergedLabels.tamperDetected}
-              </span>
+              {defaultCardInfo}
+              {ACTION_PHASES.has(phase) && defaultActions}
             </>
-          ) : (
-            <>
-              <XCircle className="h-16 w-16 text-signal-error" aria-hidden="true" />
-              <span className="type-body1-bold text-signal-error">
-                {error?.message ?? mergedLabels.error}
-              </span>
-            </>
-          )}
-
-          {/* Action buttons for error recovery */}
-          <div className="flex gap-2">
-            {/* Retry button — only for recoverable errors */}
-            {error?.recoverable && (
-              <Button variant="outline" onClick={handleRetry} aria-label={mergedLabels.retry}>
-                {mergedLabels.retry}
-              </Button>
-            )}
-
-            {/* Skip button — shown when allowSkip is enabled */}
-            {allowSkip && (
-              <Button variant="ghost" onClick={handleSkip} aria-label={mergedLabels.skip}>
-                {mergedLabels.skip}
-              </Button>
-            )}
-
-            {/* Fix card button — shown when tamper detected and onFixCard provided */}
-            {tamperDetected && onFixCard && (
-              <Button variant="default" onClick={handleFixCard} aria-label={mergedLabels.fixCard}>
-                <Wrench className="size-4" aria-hidden="true" />
-                {mergedLabels.fixCard}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Card Info Display — shown during ready phase */}
-      {CARD_INFO_PHASES.has(phase) && (
-        <CardInfoDisplay
-          classification={classification}
-          payload={payload}
-          serialNumber={rawResult?.serialNumber}
-          isCheckedIn={isCheckedIn}
-          showCheckInStatus={showCheckInStatus}
-          labels={{
-            empty: mergedLabels.empty,
-            foreign: mergedLabels.foreign,
-            invalidFormat: mergedLabels.invalidFormat,
-            unknown: mergedLabels.unknown,
-            checkedIn: mergedLabels.checkedIn,
-            notCheckedIn: mergedLabels.notCheckedIn,
-          }}
-        />
-      )}
-
-      {/* Action Buttons — shown during ready phase */}
-      {ACTION_PHASES.has(phase) && (
-        <ActionButtons
-          phase={phase}
-          classification={classification}
-          payload={payload}
-          isCheckedIn={isCheckedIn}
-          onCheckin={onCheckin ? handleCheckin : undefined}
-          onCheckout={onCheckout ? handleCheckout : undefined}
-          onInitializeCard={onInitializeCard ? handleInitializeCard : undefined}
-          renderActions={renderActions}
-          labels={{
-            checkin: mergedLabels.checkin,
-            checkout: mergedLabels.checkout,
-            initializeCard: mergedLabels.initializeCard,
-          }}
-        />
-      )}
+          );
+        })()}
 
       {/* Raw Data Inspector — shown when enabled and raw result exists */}
       {showRawData && rawResult && (
@@ -642,6 +809,11 @@ export function UnifiedNfcScanner({
   onFixCard,
   operations: _operations,
   renderActions,
+  renderReady,
+  renderSuccess,
+  renderError,
+  renderHeader,
+  renderFooter,
   labels,
 }: UnifiedNfcScannerProps) {
   // Merge custom labels with defaults
@@ -739,6 +911,9 @@ export function UnifiedNfcScanner({
     onFixCard,
     onError,
     renderActions,
+    renderReady,
+    renderSuccess,
+    renderError,
   };
 
   // ============================================================================
@@ -754,12 +929,52 @@ export function UnifiedNfcScanner({
       }
     };
 
+    // Build render context for header/footer
+    const drawerRenderContext: ScannerRenderContext = {
+      phase,
+      payload: state.payload,
+      rawResult: state.rawResult,
+      isCheckedIn: state.isCheckedIn,
+      classification: state.classification,
+      serialNumber: state.rawResult?.serialNumber ?? null,
+      tamperDetected: state.tamperDetected,
+      error: state.error,
+      scan,
+      reset,
+      cancel,
+    };
+
+    const handleRetry = () => {
+      reset();
+      void scan();
+    };
+
+    const handleClose = () => {
+      onOpenChange?.(false);
+      onClose?.();
+    };
+
     return (
       <Drawer open={open} onOpenChange={handleOpenChange} direction="bottom">
         <DrawerContent>
+          {renderHeader && (
+            <div className="px-4 pt-4 pb-2">
+              {renderHeader({ ...drawerRenderContext, labels: mergedLabels })}
+            </div>
+          )}
           <div className="p-4">
             <ScannerContent {...contentProps} />
           </div>
+          {renderFooter && (
+            <div className="px-4 pb-4 pt-2">
+              {renderFooter({
+                ...drawerRenderContext,
+                labels: mergedLabels,
+                onClose: handleClose,
+                onRetry: handleRetry,
+              })}
+            </div>
+          )}
         </DrawerContent>
       </Drawer>
     );

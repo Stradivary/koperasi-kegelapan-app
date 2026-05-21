@@ -1,14 +1,15 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { createColumnHelper } from "@tanstack/react-table";
 import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
 import type { TransactionLog } from "../../db/local-db";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { X } from "lucide-react";
+import { DataTable } from "../block/data-table";
 
 interface TransactionsSectionProps {
   tenantId: string;
@@ -26,7 +27,6 @@ const TYPE_LABELS: Record<TransactionLog["type"], string> = {
   admin: "Admin",
 };
 
-/** Filter dropdown options mapping display labels to DB type values */
 const TYPE_FILTER_OPTIONS: { label: string; value: TransactionLog["type"] }[] = [
   { label: "Debit", value: "debit" },
   { label: "Kredit / Top-up", value: "credit" },
@@ -69,6 +69,44 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString("id-ID");
 }
 
+const columnHelper = createColumnHelper<TransactionLog>();
+
+const columns = [
+  columnHelper.accessor("timestamp", {
+    header: "Waktu",
+    cell: (info) => <span className="text-xs">{formatDateTime(info.getValue())}</span>,
+  }),
+  columnHelper.accessor("cardId", {
+    header: "Card ID",
+    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("type", {
+    header: "Tipe",
+    cell: (info) => (
+      <Badge variant="outline">{TYPE_LABELS[info.getValue()] ?? info.getValue()}</Badge>
+    ),
+  }),
+  columnHelper.accessor("amount", {
+    header: () => <span className="text-right w-full block">Jumlah</span>,
+    cell: (info) => (
+      <span className="text-right block font-mono text-xs">{formatAmount(info.getValue())}</span>
+    ),
+  }),
+  columnHelper.accessor("balanceAfter", {
+    header: () => <span className="text-right w-full block">Saldo</span>,
+    cell: (info) => (
+      <span className="text-right block font-mono text-xs">{formatAmount(info.getValue())}</span>
+    ),
+  }),
+  columnHelper.accessor("syncStatus", {
+    header: "Sync",
+    cell: (info) => {
+      const status = info.getValue();
+      return <Badge variant={SYNC_STATUS_VARIANT[status]}>{SYNC_STATUS_LABELS[status]}</Badge>;
+    },
+  }),
+];
+
 export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE_DEFAULT);
@@ -81,12 +119,10 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
 
   const clampedPageSize = useMemo(() => Math.min(Math.max(1, pageSize), PAGE_SIZE_MAX), [pageSize]);
 
-  // Convert date strings to unix timestamps (seconds) for the query
   const dateFromTimestamp = useMemo(() => {
     if (!dateFrom) return undefined;
     const d = new Date(dateFrom);
     if (isNaN(d.getTime())) return undefined;
-    // Start of day (inclusive)
     d.setHours(0, 0, 0, 0);
     return Math.floor(d.getTime() / 1000);
   }, [dateFrom]);
@@ -95,7 +131,6 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
     if (!dateTo) return undefined;
     const d = new Date(dateTo);
     if (isNaN(d.getTime())) return undefined;
-    // End of day (inclusive)
     d.setHours(23, 59, 59, 999);
     return Math.floor(d.getTime() / 1000);
   }, [dateTo]);
@@ -129,7 +164,6 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
 
-  // Reset page to 1 when any filter changes
   const handleCardIdChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setCardIdFilter(e.target.value);
     setPage(1);
@@ -162,171 +196,142 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        {data && <p className="type-body2 text-muted-foreground">{data.total} transaksi</p>}
-      </div>
-
-      {/* Filter controls */}
-      <div className="flex flex-wrap items-end gap-3 bg-white rounded-md border border-border bg-muted/30 p-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-card-id" className="text-xs text-muted-foreground">
-            Card ID
-          </Label>
-          <Input
-            id="filter-card-id"
-            type="text"
-            placeholder="Cari card ID..."
-            value={cardIdFilter}
-            onChange={handleCardIdChange}
-            className="h-8 w-38 font-mono text-xs"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
-            Tipe
-          </Label>
-          <Select value={typeFilter || "all"} onValueChange={handleTypeChange}>
-            <SelectTrigger id="filter-type" size="sm" className="w-38">
-              <SelectValue placeholder="Semua tipe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua</SelectItem>
-              {TYPE_FILTER_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
-            Dari tanggal
-          </Label>
-          <Input
-            id="filter-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={handleDateFromChange}
-            className="h-8 w-38 text-xs"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
-            Sampai tanggal
-          </Label>
-          <Input
-            id="filter-date-to"
-            type="date"
-            value={dateTo}
-            onChange={handleDateToChange}
-            className="h-8 w-38 text-xs"
-          />
-        </div>
-
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearFilters}
-            className="h-8 gap-1 text-xs text-muted-foreground"
-          >
-            <X size={14} />
-            Reset
-          </Button>
-        )}
-      </div>
-
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <p className="type-body1 text-muted-foreground">Memuat transaksi...</p>
-        </div>
-      )}
-
-      {!isLoading && data && data.entries.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="type-body1 text-muted-foreground">
-            {hasActiveFilters
-              ? "Tidak ada transaksi yang cocok dengan filter yang diterapkan."
-              : "Tidak ada transaksi ditemukan."}
-          </p>
-          {hasActiveFilters && (
-            <Button variant="link" size="sm" onClick={handleClearFilters} className="mt-2 text-sm">
-              Reset semua filter
-            </Button>
-          )}
-        </div>
-      )}
-
-      {!isLoading && data && data.entries.length > 0 && (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Waktu</TableHead>
-                <TableHead>Card ID</TableHead>
-                <TableHead>Tipe</TableHead>
-                <TableHead className="text-right">Jumlah</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead>Status Sync</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.entries.map((tx) => (
-                <TableRow key={tx.id ?? `${tx.cardId}-${tx.counter}`}>
-                  <TableCell className="type-body2">{formatDateTime(tx.timestamp)}</TableCell>
-                  <TableCell className="font-mono type-body2">{tx.cardId}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{TYPE_LABELS[tx.type] ?? tx.type}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono type-body2">
-                    {formatAmount(tx.amount)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono type-body2">
-                    {formatAmount(tx.balanceAfter)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={SYNC_STATUS_VARIANT[tx.syncStatus]}>
-                      {SYNC_STATUS_LABELS[tx.syncStatus]}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {/* Pagination controls */}
-          <div className="flex items-center justify-between pt-2">
-            <p className="type-body2 text-muted-foreground">
-              Halaman {page} dari {totalPages}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                aria-label="Halaman sebelumnya"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                aria-label="Halaman berikutnya"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+    <DataTable
+      columns={columns}
+      data={data?.entries ?? []}
+      isLoading={isLoading}
+      paginationMode="server"
+      serverPagination={{
+        pageIndex: page - 1,
+        pageSize: clampedPageSize,
+        totalItems: data?.total ?? 0,
+        totalPages,
+      }}
+      onPaginationChange={(updater) => {
+        const current = { pageIndex: page - 1, pageSize: clampedPageSize };
+        const next = typeof updater === "function" ? updater(current) : updater;
+        setPage(next.pageIndex + 1);
+      }}
+      showSearch={false}
+      enableSorting={false}
+      getRowId={(row) => (row.id != null ? String(row.id) : `${row.cardId}-${row.counter}`)}
+      header={
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            {data && <p className="text-sm text-muted-foreground">{data.total} transaksi</p>}
           </div>
-        </>
-      )}
-    </div>
+
+          {/* Filter controls */}
+          <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-muted/30 p-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="filter-card-id" className="text-xs text-muted-foreground">
+                Card ID
+              </Label>
+              <Input
+                id="filter-card-id"
+                type="text"
+                placeholder="Cari card ID..."
+                value={cardIdFilter}
+                onChange={handleCardIdChange}
+                className="h-8 w-38 font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="filter-type" className="text-xs text-muted-foreground">
+                Tipe
+              </Label>
+              <Select value={typeFilter || "all"} onValueChange={handleTypeChange}>
+                <SelectTrigger id="filter-type" size="sm" className="w-38">
+                  <SelectValue placeholder="Semua tipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua</SelectItem>
+                  {TYPE_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="filter-date-from" className="text-xs text-muted-foreground">
+                Dari tanggal
+              </Label>
+              <Input
+                id="filter-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={handleDateFromChange}
+                className="h-8 w-38 text-xs"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="filter-date-to" className="text-xs text-muted-foreground">
+                Sampai tanggal
+              </Label>
+              <Input
+                id="filter-date-to"
+                type="date"
+                value={dateTo}
+                onChange={handleDateToChange}
+                className="h-8 w-38 text-xs"
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-8 gap-1 text-xs text-muted-foreground"
+              >
+                <X size={14} />
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
+      }
+      emptyState={
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-sm text-muted-foreground">Tidak ada transaksi ditemukan.</p>
+        </div>
+      }
+      emptySearchState={
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            Tidak ada transaksi yang cocok dengan filter yang diterapkan.
+          </p>
+          <Button variant="link" size="sm" onClick={handleClearFilters} className="mt-2 text-sm">
+            Reset semua filter
+          </Button>
+        </div>
+      }
+      renderMobileItem={(row) => {
+        const tx = row.original;
+        return (
+          <div className="px-4 py-3 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="outline">{TYPE_LABELS[tx.type] ?? tx.type}</Badge>
+              <span className="font-mono text-sm font-medium">Rp {formatAmount(tx.amount)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="font-mono">{tx.cardId}</span>
+              <Badge variant={SYNC_STATUS_VARIANT[tx.syncStatus]} className="text-[10px]">
+                {SYNC_STATUS_LABELS[tx.syncStatus]}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{formatDateTime(tx.timestamp)}</p>
+            <p className="text-xs text-muted-foreground">
+              Saldo: Rp {formatAmount(tx.balanceAfter)}
+            </p>
+          </div>
+        );
+      }}
+    />
   );
 }
