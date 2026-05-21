@@ -319,6 +319,10 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     const pending = pendingWriteRef.current;
     if (!pending) return false;
 
+    // Clear the 30-second timeout FIRST so it doesn't fire ERROR mid-write
+    // while NDEFReader.write() is waiting for the card to be tapped
+    clearPendingWriteTimeout();
+
     // Abort any previous operation
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -327,20 +331,30 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     dispatch({ type: "START_WRITE" });
 
     try {
-      // Retry the commit with the stored bytes
+      // Retry the commit with the stored bytes (NDEFReader.write waits for card tap)
       const writeResult = await commitWrite(pending.bytes, pending.payload, signal);
 
       if (signal.aborted) return false;
 
       if (!writeResult.ok) {
-        // Still failing — go back to retry state
+        // Still failing — go back to retry state with a fresh timeout
         dispatch({ type: "WRITE_PENDING_RETRY" });
+        pendingWriteTimeoutRef.current = setTimeout(() => {
+          pendingWriteRef.current = null;
+          const payloadError: PayloadError = {
+            code: "WRITE_FAILED",
+            message: "Waktu habis. Penulisan kartu dibatalkan.",
+            tamperDetected: false,
+            recoverable: true,
+          };
+          dispatch({ type: "ERROR", error: payloadError });
+          onErrorRef.current?.(payloadError);
+        }, 30_000);
         return false;
       }
 
       // Write succeeded — clear pending write
       pendingWriteRef.current = null;
-      clearPendingWriteTimeout();
 
       // Dispatch WRITE_COMPLETE
       dispatch({ type: "WRITE_COMPLETE", payload: writeResult.payload });
@@ -349,8 +363,19 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     } catch {
       if (signal.aborted) return false;
 
-      // Go back to retry state so user can try again
+      // Go back to retry state with a fresh timeout so user can try again
       dispatch({ type: "WRITE_PENDING_RETRY" });
+      pendingWriteTimeoutRef.current = setTimeout(() => {
+        pendingWriteRef.current = null;
+        const payloadError: PayloadError = {
+          code: "WRITE_FAILED",
+          message: "Waktu habis. Penulisan kartu dibatalkan.",
+          tamperDetected: false,
+          recoverable: true,
+        };
+        dispatch({ type: "ERROR", error: payloadError });
+        onErrorRef.current?.(payloadError);
+      }, 30_000);
       return false;
     }
   }, [clearPendingWriteTimeout]);
