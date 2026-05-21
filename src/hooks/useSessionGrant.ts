@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
+import { API_BASE_URL } from "../lib/api";
 import {
-  localTenantConfigStore,
   sessionGrantCacheStore,
   type CachedSessionGrant,
 } from "../lib/indexeddb";
-import { API_BASE_URL } from "../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
@@ -199,15 +198,11 @@ async function tryLocalGrant(
   deviceId: string,
 ): Promise<SessionGrant | null> {
   try {
-    const config = await localTenantConfigStore.get(tenantId);
-    // Generate local grant for local-only tenants OR when config exists (offline fallback)
-    if (config) {
-      return generateLocalSessionGrant(tenantId, accountId, deviceId);
-    }
+    return generateLocalSessionGrant(tenantId, accountId, deviceId);
   } catch {
     // Web Crypto unavailable or other unexpected error
+    return null;
   }
-  return null;
 }
 
 export function useSessionGrant(

@@ -54,6 +54,7 @@ function getActiveStepIndex(phase: NfcPhase): number {
     case "ready":
       return 1;
     case "writing":
+    case "write_pending_retry":
       return 2;
     case "success":
       return 3;

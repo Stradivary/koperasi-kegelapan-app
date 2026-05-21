@@ -359,6 +359,7 @@ describe("Preservation 3.3: Single-tap scan events produce identical state machi
           "validating" as const,
           "ready" as const,
           "writing" as const,
+          "write_pending_retry" as const,
           "success" as const,
           "error" as const,
         ),
@@ -386,8 +387,8 @@ describe("Preservation 3.3: Single-tap scan events produce identical state machi
             expect(next.phase).toBe(phase); // unchanged
           }
 
-          // START_WRITE only works from ready
-          if (phase !== "ready") {
+          // START_WRITE only works from ready or write_pending_retry
+          if (phase !== "ready" && phase !== "write_pending_retry") {
             const next = nfcReducer(state, { type: "START_WRITE" });
             expect(next.phase).toBe(phase); // unchanged
           }

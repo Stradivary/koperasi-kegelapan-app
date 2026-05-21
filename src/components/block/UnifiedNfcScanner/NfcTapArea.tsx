@@ -17,6 +17,7 @@ export interface NfcTapAreaProps {
     classifying?: string;
     validating?: string;
     writing?: string;
+    write_pending_retry?: string;
   };
 }
 
@@ -30,6 +31,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   classifying: "Mengidentifikasi kartu...",
   validating: "Memvalidasi kartu...",
   writing: "Menulis kartu...",
+  write_pending_retry: "Tempelkan kartu lagi...",
 };
 
 interface PhaseVisualConfig {
@@ -75,6 +77,13 @@ const phaseVisuals: Record<string, PhaseVisualConfig> = {
     iconColor: "text-signal-warning",
     ringClass: "nfc-ring-spin",
     iconAnimation: "animate-pulse",
+  },
+  write_pending_retry: {
+    border: "border-signal-warning",
+    bg: "bg-signal-bg-warning",
+    iconColor: "text-signal-warning",
+    ringClass: "nfc-ring-pulse",
+    iconAnimation: "animate-bounce",
   },
   ready: {
     border: "border-signal-valid",
@@ -125,7 +134,8 @@ export function NfcTapArea({ phase, labels }: NfcTapAreaProps) {
     phase === "scanning" ||
     phase === "classifying" ||
     phase === "validating" ||
-    phase === "writing";
+    phase === "writing" ||
+    phase === "write_pending_retry";
 
   return (
     <div

@@ -49,6 +49,10 @@ export interface UseUnifiedNfcReturn {
   scan: () => Promise<void>;
   /** Write an updated payload to the current card */
   write: (updatedPayload: CardPayload) => Promise<boolean>;
+  /** Retry a failed write (tap card again with stored bytes) */
+  retryWrite: () => Promise<boolean>;
+  /** Whether there is a pending write waiting for retry */
+  hasPendingWrite: boolean;
   /** Reset the scanner to idle state */
   reset: () => void;
   /** Cancel the current operation */
@@ -124,6 +128,18 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
 
   // Store current raw result for write operations
   const rawResultRef = useRef<RawNfcResult | null>(null);
+
+  // Pending write storage for retry on failed NFC writes
+  const pendingWriteRef = useRef<{ bytes: Uint8Array; payload: CardPayload } | null>(null);
+  const pendingWriteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup pending write timeout
+  const clearPendingWriteTimeout = useCallback(() => {
+    if (pendingWriteTimeoutRef.current) {
+      clearTimeout(pendingWriteTimeoutRef.current);
+      pendingWriteTimeoutRef.current = null;
+    }
+  }, []);
 
   // ============================================================================
   // isNfcSupported
@@ -240,22 +256,39 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
 
         if (signal.aborted) return false;
 
+        // Store the prepared write for potential retry
+        pendingWriteRef.current = { bytes, payload: signedPayload };
+
         // Commit the write via pipelineEngine (which uses the NFC engine)
         const writeResult = await commitWrite(bytes, signedPayload, signal);
 
         if (signal.aborted) return false;
 
         if (!writeResult.ok) {
-          const payloadError: PayloadError = {
-            code: "WRITE_FAILED",
-            message: writeResult.error,
-            tamperDetected: false,
-            recoverable: true,
-          };
-          dispatch({ type: "ERROR", error: payloadError });
-          onErrorRef.current?.(payloadError);
+          // Write failed (likely card moved too fast) — transition to retry state
+          // The prepared bytes are still valid in memory, user can tap again
+          dispatch({ type: "WRITE_PENDING_RETRY" });
+
+          // Start 30-second timeout — after which we discard and go to error
+          clearPendingWriteTimeout();
+          pendingWriteTimeoutRef.current = setTimeout(() => {
+            pendingWriteRef.current = null;
+            const payloadError: PayloadError = {
+              code: "WRITE_FAILED",
+              message: "Waktu habis. Penulisan kartu dibatalkan.",
+              tamperDetected: false,
+              recoverable: true,
+            };
+            dispatch({ type: "ERROR", error: payloadError });
+            onErrorRef.current?.(payloadError);
+          }, 30_000);
+
           return false;
         }
+
+        // Write succeeded — clear pending write
+        pendingWriteRef.current = null;
+        clearPendingWriteTimeout();
 
         // Dispatch WRITE_COMPLETE
         dispatch({ type: "WRITE_COMPLETE", payload: writeResult.payload });
@@ -275,8 +308,52 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
         return false;
       }
     },
-    [state.payload],
+    [state.payload, clearPendingWriteTimeout],
   );
+
+  // ============================================================================
+  // retryWrite() — retry a failed write by tapping the card again
+  // ============================================================================
+
+  const retryWrite = useCallback(async (): Promise<boolean> => {
+    const pending = pendingWriteRef.current;
+    if (!pending) return false;
+
+    // Abort any previous operation
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const signal = abortRef.current.signal;
+
+    dispatch({ type: "START_WRITE" });
+
+    try {
+      // Retry the commit with the stored bytes
+      const writeResult = await commitWrite(pending.bytes, pending.payload, signal);
+
+      if (signal.aborted) return false;
+
+      if (!writeResult.ok) {
+        // Still failing — go back to retry state
+        dispatch({ type: "WRITE_PENDING_RETRY" });
+        return false;
+      }
+
+      // Write succeeded — clear pending write
+      pendingWriteRef.current = null;
+      clearPendingWriteTimeout();
+
+      // Dispatch WRITE_COMPLETE
+      dispatch({ type: "WRITE_COMPLETE", payload: writeResult.payload });
+      onWriteSuccessRef.current?.(writeResult.payload);
+      return true;
+    } catch {
+      if (signal.aborted) return false;
+
+      // Go back to retry state so user can try again
+      dispatch({ type: "WRITE_PENDING_RETRY" });
+      return false;
+    }
+  }, [clearPendingWriteTimeout]);
 
   // ============================================================================
   // reset()
@@ -286,8 +363,10 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     abortRef.current?.abort();
     abortRef.current = null;
     rawResultRef.current = null;
+    pendingWriteRef.current = null;
+    clearPendingWriteTimeout();
     dispatch({ type: "RESET" });
-  }, []);
+  }, [clearPendingWriteTimeout]);
 
   // ============================================================================
   // cancel()
@@ -297,8 +376,10 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     abortRef.current?.abort();
     abortRef.current = null;
     genericLayer.abort();
+    pendingWriteRef.current = null;
+    clearPendingWriteTimeout();
     dispatch({ type: "CANCEL" });
-  }, [genericLayer]);
+  }, [genericLayer, clearPendingWriteTimeout]);
 
   // ============================================================================
   // payloadLayer (functional reference for advanced usage)
@@ -317,6 +398,8 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
     isNfcSupported,
     scan,
     write,
+    retryWrite,
+    hasPendingWrite: pendingWriteRef.current !== null,
     reset,
     cancel,
     genericLayer,

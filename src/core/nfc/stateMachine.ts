@@ -29,6 +29,7 @@ import type { CardClassification, RawNfcResult } from "./types";
  * - "validating": Decrypting and validating a valid_payload card
  * - "ready": Card data is available for display or action
  * - "writing": Writing data to the NFC tag
+ * - "write_pending_retry": Write failed, waiting for user to tap card again
  * - "success": Operation completed successfully
  * - "error": An error occurred during the operation
  *
@@ -41,6 +42,7 @@ export type NfcPhase =
   | "validating"
   | "ready"
   | "writing"
+  | "write_pending_retry"
   | "success"
   | "error";
 
@@ -81,6 +83,7 @@ export type NfcAction =
   | { type: "CLASSIFICATION_COMPLETE"; classification: CardClassification }
   | { type: "VALIDATION_COMPLETE"; payload: CardPayload }
   | { type: "START_WRITE" }
+  | { type: "WRITE_PENDING_RETRY" }
   | { type: "WRITE_COMPLETE"; payload: CardPayload }
   | { type: "ERROR"; error: NfcError | PayloadError }
   | { type: "RESET" }
@@ -113,6 +116,7 @@ const ACTIVE_PHASES: ReadonlySet<NfcPhase> = new Set([
   "classifying",
   "validating",
   "writing",
+  "write_pending_retry",
 ]);
 
 // ============================================================================
@@ -137,7 +141,10 @@ const ACTIVE_PHASES: ReadonlySet<NfcPhase> = new Set([
  * - ready → writing: START_WRITE
  * - ready → idle: RESET
  * - writing → success: WRITE_COMPLETE
+ * - writing → write_pending_retry: WRITE_PENDING_RETRY (write failed, tap again)
  * - writing → error: ERROR
+ * - write_pending_retry → writing: START_WRITE (user tapped card again)
+ * - write_pending_retry → idle: CANCEL / RESET
  * - success → idle: RESET
  * - error → idle: RESET
  * - any active phase → idle: CANCEL
@@ -209,13 +216,24 @@ export function nfcReducer(state: NfcState, action: NfcAction): NfcState {
     }
 
     case "START_WRITE": {
-      // Only valid from ready phase
-      if (state.phase !== "ready") {
+      // Valid from ready phase or write_pending_retry (retry tap)
+      if (state.phase !== "ready" && state.phase !== "write_pending_retry") {
         return state;
       }
       return {
         ...state,
         phase: "writing",
+      };
+    }
+
+    case "WRITE_PENDING_RETRY": {
+      // Only valid from writing phase (write failed, waiting for re-tap)
+      if (state.phase !== "writing") {
+        return state;
+      }
+      return {
+        ...state,
+        phase: "write_pending_retry",
       };
     }
 

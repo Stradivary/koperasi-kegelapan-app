@@ -332,6 +332,7 @@ const TAP_AREA_PHASES: ReadonlySet<NfcPhase> = new Set([
   "classifying",
   "validating",
   "writing",
+  "write_pending_retry",
 ]);
 
 /** Phases where CardInfoDisplay should be shown */
@@ -346,6 +347,7 @@ const CANCEL_PHASES: ReadonlySet<NfcPhase> = new Set([
   "classifying",
   "validating",
   "writing",
+  "write_pending_retry",
 ]);
 
 // ============================================================================
@@ -363,6 +365,7 @@ interface ScannerContentProps {
   scan: () => Promise<void>;
   reset: () => void;
   cancel: () => void;
+  retryWrite: () => Promise<boolean>;
   allowSkip: boolean;
   onSkip?: (error: NfcError | PayloadError) => void;
   continuousScan: boolean;
@@ -395,6 +398,7 @@ function ScannerContent({
   scan,
   reset,
   cancel,
+  retryWrite,
   allowSkip,
   onSkip,
   continuousScan,
@@ -583,10 +587,39 @@ function ScannerContent({
       )}
 
       {/* Cancel button — shown during active phases (scanning, classifying, validating, writing) */}
-      {CANCEL_PHASES.has(phase) && (
+      {CANCEL_PHASES.has(phase) && phase !== "write_pending_retry" && (
         <Button variant="ghost" onClick={handleCancel} aria-label={mergedLabels.cancel}>
           {mergedLabels.cancel}
         </Button>
+      )}
+
+      {/* Write Pending Retry — shown when write failed and waiting for re-tap */}
+      {phase === "write_pending_retry" && (
+        <div className="flex flex-col items-center gap-3 py-4" role="alert" aria-live="assertive">
+          <AlertTriangle className="h-12 w-12 text-signal-warning" aria-hidden="true" />
+          <span className="type-body1-bold text-signal-warning text-center">
+            Penulisan gagal — kartu dipindahkan terlalu cepat
+          </span>
+          <span className="type-body2 text-muted-foreground text-center">
+            Tempelkan kartu lagi untuk menyelesaikan penulisan
+          </span>
+          <Button variant="default" onClick={() => void retryWrite()} aria-label="Tap ulang kartu">
+            Tap Ulang Kartu
+          </Button>
+          <div className="flex flex-col items-center gap-1 mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+              aria-label={mergedLabels.cancel}
+            >
+              {mergedLabels.cancel}
+            </Button>
+            <span className="type-caption text-signal-error text-center">
+              ⚠️ Membatalkan saat ini dapat menyebabkan data kartu rusak
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Success State — shown during success phase */}
@@ -820,7 +853,7 @@ export function UnifiedNfcScanner({
   const mergedLabels: NfcLabels = { ...DEFAULT_LABELS, ...labels };
 
   // Integrate with the useUnifiedNfc hook
-  const { state, scan, reset, cancel, isNfcSupported } = useUnifiedNfc({
+  const { state, scan, reset, cancel, retryWrite, isNfcSupported } = useUnifiedNfc({
     sessionGrant,
     tenantId,
     terminalId,
@@ -901,6 +934,7 @@ export function UnifiedNfcScanner({
     scan,
     reset,
     cancel,
+    retryWrite,
     allowSkip,
     onSkip,
     continuousScan,
