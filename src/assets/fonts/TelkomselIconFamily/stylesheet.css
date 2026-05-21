@@ -1,0 +1,587 @@
+@font-face {
+  font-family: "Telkomsel-Icon-Family";
+  src: url("Telkomsel-Icon-Family.eot?rvuxdg");
+  src:
+    url("Telkomsel-Icon-Family.eot?rvuxdg#iefix") format("embedded-opentype"),
+    url("Telkomsel-Icon-Family.ttf?rvuxdg") format("truetype"),
+    url("Telkomsel-Icon-Family.woff?rvuxdg") format("woff"),
+    url("Telkomsel-Icon-Family.svg?rvuxdg#Telkomsel-Icon-Family") format("svg");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+[class^="tsel-"],
+[class*=" tsel-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: "Telkomsel-Icon-Family" !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.tsel-ico_logo-shape:before {
+  content: "\e9b9";
+}
+.tsel-ico_time:before {
+  content: "\e90f";
+}
+.tsel-ico_vespa:before {
+  content: "\e91d";
+}
+.tsel-ico_cashback:before {
+  content: "\e928";
+}
+.tsel-ico_cart:before {
+  content: "\e929";
+}
+.tsel-ico_pay_automatically:before {
+  content: "\e92a";
+}
+.tsel-ico_diamond:before {
+  content: "\e932";
+}
+.tsel-ico_bank:before {
+  content: "\e93a";
+}
+.tsel-ico_simcard:before {
+  content: "\e953";
+}
+.tsel-ico_request_gift:before {
+  content: "\e9a1";
+}
+.tsel-ico_map:before {
+  content: "\e9b5";
+}
+.tsel-ico_money:before {
+  content: "\e921";
+}
+.tsel-ico_maximize:before {
+  content: "\e9b7";
+}
+.tsel-ico_minimize:before {
+  content: "\e9b8";
+}
+.tsel-ico_radio_button_inactive:before {
+  content: "\e900";
+}
+.tsel-ico_checkbox_inactive:before {
+  content: "\e901";
+}
+.tsel-ico_store:before {
+  content: "\e902";
+}
+.tsel-ico_checkbox:before {
+  content: "\e903";
+}
+.tsel-ico_add_card:before {
+  content: "\e904";
+}
+.tsel-ico_arrow_cardinal:before {
+  content: "\e905";
+}
+.tsel-ico_disable_image:before {
+  content: "\e906";
+}
+.tsel-ico_exchange:before {
+  content: "\e907";
+}
+.tsel-ico_image:before {
+  content: "\e908";
+}
+.tsel-ico_mute:before {
+  content: "\e909";
+}
+.tsel-ico_unmute:before {
+  content: "\e90a";
+}
+.tsel-ico_alarm:before {
+  content: "\e90b";
+}
+.tsel-ico_booster:before {
+  content: "\e90c";
+}
+.tsel-ico_cloudmax:before {
+  content: "\e90d";
+}
+.tsel-ico_internet_satuan:before {
+  content: "\e90e";
+}
+.tsel-ico_stopwatch:before {
+  content: "\e910";
+}
+.tsel-ico_video_conference:before {
+  content: "\e911";
+}
+.tsel-ico_linkedin:before {
+  content: "\e912";
+}
+.tsel-ico_automotive:before {
+  content: "\e913";
+}
+.tsel-ico_camera:before {
+  content: "\e914";
+}
+.tsel-ico_contact:before {
+  content: "\e915";
+}
+.tsel-ico_customer_service:before {
+  content: "\e916";
+}
+.tsel-ico_domestic:before {
+  content: "\e917";
+}
+.tsel-ico_envelope:before {
+  content: "\e918";
+}
+.tsel-ico_envelope_open:before {
+  content: "\e919";
+}
+.tsel-ico_facebook:before {
+  content: "\e91a";
+}
+.tsel-ico_instagram:before {
+  content: "\e91b";
+}
+.tsel-ico_location:before {
+  content: "\e91c";
+}
+.tsel-ico_news:before {
+  content: "\e91e";
+}
+.tsel-ico_ringtone:before {
+  content: "\e91f";
+}
+.tsel-ico_share:before {
+  content: "\e920";
+}
+.tsel-ico_tag:before {
+  content: "\e922";
+}
+.tsel-ico_telegram:before {
+  content: "\e923";
+}
+.tsel-ico_ticket:before {
+  content: "\e924";
+}
+.tsel-ico_twitter:before {
+  content: "\e925";
+}
+.tsel-ico_youtube:before {
+  content: "\e926";
+}
+.tsel-ico_reload:before {
+  content: "\e927";
+}
+.tsel-ico_internet:before {
+  content: "\e92b";
+}
+.tsel-ico_radio_button:before {
+  content: "\e92c";
+}
+.tsel-ico_device:before {
+  content: "\e92d";
+}
+.tsel-ico_laptop:before {
+  content: "\e92e";
+}
+.tsel-ico_tablet:before {
+  content: "\e92f";
+}
+.tsel-ico_t-store:before {
+  content: "\e930";
+}
+.tsel-ico_user_data:before {
+  content: "\e931";
+}
+.tsel-ico_PDAM:before {
+  content: "\e933";
+}
+.tsel-ico_phone_data:before {
+  content: "\e934";
+}
+.tsel-ico_printer:before {
+  content: "\e935";
+}
+.tsel-ico_quiz:before {
+  content: "\e936";
+}
+.tsel-ico_add_services:before {
+  content: "\e937";
+}
+.tsel-ico_alquran:before {
+  content: "\e938";
+}
+.tsel-ico_attractions:before {
+  content: "\e939";
+}
+.tsel-ico_convert_halo:before {
+  content: "\e93b";
+}
+.tsel-ico_convert_prepaid:before {
+  content: "\e93c";
+}
+.tsel-ico_drag:before {
+  content: "\e93d";
+}
+.tsel-ico_emergency:before {
+  content: "\e93e";
+}
+.tsel-ico_event:before {
+  content: "\e93f";
+}
+.tsel-ico_like:before {
+  content: "\e940";
+}
+.tsel-ico_like_filled:before {
+  content: "\e941";
+}
+.tsel-ico_login:before {
+  content: "\e942";
+}
+.tsel-ico_microphone:before {
+  content: "\e943";
+}
+.tsel-ico_mosque:before {
+  content: "\e944";
+}
+.tsel-ico_movies:before {
+  content: "\e945";
+}
+.tsel-ico_new_page:before {
+  content: "\e946";
+}
+.tsel-ico_repair:before {
+  content: "\e947";
+}
+.tsel-ico_shopping_bag:before {
+  content: "\e948";
+}
+.tsel-ico_verified:before {
+  content: "\e949";
+}
+.tsel-ico_verified_filled:before {
+  content: "\e94a";
+}
+.tsel-ico_crown:before {
+  content: "\e94b";
+}
+.tsel-ico_discount:before {
+  content: "\e94c";
+}
+.tsel-ico_edit:before {
+  content: "\e94d";
+}
+.tsel-ico_home:before {
+  content: "\e94e";
+}
+.tsel-ico_add:before {
+  content: "\e94f";
+}
+.tsel-ico_secure:before {
+  content: "\e950";
+}
+.tsel-ico_add_user:before {
+  content: "\e951";
+}
+.tsel-ico_calendar:before {
+  content: "\e952";
+}
+.tsel-ico_clock:before {
+  content: "\e954";
+}
+.tsel-ico_delivery:before {
+  content: "\e955";
+}
+.tsel-ico_donation:before {
+  content: "\e956";
+}
+.tsel-ico_education:before {
+  content: "\e957";
+}
+.tsel-ico_family:before {
+  content: "\e958";
+}
+.tsel-ico_filter:before {
+  content: "\e959";
+}
+.tsel-ico_group:before {
+  content: "\e95a";
+}
+.tsel-ico_hand:before {
+  content: "\e95b";
+}
+.tsel-ico_lucky_draw:before {
+  content: "\e95c";
+}
+.tsel-ico_poin:before {
+  content: "\e95d";
+}
+.tsel-ico_profile:before {
+  content: "\e95e";
+}
+.tsel-ico_save:before {
+  content: "\e95f";
+}
+.tsel-ico_schedule:before {
+  content: "\e960";
+}
+.tsel-ico_sim_migration:before {
+  content: "\e961";
+}
+.tsel-ico_smiley:before {
+  content: "\e962";
+}
+.tsel-ico_transaction:before {
+  content: "\e963";
+}
+.tsel-ico_wallet:before {
+  content: "\e964";
+}
+.tsel-ico_more:before {
+  content: "\e965";
+}
+.tsel-ico_apps:before {
+  content: "\e966";
+}
+.tsel-ico_check:before {
+  content: "\e967";
+}
+.tsel-ico_more_nav:before {
+  content: "\e968";
+}
+.tsel-ico_placeholder:before {
+  content: "\e969";
+}
+.tsel-ico_search:before {
+  content: "\e96a";
+}
+.tsel-ico_wifi:before {
+  content: "\e96b";
+}
+.tsel-ico_4G:before {
+  content: "\e96c";
+}
+.tsel-ico_close:before {
+  content: "\e96d";
+}
+.tsel-ico_control:before {
+  content: "\e96e";
+}
+.tsel-ico_download:before {
+  content: "\e96f";
+}
+.tsel-ico_failed_filled:before {
+  content: "\e970";
+}
+.tsel-ico_list:before {
+  content: "\e971";
+}
+.tsel-ico_logout:before {
+  content: "\e972";
+}
+.tsel-ico_menu:before {
+  content: "\e973";
+}
+.tsel-ico_minus:before {
+  content: "\e974";
+}
+.tsel-ico_plus:before {
+  content: "\e975";
+}
+.tsel-ico_stop:before {
+  content: "\e976";
+}
+.tsel-ico_success:before {
+  content: "\e977";
+}
+.tsel-ico_success_filled:before {
+  content: "\e978";
+}
+.tsel-ico_reduce:before {
+  content: "\e979";
+}
+.tsel-ico_chevron_down:before {
+  content: "\e97a";
+}
+.tsel-ico_chevron_left:before {
+  content: "\e97b";
+}
+.tsel-ico_chevron_right:before {
+  content: "\e97c";
+}
+.tsel-ico_chevron_up:before {
+  content: "\e97d";
+}
+.tsel-ico_device_bundling:before {
+  content: "\e97e";
+}
+.tsel-ico_lightning:before {
+  content: "\e97f";
+}
+.tsel-ico_arrow_left:before {
+  content: "\e980";
+}
+.tsel-ico_arrow_right:before {
+  content: "\e981";
+}
+.tsel-ico_bill:before {
+  content: "\e982";
+}
+.tsel-ico_bookmarks:before {
+  content: "\e983";
+}
+.tsel-ico_bookmarks_filled:before {
+  content: "\e984";
+}
+.tsel-ico_love:before {
+  content: "\e985";
+}
+.tsel-ico_love_filled:before {
+  content: "\e986";
+}
+.tsel-ico_notification:before {
+  content: "\e987";
+}
+.tsel-ico_phone:before {
+  content: "\e988";
+}
+.tsel-ico_pie_chart:before {
+  content: "\e989";
+}
+.tsel-ico_setting:before {
+  content: "\e98a";
+}
+.tsel-ico_star:before {
+  content: "\e98b";
+}
+.tsel-ico_star_add:before {
+  content: "\e98c";
+}
+.tsel-ico_star_filled:before {
+  content: "\e98d";
+}
+.tsel-ico_telco:before {
+  content: "\e98e";
+}
+.tsel-ico_add_poin:before {
+  content: "\e98f";
+}
+.tsel-ico_chat:before {
+  content: "\e990";
+}
+.tsel-ico_dailycheckin:before {
+  content: "\e991";
+}
+.tsel-ico_games:before {
+  content: "\e992";
+}
+.tsel-ico_gift:before {
+  content: "\e993";
+}
+.tsel-ico_health:before {
+  content: "\e994";
+}
+.tsel-ico_lock:before {
+  content: "\e995";
+}
+.tsel-ico_modem:before {
+  content: "\e996";
+}
+.tsel-ico_music:before {
+  content: "\e997";
+}
+.tsel-ico_paylater:before {
+  content: "\e998";
+}
+.tsel-ico_plane:before {
+  content: "\e999";
+}
+.tsel-ico_pulsa:before {
+  content: "\e99a";
+}
+.tsel-ico_qr:before {
+  content: "\e99b";
+}
+.tsel-ico_sms:before {
+  content: "\e99c";
+}
+.tsel-ico_telephon:before {
+  content: "\e99d";
+}
+.tsel-ico_telephon_plus_sms:before {
+  content: "\e99e";
+}
+.tsel-ico_telephone_plus:before {
+  content: "\e99f";
+}
+.tsel-ico_unlock:before {
+  content: "\e9a0";
+}
+.tsel-ico_video:before {
+  content: "\e9a2";
+}
+.tsel-ico_help:before {
+  content: "\e9a3";
+}
+.tsel-ico_history:before {
+  content: "\e9a4";
+}
+.tsel-ico_info:before {
+  content: "\e9a5";
+}
+.tsel-ico_repeat:before {
+  content: "\e9a6";
+}
+.tsel-ico_sort:before {
+  content: "\e9a7";
+}
+.tsel-ico_warning:before {
+  content: "\e9a8";
+}
+.tsel-ico_campaign:before {
+  content: "\e9a9";
+}
+.tsel-ico_card:before {
+  content: "\e9aa";
+}
+.tsel-ico_convert_linkaja:before {
+  content: "\e9ab";
+}
+.tsel-ico_copy:before {
+  content: "\e9ac";
+}
+.tsel-ico_credit:before {
+  content: "\e9ad";
+}
+.tsel-ico_delete:before {
+  content: "\e9ae";
+}
+.tsel-ico_eye-close:before {
+  content: "\e9af";
+}
+.tsel-ico_eye-open:before {
+  content: "\e9b0";
+}
+.tsel-ico_favorite-sim:before {
+  content: "\e9b1";
+}
+.tsel-ico_monetary:before {
+  content: "\e9b2";
+}
+.tsel-ico_package:before {
+  content: "\e9b3";
+}
+.tsel-ico_package_extra:before {
+  content: "\e9b4";
+}
+.tsel-ico_voucher:before {
+  content: "\e9b6";
+}

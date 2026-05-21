@@ -108,7 +108,7 @@ export function StationCardListPanel({
         getRowId={(row) => row.cardId}
         header={
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{cards.length} kartu</span>
+            <span className="text-sm text-muted-foreground"> </span>
             <Button size="sm" onClick={onIssueNew} disabled={!nfcSupported}>
               <Plus />
               Cetak Kartu Baru
@@ -226,12 +226,17 @@ function CardActionsDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onTopup} disabled={card.status !== "active"}>
+        <DropdownMenuItem className="h-10" onClick={onTopup} disabled={card.status !== "active"}>
           <CreditCard size={14} />
           Top-up
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={onDelete} disabled={isDeleting}>
+        <DropdownMenuItem
+          className="h-10"
+          variant="destructive"
+          onClick={onDelete}
+          disabled={isDeleting}
+        >
           <Trash2 size={14} />
           Hapus Kartu
         </DropdownMenuItem>

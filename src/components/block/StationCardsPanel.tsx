@@ -67,7 +67,6 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
 
     useImperativeHandle(ref, () => ({
       goToList: () => {
-        setSuccess("Kartu berhasil dicetak dan didaftarkan");
         setCardView("list");
       },
     }));
@@ -80,7 +79,6 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
     }) {
       try {
         await onIssueCard(data);
-        setSuccess("Kartu berhasil dicetak dan didaftarkan");
         setCardView("list");
       } catch {
         // Error is handled upstream (override/not-blank dialogs shown by parent)

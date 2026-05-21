@@ -15,7 +15,7 @@ interface TransactionsSectionProps {
   tenantId: string;
 }
 
-const PAGE_SIZE_DEFAULT = 20;
+const PAGE_SIZE_DEFAULT = 10;
 const PAGE_SIZE_MAX = 100;
 
 const TYPE_LABELS: Record<TransactionLog["type"], string> = {
@@ -28,12 +28,12 @@ const TYPE_LABELS: Record<TransactionLog["type"], string> = {
 };
 
 const TYPE_FILTER_OPTIONS: { label: string; value: TransactionLog["type"] }[] = [
-  { label: "Debit", value: "debit" },
-  { label: "Kredit / Top-up", value: "credit" },
+  // { label: "Debit", value: "debit" },
+  // { label: "Kredit / Top-up", value: "credit" },
   { label: "Top-up", value: "topup" },
   { label: "Check-in", value: "checkin" },
   { label: "Check-out", value: "checkout" },
-  { label: "Admin", value: "admin" },
+  // { label: "Admin", value: "admin" },
 ];
 
 const SYNC_STATUS_VARIANT: Record<
@@ -217,12 +217,8 @@ export function TransactionsSection({ tenantId }: TransactionsSectionProps) {
       getRowId={(row) => (row.id != null ? String(row.id) : `${row.cardId}-${row.counter}`)}
       header={
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            {data && <p className="text-sm text-muted-foreground">{data.total} transaksi</p>}
-          </div>
-
           {/* Filter controls */}
-          <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-muted/30 p-3">
+          <div className="flex flex-wrap items-end gap-3 rounded-md bg-white border border-border bg-muted/30 p-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="filter-card-id" className="text-xs text-muted-foreground">
                 Card ID

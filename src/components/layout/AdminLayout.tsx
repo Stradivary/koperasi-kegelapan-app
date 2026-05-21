@@ -56,8 +56,8 @@ const NAV_ITEMS: { id: AdminView; icon: React.ElementType; label: string }[] = [
 const MOBILE_NAV: MobileNavItem<AdminView>[] = [
   { id: "cards", icon: CreditCard, label: "Kartu" },
   { id: "members", icon: UserCheck, label: "Anggota" },
+  { id: "scout", icon: BookOpen, label: "Scout", cta: true },
   { id: "transactions", icon: Receipt, label: "Transaksi" },
-  { id: "scout", icon: BookOpen, label: "Scout" },
   { id: "settings", icon: Settings, label: "Pengaturan" },
 ];
 

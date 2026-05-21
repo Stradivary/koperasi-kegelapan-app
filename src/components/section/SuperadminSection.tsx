@@ -9,11 +9,20 @@ import {
   type PaginationState,
 } from "../block/superadmin/TenantListPanel";
 import { TenantDetailPanel } from "../block/superadmin/TenantDetailPanel";
+import { AccountListPanel, type AccountListItem } from "../block/superadmin/AccountListPanel";
 import {
   TenantCreateDialog,
   type CreateTenantRequest,
   type CreateTenantError,
 } from "../block/dialogs/TenantCreateDialog";
+import {
+  AccountCreateDialog,
+  type CreateAccountFormData,
+  type CreateAccountError,
+  type TenantOption,
+} from "../block/dialogs/AccountCreateDialog";
+import { ChangePasswordDialog } from "../block/dialogs/ChangePasswordDialog";
+import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
 import { API_BASE_URL } from "#/lib/api";
 
@@ -66,6 +75,13 @@ interface TenantListResponse {
   pageSize: number;
 }
 
+interface AccountListResponse {
+  accounts: AccountListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function SuperadminSection() {
@@ -84,12 +100,22 @@ export function SuperadminSection() {
   const [activeView, setActiveView] = useState<ActiveView>("list");
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
-  // ── List state ──
+  // ── Tenant list state ──
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
 
+  // ── Accounts list state ──
+  const [accountSearchQuery, setAccountSearchQuery] = useState("");
+  const [accountPage, setAccountPage] = useState(1);
+
   // ── Create dialog state ──
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // ── Account dialogs state ──
+  const [createAccountDialogOpen, setCreateAccountDialogOpen] = useState(false);
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<AccountListItem | null>(null);
+  const [statusConfirmAccount, setStatusConfirmAccount] = useState<AccountListItem | null>(null);
 
   // ── Superadmin Login Handler ──
   async function handleSuperadminLogin(e: React.FormEvent) {
@@ -314,7 +340,217 @@ export function SuperadminSection() {
     [selectedTenantId, statusChangeMutation],
   );
 
-  // ── Derived state ──
+  // ── Account List Query ──
+  const accountListQuery = useQuery<AccountListResponse>({
+    queryKey: ["superadmin-accounts", accountPage, DEFAULT_PAGE_SIZE, accountSearchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(accountPage),
+        pageSize: String(DEFAULT_PAGE_SIZE),
+      });
+      if (accountSearchQuery.trim()) {
+        params.set("search", accountSearchQuery.trim());
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/accounts?${params.toString()}`, {
+        headers: authHeaders(),
+      });
+
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
+
+      if (!handled.ok) {
+        throw new Error(`Server error: ${handled.status}`);
+      }
+
+      return handled.json();
+    },
+    enabled: activeSection === "accounts",
+    staleTime: STALE_TIME,
+    placeholderData: (previousData) => previousData,
+  });
+
+  // ── Tenant options for account create dialog ──
+  const tenantOptionsQuery = useQuery<{ tenants: TenantOption[] }>({
+    queryKey: ["superadmin-tenant-options"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/tenants?pageSize=100`, {
+        headers: authHeaders(),
+      });
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
+      if (!handled.ok) throw new Error(`Server error: ${handled.status}`);
+      const data = await handled.json();
+      return {
+        tenants: (data.tenants ?? []).map(
+          (t: { tenantId: string; name: string; slug: string }) => ({
+            tenantId: t.tenantId,
+            name: t.name,
+            slug: t.slug,
+          }),
+        ),
+      };
+    },
+    enabled: createAccountDialogOpen,
+    staleTime: 60_000,
+  });
+
+  // ── Create Account Mutation ──
+  const createAccountMutation = useMutation<
+    { accountId: string; username: string },
+    CreateAccountError,
+    CreateAccountFormData
+  >({
+    mutationFn: async (data) => {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/accounts`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(data),
+      });
+
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
+      const body = await handled.json();
+
+      if (!handled.ok) {
+        if (body.error === "validation" && body.errors) {
+          throw { errors: body.errors } as CreateAccountError;
+        }
+        if (body.error === "Username already exists") {
+          throw {
+            errors: [{ field: "username", message: "Username already exists" }],
+          } as CreateAccountError;
+        }
+        throw {
+          errors: [{ field: "general", message: body.error || "Failed to create account" }],
+        } as CreateAccountError;
+      }
+
+      return body;
+    },
+    onSuccess: (data) => {
+      setCreateAccountDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["superadmin-accounts"] });
+      toast.success(`Account "${data.username}" created successfully`, {
+        duration: TOAST_DURATION,
+      });
+    },
+    onError: (error) => {
+      const isFieldError = error?.errors?.some((e) => e.field !== "general");
+      if (!isFieldError) {
+        toast.error("Failed to create account", { duration: TOAST_DURATION });
+      }
+    },
+  });
+
+  // ── Change Password Mutation ──
+  const changePasswordMutation = useMutation<
+    { ok: true },
+    Error,
+    { accountId: string; newPassword: string }
+  >({
+    mutationFn: async ({ accountId, newPassword }) => {
+      const res = await fetch(
+        `${API_BASE_URL}/api/superadmin/accounts/${accountId}/change-password`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ newPassword }),
+        },
+      );
+
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
+      const body = await handled.json();
+
+      if (!handled.ok) {
+        throw new Error(body.error || "Failed to change password");
+      }
+
+      return body;
+    },
+    onSuccess: () => {
+      setChangePasswordDialogOpen(false);
+      setSelectedAccount(null);
+      toast.success("Password changed successfully", { duration: TOAST_DURATION });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to change password", { duration: TOAST_DURATION });
+    },
+  });
+
+  // ── Account Status Mutation ──
+  const accountStatusMutation = useMutation<
+    { ok: true; accountId: string; status: string },
+    Error,
+    { accountId: string; status: string }
+  >({
+    mutationFn: async ({ accountId, status }) => {
+      const res = await fetch(`${API_BASE_URL}/api/superadmin/accounts/${accountId}/status`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      const handled = await handleResponse(res, () => setIsAuthenticated(false));
+      const body = await handled.json();
+
+      if (!handled.ok) {
+        throw new Error(body.error || "Failed to update account status");
+      }
+
+      return body;
+    },
+    onSuccess: (data) => {
+      setStatusConfirmAccount(null);
+      queryClient.invalidateQueries({ queryKey: ["superadmin-accounts"] });
+      toast.success(`Account status updated to "${data.status}"`, { duration: TOAST_DURATION });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update account status", { duration: TOAST_DURATION });
+    },
+  });
+
+  // ── Account Handlers ──
+
+  const handleAccountSearchChange = useCallback((query: string) => {
+    setAccountSearchQuery(query);
+    setAccountPage(1);
+  }, []);
+
+  const handleAccountPageChange = useCallback((newPage: number) => {
+    setAccountPage(newPage);
+  }, []);
+
+  const handleCreateAccount = useCallback(() => {
+    setCreateAccountDialogOpen(true);
+  }, []);
+
+  const handleCreateAccountSubmit = useCallback(
+    (data: CreateAccountFormData) => {
+      createAccountMutation.mutate(data);
+    },
+    [createAccountMutation],
+  );
+
+  const handleChangePassword = useCallback((account: AccountListItem) => {
+    setSelectedAccount(account);
+    setChangePasswordDialogOpen(true);
+  }, []);
+
+  const handleChangePasswordSubmit = useCallback(
+    (newPassword: string) => {
+      if (!selectedAccount) return;
+      changePasswordMutation.mutate({ accountId: selectedAccount.accountId, newPassword });
+    },
+    [selectedAccount, changePasswordMutation],
+  );
+
+  const handleToggleStatus = useCallback((account: AccountListItem) => {
+    setStatusConfirmAccount(account);
+  }, []);
+
+  const handleConfirmStatusToggle = useCallback(() => {
+    if (!statusConfirmAccount) return;
+    const newStatus = statusConfirmAccount.status === "active" ? "suspended" : "active";
+    accountStatusMutation.mutate({ accountId: statusConfirmAccount.accountId, status: newStatus });
+  }, [statusConfirmAccount, accountStatusMutation]);
 
   const pagination: PaginationState = {
     page: tenantListQuery.data?.page ?? page,
@@ -332,6 +568,21 @@ export function SuperadminSection() {
 
   // ── Create error for dialog ──
   const createError: CreateTenantError | null = createTenantMutation.error ?? null;
+  const createAccountError: CreateAccountError | null = createAccountMutation.error ?? null;
+
+  const accountPagination: PaginationState = {
+    page: accountListQuery.data?.page ?? accountPage,
+    pageSize: accountListQuery.data?.pageSize ?? DEFAULT_PAGE_SIZE,
+    total: accountListQuery.data?.total ?? 0,
+  };
+
+  const accountListError = accountListQuery.error
+    ? String(accountListQuery.error.message || accountListQuery.error)
+    : null;
+
+  const changePasswordError = changePasswordMutation.error
+    ? String(changePasswordMutation.error.message || changePasswordMutation.error)
+    : null;
 
   // ── Render ──
 
@@ -442,9 +693,78 @@ export function SuperadminSection() {
       )}
 
       {activeSection === "accounts" && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-muted-foreground">Accounts management coming soon.</p>
-        </div>
+        <>
+          <AccountListPanel
+            accounts={accountListQuery.data?.accounts ?? []}
+            isLoading={accountListQuery.isLoading}
+            error={accountListError}
+            searchQuery={accountSearchQuery}
+            onSearchChange={handleAccountSearchChange}
+            onCreateAccount={handleCreateAccount}
+            onChangePassword={handleChangePassword}
+            onToggleStatus={handleToggleStatus}
+            pagination={accountPagination}
+            onPageChange={handleAccountPageChange}
+          />
+
+          <AccountCreateDialog
+            open={createAccountDialogOpen}
+            onOpenChange={setCreateAccountDialogOpen}
+            onSubmit={handleCreateAccountSubmit}
+            isSubmitting={createAccountMutation.isPending}
+            error={createAccountError}
+            tenants={tenantOptionsQuery.data?.tenants ?? []}
+            tenantsLoading={tenantOptionsQuery.isLoading}
+          />
+
+          <ChangePasswordDialog
+            open={changePasswordDialogOpen}
+            onOpenChange={(open) => {
+              setChangePasswordDialogOpen(open);
+              if (!open) setSelectedAccount(null);
+            }}
+            accountUsername={selectedAccount?.username ?? ""}
+            onSubmit={handleChangePasswordSubmit}
+            isSubmitting={changePasswordMutation.isPending}
+            error={changePasswordError}
+          />
+
+          <ConfirmationDialogDrawer
+            open={statusConfirmAccount !== null}
+            onOpenChange={(open) => {
+              if (!open) setStatusConfirmAccount(null);
+            }}
+            title="Confirm Status Change"
+            description={
+              statusConfirmAccount ? (
+                <div>
+                  Are you sure you want to{" "}
+                  <span className="font-semibold">
+                    {statusConfirmAccount.status === "active" ? "suspend" : "activate"}
+                  </span>{" "}
+                  the account <span className="font-semibold">{statusConfirmAccount.username}</span>
+                  ?
+                  {statusConfirmAccount.status === "active" && (
+                    <span className="block mt-2 text-muted-foreground">
+                      Suspended accounts cannot log in until reactivated.
+                    </span>
+                  )}
+                </div>
+              ) : (
+                ""
+              )
+            }
+            confirmLabel={statusConfirmAccount?.status === "active" ? "Suspend" : "Activate"}
+            cancelLabel="Cancel"
+            confirmVariant={statusConfirmAccount?.status === "active" ? "destructive" : "default"}
+            onConfirm={handleConfirmStatusToggle}
+            onCancel={() => setStatusConfirmAccount(null)}
+            isProcessing={accountStatusMutation.isPending}
+            processingLabel={
+              statusConfirmAccount?.status === "active" ? "Suspending..." : "Activating..."
+            }
+          />
+        </>
       )}
     </SuperadminLayout>
   );

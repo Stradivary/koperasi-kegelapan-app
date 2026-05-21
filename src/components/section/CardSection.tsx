@@ -465,8 +465,12 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
         const uidResult = await validateUID(capturedSerial, tenantId);
         if (!uidResult.valid) {
-          if (forceOverwrite && uidResult.reason === "UID_ALREADY_REGISTERED") {
-            // Allow overwrite for same-tenant re-registration
+          if (
+            forceOverwrite &&
+            (uidResult.reason === "UID_ALREADY_REGISTERED" ||
+              uidResult.reason === "UID_REGISTERED_OTHER_TENANT")
+          ) {
+            // Allow overwrite for same-tenant or cross-tenant re-registration
           } else if (uidResult.reason === "UID_ALREADY_REGISTERED") {
             // Keep the NFC session alive — the write might fail, so preserve
             // issuancePreparedRef for the overwrite dialog retry flow.
@@ -478,11 +482,19 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
               balance: existing?.balance ?? 0,
               status: existing?.status ?? "active",
             });
+          } else if (uidResult.reason === "UID_REGISTERED_OTHER_TENANT") {
+            // Keep the NFC session alive for override flow (same as same-tenant)
+            throw new CardAlreadyRegisteredError({
+              cardId: capturedSerial,
+              ownerName: `Tenant lain (${uidResult.existingTenantId ?? "unknown"})`,
+              userId: null,
+              balance: 0,
+              status: "active",
+            });
           } else {
             abort.abort();
             issuancePreparedRef.current = null;
             const uidErrorMessages: Record<string, string> = {
-              UID_REGISTERED_OTHER_TENANT: "UID kartu sudah terdaftar di tenant lain",
               NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
               INVALID_UID_FORMAT: "Format UID tidak valid",
             };
@@ -839,15 +851,16 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         }}
         onConfirm={async () => {
           if (!overwriteDialog) return;
+          const pending = overwriteDialog.pendingIssue;
+          // Close override drawer immediately — IssuanceScanDrawer will show write progress
+          setOverwriteDialog(null);
           try {
             await issueCard.mutateAsync({
-              ...overwriteDialog.pendingIssue,
+              ...pending,
               forceOverwrite: true,
             });
-            setOverwriteDialog(null);
             toast.success("Kartu berhasil dicetak dan didaftarkan");
           } catch (e) {
-            setOverwriteDialog(null);
             if (!(e instanceof CardNotBlankError) && !(e instanceof CardAlreadyRegisteredError)) {
               toast.error(e instanceof Error ? e.message : "Gagal menulis kartu");
               cleanupIssuanceSession();

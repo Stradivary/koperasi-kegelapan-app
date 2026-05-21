@@ -109,7 +109,7 @@ export function StationMembersPanel({
     <div className="space-y-4">
       {memberView === "list" && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{members.length} anggota</span>
+          <span className="text-sm text-muted-foreground"> </span>
           <Button
             size="sm"
             onClick={() => {

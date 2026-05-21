@@ -7,6 +7,12 @@ import {
   updateTenantStatus,
   type TenantStatus,
 } from "#/server/superadminTenants";
+import {
+  listAccounts,
+  createAccount,
+  changeAccountPassword,
+  updateAccountStatus,
+} from "#/server/superadminAccounts";
 import { getDb } from "#/db";
 import { devices } from "#/db/schema";
 import { eq } from "drizzle-orm";
@@ -160,14 +166,11 @@ superadminRoutes.post("/devices/:deviceId/block", async (c) => {
   const durationSeconds = body.durationSeconds;
 
   // Validate duration range: 60 to 31,536,000 seconds (1 minute to 365 days)
-  if (
-    !Number.isInteger(durationSeconds) ||
-    durationSeconds < 60 ||
-    durationSeconds > 31_536_000
-  ) {
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 60 || durationSeconds > 31_536_000) {
     return c.json(
       {
-        error: "Invalid duration. Must be an integer between 60 and 31,536,000 seconds (1 minute to 365 days)",
+        error:
+          "Invalid duration. Must be an integer between 60 and 31,536,000 seconds (1 minute to 365 days)",
       },
       400,
     );
@@ -238,6 +241,94 @@ superadminRoutes.post("/devices/:deviceId/unblock", async (c) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[POST /api/superadmin/devices/${deviceId}/unblock] failed:`, msg);
+    return c.json({ error: `Internal server error: ${msg}` }, 500);
+  }
+});
+
+// ─── GET /accounts ───────────────────────────────────────────────────────────
+
+superadminRoutes.get("/accounts", async (c) => {
+  const authResult = await requireSuperadmin(c.req.raw);
+  if (isAuthError(authResult)) return authResult;
+
+  const url = new URL(c.req.url);
+  const pageParam = url.searchParams.get("page");
+  const pageSizeParam = url.searchParams.get("pageSize");
+  const search = url.searchParams.get("search") ?? undefined;
+
+  const page = pageParam ? Number(pageParam) : undefined;
+  const pageSize = pageSizeParam ? Number(pageSizeParam) : undefined;
+
+  try {
+    const result = await listAccounts({ page, pageSize, search });
+    return c.json(result);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[GET /api/superadmin/accounts] listAccounts failed:", msg);
+    return c.json({ error: `Internal server error: ${msg}` }, 500);
+  }
+});
+
+// ─── POST /accounts ──────────────────────────────────────────────────────────
+
+superadminRoutes.post("/accounts", async (c) => {
+  const authResult = await requireSuperadmin(c.req.raw);
+  if (isAuthError(authResult)) return authResult;
+
+  const body = await c.req.json().catch(() => null);
+
+  try {
+    const result = await createAccount(body);
+    return c.json(result.data, result.status as 201 | 400 | 409);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[POST /api/superadmin/accounts] createAccount failed:", msg);
+    return c.json({ error: `Internal server error: ${msg}` }, 500);
+  }
+});
+
+// ─── PATCH /accounts/:accountId/status ───────────────────────────────────────
+
+superadminRoutes.patch("/accounts/:accountId/status", async (c) => {
+  const authResult = await requireSuperadmin(c.req.raw);
+  if (isAuthError(authResult)) return authResult;
+
+  const accountId = c.req.param("accountId");
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body.status !== "string") {
+    return c.json({ error: "Request body must include a valid 'status' field" }, 400);
+  }
+
+  try {
+    const result = await updateAccountStatus({ accountId, status: body.status });
+    return c.json(result.data, result.status as 200 | 400 | 404);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[PATCH /api/superadmin/accounts/${accountId}/status] failed:`, msg);
+    return c.json({ error: `Internal server error: ${msg}` }, 500);
+  }
+});
+
+// ─── POST /accounts/:accountId/change-password ───────────────────────────────
+
+superadminRoutes.post("/accounts/:accountId/change-password", async (c) => {
+  const authResult = await requireSuperadmin(c.req.raw);
+  if (isAuthError(authResult)) return authResult;
+
+  const accountId = c.req.param("accountId");
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body.newPassword !== "string") {
+    return c.json({ error: "Request body must include 'newPassword'" }, 400);
+  }
+
+  try {
+    const result = await changeAccountPassword({ accountId, newPassword: body.newPassword });
+    return c.json(result.data, result.status as 200 | 400 | 404);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[POST /api/superadmin/accounts/${accountId}/change-password] failed:`, msg);
     return c.json({ error: `Internal server error: ${msg}` }, 500);
   }
 });

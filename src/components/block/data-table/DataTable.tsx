@@ -121,7 +121,7 @@ export function DataTable<TData>({
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-white"
           />
         </div>
       )}

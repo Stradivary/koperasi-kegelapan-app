@@ -6,9 +6,12 @@ import {
   Cloud,
   CloudOff,
   Info,
+  Monitor,
   RefreshCw,
+  Smartphone,
   Trash2,
   Upload,
+  User,
   Users,
   CreditCard,
   Receipt,
@@ -19,12 +22,17 @@ import { useSyncLogs } from "../../hooks/useSyncLogs";
 import { useAdminTenantSync } from "../../hooks/useAdminTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { clearSyncLogs, type SyncLogLevel } from "../../lib/syncLogStore";
-import { localTenantConfigStore, type LocalTenantConfig } from "../../lib/indexeddb";
-import { localDb } from "../../db/local-db";
+import {
+  localTenantConfigStore,
+  tenantContextStore,
+  type LocalTenantConfig,
+  type TenantContext,
+} from "../../lib/indexeddb";
+import { localDb, type DeviceInfo } from "../../db/local-db";
 import { getAccessToken } from "../../lib/api";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 
 interface SettingsSectionProps {
@@ -45,12 +53,27 @@ function formatTimestamp(ts: number): string {
   });
 }
 
+function formatDate(ts: number): string {
+  return new Date(ts).toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
   const logs = useSyncLogs();
   const { onSyncToServer, isSyncingToServer, syncStep, syncError } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
+  const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
+  const [syncOpen, setSyncOpen] = useState(true);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(true);
+  const [devicesOpen, setDevicesOpen] = useState(false);
   const [syncStats, setSyncStats] = useState<{
     membersSynced: number;
     membersTotal: number;
@@ -83,202 +106,391 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
     }
   }, [tenantId]);
 
+  const loadTenantProfile = useCallback(async () => {
+    try {
+      const [cfg, ctx] = await Promise.all([
+        localTenantConfigStore.get(tenantId),
+        tenantContextStore.get(tenantId),
+      ]);
+      setTenantConfig(cfg ?? null);
+      setTenantContext(ctx ?? null);
+    } catch {
+      // Non-critical
+    }
+  }, [tenantId]);
+
+  const loadDevices = useCallback(async () => {
+    try {
+      const deviceList = await localDb.deviceInfo.where("tenantId").equals(tenantId).toArray();
+      setDevices(deviceList);
+    } catch {
+      setDevices([]);
+    }
+  }, [tenantId]);
+
   useEffect(() => {
-    localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
+    loadTenantProfile();
     refreshSyncStats();
-  }, [tenantId, refreshSyncStats]);
+    loadDevices();
+  }, [tenantId, loadTenantProfile, refreshSyncStats, loadDevices]);
 
   // Refresh config after sync completes
   useEffect(() => {
     if (!isSyncingToServer) {
-      localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
+      loadTenantProfile();
       refreshSyncStats();
     }
-  }, [isSyncingToServer, tenantId, refreshSyncStats]);
+  }, [isSyncingToServer, loadTenantProfile, refreshSyncStats]);
 
   const errorCount = logs.filter((l) => l.level === "error").length;
   const warnCount = logs.filter((l) => l.level === "warn").length;
 
   return (
-    <div className="space-y-6">
-      {/* Tenant Sync Status */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Sinkronisasi Tenant</CardTitle>
-              <CardDescription className="mt-1">
-                Status koneksi tenant dengan server
-              </CardDescription>
-            </div>
-            {tenantConfig?.mode === "synced" ? (
-              <Badge variant="default" className="bg-green-600 gap-1">
-                <Cloud size={12} />
-                Tersinkronisasi
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1">
-                <CloudOff size={12} />
-                Lokal
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {/* Connection status */}
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {tenantConfig?.mode === "synced" ? (
-                  <div className="rounded-full p-2 bg-green-50">
-                    <Cloud size={18} className="text-green-600" />
-                  </div>
-                ) : (
-                  <div className="rounded-full p-2 bg-amber-50">
-                    <CloudOff size={18} className="text-amber-600" />
-                  </div>
-                )}
-                <div>
-                  <p className="type-body1 text-foreground">
-                    {tenantConfig?.mode === "synced" ? "Terhubung ke server" : "Belum terdaftar"}
-                  </p>
-                  <p className="type-body2 text-muted-foreground">
-                    {tenantConfig?.mode === "synced"
-                      ? `Terakhir sync: ${tenantConfig.syncedAt ? new Date(tenantConfig.syncedAt).toLocaleString("id-ID") : "-"}`
-                      : "Tenant belum terdaftar di server"}
-                  </p>
-                </div>
-              </div>
-
-              {onSyncToServer && (
-                <Button onClick={onSyncToServer} disabled={isSyncingToServer} className="gap-1.5">
-                  <Upload size={14} className={isSyncingToServer ? "animate-pulse" : ""} />
-                  {isSyncingToServer ? "Menyinkronkan..." : "Push ke Server"}
-                </Button>
-              )}
-            </div>
-
-            {/* Sync progress indicator */}
-            {syncStep && syncStep !== "complete" && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground border-t pt-3">
-                <RefreshCw size={14} className="animate-spin text-blue-500" />
-                <span>
-                  {syncStep === "syncing-tenant" && "Mendaftarkan tenant ke server..."}
-                  {syncStep === "pushing-members" && "Mengirim data anggota..."}
-                  {syncStep === "pushing-cards" && "Mengirim data kartu..."}
-                  {syncStep === "pushing-transactions" && "Mengirim transaksi..."}
-                </span>
-              </div>
-            )}
-
-            {/* Sync success indicator */}
-            {syncStep === "complete" && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-green-600 border-t pt-3">
-                <CheckCircle2 size={14} />
-                <span>Semua data berhasil disinkronkan ke server</span>
-              </div>
-            )}
-
-            {/* Sync error indicator */}
-            {syncError && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-red-600 border-t pt-3">
-                <XCircle size={14} />
-                <span>{syncError}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Sync Checklist */}
-          {syncStats && (
-            <div className="rounded-lg border divide-y">
-              <ChecklistItem
-                icon={Cloud}
-                label="Tenant terdaftar di server"
-                checked={tenantConfig?.mode === "synced"}
-              />
-              <ChecklistItem
-                icon={Cloud}
-                label="Token autentikasi aktif"
-                checked={!!getAccessToken()}
-                detail={getAccessToken() ? undefined : "Login ulang untuk mendapatkan token"}
-              />
-              <ChecklistItem
-                icon={Users}
-                label="Anggota tersinkronisasi"
-                checked={
-                  syncStats.membersTotal > 0 && syncStats.membersSynced === syncStats.membersTotal
-                }
-                detail={`${syncStats.membersSynced} / ${syncStats.membersTotal} synced`}
-              />
-              <ChecklistItem
-                icon={CreditCard}
-                label="Kartu tersinkronisasi"
-                checked={syncStats.cardsTotal > 0 && syncStats.cardsSynced === syncStats.cardsTotal}
-                detail={`${syncStats.cardsSynced} / ${syncStats.cardsTotal} synced`}
-              />
-              <ChecklistItem
-                icon={Receipt}
-                label="Transaksi tersinkronisasi"
-                checked={syncStats.txTotal > 0 && syncStats.txSynced === syncStats.txTotal}
-                detail={`${syncStats.txSynced} / ${syncStats.txTotal} synced`}
-              />
-            </div>
-          )}
-
-          {/* Retry Sync Button */}
-          {syncEngine && (
-            <div>
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => {
-                  syncEngine.triggerSync();
-                  setTimeout(refreshSyncStats, 3000);
-                }}
-                disabled={
-                  syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
-                }
-              >
-                <RefreshCw
-                  size={14}
-                  className={
-                    syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
-                      ? "animate-spin"
-                      : ""
-                  }
-                />
-                {syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
-                  ? "Menyinkronkan..."
-                  : "Retry Sync"}
-              </Button>
-              {syncEngine.lastSyncedAt && (
-                <p className="type-body2 text-muted-foreground text-center mt-1.5">
-                  Terakhir berhasil: {new Date(syncEngine.lastSyncedAt).toLocaleString("id-ID")}
-                </p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sync Logs Panel — Collapsible */}
-      <Card>
-        <Collapsible open={logsOpen} onOpenChange={setLogsOpen}>
-          <CardHeader className="pb-0">
+    <div className="space-y-4">
+      {/* ─── Tenant Profile Viewer ─────────────────────────────────────── */}
+      <Card className="p-0">
+        <Collapsible className="p-2" open={profileOpen} onOpenChange={setProfileOpen}>
+          <CardHeader className="p-2 pb-0">
             <CollapsibleTrigger asChild>
               <button
                 type="button"
                 className="flex items-center justify-between w-full text-left group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
+                  <div className="rounded-full p-2 bg-brand/10">
+                    <User size={16} className="text-brand" />
+                  </div>
+                  <div>
+                    <CardTitle className="group-hover:text-foreground/80 transition-colors">
+                      Profil Tenant
+                    </CardTitle>
+                  </div>
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`text-muted-foreground transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="p-2 pt-4">
+              <div className="rounded-lg border divide-y">
+                <ProfileRow
+                  label="Nama Tenant"
+                  value={tenantConfig?.name ?? tenantContext?.tenantName ?? "—"}
+                />
+                <ProfileRow
+                  label="Slug"
+                  value={tenantConfig?.slug ?? tenantContext?.tenantSlug ?? "—"}
+                  mono
+                />
+                <ProfileRow label="Timezone" value={tenantConfig?.timezone ?? "—"} />
+                {tenantContext && (
+                  <>
+                    <ProfileRow label="Device ID" value={tenantContext.deviceId} mono truncate />
+                  </>
+                )}
+                {tenantConfig?.createdAt && (
+                  <ProfileRow label="Dibuat" value={formatDate(tenantConfig.createdAt)} />
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* ─── Sinkronisasi Tenant ───────────────────────────────────────── */}
+      <Card className="p-0">
+        <Collapsible className="p-2" open={syncOpen} onOpenChange={setSyncOpen}>
+          <CardHeader className="p-2 pb-0">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`rounded-full p-2 ${tenantConfig?.mode === "synced" ? "bg-green-50" : "bg-amber-50"}`}
+                  >
+                    {tenantConfig?.mode === "synced" ? (
+                      <Cloud size={16} className="text-green-600" />
+                    ) : (
+                      <CloudOff size={16} className="text-amber-600" />
+                    )}
+                  </div>
+                  <div>
+                    <CardTitle className="group-hover:text-foreground/80 transition-colors">
+                      Sinkronisasi Tenant
+                    </CardTitle>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ChevronDown
+                    size={16}
+                    className={`text-muted-foreground transition-transform duration-200 ${syncOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="p-2 pt-4 space-y-4">
+              {/* Connection status */}
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {tenantConfig?.mode === "synced" ? (
+                      <div className="rounded-full p-2 bg-green-50">
+                        <Cloud size={18} className="text-green-600" />
+                      </div>
+                    ) : (
+                      <div className="rounded-full p-2 bg-amber-50">
+                        <CloudOff size={18} className="text-amber-600" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="type-body1 text-foreground">
+                        {tenantConfig?.mode === "synced"
+                          ? "Terhubung ke server"
+                          : "Belum terdaftar"}
+                      </p>
+                      <p className="type-body2 text-muted-foreground">
+                        {tenantConfig?.mode === "synced"
+                          ? `Terakhir sync: ${tenantConfig.syncedAt ? new Date(tenantConfig.syncedAt).toLocaleString("id-ID") : "-"}`
+                          : "Tenant belum terdaftar di server"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {onSyncToServer && (
+                    <Button
+                      onClick={onSyncToServer}
+                      disabled={isSyncingToServer}
+                      className="gap-1.5"
+                    >
+                      <Upload size={14} className={isSyncingToServer ? "animate-pulse" : ""} />
+                      {isSyncingToServer ? "Menyinkronkan..." : "Push ke Server"}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Sync progress indicator */}
+                {syncStep && syncStep !== "complete" && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground border-t pt-3">
+                    <RefreshCw size={14} className="animate-spin text-blue-500" />
+                    <span>
+                      {syncStep === "syncing-tenant" && "Mendaftarkan tenant ke server..."}
+                      {syncStep === "pushing-members" && "Mengirim data anggota..."}
+                      {syncStep === "pushing-cards" && "Mengirim data kartu..."}
+                      {syncStep === "pushing-transactions" && "Mengirim transaksi..."}
+                    </span>
+                  </div>
+                )}
+
+                {/* Sync success indicator */}
+                {syncStep === "complete" && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-green-600 border-t pt-3">
+                    <CheckCircle2 size={14} />
+                    <span>Semua data berhasil disinkronkan ke server</span>
+                  </div>
+                )}
+
+                {/* Sync error indicator */}
+                {syncError && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-red-600 border-t pt-3">
+                    <XCircle size={14} />
+                    <span>{syncError}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sync Checklist */}
+              {syncStats && (
+                <div className="rounded-lg border divide-y">
+                  <ChecklistItem
+                    icon={Cloud}
+                    label="Tenant terdaftar di server"
+                    checked={tenantConfig?.mode === "synced"}
+                  />
+                  <ChecklistItem
+                    icon={Cloud}
+                    label="Token autentikasi aktif"
+                    checked={!!getAccessToken()}
+                    detail={getAccessToken() ? undefined : "Login ulang untuk mendapatkan token"}
+                  />
+                  <ChecklistItem
+                    icon={Users}
+                    label="Anggota tersinkronisasi"
+                    checked={
+                      syncStats.membersTotal > 0 &&
+                      syncStats.membersSynced === syncStats.membersTotal
+                    }
+                    detail={`${syncStats.membersSynced} / ${syncStats.membersTotal} synced`}
+                  />
+                  <ChecklistItem
+                    icon={CreditCard}
+                    label="Kartu tersinkronisasi"
+                    checked={
+                      syncStats.cardsTotal > 0 && syncStats.cardsSynced === syncStats.cardsTotal
+                    }
+                    detail={`${syncStats.cardsSynced} / ${syncStats.cardsTotal} synced`}
+                  />
+                  <ChecklistItem
+                    icon={Receipt}
+                    label="Transaksi tersinkronisasi"
+                    checked={syncStats.txTotal > 0 && syncStats.txSynced === syncStats.txTotal}
+                    detail={`${syncStats.txSynced} / ${syncStats.txTotal} synced`}
+                  />
+                </div>
+              )}
+
+              {/* Retry Sync Button */}
+              {syncEngine && (
+                <div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => {
+                      syncEngine.triggerSync();
+                      setTimeout(refreshSyncStats, 3000);
+                    }}
+                    disabled={
+                      syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
+                    }
+                  >
+                    <RefreshCw
+                      size={14}
+                      className={
+                        syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
+                          ? "animate-spin"
+                          : ""
+                      }
+                    />
+                    {syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
+                      ? "Menyinkronkan..."
+                      : "Sinkronisasi Ulang"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* ─── Device List ───────────────────────────────────────────────── */}
+      <Card className="p-0">
+        <Collapsible className="p-2" open={devicesOpen} onOpenChange={setDevicesOpen}>
+          <CardHeader className="p-2 pb-0">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full p-2 bg-purple-50">
+                    <Smartphone size={16} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="group-hover:text-foreground/80 transition-colors">
+                      Daftar Perangkat
+                    </CardTitle>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {devices.length > 0 && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Monitor size={12} />
+                      {devices.length}
+                    </Badge>
+                  )}
+                  <ChevronDown
+                    size={16}
+                    className={`text-muted-foreground transition-transform duration-200 ${devicesOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="p-2 pt-4">
+              {devices.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <Smartphone size={32} className="mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="type-body1 text-muted-foreground">Belum ada perangkat terdaftar</p>
+                  <p className="type-body2 text-muted-foreground/70 mt-1">
+                    Perangkat akan muncul setelah login dari perangkat lain
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border divide-y">
+                  {devices.map((device) => {
+                    const isCurrent = tenantContext?.deviceId === device.deviceId;
+                    return (
+                      <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
+                        <div
+                          className={`rounded-full p-2 ${isCurrent ? "bg-brand/10" : "bg-muted"}`}
+                        >
+                          <Smartphone
+                            size={14}
+                            className={isCurrent ? "text-brand" : "text-muted-foreground"}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="type-body1 text-foreground font-mono text-xs truncate">
+                              {device.deviceId.slice(0, 16)}…
+                            </p>
+                            {isCurrent && (
+                              <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-brand">
+                                Ini
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="type-body2 text-muted-foreground">
+                            Terdaftar {formatDate(device.registeredAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3 gap-1.5"
+                onClick={loadDevices}
+              >
+                <RefreshCw size={14} />
+                Refresh
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* ─── Sync Logs Panel ───────────────────────────────────────────── */}
+      <Card className="mb-8 p-0">
+        <Collapsible className="p-2" open={logsOpen} onOpenChange={setLogsOpen}>
+          <CardHeader className="p-2 pb-0 ">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full p-2 bg-slate-100">
+                    <Receipt size={16} className="text-slate-600" />
+                  </div>
                   <div>
                     <CardTitle className="group-hover:text-foreground/80 transition-colors">
                       Log Sinkronisasi
                     </CardTitle>
-                    <CardDescription className="mt-1">
-                      Riwayat kegagalan dan peringatan sinkronisasi
-                    </CardDescription>
                   </div>
                   {logs.length > 0 && (
                     <div className="flex items-center gap-1.5">
@@ -312,7 +524,7 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
           </CardHeader>
 
           <CollapsibleContent>
-            <CardContent className="pt-4">
+            <CardContent className="p-2 pt-4">
               {/* Clear button */}
               {logs.length > 0 && (
                 <div className="flex justify-end mb-3">
@@ -364,6 +576,28 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
           </CollapsibleContent>
         </Collapsible>
       </Card>
+    </div>
+  );
+}
+
+// ── ProfileRow sub-component ─────────────────────────────────────────────────
+
+interface ProfileRowProps {
+  label: string;
+  value: string;
+  mono?: boolean;
+  truncate?: boolean;
+}
+
+function ProfileRow({ label, value, mono, truncate }: ProfileRowProps) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5">
+      <span className="type-body2 text-muted-foreground">{label}</span>
+      <span
+        className={`type-body1 text-foreground text-right ${mono ? "font-mono text-xs" : ""} ${truncate ? "max-w-[180px] truncate" : ""}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
