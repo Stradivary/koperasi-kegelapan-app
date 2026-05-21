@@ -74,9 +74,9 @@ function toNfcPhase(phase: IssuanceScanDrawerProps["phase"]): NfcPhase {
  */
 function getStepLabels(mode: "read" | "write") {
   if (mode === "read") {
-    return { step1: "Tap Kartu", step2: "Baca", step3: "—", step4: "Selesai" };
+    return { step1: "Tap Kartu", step2: "Baca", step3: "Proses", step4: "Selesai" };
   }
-  return { step1: "Tap & Tahan", step2: "Tulis", step3: "—", step4: "Selesai" };
+  return { step1: "Tap & Tahan", step2: "Tulis", step3: "Proses", step4: "Selesai" };
 }
 
 export function IssuanceScanDrawer({
