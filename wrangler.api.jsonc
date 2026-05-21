@@ -17,6 +17,10 @@
     {
       "binding": "SYNC_ANALYTICS",
       "dataset": "koperasi_sync_events"
+    },
+    {
+      "binding": "CLIENT_ERRORS_ANALYTICS",
+      "dataset": "koperasi_client_errors"
     }
   ],
   "observability": {

@@ -8,6 +8,7 @@ import { useTenantSync } from "../../hooks/useTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { validateUID } from "../../core/validation/uidGlobalValidator";
+import { trackError } from "../../lib/errorTracker";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -362,54 +363,89 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         const abort = issuanceAbortRef.current;
 
         if (!reader || !abort || abort.signal.aborted) {
+          // Session expired or card removed — start a fresh NFC session instead of failing
+          trackError({
+            category: "nfc_session_expired",
+            message: "NFC session expired during forceOverwrite, starting fresh scan",
+            context: { serial: prepared.serial, tenantId },
+          });
+
           issuancePreparedRef.current = null;
-          throw new Error("Sesi NFC terputus. Silakan tap kartu lagi.");
+          issuanceAbortRef.current?.abort();
+          issuanceAbortRef.current = null;
+          issuanceReaderRef.current = null;
+
+          // Fall through to the fresh NFC session flow below
+        } else {
+          setIssuancePhase("writing");
+
+          try {
+            await reader.write(
+              {
+                records: [
+                  {
+                    recordType: "unknown",
+                    data: bytes.buffer.slice(
+                      bytes.byteOffset,
+                      bytes.byteOffset + bytes.byteLength,
+                    ) as ArrayBuffer,
+                  },
+                ],
+              },
+              { signal: abort.signal, overwrite: true },
+            );
+          } catch (writeErr) {
+            // NFC write failed (card removed, signal aborted, etc.)
+            // Instead of throwing and killing the flow, start a fresh NFC session
+            trackError({
+              category: "nfc_write_failure",
+              message:
+                writeErr instanceof Error ? writeErr.message : "Unknown NFC write error",
+              context: {
+                phase: "forceOverwrite",
+                serial: prepared.serial,
+                tenantId,
+                aborted: abort.signal.aborted,
+              },
+            });
+
+            // Clean up the dead session
+            abort.abort();
+            issuanceAbortRef.current = null;
+            issuanceReaderRef.current = null;
+            issuancePreparedRef.current = null;
+
+            // Fall through to the fresh NFC session flow below
+            // (don't return — let it continue to the scan block)
+          }
+
+          // If write succeeded (no catch triggered), finalize
+          if (!abort.signal.aborted && issuancePreparedRef.current) {
+            const capturedSerial = prepared.serial;
+
+            await localDb.cards.put({
+              tenantId,
+              cardId: capturedSerial,
+              userId,
+              status: "active",
+              balance,
+              counter: 1,
+              keyVersion: grant.keyVersion,
+              createdAt: now,
+              lastActivityAt: now,
+              expiresAt,
+              notes: name,
+              syncStatus: "pending",
+            });
+
+            await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+            setIssuancePayload(payload);
+            setIssuanceSerial(capturedSerial);
+            setIssuancePhase("done");
+            issuancePreparedRef.current = null;
+            return;
+          }
         }
-
-        setIssuancePhase("writing");
-
-        try {
-          await reader.write(
-            {
-              records: [
-                {
-                  recordType: "unknown",
-                  data: bytes.buffer.slice(
-                    bytes.byteOffset,
-                    bytes.byteOffset + bytes.byteLength,
-                  ) as ArrayBuffer,
-                },
-              ],
-            },
-            { signal: abort.signal, overwrite: true },
-          );
-        } catch {
-          throw new Error("Gagal menulis kartu. Pastikan kartu tetap menempel.");
-        }
-
-        const capturedSerial = prepared.serial;
-
-        await localDb.cards.put({
-          tenantId,
-          cardId: capturedSerial,
-          userId,
-          status: "active",
-          balance,
-          counter: 1,
-          keyVersion: grant.keyVersion,
-          createdAt: now,
-          lastActivityAt: now,
-          expiresAt,
-          notes: name,
-          syncStatus: "pending",
-        });
-
-        await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-        setIssuancePayload(payload);
-        setIssuanceSerial(capturedSerial);
-        setIssuancePhase("done");
-        issuancePreparedRef.current = null;
-        return;
       }
 
       // ── Fresh NFC session — open drawer and scan ──
@@ -566,6 +602,18 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         if (e instanceof CardNotBlankError || e instanceof CardAlreadyRegisteredError) {
           throw e;
         }
+
+        // Track the error for monitoring
+        trackError({
+          category: "nfc_write_failure",
+          message: e instanceof Error ? e.message : "Unknown NFC write error",
+          context: {
+            phase: "freshSession",
+            serial: capturedSerial ?? "unknown",
+            tenantId,
+            forceOverwrite: forceOverwrite ?? false,
+          },
+        });
 
         abort.abort();
         issuancePreparedRef.current = null;

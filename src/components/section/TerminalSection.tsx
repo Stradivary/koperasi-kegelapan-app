@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { CardState } from "../../core/payload/types";
 import {
   applyCheckout,
@@ -8,10 +7,13 @@ import {
   validateTransition,
 } from "../../core/state-machine/engine";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { useBlockedCheck } from "../../hooks/useBlockedCheck";
+import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useReconciliation } from "../../hooks/useReconciliation";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { formatDuration } from "../../lib/formatters";
+import { FeedbackCard } from "../block/FeedbackCard";
 import { LoadingState } from "../block/LoadingState";
 import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
 import { OfflineIndicator } from "../block/OfflineIndicator";
@@ -41,19 +43,46 @@ export function TerminalSection({
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
   const { status: syncStatus, pendingCount, sync } = useReconciliation(tenantId, terminalId);
   const syncEngine = useSyncEngineContext();
+
+  // Use the shared useBlockedCheck hook to handle async blocked status check
+  const blockedCheck = useBlockedCheck({
+    tenantId,
+    serialNumber: state.serialNumber,
+    phase: state.phase,
+    payload: state.payload,
+  });
+
+  // Track tamper detection to disable auto-scan until manual "Coba Lagi" restart
+  const [tamperDisableAutoScan, setTamperDisableAutoScan] = useState(false);
+
+  // When tamper is detected, disable auto-scan
+  useEffect(() => {
+    if (state.phase === "error" && state.tamperDetected) {
+      setTamperDisableAutoScan(true);
+    }
+  }, [state.phase, state.tamperDetected]);
+
+  // Use the shared useKioskAutoScan hook for auto-scan loop
+  useKioskAutoScan({
+    enabled: !tamperDisableAutoScan,
+    grant,
+    loading: grantLoading,
+    phase: state.phase,
+    scan,
+    resetDelay: 3000,
+  });
+
   const [lastTx, setLastTx] = useState<{
     durationSeconds: number;
     fee: number;
   } | null>(null);
-  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+
   // Insufficient balance info when checkout is blocked
   const [insufficientBalance, setInsufficientBalance] = useState<{
     fee: number;
     deficit: number;
     currentBalance: number;
   } | null>(null);
-  // Warning when card/user not found in local DB (operation still proceeds)
-  const [notInLocalDb, setNotInLocalDb] = useState(false);
 
   // Track whether we already triggered auto-checkout for this scan cycle
   const autoCheckoutTriggered = useRef(false);
@@ -63,97 +92,73 @@ export function TerminalSection({
     return Math.floor(Date.now() / 1000);
   }, []);
 
-  // Auto-checkout when card is ready — no confirmation needed (like gate)
+  // Auto-checkout when blocked check completes and card is eligible
   useEffect(() => {
-    if (state.phase !== "ready" || !state.payload || autoCheckoutTriggered.current) return;
+    if (!blockedCheck.isReady || !state.payload || autoCheckoutTriggered.current) return;
 
     const payload = state.payload;
     const nowSeconds = getNowSeconds();
     const cardState = payload.wallet.state;
 
-    // Check local DB for blocked card or suspended member FIRST
-    // Uses hardware serial number (state.serialNumber) as the correct lookup key
-    if (!state.serialNumber) return;
-
-    checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
-      if (statusResult.blocked) {
-        autoCheckoutTriggered.current = true;
-        setBlockedReason(statusResult.reason);
-        return;
-      }
-
-      // Flag if card not in local DB (warning only, does not block checkout)
-      setNotInLocalDb(statusResult.notInLocalDb);
-
-      // Card not checked in — nothing to checkout
-      if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
-        autoCheckoutTriggered.current = true;
-        // IDLE or CHECKED_OUT — no action needed, render handles the message
-        return;
-      }
-
-      const trigger =
-        cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
-      const result = validateTransition(payload, trigger, nowSeconds);
-      if (!result.valid) {
-        autoCheckoutTriggered.current = true;
-        setBlockedReason("Transisi tidak valid");
-        return;
-      }
-
+    // Card not checked in — nothing to checkout
+    if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
       autoCheckoutTriggered.current = true;
+      // IDLE or CHECKED_OUT — no action needed, render handles the message
+      return;
+    }
 
-      // Check if balance is sufficient for checkout (balance - fee >= 10,000)
-      const balanceCheck = validateCheckoutBalance(payload, nowSeconds);
-      if (!balanceCheck.sufficient) {
-        setInsufficientBalance({
-          fee: balanceCheck.fee,
-          deficit: balanceCheck.deficit,
-          currentBalance: payload.wallet.balance,
-        });
-        return;
-      }
+    const trigger =
+      cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
+    const result = validateTransition(payload, trigger, nowSeconds);
+    if (!result.valid) {
+      autoCheckoutTriggered.current = true;
+      return;
+    }
 
-      // Perform standard checkout via applyCheckout
-      const updatedPayload = applyCheckout(payload, nowSeconds);
-      const durationSeconds = nowSeconds - payload.session.startTime;
-      const hours = Math.ceil(durationSeconds / 3600);
-      const fee = hours * PARKING_RATE_PER_HOUR;
+    autoCheckoutTriggered.current = true;
 
-      setBlockedReason(null);
-      setLastTx({ durationSeconds, fee });
-      write(updatedPayload, "checkout");
-    });
-  }, [state.phase, state.payload, state.serialNumber, write, getNowSeconds, tenantId, deviceId]);
+    // Check if balance is sufficient for checkout (balance - fee >= 10,000)
+    const balanceCheck = validateCheckoutBalance(payload, nowSeconds);
+    if (!balanceCheck.sufficient) {
+      setInsufficientBalance({
+        fee: balanceCheck.fee,
+        deficit: balanceCheck.deficit,
+        currentBalance: payload.wallet.balance,
+      });
+      return;
+    }
 
-  // Auto-reset after success
+    // Perform standard checkout via applyCheckout
+    const updatedPayload = applyCheckout(payload, nowSeconds);
+    const durationSeconds = nowSeconds - payload.session.startTime;
+    const hours = Math.ceil(durationSeconds / 3600);
+    const fee = hours * PARKING_RATE_PER_HOUR;
+
+    setLastTx({ durationSeconds, fee });
+    write(updatedPayload, "checkout");
+  }, [blockedCheck.isReady, state.payload, write, getNowSeconds]);
+
+  // Notify sync engine on success
   useEffect(() => {
     if (state.phase === "success") {
       // Notify sync engine that an Outbox write occurred (triggers debounced sync)
       syncEngine?.notifyMutation();
-      const timer = setTimeout(() => {
-        reset();
-      }, 3000);
-      return () => clearTimeout(timer);
     }
-  }, [state.phase, reset, syncEngine]);
+  }, [state.phase, syncEngine]);
 
-  // Reset the auto-checkout flag when going back to idle
+  // Reset the auto-checkout flag and per-cycle state when going back to idle
   useEffect(() => {
     if (state.phase === "idle") {
       autoCheckoutTriggered.current = false;
-      setBlockedReason(null);
       setInsufficientBalance(null);
-      setNotInLocalDb(false);
       setLastTx(null);
     }
   }, [state.phase]);
 
   function handleScan() {
     autoCheckoutTriggered.current = false;
-    setBlockedReason(null);
     setInsufficientBalance(null);
-    setNotInLocalDb(false);
+    setTamperDisableAutoScan(false);
     scan();
   }
 
@@ -218,60 +223,44 @@ export function TerminalSection({
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
-            {blockedReason && state.phase === "ready" ? (
-              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-destructive">⛔ Checkout Ditolak</p>
-                <p className="type-body2 text-muted-foreground">{blockedReason}</p>
-                <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
+            {blockedCheck.isChecking && state.phase === "ready" ? (
+              <p className="type-body2 text-muted-foreground animate-pulse">
+                Memproses...
+              </p>
+            ) : blockedCheck.isBlocked && state.phase === "ready" ? (
+              <FeedbackCard
+                variant="blocked"
+                title="Checkout Ditolak"
+                subtitle={state.payload.identity.name}
+                details={blockedCheck.blockedReason ? [{ label: "Alasan", value: blockedCheck.blockedReason }] : undefined}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
             ) : insufficientBalance && state.phase === "ready" ? (
-              <div className="bg-white rounded-2xl border border-amber-400/50 p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-amber-600">💰 Saldo Tidak Cukup</p>
-                <p className="type-body2 text-foreground">{state.payload.identity.name}</p>
-                <div className="space-y-1 text-left">
-                  <div className="flex justify-between type-body2">
-                    <span className="text-muted-foreground">Saldo saat ini</span>
-                    <span>Rp {insufficientBalance.currentBalance.toLocaleString("id-ID")}</span>
-                  </div>
-                  <div className="flex justify-between type-body2">
-                    <span className="text-muted-foreground">Biaya parkir</span>
-                    <span className="text-destructive">Rp {insufficientBalance.fee.toLocaleString("id-ID")}</span>
-                  </div>
-                  <div className="flex justify-between type-body2 font-medium border-t pt-1">
-                    <span className="text-muted-foreground">Perlu top-up minimal</span>
-                    <span className="text-amber-600">Rp {insufficientBalance.deficit.toLocaleString("id-ID")}</span>
-                  </div>
-                </div>
-                <p className="type-body2 text-muted-foreground">
-                  Saldo setelah checkout harus tersisa minimal Rp 10.000
-                </p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
-            ) : cardState === CardState.IDLE && state.phase === "ready" ? (
-              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-signal-warning">Belum Check-in</p>
-                <p className="type-body2 text-muted-foreground">
-                  {state.payload.identity.name} belum melakukan check-in.
-                </p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
-            ) : cardState === CardState.CHECKED_OUT && state.phase === "ready" ? (
-              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-signal-warning">Sudah Checkout</p>
-                <p className="type-body2 text-muted-foreground">
-                  {state.payload.identity.name} sudah dalam status keluar.
-                </p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
+              <FeedbackCard
+                variant="warning"
+                title="Saldo Tidak Cukup"
+                subtitle={state.payload.identity.name}
+                details={[
+                  { label: "Saldo saat ini", value: `Rp ${insufficientBalance.currentBalance.toLocaleString("id-ID")}` },
+                  { label: "Biaya parkir", value: `Rp ${insufficientBalance.fee.toLocaleString("id-ID")}` },
+                  { label: "Perlu top-up minimal", value: `Rp ${insufficientBalance.deficit.toLocaleString("id-ID")}` },
+                ]}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
+            ) : cardState === CardState.IDLE && state.phase === "ready" && blockedCheck.isReady ? (
+              <FeedbackCard
+                variant="warning"
+                title="Belum Check-in"
+                subtitle={`${state.payload.identity.name} belum melakukan check-in.`}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
+            ) : cardState === CardState.CHECKED_OUT && state.phase === "ready" && blockedCheck.isReady ? (
+              <FeedbackCard
+                variant="warning"
+                title="Sudah Checkout"
+                subtitle={`${state.payload.identity.name} sudah dalam status keluar.`}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
             ) : (
               <p className="type-body2 text-muted-foreground animate-pulse">
                 Memproses checkout...
@@ -284,7 +273,7 @@ export function TerminalSection({
         {state.phase === "success" && state.payload && lastTx && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="success" />
-            {(notInLocalDb || state.warning) && (
+            {(blockedCheck.notInLocalDb || state.warning) && (
               <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
                 <p className="type-body2 text-amber-700 text-center">
                   ⚠️{" "}
@@ -293,27 +282,18 @@ export function TerminalSection({
                 </p>
               </div>
             )}
-            <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
-              <p className="type-title-bold text-signal-valid">✓ Checkout Berhasil</p>
-              <p className="type-body1 text-foreground">{state.payload.identity.name}</p>
-              <div className="space-y-1">
-                <div className="flex justify-between type-body2">
-                  <span className="text-muted-foreground">Durasi</span>
-                  <span>{formatDuration(lastTx.durationSeconds)}</span>
-                </div>
-                <div className="flex justify-between type-body2">
-                  <span className="text-muted-foreground">Biaya</span>
-                  <span>Rp {lastTx.fee.toLocaleString("id-ID")}</span>
-                </div>
-                <div className="flex justify-between type-body2">
-                  <span className="text-muted-foreground">Saldo</span>
-                  <span className="text-brand font-medium">
-                    Rp {state.payload.wallet.balance.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground animate-pulse">Menutup otomatis...</p>
+            <FeedbackCard
+              variant="success"
+              title="Checkout Berhasil"
+              subtitle={state.payload.identity.name}
+              details={[
+                { label: "Durasi", value: formatDuration(lastTx.durationSeconds) },
+                { label: "Biaya", value: `Rp ${lastTx.fee.toLocaleString("id-ID")}` },
+                { label: "Saldo", value: `Rp ${state.payload.wallet.balance.toLocaleString("id-ID")}` },
+              ]}
+              autoClose={3000}
+              onClose={reset}
+            />
           </div>
         )}
 
@@ -321,14 +301,12 @@ export function TerminalSection({
         {state.phase === "error" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
-            <NfcStatusLabel
-              phase="error"
-              error={state.error}
-              tamperDetected={state.tamperDetected}
+            <FeedbackCard
+              variant="error"
+              title={state.tamperDetected ? "Kartu Terdeteksi Rusak" : "Terjadi Kesalahan"}
+              subtitle={state.error ?? undefined}
+              actions={[{ label: "Coba Lagi", onClick: handleScan, variant: "primary" }]}
             />
-            <Button variant="outline" onClick={reset} className="w-full">
-              Coba Lagi
-            </Button>
           </div>
         )}
       </div>

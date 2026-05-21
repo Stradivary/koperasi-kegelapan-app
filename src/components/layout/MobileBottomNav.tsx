@@ -20,7 +20,7 @@ export function MobileBottomNav<T extends string = string>({
   onSelect,
 }: MobileBottomNavProps<T>) {
   return (
-    <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg flex items-stretch z-20">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg flex items-stretch z-20">
       {items.map(({ id, icon: Icon, label, cta }) =>
         cta ? (
           <button

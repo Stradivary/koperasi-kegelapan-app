@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { Wifi } from "lucide-react";
+import { triggerHaptic } from "#/lib/haptics";
 
 type NfcPhase = "idle" | "scanning" | "validating" | "ready" | "writing" | "success" | "error";
 
@@ -7,6 +9,7 @@ interface NfcTapAreaProps {
   onClick?: () => void;
   disabled?: boolean;
   label?: string;
+  sublabel?: string;
   tamperDetected?: boolean;
 }
 
@@ -69,12 +72,60 @@ const phaseConfig = {
   },
 };
 
-export function NfcTapArea({ phase, onClick, disabled, label, tamperDetected }: NfcTapAreaProps) {
+/** Maps NFC phase to the aria-label text describing the current action */
+function getAriaLabel(phase: NfcPhase, label?: string): string {
+  if (label) return label;
+  switch (phase) {
+    case "idle":
+      return "Tempelkan Kartu";
+    case "scanning":
+      return "Menunggu kartu";
+    case "validating":
+      return "Memvalidasi";
+    case "ready":
+      return "Kartu Siap";
+    case "writing":
+      return "Memproses";
+    case "success":
+      return "Berhasil";
+    case "error":
+      return "Gagal";
+  }
+}
+
+export function NfcTapArea({ phase, onClick, disabled, label, sublabel, tamperDetected }: NfcTapAreaProps) {
   const config = phaseConfig[phase];
   const displayLabel = tamperDetected ? "⚠ Kartu terdeteksi rusak" : (label ?? config.label);
+  const displaySublabel = sublabel ?? config.sublabel;
+  const prevPhaseRef = useRef<NfcPhase>(phase);
+
+  // Haptic feedback on phase transitions
+  useEffect(() => {
+    if (prevPhaseRef.current === phase) return;
+    prevPhaseRef.current = phase;
+
+    switch (phase) {
+      case "scanning":
+      case "validating":
+      case "writing":
+        triggerHaptic("intermediate");
+        break;
+      case "success":
+        triggerHaptic("success");
+        break;
+      case "error":
+        triggerHaptic("error");
+        break;
+    }
+  }, [phase]);
+
+  const isBusy = phase === "scanning" || phase === "validating" || phase === "writing";
 
   return (
     <button
+      role="button"
+      aria-label={getAriaLabel(phase, label)}
+      aria-busy={isBusy}
       onClick={phase === "idle" ? onClick : undefined}
       disabled={disabled || phase !== "idle"}
       className={[
@@ -144,6 +195,13 @@ export function NfcTapArea({ phase, onClick, disabled, label, tamperDetected }: 
       <span className={["type-body2-bold text-center px-2", config.iconColor].join(" ")}>
         {displayLabel}
       </span>
+
+      {/* Sublabel for additional context */}
+      {displaySublabel && (
+        <span className="type-body2 text-signal-text-secondary text-center px-2 -mt-1">
+          {displaySublabel}
+        </span>
+      )}
     </button>
   );
 }

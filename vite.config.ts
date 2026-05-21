@@ -1,7 +1,8 @@
 import { defineConfig } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
+import svgr from "vite-plugin-svgr";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import basicSsl from "@vitejs/plugin-basic-ssl";
@@ -11,8 +12,9 @@ const config = defineConfig({
     devtools(),
     basicSsl(),
     tailwindcss(),
-    TanStackRouterVite(),
+    tanstackRouter(),
     viteReact(),
+    svgr(),
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
@@ -108,7 +110,7 @@ const config = defineConfig({
         runtimeCaching: [
           // Critical wallet actions — never cache
           {
-            urlPattern: /^https?:\/\/.*\/api\/(transaction|balance|tap)/i,
+            urlPattern: /^https?:\/\/.*\/api\/(transaction|balance|tap|sync).*/i,
             handler: "NetworkOnly",
           },
           // Non-critical API — allow fallback

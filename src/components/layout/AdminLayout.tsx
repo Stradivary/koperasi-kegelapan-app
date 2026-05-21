@@ -111,7 +111,7 @@ export function AdminLayout({
   }
 
   return (
-    <div className="h-screen flex bg-signal-disable overflow-hidden">
+    <div className="relative h-screen flex bg-signal-disable overflow-hidden">
       {/* ── Desktop Sidebar ── */}
       <aside
         className={[

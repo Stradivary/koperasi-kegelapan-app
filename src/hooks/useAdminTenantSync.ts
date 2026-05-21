@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   localTenantConfigStore,
   localAccountStore,
@@ -45,6 +46,7 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const { status, syncToServer } = useTenantSync();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     localTenantConfigStore.get(tenantId).then((cfg) => {
@@ -98,6 +100,11 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
         // All steps completed successfully
         setSyncStep("complete");
         toast.success("Tenant berhasil disinkronkan ke server");
+
+        // Invalidate queries so UI reflects server state
+        queryClient.invalidateQueries({ queryKey: ["users", tenantId] });
+        queryClient.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+        queryClient.invalidateQueries({ queryKey: ["transactions", tenantId] });
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error("[AdminTenantSync] Orchestrated sync failed:", errorMsg);

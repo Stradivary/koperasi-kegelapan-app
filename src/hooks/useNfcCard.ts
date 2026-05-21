@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   validateCard,
   prepareWrite,
@@ -76,6 +76,62 @@ export function useNfcCard(
   const lastScanTimestamp = useRef<number>(0);
   // Track last successful write timestamp to distinguish transient read errors from unregistered cards
   const lastWriteTimestamp = useRef<number>(0);
+  // Timer for 30-second pending write timeout (Req 9.6)
+  const pendingWriteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timer for auto-reset after transient post-write read errors (Req 9.2)
+  const postWriteAutoResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Helper to clear pending write timeout
+  const clearPendingWriteTimeout = useCallback(() => {
+    if (pendingWriteTimeoutRef.current) {
+      clearTimeout(pendingWriteTimeoutRef.current);
+      pendingWriteTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Helper to clear post-write auto-reset timer
+  const clearPostWriteAutoReset = useCallback(() => {
+    if (postWriteAutoResetRef.current) {
+      clearTimeout(postWriteAutoResetRef.current);
+      postWriteAutoResetRef.current = null;
+    }
+  }, []);
+
+  // Start 30-second timeout for pending writes (Req 9.6)
+  const startPendingWriteTimeout = useCallback(() => {
+    clearPendingWriteTimeout();
+    pendingWriteTimeoutRef.current = setTimeout(() => {
+      // Discard pending write and show error
+      pendingWriteRef.current = null;
+      phaseRef.current = "error";
+      setState((s) => ({
+        ...s,
+        phase: "error",
+        error: "Operasi tidak selesai. Silakan tap ulang kartu.",
+        tamperDetected: false,
+      }));
+      // Auto-reset after 3s (Req 9.2)
+      postWriteAutoResetRef.current = setTimeout(() => {
+        phaseRef.current = "idle";
+        setState({
+          phase: "idle",
+          payload: null,
+          serialNumber: null,
+          error: null,
+          tamperDetected: false,
+          warning: null,
+        });
+      }, 3000);
+    }, 30_000);
+  }, [clearPendingWriteTimeout]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      clearPendingWriteTimeout();
+      clearPostWriteAutoReset();
+    };
+  }, [clearPendingWriteTimeout, clearPostWriteAutoReset]);
 
   const scan = useCallback(async () => {
     if (!grant) {
@@ -91,7 +147,13 @@ export function useNfcCard(
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
 
-    pendingWriteRef.current = null;
+    // Clear any pending write timeout when starting a fresh scan
+    // Note: preserve pendingWriteRef if it has an active timeout — the reading handler
+    // will check serial number match on next tap (Req 9.4, 9.5)
+    clearPostWriteAutoReset();
+    if (!pendingWriteRef.current) {
+      clearPendingWriteTimeout();
+    }
     phaseRef.current = "scanning";
     setState({
       phase: "scanning",
@@ -131,6 +193,114 @@ export function useNfcCard(
       if (phase === "scanning") {
         // Record timestamp when a valid scan begins processing
         lastScanTimestamp.current = Date.now();
+
+        // ── Pending write recovery (Req 9.4, 9.5) ──────────────────────────────
+        // If there's a stored pending write from a previous interrupted write,
+        // check if the scanned card matches the target.
+        const pending = pendingWriteRef.current;
+        if (pending) {
+          const scannedSerial = event.serialNumber;
+          if (scannedSerial && pending.serialNumber && scannedSerial === pending.serialNumber) {
+            // Serial matches — execute the stored write (Req 9.4)
+            pendingWriteRef.current = null;
+            clearPendingWriteTimeout();
+            phaseRef.current = "writing";
+            setState((s) => ({ ...s, phase: "writing" }));
+
+            try {
+              const reader = readerRef.current;
+              if (reader && signal && !signal.aborted) {
+                await reader.write(
+                  {
+                    records: [
+                      {
+                        recordType: "unknown",
+                        data: pending.raw.buffer.slice(
+                          pending.raw.byteOffset,
+                          pending.raw.byteOffset + pending.raw.byteLength,
+                        ) as ArrayBuffer,
+                      },
+                    ],
+                  },
+                  { signal, overwrite: true },
+                );
+
+                // Write succeeded — record to outbox
+                const cardIdHex = Array.from(pending.updatedPayload.header.cardId)
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join("");
+
+                await reconciliationOutbox.add({
+                  tenantId,
+                  terminalId,
+                  cardId: cardIdHex,
+                  counter: Number(pending.updatedPayload.wallet.counter),
+                  type: pending.operationType,
+                  amount: pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
+                  balanceAfter: pending.updatedPayload.wallet.balance,
+                  timestamp: pending.updatedPayload.wallet.lastTimestamp,
+                  hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                    .map((b) => b.toString(16).padStart(2, "0"))
+                    .join(""),
+                  idempotencyKey: makeIdempotencyKey(
+                    tenantId,
+                    cardIdHex,
+                    Number(pending.updatedPayload.wallet.counter),
+                  ),
+                });
+
+                try {
+                  await recordTransaction({
+                    tenantId,
+                    cardId: cardIdHex,
+                    userId: pending.updatedPayload.identity.userId ? pending.updatedPayload.identity.userId : null,
+                    counter: Number(pending.updatedPayload.wallet.counter),
+                    type: pending.operationType as
+                      | "debit"
+                      | "credit"
+                      | "checkin"
+                      | "checkout"
+                      | "topup"
+                      | "admin",
+                    amount: Math.abs(pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance),
+                    balanceAfter: pending.updatedPayload.wallet.balance,
+                    timestamp: pending.updatedPayload.wallet.lastTimestamp,
+                    hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+                      .map((b) => b.toString(16).padStart(2, "0"))
+                      .join(""),
+                    terminalId,
+                    deviceId: null,
+                  });
+                } catch {
+                  // Non-critical — reconciliation outbox is the primary
+                }
+
+                phaseRef.current = "success";
+                setState({
+                  phase: "success",
+                  payload: pending.payload,
+                  serialNumber: pending.serialNumber,
+                  error: null,
+                  tamperDetected: false,
+                  warning: null,
+                });
+                lastWriteTimestamp.current = Date.now();
+                return;
+              }
+            } catch (e) {
+              if (signal.aborted) return;
+              phaseRef.current = "error";
+              setState((s) => ({ ...s, phase: "error", error: friendlyWriteError(e) }));
+              return;
+            }
+            return;
+          } else {
+            // Serial mismatch — discard pending write and process as fresh scan (Req 9.5)
+            pendingWriteRef.current = null;
+            clearPendingWriteTimeout();
+          }
+        }
+
         phaseRef.current = "validating";
         setState((s) => ({ ...s, phase: "validating" }));
 
@@ -147,10 +317,26 @@ export function useNfcCard(
             phase: "error",
             payload: null,
             error: isPostWriteReadError
-              ? "Gagal membaca kartu setelah operasi. Lepas kartu sebentar lalu tap ulang."
+              ? "Lepas kartu sebentar lalu tap ulang"
               : UNREGISTERED_CARD_MESSAGE,
             tamperDetected: false,
           }));
+
+          // Auto-reset after 3s for transient post-write read errors (Req 9.2)
+          if (isPostWriteReadError) {
+            clearPostWriteAutoReset();
+            postWriteAutoResetRef.current = setTimeout(() => {
+              phaseRef.current = "idle";
+              setState({
+                phase: "idle",
+                payload: null,
+                serialNumber: null,
+                error: null,
+                tamperDetected: false,
+                warning: null,
+              });
+            }, 3000);
+          }
           return;
         }
 
@@ -282,10 +468,26 @@ export function useNfcCard(
             phase: "error",
             payload: null,
             error: isPostWriteReadError
-              ? "Gagal membaca kartu setelah operasi. Lepas kartu sebentar lalu tap ulang."
+              ? "Lepas kartu sebentar lalu tap ulang"
               : UNREGISTERED_CARD_MESSAGE,
             tamperDetected: false,
           }));
+
+          // Auto-reset after 3s for transient post-write read errors (Req 9.2)
+          if (isPostWriteReadError) {
+            clearPostWriteAutoReset();
+            postWriteAutoResetRef.current = setTimeout(() => {
+              phaseRef.current = "idle";
+              setState({
+                phase: "idle",
+                payload: null,
+                serialNumber: null,
+                error: null,
+                tamperDetected: false,
+                warning: null,
+              });
+            }, 3000);
+          }
         }
         return;
       }
@@ -295,6 +497,7 @@ export function useNfcCard(
         const pending = pendingWriteRef.current;
         if (!pending) return; // crypto not done yet — user tapped too fast, they'll need to tap again
         pendingWriteRef.current = null;
+        clearPendingWriteTimeout();
 
         try {
           const { raw, currentPayload, updatedPayload, serialNumber } = pending;
@@ -406,7 +609,7 @@ export function useNfcCard(
         setState((s) => ({ ...s, phase: "error", error: e.message }));
       }
     });
-  }, [grant, tenantId, terminalId, lenient]);
+  }, [grant, tenantId, terminalId, lenient, clearPendingWriteTimeout, clearPostWriteAutoReset]);
 
   const write = useCallback(
     async (updatedPayload: CardPayload, operationType: string = "debit"): Promise<boolean> => {
@@ -518,6 +721,8 @@ export function useNfcCard(
           serialNumber: currentSerial,
           operationType,
         };
+        // Start 30-second timeout for pending write (Req 9.6)
+        startPendingWriteTimeout();
         return true;
       } catch (e) {
         phaseRef.current = "error";
@@ -525,7 +730,7 @@ export function useNfcCard(
         return false;
       }
     },
-    [grant, state.payload, state.serialNumber, tenantId, terminalId],
+    [grant, state.payload, state.serialNumber, tenantId, terminalId, startPendingWriteTimeout],
   );
 
   const reset = useCallback(() => {
@@ -533,6 +738,8 @@ export function useNfcCard(
     abortRef.current = null;
     readerRef.current = null;
     pendingWriteRef.current = null;
+    clearPendingWriteTimeout();
+    clearPostWriteAutoReset();
     phaseRef.current = "idle";
     setState({
       phase: "idle",
@@ -542,16 +749,18 @@ export function useNfcCard(
       tamperDetected: false,
       warning: null,
     });
-  }, []);
+  }, [clearPendingWriteTimeout, clearPostWriteAutoReset]);
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     readerRef.current = null;
     pendingWriteRef.current = null;
+    clearPendingWriteTimeout();
+    clearPostWriteAutoReset();
     phaseRef.current = "idle";
     setState((s) => ({ ...s, phase: "idle" }));
-  }, []);
+  }, [clearPendingWriteTimeout, clearPostWriteAutoReset]);
 
   return { state, scan, write, reset, cancel };
 }

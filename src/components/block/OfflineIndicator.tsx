@@ -52,9 +52,9 @@ export function RootOfflineBanner() {
     prevOnline.current = isOnline;
 
     if (isOnline) {
-      toast.success("You are now online", { icon: <WifiHigh />, duration: 3000 });
+      toast.success("Koneksi internet tersambung kembali", { icon: <WifiHigh />, duration: 3000 });
     } else {
-      toast.warning("You are now offline", { icon: <WifiOff />, duration: 4000 });
+      toast.warning("Koneksi internet terputus. Operasi tetap berjalan secara offline.", { icon: <WifiOff />, duration: 4000 });
     }
   }, [isOnline]);
 

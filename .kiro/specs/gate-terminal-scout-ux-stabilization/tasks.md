@@ -6,8 +6,8 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
 
 ## Tasks
 
-- [ ] 1. Create shared hooks and utility foundations
-  - [ ] 1.1 Create `useBlockedCheck` hook
+- [x] 1. Create shared hooks and utility foundations
+  - [x] 1.1 Create `useBlockedCheck` hook
     - Create `src/hooks/useBlockedCheck.ts`
     - Implement the hook per the design interface: accepts `{ tenantId, serialNumber, phase, payload }` and returns `{ isChecking, isBlocked, blockedReason, notInLocalDb, isReady }`
     - Run `checkLocalBlockedStatus` when phase transitions to "ready" and serialNumber is non-null
@@ -17,7 +17,7 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - `isReady` = phase === "ready" AND check complete AND not blocked
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ] 1.2 Create `useKioskAutoScan` hook
+  - [x] 1.2 Create `useKioskAutoScan` hook
     - Create `src/hooks/useKioskAutoScan.ts`
     - Implement the hook per the design interface: accepts `{ enabled, grant, loading, phase, scan, resetDelay }`
     - Track `hasCompletedCycle` (true after at least one success or error phase observed)
@@ -26,7 +26,7 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Return `{ hasCompletedCycle, isAutoScanning }`
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-  - [ ] 1.3 Create `FeedbackCard` component
+  - [x] 1.3 Create `FeedbackCard` component
     - Create `src/components/block/FeedbackCard.tsx`
     - Implement per design interface: `variant` ("success" | "error" | "warning" | "info" | "blocked"), `title`, `subtitle`, `details` (label/value pairs), `actions` (button array), `autoClose` (ms), `onClose`
     - Use `aria-live="polite"` for screen reader announcements
@@ -34,7 +34,7 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Style variants using existing Tailwind design tokens (signal-valid, signal-error, signal-warning, brand-\*)
     - _Requirements: 8.4, 8.5, 8.6, 8.7, 11.2_
 
-  - [ ] 1.4 Enhance `NfcTapArea` with accessibility attributes
+  - [x] 1.4 Enhance `NfcTapArea` with accessibility attributes
     - Update `src/components/block/NfcTapArea.tsx`
     - Add `role="button"` and dynamic `aria-label` reflecting phase-specific action text
     - Add `aria-busy="true"` when phase is "scanning", "validating", or "writing"
@@ -43,11 +43,11 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Accept optional `sublabel` prop for additional context text
     - _Requirements: 8.1, 8.2, 8.3, 11.1, 11.3, 11.4_
 
-- [ ] 2. Checkpoint - Verify foundations
+- [x] 2. Checkpoint - Verify foundations
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Refactor GateSection to use new hooks
-  - [ ] 3.1 Refactor `GateSection` to use `useBlockedCheck` and `useKioskAutoScan`
+- [x] 3. Refactor GateSection to use new hooks
+  - [x] 3.1 Refactor `GateSection` to use `useBlockedCheck` and `useKioskAutoScan`
     - Update `src/components/section/GateSection.tsx`
     - Replace inline `checkLocalBlockedStatus` call and manual state (`blockedReason`, `blockedCheckDone`, `notInLocalDb`) with `useBlockedCheck` hook
     - Replace manual auto-scan logic (`hasCompletedCycle` ref, idle-phase scan restart) with `useKioskAutoScan` hook
@@ -57,7 +57,7 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Preserve simulation mode functionality
     - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 5.1, 5.2, 5.3, 6.1, 6.2, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ] 3.2 Replace inline feedback rendering in `GateSection` with `FeedbackCard`
+  - [x] 3.2 Replace inline feedback rendering in `GateSection` with `FeedbackCard`
     - Replace success card markup with `<FeedbackCard variant="success" ... autoClose={2500} />`
     - Replace blocked/rejected card markup with `<FeedbackCard variant="blocked" ... />`
     - Replace "Sudah Check-in" card with `<FeedbackCard variant="warning" ... />`
@@ -77,8 +77,8 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Apply `applyCheckin` and assert resulting state = CHECKED_IN and counter incremented by 1
     - **Validates: Requirement 2.5**
 
-- [ ] 4. Refactor TerminalSection to use new hooks
-  - [ ] 4.1 Refactor `TerminalSection` to use `useBlockedCheck` and `useKioskAutoScan`
+- [x] 4. Refactor TerminalSection to use new hooks
+  - [x] 4.1 Refactor `TerminalSection` to use `useBlockedCheck` and `useKioskAutoScan`
     - Update `src/components/section/TerminalSection.tsx`
     - Replace inline `checkLocalBlockedStatus` call and manual state with `useBlockedCheck` hook
     - Add `useKioskAutoScan` hook for auto-scan loop (currently Terminal does not auto-scan — add it)
@@ -87,7 +87,7 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Preserve existing fee calculation and receipt display logic
     - _Requirements: 1.1, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 5.1, 5.2, 5.3, 6.1, 6.2, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ] 4.2 Replace inline feedback rendering in `TerminalSection` with `FeedbackCard`
+  - [x] 4.2 Replace inline feedback rendering in `TerminalSection` with `FeedbackCard`
     - Replace success receipt with `<FeedbackCard variant="success" details={[duration, fee, balance]} autoClose={3000} />`
     - Replace blocked card with `<FeedbackCard variant="blocked" ... />`
     - Replace insufficient balance card with `<FeedbackCard variant="warning" details={[balance, fee, deficit]} />`
@@ -108,11 +108,11 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Apply `applyCheckout` and assert balanceAfter = balanceBefore − fee AND balanceAfter ≥ MIN_BALANCE
     - **Validates: Requirements 3.4, 10.4**
 
-- [ ] 5. Checkpoint - Verify Gate and Terminal refactoring
+- [x] 5. Checkpoint - Verify Gate and Terminal refactoring
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Refactor ScoutSection and implement fee calculation tests
-  - [ ] 6.1 Refactor `ScoutSection` to use `useBlockedCheck` hook
+- [x] 6. Refactor ScoutSection and implement fee calculation tests
+  - [x] 6.1 Refactor `ScoutSection` to use `useBlockedCheck` hook
     - Update `src/components/section/ScoutSection.tsx`
     - Replace inline `checkLocalBlockedStatus` effect and manual state (`localBlockedReason`, `notInLocalDb`) with `useBlockedCheck` hook
     - Ensure Scout never invokes `write` — only uses `scan` and `reset`
@@ -143,8 +143,8 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - When insufficient, assert deficit = 10,000 − (balance − fee)
     - **Validates: Requirements 10.4, 10.5**
 
-- [ ] 7. Implement NFC phase state machine property tests and error recovery
-  - [ ] 7.1 Implement error recovery enhancements in `useNfcCard`
+- [x] 7. Implement NFC phase state machine property tests and error recovery
+  - [x] 7.1 Implement error recovery enhancements in `useNfcCard`
     - Update `src/hooks/useNfcCard.ts`
     - Add post-write read failure detection: if NFC read fails within 10s of a successful write, set error to "Lepas kartu sebentar lalu tap ulang"
     - Add `pendingWriteRef` to store pending write when card is removed during write
@@ -183,8 +183,8 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
 - [ ] 8. Checkpoint - Verify all property tests and error recovery
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Implement accessibility, haptics, and offline continuity
-  - [ ] 9.1 Add haptic feedback utility
+- [x] 9. Implement accessibility, haptics, and offline continuity
+  - [x] 9.1 Add haptic feedback utility
     - Create `src/lib/haptics.ts`
     - Export `triggerHaptic(type: "intermediate" | "success" | "error"): void`
     - Intermediate: `navigator.vibrate(50)`
@@ -193,18 +193,18 @@ This plan refactors the three kiosk NFC interaction screens (Gate, Terminal, Sco
     - Guard with `typeof navigator !== "undefined" && "vibrate" in navigator`
     - _Requirements: 11.3, 11.4_
 
-  - [ ] 9.2 Integrate haptic feedback into NfcTapArea phase transitions
+  - [x] 9.2 Integrate haptic feedback into NfcTapArea phase transitions
     - Update `NfcTapArea` to call `triggerHaptic` on phase changes using a `useEffect` that watches the `phase` prop
     - Map scanning/validating/writing → "intermediate", success → "success", error → "error"
     - _Requirements: 11.3, 11.4_
 
-  - [ ] 9.3 Implement session grant expiry handling in kiosk sections
+  - [x] 9.3 Implement session grant expiry handling in kiosk sections
     - When `grant` is null and not loading, display "Tidak ada sesi aktif" with scan button disabled
     - Ensure `useKioskAutoScan` remains inactive when grant is null
     - When tamper detection occurs, disable auto-scan and require manual "Coba Lagi"
     - _Requirements: 9.7, 9.8_
 
-  - [ ] 9.4 Verify offline operation continuity
+  - [x] 9.4 Verify offline operation continuity
     - Ensure existing `useSessionGrant` caches grant and continues operating offline until `expiresAt`
     - Ensure `useNfcCard` persists completed transactions to reconciliation outbox
     - Verify `useSyncEngine` auto-syncs outbox when connectivity is restored

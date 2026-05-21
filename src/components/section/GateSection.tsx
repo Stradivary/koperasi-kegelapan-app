@@ -2,16 +2,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock } from "lucide-react";
 import { useNfcCard } from "../../hooks/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
+import { useBlockedCheck } from "../../hooks/useBlockedCheck";
+import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState, CardStatus } from "../../core/payload/types";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
 import { notifyCheckin } from "../../lib/peerSyncCoordinator";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { LoadingState } from "../block/LoadingState";
 import { KioskLayout } from "../layout/KioskLayout";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
+import { FeedbackCard } from "../block/FeedbackCard";
 
 interface GateSectionProps {
   tenantId: string;
@@ -40,19 +42,41 @@ export function GateSection({
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
-  // 24-hour max checkout enforcement (default: enabled)
+  // 24-hour max checkout enforcement (default: disabled)
   const enforce24hLimit = false;
-  const [blockedReason, setBlockedReason] = useState<string | null>(null);
-  // Track whether the local DB blocked check has completed for this scan cycle.
-  // This prevents the render from showing "Sudah Check-in" before the async check resolves.
-  const [blockedCheckDone, setBlockedCheckDone] = useState(false);
-  // Warning when card/user not found in local DB (operation still proceeds)
-  const [notInLocalDb, setNotInLocalDb] = useState(false);
 
-  // Track whether we already triggered auto-checkin for this scan cycle
+  // --- Blocked check hook (replaces manual checkLocalBlockedStatus + state) ---
+  const blockedCheck = useBlockedCheck({
+    tenantId,
+    serialNumber: state.serialNumber,
+    phase: state.phase,
+    payload: state.payload,
+  });
+
+  // Track tamper detection to disable auto-scan until manual "Coba Lagi" restart
+  const [tamperDisableAutoScan, setTamperDisableAutoScan] = useState(false);
+
+  // When tamper is detected, disable auto-scan
+  useEffect(() => {
+    if (state.phase === "error" && state.tamperDetected) {
+      setTamperDisableAutoScan(true);
+    }
+  }, [state.phase, state.tamperDetected]);
+
+  // --- Kiosk auto-scan hook (replaces manual hasCompletedCycle + idle-phase scan restart) ---
+  useKioskAutoScan({
+    enabled: !tamperDisableAutoScan,
+    grant,
+    loading,
+    phase: state.phase,
+    scan,
+  });
+
+  // Track whether we already triggered auto-checkin for this scan cycle (duplicate-write prevention)
   const autoCheckinTriggered = useRef(false);
-  // Track whether we've completed at least one scan cycle (to distinguish initial mount from post-reset)
-  const hasCompletedCycle = useRef(false);
+
+  // Additional blocked reason for on-card status or insufficient balance (not from local DB)
+  const [cardRejectionReason, setCardRejectionReason] = useState<string | null>(null);
 
   // Get the current timestamp (real or simulated)
   const getNowSeconds = useCallback(() => {
@@ -65,14 +89,13 @@ export function GateSection({
     return Math.floor(Date.now() / 1000);
   }, [simulationMode, simulatedDateTime]);
 
-  // Auto check-in when card is ready — no confirmation needed
+  // Auto check-in when blocked check completes and card is eligible
   useEffect(() => {
     if (state.phase !== "ready" || !state.payload || autoCheckinTriggered.current) return;
 
     const payload = state.payload;
-    const nowSeconds = getNowSeconds();
 
-    // Check card status from payload (on-card status)
+    // Step 1: Check on-card status (immediate, no async needed)
     if (payload.identity.status !== CardStatus.ACTIVE) {
       autoCheckinTriggered.current = true;
       const statusNames: Record<number, string> = {
@@ -81,72 +104,56 @@ export function GateSection({
         [CardStatus.BLOCKED_EXPIRED]: "Kartu diblokir: kadaluarsa",
         [CardStatus.BLOCKED_ADMIN]: "Kartu diblokir oleh admin",
       };
-      setBlockedReason(statusNames[payload.identity.status] ?? "Kartu tidak aktif");
-      setBlockedCheckDone(true);
+      setCardRejectionReason(statusNames[payload.identity.status] ?? "Kartu tidak aktif");
       return;
     }
 
-    // Also check local DB for blocked card or suspended member
-    // Uses hardware serial number (state.serialNumber) as the correct lookup key
-    // serialNumber is always present when phase is "ready" (set during scan)
-    if (!state.serialNumber) return;
+    // Step 2: Wait for blocked check to complete (eliminates race condition)
+    // blockedCheck.isReady is true only when check is complete AND card is not blocked
+    if (blockedCheck.isChecking) return; // Still checking — don't proceed yet
 
-    // IMPORTANT: checkLocalBlockedStatus MUST resolve BEFORE autoCheckinTriggered is set.
-    // This eliminates the race condition where the render shows "Sudah Check-in" for
-    // CHECKED_IN/STATION_OPERATION cards before the blocked check completes.
-    checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
-      // Guard against stale closure: if the component reset while we were awaiting
-      if (autoCheckinTriggered.current) return;
-
-      if (statusResult.blocked) {
-        autoCheckinTriggered.current = true;
-        setBlockedReason(statusResult.reason);
-        setBlockedCheckDone(true);
-        return;
-      }
-
-      // Flag if card not in local DB (warning only, does not block)
-      setNotInLocalDb(statusResult.notInLocalDb);
-
-      // Card is not blocked — mark blocked check as complete so the render can proceed
-      setBlockedCheckDone(true);
-
-      // For CHECKED_IN/STATION_OPERATION cards, validateTransition will return invalid,
-      // and autoCheckinTriggered is set here (after blocked check resolved).
-      // This ensures blockedReason is definitively null before the render shows "Sudah Check-in".
-
-      // When enforce24hLimit is disabled, skip session expiry check by using
-      // a "fresh" nowSeconds that won't trigger the expiry logic
-      let validationNow = nowSeconds;
-      if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
-        // Use a timestamp just after lastTimestamp to bypass expiry check
-        validationNow = payload.wallet.lastTimestamp + 1;
-      }
-      const result = validateTransition(payload, "gate_checkin", validationNow);
-      if (!result.valid) {
-        autoCheckinTriggered.current = true;
-        return;
-      }
-
-      // Minimum balance check: reject check-in if balance < 10,000
-      if (payload.wallet.balance < 10_000) {
-        autoCheckinTriggered.current = true;
-        setBlockedReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
-        return;
-      }
-
+    if (blockedCheck.isBlocked) {
       autoCheckinTriggered.current = true;
-      setBlockedReason(null);
-      write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
-    });
+      // blockedReason is already available via blockedCheck.blockedReason
+      return;
+    }
+
+    // Step 3: Blocked check passed — proceed with state validation
+    const nowSeconds = getNowSeconds();
+
+    // When enforce24hLimit is disabled, skip session expiry check by using
+    // a "fresh" nowSeconds that won't trigger the expiry logic
+    let validationNow = nowSeconds;
+    if (!enforce24hLimit && payload.wallet.state !== CardState.IDLE) {
+      // Use a timestamp just after lastTimestamp to bypass expiry check
+      validationNow = payload.wallet.lastTimestamp + 1;
+    }
+    const result = validateTransition(payload, "gate_checkin", validationNow);
+    if (!result.valid) {
+      autoCheckinTriggered.current = true;
+      return;
+    }
+
+    // Step 4: Minimum balance check
+    if (payload.wallet.balance < 10_000) {
+      autoCheckinTriggered.current = true;
+      setCardRejectionReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+      return;
+    }
+
+    // Step 5: All checks passed — perform check-in write
+    autoCheckinTriggered.current = true;
+    setCardRejectionReason(null);
+    write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
   }, [
     state.phase,
     state.payload,
-    state.serialNumber,
+    blockedCheck.isChecking,
+    blockedCheck.isBlocked,
+    blockedCheck.isReady,
     write,
     terminalId,
     getNowSeconds,
-    tenantId,
     enforce24hLimit,
   ]);
 
@@ -156,26 +163,21 @@ export function GateSection({
     syncEngineRef.current = syncEngine;
   }, [syncEngine]);
 
-  // Auto-reset after success
+  // Notify sync engine on success (auto-reset is handled by FeedbackCard autoClose)
   useEffect(() => {
     if (state.phase !== "success") return;
 
     // Notify sync engine that an Outbox write occurred (triggers debounced sync)
     syncEngineRef.current?.notifyMutation();
 
-    // Trigger immediate sync push for check-in (bypass 5s debounce) — Req 9.1, 9.2
+    // Trigger immediate sync push for check-in (bypass 5s debounce)
     if (state.payload) {
       const cardIdHex = Array.from(state.payload.header.cardId)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
       notifyCheckin(cardIdHex, Date.now());
     }
-
-    const timer = setTimeout(() => {
-      reset();
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [state.phase, state.payload, reset]);
+  }, [state.phase, state.payload]);
 
   // Auto-reset after transient post-write read errors (shorter delay)
   useEffect(() => {
@@ -189,36 +191,30 @@ export function GateSection({
     }
   }, [state.phase, state.error, reset]);
 
-  // Reset the auto-checkin flag when going back to idle
-  // and auto-restart scanning so the gate is always ready for the next card
+  // Reset per-cycle state when going back to idle
   useEffect(() => {
     if (state.phase === "idle") {
       autoCheckinTriggered.current = false;
-      setBlockedReason(null);
-      setBlockedCheckDone(false);
-      setNotInLocalDb(false);
-
-      // Auto-restart scanning after a completed cycle (success/error → reset → idle)
-      // so the gate kiosk is always ready for the next card tap without pressing button
-      if (hasCompletedCycle.current && grant && !loading) {
-        scan();
-      }
-    } else if (state.phase === "success" || state.phase === "error") {
-      hasCompletedCycle.current = true;
+      setCardRejectionReason(null);
     }
-  }, [state.phase, grant, loading, scan]);
+  }, [state.phase]);
 
   function handleScan() {
     autoCheckinTriggered.current = false;
-    setBlockedReason(null);
-    setBlockedCheckDone(false);
-    setNotInLocalDb(false);
+    setCardRejectionReason(null);
+    setTamperDisableAutoScan(false);
     scan();
   }
+
+  // Derive the effective blocked reason (from on-card status/balance OR from local DB check)
+  const effectiveBlockedReason = cardRejectionReason ?? blockedCheck.blockedReason;
 
   const cardState = state.payload?.wallet.state;
   const isAlreadyCheckedIn =
     cardState === CardState.CHECKED_IN || cardState === CardState.STATION_OPERATION;
+
+  // blockedCheckDone equivalent: the check is no longer in progress
+  const blockedCheckDone = !blockedCheck.isChecking && state.phase === "ready";
 
   return (
     <KioskLayout
@@ -270,25 +266,25 @@ export function GateSection({
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
-            {blockedReason && state.phase === "ready" ? (
-              <div className="bg-white rounded-2xl border border-destructive/30 p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-destructive">⛔ Akses Ditolak</p>
-                <p className="type-body2 text-muted-foreground">{blockedReason}</p>
-                <p className="type-body2 text-muted-foreground">{state.payload.identity.name}</p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
+            {blockedCheck.isChecking && state.phase === "ready" ? (
+              <p className="type-body2 text-muted-foreground animate-pulse">
+                Memproses...
+              </p>
+            ) : effectiveBlockedReason && state.phase === "ready" ? (
+              <FeedbackCard
+                variant="blocked"
+                title="Akses Ditolak"
+                subtitle={state.payload.identity.name}
+                details={[{ label: "Alasan", value: effectiveBlockedReason }]}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
             ) : isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone ? (
-              <div className="bg-white rounded-2xl border p-4 space-y-3 text-center w-full">
-                <p className="type-body1-bold text-signal-warning">Sudah Check-in</p>
-                <p className="type-body2 text-muted-foreground">
-                  {state.payload.identity.name} sudah dalam status masuk.
-                </p>
-                <Button variant="outline" onClick={reset} className="w-full">
-                  Selesai
-                </Button>
-              </div>
+              <FeedbackCard
+                variant="warning"
+                title="Sudah Check-in"
+                subtitle={`${state.payload.identity.name} sudah dalam status masuk.`}
+                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+              />
             ) : (
               <p className="type-body2 text-muted-foreground animate-pulse">
                 Memproses check-in...
@@ -301,7 +297,7 @@ export function GateSection({
         {state.phase === "success" && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="success" />
-            {(notInLocalDb || state.warning) && (
+            {(blockedCheck.notInLocalDb || state.warning) && (
               <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
                 <p className="type-body2 text-amber-700 text-center">
                   ⚠️{" "}
@@ -310,11 +306,14 @@ export function GateSection({
                 </p>
               </div>
             )}
-            <div className="bg-white rounded-2xl border p-4 space-y-2 text-center w-full">
-              <p className="type-title-bold text-signal-valid">✓ Check-in Berhasil</p>
-              <p className="type-body1 text-foreground">{state.payload.identity.name}</p>
-              <p className="type-body2 text-muted-foreground">Selamat datang!</p>
-            </div>
+            <FeedbackCard
+              variant="success"
+              title="Check-in Berhasil"
+              subtitle={state.payload.identity.name}
+              details={[{ label: "Status", value: "Selamat datang!" }]}
+              autoClose={2500}
+              onClose={reset}
+            />
             <p className="text-sm text-muted-foreground animate-pulse">Menutup otomatis...</p>
           </div>
         )}
@@ -323,14 +322,12 @@ export function GateSection({
         {state.phase === "error" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="error" tamperDetected={state.tamperDetected} />
-            <NfcStatusLabel
-              phase="error"
-              error={state.error}
-              tamperDetected={state.tamperDetected}
+            <FeedbackCard
+              variant="error"
+              title={state.tamperDetected ? "Kartu Terdeteksi Rusak" : "Terjadi Kesalahan"}
+              subtitle={state.error ?? undefined}
+              actions={[{ label: "Coba Lagi", onClick: handleScan }]}
             />
-            <Button variant="outline" onClick={reset} className="w-full">
-              Coba Lagi
-            </Button>
           </div>
         )}
       </div>
