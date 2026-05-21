@@ -1,18 +1,26 @@
 import {
   AlertTriangle,
+  CheckCircle2,
+  Circle,
   Cloud,
   CloudOff,
   Info,
   RefreshCw,
   Trash2,
   Upload,
+  Users,
+  CreditCard,
+  Receipt,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSyncLogs } from "../../hooks/useSyncLogs";
 import { useAdminTenantSync } from "../../hooks/useAdminTenantSync";
+import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { clearSyncLogs, type SyncLogLevel } from "../../lib/syncLogStore";
 import { localTenantConfigStore, type LocalTenantConfig } from "../../lib/indexeddb";
+import { localDb } from "../../db/local-db";
+import { getAccessToken } from "../../lib/api";
 import { Button } from "../ui/button";
 
 interface SettingsSectionProps {
@@ -36,18 +44,52 @@ function formatTimestamp(ts: number): string {
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
   const logs = useSyncLogs();
   const { onSyncToServer, isSyncingToServer } = useAdminTenantSync(tenantId);
+  const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
+  const [syncStats, setSyncStats] = useState<{
+    membersSynced: number;
+    membersTotal: number;
+    cardsSynced: number;
+    cardsTotal: number;
+    txSynced: number;
+    txTotal: number;
+  } | null>(null);
+
+  const refreshSyncStats = useCallback(async () => {
+    try {
+      const [membersTotal, membersSynced, cardsTotal, cardsSynced, txTotal, txSynced] =
+        await Promise.all([
+          localDb.users.where("tenantId").equals(tenantId).count(),
+          localDb.users.where("[tenantId+syncStatus]").equals([tenantId, "synced"]).count(),
+          localDb.cards.where("tenantId").equals(tenantId).count(),
+          localDb.cards.where("[tenantId+syncStatus]").equals([tenantId, "synced"]).count(),
+          localDb.transactionLog
+            .where("[tenantId+syncStatus]")
+            .between([tenantId, ""], [tenantId, "\uffff"], true, true)
+            .count(),
+          localDb.transactionLog
+            .where("[tenantId+syncStatus]")
+            .equals([tenantId, "synced"])
+            .count(),
+        ]);
+      setSyncStats({ membersSynced, membersTotal, cardsSynced, cardsTotal, txSynced, txTotal });
+    } catch {
+      // Non-critical
+    }
+  }, [tenantId]);
 
   useEffect(() => {
     localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
-  }, [tenantId]);
+    refreshSyncStats();
+  }, [tenantId, refreshSyncStats]);
 
   // Refresh config after sync completes
   useEffect(() => {
     if (!isSyncingToServer) {
       localTenantConfigStore.get(tenantId).then((cfg) => setTenantConfig(cfg ?? null));
+      refreshSyncStats();
     }
-  }, [isSyncingToServer, tenantId]);
+  }, [isSyncingToServer, tenantId, refreshSyncStats]);
 
   return (
     <div className="space-y-6">
@@ -94,6 +136,81 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
             )}
           </div>
         </div>
+
+        {/* Sync Checklist */}
+        {syncStats && (
+          <div className="rounded-lg border mt-3 divide-y">
+            {/* Server registration */}
+            <ChecklistItem
+              icon={Cloud}
+              label="Tenant terdaftar di server"
+              checked={tenantConfig?.mode === "synced"}
+            />
+            {/* Auth token */}
+            <ChecklistItem
+              icon={Cloud}
+              label="Token autentikasi aktif"
+              checked={!!getAccessToken()}
+              detail={getAccessToken() ? undefined : "Login ulang untuk mendapatkan token"}
+            />
+            {/* Members synced */}
+            <ChecklistItem
+              icon={Users}
+              label="Anggota tersinkronisasi"
+              checked={
+                syncStats.membersTotal > 0 && syncStats.membersSynced === syncStats.membersTotal
+              }
+              detail={`${syncStats.membersSynced} / ${syncStats.membersTotal} synced`}
+            />
+            {/* Cards synced */}
+            <ChecklistItem
+              icon={CreditCard}
+              label="Kartu tersinkronisasi"
+              checked={syncStats.cardsTotal > 0 && syncStats.cardsSynced === syncStats.cardsTotal}
+              detail={`${syncStats.cardsSynced} / ${syncStats.cardsTotal} synced`}
+            />
+            {/* Transactions synced */}
+            <ChecklistItem
+              icon={Receipt}
+              label="Transaksi tersinkronisasi"
+              checked={syncStats.txTotal > 0 && syncStats.txSynced === syncStats.txTotal}
+              detail={`${syncStats.txSynced} / ${syncStats.txTotal} synced`}
+            />
+          </div>
+        )}
+
+        {/* Retry Sync Button */}
+        {syncEngine && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => {
+                syncEngine.triggerSync();
+                // Refresh stats after a short delay to reflect changes
+                setTimeout(refreshSyncStats, 3000);
+              }}
+              disabled={syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"}
+            >
+              <RefreshCw
+                size={14}
+                className={
+                  syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
+                    ? "animate-spin"
+                    : ""
+                }
+              />
+              {syncEngine.syncStatus === "pushing" || syncEngine.syncStatus === "pulling"
+                ? "Menyinkronkan..."
+                : "Retry Sync"}
+            </Button>
+            {syncEngine.lastSyncedAt && (
+              <p className="type-body2 text-muted-foreground text-center mt-1.5">
+                Terakhir berhasil: {new Date(syncEngine.lastSyncedAt).toLocaleString("id-ID")}
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Sync Logs Panel */}
@@ -155,6 +272,34 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// ── ChecklistItem sub-component ──────────────────────────────────────────────
+
+interface ChecklistItemProps {
+  icon: React.ElementType;
+  label: string;
+  checked: boolean;
+  detail?: string;
+}
+
+function ChecklistItem({ icon: Icon, label, checked, detail }: ChecklistItemProps) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      {checked ? (
+        <CheckCircle2 size={18} className="text-green-600 shrink-0" />
+      ) : (
+        <Circle size={18} className="text-muted-foreground/40 shrink-0" />
+      )}
+      <Icon size={16} className="text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className={`type-body1 ${checked ? "text-foreground" : "text-muted-foreground"}`}>
+          {label}
+        </p>
+        {detail && <p className="type-body2 text-muted-foreground">{detail}</p>}
+      </div>
     </div>
   );
 }

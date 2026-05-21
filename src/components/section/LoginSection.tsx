@@ -16,7 +16,13 @@ import { localLogin, cacheServerCredentials } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
-import { API_BASE_URL, setCurrentDeviceId, setAccessToken, restoreAuthState } from "../../lib/api";
+import {
+  API_BASE_URL,
+  setCurrentDeviceId,
+  setAccessToken,
+  restoreAuthState,
+  getAccessToken,
+} from "../../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
 import { AuthLayout } from "../layout/AuthLayout";
 import { LocalSetupSection } from "./LocalSetupSection";
@@ -137,6 +143,43 @@ export function LoginSection() {
           updatedAt: Date.now(),
         });
         setCurrentDeviceId(fingerprintId);
+
+        // Restore access token from IndexedDB/localStorage so sync works
+        // (token was saved during the original server login)
+        await restoreAuthState(fingerprintId);
+
+        // If online and no token yet, try to get a fresh one from server silently
+        if (!getAccessToken() && navigator.onLine) {
+          try {
+            const serverFingerprintHash = await getDeviceFingerprint();
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+            const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username,
+                password,
+                deviceFingerprint: {
+                  hash: serverFingerprintHash,
+                  userAgent: navigator.userAgent,
+                  platform: navigator.platform,
+                },
+                tenantSlug: effectiveSlug,
+              }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.accessToken) {
+                setAccessToken(data.accessToken);
+              }
+            }
+          } catch {
+            // Non-critical — sync will work next time user logs in via server
+          }
+        }
 
         // Pre-generate and cache session grant so it's available immediately
         // when the role page loads (avoids race with useSessionGrant hook)

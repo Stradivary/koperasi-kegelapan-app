@@ -12,7 +12,7 @@
  * @see Requirements 7.1, 7.4, 7.5, 7.6, 7.9, 7.10
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError } from "./api";
+import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
 import { localDb } from "../db/local-db";
 import type { User, Card, TransactionLog } from "../db/local-db";
@@ -363,6 +363,17 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
   // Check device block before starting
   if (isDeviceBlocked()) {
     throw new DeviceBlockedError("Device is blocked — sync pull aborted");
+  }
+
+  // Skip if no auth token — means this is a local-only tenant not registered on server
+  const token = getAccessToken();
+  if (!token) {
+    return {
+      membersPulled: 0,
+      cardsPulled: 0,
+      transactionsPulled: 0,
+      authRequired: false,
+    };
   }
 
   // Step 1: Read current sync cursors

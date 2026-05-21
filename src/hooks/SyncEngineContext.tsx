@@ -15,7 +15,7 @@
 import { createContext, useContext, useEffect } from "react";
 import { useSyncEngine, type UseSyncEngineReturn } from "./useSyncEngine";
 import { registerTriggerSync, setActiveTenantId } from "../lib/peerSyncCoordinator";
-import { useRealTimeSync } from "./useRealTimeSync";
+// import { useRealTimeSync } from "./useRealTimeSync"; // SSE disabled
 
 // ── Context ────────────────────────────────────────────────────────────
 
@@ -66,7 +66,8 @@ export function SyncEngineProvider({
 
   // Initialize RealTimeSyncManager alongside the sync engine (Req 8.1, 8.2, 5.2, 5.4).
   // Performs full sync on login, establishes SSE, and disconnects on cleanup.
-  useRealTimeSync({ tenantId, enabled });
+  // NOTE: SSE disabled — relying on periodic sync engine only for now.
+  // useRealTimeSync({ tenantId, enabled });
 
   return <SyncEngineContext.Provider value={syncEngine}>{children}</SyncEngineContext.Provider>;
 }

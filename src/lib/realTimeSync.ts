@@ -52,7 +52,7 @@ export const INITIAL_BACKOFF_MS = 1000;
 export const MAX_BACKOFF_MS = 60_000;
 
 /** Maximum reconnection attempts before giving up */
-export const MAX_RECONNECT_ATTEMPTS = 5;
+export const MAX_RECONNECT_ATTEMPTS = 1;
 
 /** Periodic pull interval while SSE is disconnected (ms) */
 export const PERIODIC_PULL_INTERVAL_MS = 30_000;

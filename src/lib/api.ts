@@ -4,14 +4,27 @@ import { authTokenCacheStore } from "./indexeddb";
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "https://koperasi-kegelapan-api.ahmad-muzaki-st.workers.dev";
 
+// ── localStorage keys ──────────────────────────────────────────────────
+
+const ACCESS_TOKEN_LS_KEY = "kk_access_token";
+const DEVICE_ID_LS_KEY = "kk_device_id";
+
 // ── Device ID cache for request headers ────────────────────────────────
 
 /**
  * In-memory cache of the current device ID.
+ * Backed by localStorage for durability across HMR and page refreshes.
  * Set during login (setCurrentDeviceId) and included in all apiFetch requests
  * as the X-Device-Id header for server-side device tracking and block enforcement.
  */
 let _cachedDeviceId: string | null = null;
+
+// Hydrate from localStorage on module load (synchronous, fast)
+try {
+  _cachedDeviceId = localStorage.getItem(DEVICE_ID_LS_KEY);
+} catch {
+  // localStorage unavailable
+}
 
 /**
  * Set the current device ID to be included in all subsequent API requests.
@@ -19,6 +32,15 @@ let _cachedDeviceId: string | null = null;
  */
 export function setCurrentDeviceId(deviceId: string | null): void {
   _cachedDeviceId = deviceId;
+  try {
+    if (deviceId) {
+      localStorage.setItem(DEVICE_ID_LS_KEY, deviceId);
+    } else {
+      localStorage.removeItem(DEVICE_ID_LS_KEY);
+    }
+  } catch {
+    // localStorage unavailable
+  }
 }
 
 /**
@@ -33,14 +55,22 @@ export function getCurrentDeviceId(): string | null {
 
 /**
  * In-memory cache of the current access token (JWT-like).
+ * Backed by localStorage for durability across HMR and page refreshes.
  * Set during login (setAccessToken) and included in all apiFetch requests
  * as the Authorization: Bearer header for server-side authentication.
  */
 let _cachedAccessToken: string | null = null;
 
+// Hydrate from localStorage on module load (synchronous, fast)
+try {
+  _cachedAccessToken = localStorage.getItem(ACCESS_TOKEN_LS_KEY);
+} catch {
+  // localStorage unavailable (e.g., private browsing in some browsers)
+}
+
 /**
  * Set the current access token to be included in all subsequent API requests.
- * Also persists the token to IndexedDB so it survives page refreshes.
+ * Persists to localStorage (synchronous) and IndexedDB (async, best-effort).
  * Call this after login when the accessToken is obtained from the server.
  *
  * @param token - The access token string, or null to clear
@@ -48,7 +78,19 @@ let _cachedAccessToken: string | null = null;
  */
 export function setAccessToken(token: string | null, expiresAt?: number): void {
   _cachedAccessToken = token;
-  // Persist to IndexedDB (best-effort, non-blocking)
+
+  // Persist to localStorage (synchronous, survives HMR/refresh)
+  try {
+    if (token) {
+      localStorage.setItem(ACCESS_TOKEN_LS_KEY, token);
+    } else {
+      localStorage.removeItem(ACCESS_TOKEN_LS_KEY);
+    }
+  } catch {
+    // localStorage unavailable — continue with in-memory only
+  }
+
+  // Also persist to IndexedDB (async, best-effort, survives storage clearing)
   if (token && _cachedDeviceId) {
     const expiry = expiresAt ?? Date.now() + 24 * 60 * 60 * 1000; // default 24h
     authTokenCacheStore
@@ -78,13 +120,32 @@ export function getAccessToken(): string | null {
  * Restore auth state (deviceId + accessToken) from IndexedDB on app boot.
  * Call this once during app initialization (e.g., in detectMode or root layout).
  * Returns true if auth state was successfully restored.
+ *
+ * Note: With localStorage backing, this is now mainly a fallback for cases where
+ * localStorage was cleared but IndexedDB still has the token.
  */
 export async function restoreAuthState(deviceId: string): Promise<boolean> {
   _cachedDeviceId = deviceId;
   try {
+    localStorage.setItem(DEVICE_ID_LS_KEY, deviceId);
+  } catch {
+    // localStorage unavailable
+  }
+
+  // If we already have a token from localStorage hydration, we're good
+  if (_cachedAccessToken) return true;
+
+  // Fallback: try IndexedDB
+  try {
     const entry = await authTokenCacheStore.get(deviceId);
     if (entry) {
       _cachedAccessToken = entry.accessToken;
+      // Sync back to localStorage for next time
+      try {
+        localStorage.setItem(ACCESS_TOKEN_LS_KEY, entry.accessToken);
+      } catch {
+        // localStorage unavailable
+      }
       return true;
     }
   } catch {

@@ -13,7 +13,7 @@
  * @see Requirements 2.5, 3.4, 3.8, 6.1, 6.2, 6.5, 6.7, 6.8
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError } from "./api";
+import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
 import { getSyncableEntries, updateSyncStatus } from "./transactionLogService";
 import type { TransactionLog } from "../db/local-db";
@@ -282,6 +282,18 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
   // Check device block before starting
   if (isDeviceBlocked()) {
     throw new DeviceBlockedError("Device is blocked — sync push aborted");
+  }
+
+  // Skip if no auth token — means this is a local-only tenant not registered on server
+  const token = getAccessToken();
+  if (!token) {
+    return {
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount: 0,
+    };
   }
 
   // Step 1: Get pending entries
