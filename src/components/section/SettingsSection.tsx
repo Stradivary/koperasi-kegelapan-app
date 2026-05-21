@@ -44,6 +44,32 @@ function formatDate(ts: number): string {
   });
 }
 
+/**
+ * Parse a user-agent string into a human-friendly device name.
+ * Returns something like "Chrome · Windows" or "Safari · iPhone".
+ */
+function parseDeviceName(ua: string): string {
+  // Detect browser
+  let browser = "Browser";
+  if (ua.includes("Edg/") || ua.includes("EdgA/")) browser = "Edge";
+  else if (ua.includes("OPR/") || ua.includes("Opera")) browser = "Opera";
+  else if (ua.includes("Chrome/") && !ua.includes("Edg")) browser = "Chrome";
+  else if (ua.includes("Safari/") && !ua.includes("Chrome")) browser = "Safari";
+  else if (ua.includes("Firefox/")) browser = "Firefox";
+
+  // Detect OS / device
+  let os = "";
+  if (ua.includes("iPhone")) os = "iPhone";
+  else if (ua.includes("iPad")) os = "iPad";
+  else if (ua.includes("Android")) os = "Android";
+  else if (ua.includes("Windows")) os = "Windows";
+  else if (ua.includes("Mac OS")) os = "macOS";
+  else if (ua.includes("Linux")) os = "Linux";
+  else if (ua.includes("CrOS")) os = "ChromeOS";
+
+  return os ? `${browser} · ${os}` : browser;
+}
+
 interface ServerDevice {
   deviceId: string;
   tenantId: string;
@@ -446,37 +472,46 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                 </div>
               ) : (
                 <div className="rounded-lg border divide-y">
-                  {devices.map((device) => {
-                    const isCurrent = tenantContext?.deviceId === device.deviceId;
-                    return (
-                      <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
-                        <div
-                          className={`rounded-full p-2 ${isCurrent ? "bg-brand/10" : "bg-muted"}`}
-                        >
-                          <Smartphone
-                            size={14}
-                            className={isCurrent ? "text-brand" : "text-muted-foreground"}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="type-body1 text-foreground font-mono text-xs truncate">
-                              {device.deviceId.slice(0, 16)}…
-                            </p>
-                            {isCurrent && (
-                              <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-brand">
-                                Ini
-                              </Badge>
-                            )}
+                  {[...devices]
+                    .sort((a, b) => {
+                      const aCurrent = tenantContext?.deviceId === a.deviceId ? 1 : 0;
+                      const bCurrent = tenantContext?.deviceId === b.deviceId ? 1 : 0;
+                      return bCurrent - aCurrent;
+                    })
+                    .map((device) => {
+                      const isCurrent = tenantContext?.deviceId === device.deviceId;
+                      const deviceName = parseDeviceName(device.userAgent);
+                      return (
+                        <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
+                          <div
+                            className={`rounded-full p-2 ${isCurrent ? "bg-brand/10" : "bg-muted"}`}
+                          >
+                            <Smartphone
+                              size={14}
+                              className={isCurrent ? "text-brand" : "text-muted-foreground"}
+                            />
                           </div>
-                          <p className="type-body2 text-muted-foreground">
-                            {device.platform} · Terakhir aktif{" "}
-                            {formatDate(device.lastSeenAt * 1000)}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="type-body1 text-foreground text-sm truncate">
+                                {deviceName}
+                              </p>
+                              {isCurrent && (
+                                <Badge
+                                  variant="default"
+                                  className="text-[10px] px-1.5 py-0 bg-brand"
+                                >
+                                  Perangkat ini
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="type-body2 text-muted-foreground text-xs">
+                              Terakhir aktif {formatDate(device.lastSeenAt * 1000)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
 

@@ -1,36 +1,73 @@
-Welcome to your new TanStack Start app!
+# Koperasi Kegelapan — Offline NFC Wallet
 
-# Getting Started
+A tap-based payment system that operates without real-time backend connectivity. Wallet state (balance, session, tamper-evident log) is stored encrypted on NTAG215 NFC cards, allowing terminals to authorise transactions offline using cryptographic proofs.
 
-To run this application:
+## Architecture
+
+| Layer    | Tech                                 | Deployment         |
+| -------- | ------------------------------------ | ------------------ |
+| Frontend | React 19, TanStack Router, Vite, PWA | Cloudflare Pages   |
+| API      | Hono on Cloudflare Workers           | Cloudflare Workers |
+| Database | Drizzle ORM + Cloudflare D1 (SQLite) | Cloudflare D1      |
+| NFC      | Web NFC API (NTAG215/216)            | Browser            |
+
+The frontend is a Progressive Web App with offline-first capabilities. The API worker handles session grants, reconciliation, and sync. Both are deployed independently to Cloudflare.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 20+
+- [pnpm](https://pnpm.io/) 9+
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm i -g wrangler`)
+- An NFC-capable Android device (for Web NFC features)
+
+## Getting Started
 
 ```bash
 pnpm install
+```
+
+Start the frontend dev server (port 3000) and API worker (port 8787) in separate terminals:
+
+```bash
 pnpm dev
+pnpm dev:api
 ```
 
-## D1: Local vs Remote
+The frontend proxies `/api` requests to the local worker automatically.
 
-Use local D1 for offline work and remote D1 when you want to hit Cloudflare-hosted data.
+## Project Structure
 
-### Run app with local D1 bindings
-
-```bash
-pnpm dev:local
+```
+mbcs/
+├── api/src/           # Hono API worker (Cloudflare Workers)
+│   ├── middleware/    # Auth, validation middleware
+│   ├── routes/        # API route handlers
+│   └── lib/           # Shared utilities
+├── src/               # React frontend (SPA)
+│   ├── components/    # UI components (Shadcn/Radix)
+│   ├── core/          # Domain logic (card ops, crypto)
+│   ├── db/            # Local IndexedDB/Dexie schemas
+│   ├── hooks/         # React hooks (NFC, sync, etc.)
+│   ├── integrations/  # External service integrations
+│   ├── lib/           # Utilities, error tracking
+│   ├── routes/        # TanStack file-based routes
+│   └── server/        # Server functions
+├── drizzle/           # D1 migration files
+├── e2e/               # Playwright end-to-end tests
+├── public/            # Static assets, PWA icons
+└── wrangler.api.jsonc # Workers config (D1, Analytics Engine)
 ```
 
-### Run app with remote D1 bindings
+## Database
+
+The API uses Cloudflare D1 with Drizzle ORM. Migrations live in `drizzle/`.
+
+### Local D1 (development)
 
 ```bash
-pnpm dev:remote
-```
-
-### Local D1 workflow (offline)
-
-```bash
-pnpm db:generate
-pnpm db:local:migrate
-pnpm db:local:seed
+pnpm db:generate          # Generate migrations from schema
+pnpm db:local:migrate     # Apply migrations to local D1
+pnpm db:seed              # Seed local database
 ```
 
 Query local D1:
@@ -39,226 +76,71 @@ Query local D1:
 pnpm db:local:query -- "SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
-### Remote D1 workflow
-
-Apply migrations to remote D1:
+### Remote D1 (production)
 
 ```bash
-pnpm db:remote:migrate
-```
-
-Query remote D1:
-
-```bash
+pnpm db:remote:migrate    # Apply migrations to remote D1
 pnpm db:remote:query -- "SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
-### Reset local D1 state
-
-If you want a clean local database:
+### Reset local state
 
 ```bash
 rm -rf .wrangler/state
 pnpm db:local:migrate
 ```
 
-# Building For Production
+## Scripts
 
-To build this application for production:
+| Command              | Description                           |
+| -------------------- | ------------------------------------- |
+| `pnpm dev`           | Start frontend dev server (port 3000) |
+| `pnpm dev:api`       | Start API worker locally (port 8787)  |
+| `pnpm build`         | Build frontend for production         |
+| `pnpm build:api`     | Dry-run API worker build              |
+| `pnpm test`          | Run unit tests (Vitest)               |
+| `pnpm test:coverage` | Run tests with coverage               |
+| `pnpm e2e`           | Run Playwright end-to-end tests       |
+| `pnpm e2e:ui`        | Run Playwright with UI                |
+| `pnpm lint`          | Lint with oxlint                      |
+| `pnpm lint:fix`      | Lint and auto-fix                     |
+| `pnpm format`        | Format with oxfmt                     |
+| `pnpm typecheck`     | TypeScript type checking              |
+| `pnpm deploy`        | Deploy both Pages and API             |
+
+## Deployment
+
+Frontend deploys to Cloudflare Pages, API deploys as a Cloudflare Worker:
 
 ```bash
-pnpm build
+pnpm deploy:pages    # Build + deploy frontend
+pnpm deploy:api      # Deploy API worker
+pnpm deploy          # Both
+```
+
+For production secrets (e.g. `SESSION_MASTER_KEY`), use:
+
+```bash
+wrangler secret put SESSION_MASTER_KEY --config wrangler.api.jsonc
 ```
 
 ## Testing
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+- **Unit tests**: Vitest — `pnpm test`
+- **E2E tests**: Playwright — `pnpm e2e`
 
-```bash
-pnpm test
-```
+## UI Components
 
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `pnpm add @tailwindcss/vite tailwindcss --dev`
-
-## Deploy to Cloudflare Workers
-
-This project uses the Cloudflare Vite plugin (configured in `vite.config.ts`) and `wrangler.jsonc`:
-
-1. Install Wrangler: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Deploy: `npx wrangler deploy`
-
-For production env vars, run `wrangler secret put MY_VAR` for each secret listed in `.env.example`. Public (non-secret) vars go in `wrangler.jsonc` under `vars`.
-
-KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
+Uses [Shadcn UI](https://ui.shadcn.com/) with Radix primitives and Tailwind CSS v4.
 
 ```bash
 pnpm dlx shadcn@latest add button
 ```
 
-## Routing
+## Documentation
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+Full system specifications live in the `docs/` submodule, covering product spec, system design, tech specs, API spec, data spec, security spec, and ADRs.
 
-### Adding A Route
+## License
 
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "My App" },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-});
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from "@tanstack/react-start";
-
-const getServerTime = createServerFn({
-  method: "GET",
-}).handler(async () => {
-  return new Date().toISOString();
-});
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    getServerTime().then(setTime);
-  }, []);
-
-  return <div>Server time: {time}</div>;
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
-
-export const Route = createFileRoute("/api/hello")({
-  server: {
-    handlers: {
-      GET: () => json({ message: "Hello, World!" }),
-    },
-  },
-});
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-
-export const Route = createFileRoute("/people")({
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json();
-  },
-  component: PeopleComponent,
-});
-
-function PeopleComponent() {
-  const data = Route.useLoaderData();
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  );
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+Private — all rights reserved.

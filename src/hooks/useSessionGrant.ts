@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
-import {
-  sessionGrantCacheStore,
-  localTenantConfigStore,
-  type CachedSessionGrant,
-} from "../lib/indexeddb";
+import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
 import { API_BASE_URL } from "../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
 
@@ -187,8 +183,11 @@ async function readGrantFromCache(
 }
 
 /**
- * Try to generate a local session grant for local-only tenants.
- * Returns null if the tenant is not local-only (i.e., it's a synced tenant).
+ * Try to generate a local session grant unconditionally.
+ * Previously gated on LocalTenantConfig existence, but that caused failures
+ * on devices that hadn't completed local setup (e.g., second device login
+ * where config wasn't cached yet). The grant derivation only needs tenantId,
+ * accountId, and deviceId — no config dependency required.
  */
 async function tryLocalGrant(
   tenantId: string,
@@ -196,15 +195,11 @@ async function tryLocalGrant(
   deviceId: string,
 ): Promise<SessionGrant | null> {
   try {
-    const config = await localTenantConfigStore.get(tenantId);
-    // Generate local grant for local-only tenants OR when config exists (offline fallback)
-    if (config) {
-      return generateLocalSessionGrant(tenantId, accountId, deviceId);
-    }
+    return generateLocalSessionGrant(tenantId, accountId, deviceId);
   } catch {
-    // IndexedDB unavailable
+    // Web Crypto unavailable or other unexpected error
+    return null;
   }
-  return null;
 }
 
 export function useSessionGrant(
