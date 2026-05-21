@@ -1,3 +1,6 @@
+import { WifiHigh, WifiOff } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import type { ReconciliationStatus } from "../../hooks/useReconciliation";
 import { Button } from "../ui/button";
@@ -33,20 +36,27 @@ export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIn
 }
 
 /**
- * Root-level offline banner displayed at the top of the viewport when
- * the browser reports no network connectivity. Uses the reactive
- * `useOnlineStatus` hook so it appears/disappears in real time.
+ * Snackbar-style connectivity notification. Shows a brief toast when
+ * the browser transitions between online and offline states, then
+ * auto-hides after a few seconds.
  *
- * Renders as a subtle, in-flow element that pushes the topbar down
- * rather than overlaying it with fixed positioning.
+ * Renders nothing in the DOM — it only fires sonner toasts on change.
  */
 export function RootOfflineBanner() {
   const { isOnline } = useOnlineStatus();
-  if (isOnline) return null;
+  const prevOnline = useRef(isOnline);
 
-  return (
-    <div className="w-full bg-yellow-500 px-3 py-1 text-center" role="status" aria-live="polite">
-      <p className="text-xs font-medium text-white">Mode Offline</p>
-    </div>
-  );
+  useEffect(() => {
+    // Skip the initial render — only fire on actual transitions
+    if (prevOnline.current === isOnline) return;
+    prevOnline.current = isOnline;
+
+    if (isOnline) {
+      toast.success("You are now online", { icon: <WifiHigh />, duration: 3000 });
+    } else {
+      toast.warning("You are now offline", { icon: <WifiOff />, duration: 4000 });
+    }
+  }, [isOnline]);
+
+  return null;
 }

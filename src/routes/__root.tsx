@@ -30,7 +30,7 @@ function RootComponent() {
       <PwaInstallPrompt />
       <PwaUpdatePrompt />
       <TanStackDevtools
-        config={{ position: "bottom-right" }}
+        config={{ position: "bottom-right", triggerHidden: true }}
         plugins={[
           { name: "Tanstack Router", render: <TanStackRouterDevtoolsPanel /> },
           TanStackQueryDevtools,

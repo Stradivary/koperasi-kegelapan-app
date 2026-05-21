@@ -19,13 +19,7 @@ import { tenantContextStore } from "../../lib/indexeddb";
 import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "../ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "../ui/drawer";
 
 export type AdminView = "cards" | "members" | "scout" | "transactions" | "settings";
 
@@ -161,16 +155,6 @@ export function AdminLayout({
           </div>
         )}
 
-        {/* Connectivity status */}
-        <div
-          className={[
-            "px-4 py-2 border-b border-white/10",
-            collapsed ? "flex justify-center" : "",
-          ].join(" ")}
-        >
-          <ConnectivityBadge isOnline={isOnline} collapsed={collapsed} />
-        </div>
-
         {/* Nav items */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           {NAV_ITEMS.map(({ id, icon: Icon, label }) => (
@@ -286,9 +270,7 @@ export function AdminLayout({
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Status Sinkronisasi</DrawerTitle>
-              <DrawerDescription>
-                Koneksi dan status sync tenant
-              </DrawerDescription>
+              <DrawerDescription>Koneksi dan status sync tenant</DrawerDescription>
             </DrawerHeader>
             <div className="px-4 pb-6 space-y-4">
               {/* Online status */}
@@ -348,7 +330,7 @@ export function AdminLayout({
         <main className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6">{children}</main>
 
         {/* Mobile bottom nav – floating */}
-        <nav className="md:hidden absolute bottom-2 left-2 right-2 bg-white/30 border rounded-xl shadow-lg flex items-stretch z-20">
+        <nav className="md:hidden absolute bottom-2 left-2 right-2 bg-white/30 backdrop-filter backdrop-blur-lg border rounded-xl shadow-lg flex items-stretch z-20 ">
           {MOBILE_NAV.map(({ id, icon: Icon, label }) => (
             <Button
               key={id}

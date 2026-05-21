@@ -1,11 +1,74 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
-import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
+import {
+  sessionGrantCacheStore,
+  localTenantConfigStore,
+  type CachedSessionGrant,
+} from "../lib/indexeddb";
 import { API_BASE_URL } from "../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
 export const OFFLINE_GRACE_PERIOD_SECONDS = 3600;
+
+/** Local master key seed for offline session grant derivation */
+const LOCAL_MASTER_SEED = "koperasi-local-session-key-v1";
+
+/**
+ * Generate a session grant locally for offline/local-only tenants.
+ * Uses Web Crypto HMAC-SHA256 to derive a deterministic session key
+ * from the tenantId, mirroring the server-side derivation logic.
+ */
+async function generateLocalSessionGrant(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+): Promise<SessionGrant> {
+  const enc = new TextEncoder();
+
+  // Derive a master key from the local seed
+  const masterKeyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(LOCAL_MASTER_SEED),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  // Derive tenant key: HMAC(masterKey, tenantId:1)
+  const tenantKeyBuf = await crypto.subtle.sign(
+    "HMAC",
+    masterKeyMaterial,
+    enc.encode(`${tenantId}:1`),
+  );
+
+  // Derive session key: HMAC(tenantKey, "session-key")
+  const tenantKey = await crypto.subtle.importKey(
+    "raw",
+    tenantKeyBuf,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sessionKeyBuf = await crypto.subtle.sign("HMAC", tenantKey, enc.encode("session-key"));
+
+  // Derive signature: HMAC(tenantKey, payload)
+  const expiresAt = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 year
+  const allowedOps = ["read", "debit", "credit", "checkin", "checkout", "admin", "station"];
+  const sigPayload = JSON.stringify({ keyVersion: 1, expiresAt, allowedOps, accountId, deviceId });
+  const signatureBuf = await crypto.subtle.sign("HMAC", tenantKey, enc.encode(sigPayload));
+
+  return {
+    keyVersion: 1,
+    sessionKey: new Uint8Array(sessionKeyBuf),
+    expiresAt,
+    allowedOps,
+    signature: new Uint8Array(signatureBuf),
+    tenantId,
+    accountId,
+    deviceId,
+  };
+}
 
 async function fetchSessionGrant(
   tenantId: string,
@@ -123,6 +186,27 @@ async function readGrantFromCache(
   }
 }
 
+/**
+ * Try to generate a local session grant for local-only tenants.
+ * Returns null if the tenant is not local-only (i.e., it's a synced tenant).
+ */
+async function tryLocalGrant(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+): Promise<SessionGrant | null> {
+  try {
+    const config = await localTenantConfigStore.get(tenantId);
+    // Generate local grant for local-only tenants OR when config exists (offline fallback)
+    if (config) {
+      return generateLocalSessionGrant(tenantId, accountId, deviceId);
+    }
+  } catch {
+    // IndexedDB unavailable
+  }
+  return null;
+}
+
 export function useSessionGrant(
   tenantId: string,
   accountId: string,
@@ -188,7 +272,14 @@ export function useSessionGrant(
           );
           setGrant(localGrant);
         } catch {
-          setError("Offline dan tidak ada sesi tersimpan");
+          // Offline with no cache — generate locally for local-only tenants
+          const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
+          if (localGrant) {
+            setGrant(localGrant);
+            writeGrantToCache(localGrant);
+          } else {
+            setError("Offline dan tidak ada sesi tersimpan");
+          }
         }
       }
     }
