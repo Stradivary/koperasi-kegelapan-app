@@ -159,7 +159,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
               placeholder="koperasi-maju"
               value={tenantSlug}
               onChange={(e) =>
-                setTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+                setTenantSlug(e.target.value.toLowerCase().replaceAll(/[^a-z0-9-]/g, ""))
               }
             />
             {slugError ? (

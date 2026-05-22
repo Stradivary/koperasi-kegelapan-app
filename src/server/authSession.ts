@@ -31,8 +31,8 @@ export function generateRefreshToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   // Convert to base64url
-  const base64 = btoa(String.fromCharCode(...bytes));
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const base64 = btoa(String.fromCodePoint(...bytes));
+  return base64.replaceAll(/\+/g, "-").replaceAll(/\//g, "_").replaceAll(/=+$/, "");
 }
 
 export interface CreateSessionInput {

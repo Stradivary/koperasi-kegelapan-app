@@ -58,7 +58,7 @@ export function TopupDrawer({
   const isSuccess = phase === "success";
   const isError = phase === "error";
 
-  const parsedAmount = parseInt(amount, 10);
+  const parsedAmount = Number.parseInt(amount, 10);
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0;
 
   function handleConfirm() {

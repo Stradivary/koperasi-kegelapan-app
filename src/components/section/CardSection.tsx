@@ -49,14 +49,14 @@ function generateCardId(): Uint8Array {
 }
 
 function parseHexBytes(hex: string): Uint8Array {
-  const normalized = hex.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+  const normalized = hex.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
   if (normalized.length === 0 || normalized.length % 2 !== 0) {
     throw new Error("ID kartu tidak valid");
   }
 
   const bytes = new Uint8Array(normalized.length / 2);
   for (let i = 0; i < normalized.length; i += 2) {
-    bytes[i / 2] = parseInt(normalized.slice(i, i + 2), 16);
+    bytes[i / 2] = Number.parseInt(normalized.slice(i, i + 2), 16);
   }
   return bytes;
 }
@@ -248,7 +248,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   // Normalize hardware serial number to consistent hex format
   const normalizeSerial = (sn: string | null): string | null => {
     if (!sn) return null;
-    const normalized = sn.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+    const normalized = sn.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
     return normalized || null;
   };
 
@@ -572,7 +572,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       try {
         const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
           reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-            const serial = event.serialNumber?.replace(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+            const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
             if (serial) {
               const existingBytes = extractCardBytes(event.message);
               resolve({ serial, hasData: existingBytes !== null });
@@ -846,7 +846,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       try {
         const scanResult = new Promise<string>((resolve, reject) => {
           reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-            const serial = event.serialNumber?.replace(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+            const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
             if (!serial) {
               reject(new Error("Kartu tidak memiliki serial number"));
               return;

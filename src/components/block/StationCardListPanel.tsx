@@ -61,7 +61,7 @@ const columns = [
       const isBlocked = status !== "active";
       return (
         <Badge variant={isBlocked ? "destructive" : "default"} className="text-[10px] px-1.5 py-0">
-          {status === "active" ? "Aktif" : status.replace("blocked_", "Blokir ")}
+          {status === "active" ? "Aktif" : status.replaceAll("blocked_", "Blokir ")}
         </Badge>
       );
     },
@@ -197,7 +197,7 @@ export function StationCardListPanel({
                   variant={isBlocked ? "destructive" : "default"}
                   className="text-[10px] px-1.5 py-0"
                 >
-                  {card.status === "active" ? "Aktif" : card.status.replace("blocked_", "Blokir ")}
+                  {card.status === "active" ? "Aktif" : card.status.replaceAll("blocked_", "Blokir ")}
                 </Badge>
                 <span className="text-sm font-semibold text-emerald-600">
                   Rp {card.balance?.toLocaleString("id-ID")}

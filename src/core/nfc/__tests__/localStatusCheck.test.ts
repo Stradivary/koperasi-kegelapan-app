@@ -120,7 +120,7 @@ describe("checkLocalBlockedStatus", () => {
 
         const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
 
-        const expectedSuffix = status.replace("blocked_", "");
+        const expectedSuffix = status.replaceAll("blocked_", "");
         expect(result.reason).toContain(expectedSuffix);
       });
 

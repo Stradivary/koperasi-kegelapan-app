@@ -86,7 +86,7 @@ interface SyncPushResponse {
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
   }
   return bytes;
 }
@@ -336,7 +336,7 @@ function parseCursor(cursor: string | undefined | null): number {
   if (!cursor || cursor === "0" || cursor === "") {
     return 0;
   }
-  const parsed = parseInt(cursor, 10);
+  const parsed = Number.parseInt(cursor, 10);
   return isNaN(parsed) ? 0 : parsed;
 }
 

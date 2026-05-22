@@ -60,14 +60,14 @@ function checkLocalBlockedStatus(
   usersDb: Map<string, UserRecord>,
 ): { blocked: boolean; reason: string | null } {
   // Normalize serial number to lowercase hex (strip colons/dashes)
-  const normalizedSerial = serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+  const normalizedSerial = serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
 
   // Look up card by [tenantId, normalizedSerial]
   const cardRecord = cardsDb.get(`${tenantId},${normalizedSerial}`);
   if (cardRecord && cardRecord.status !== "active") {
     return {
       blocked: true,
-      reason: `Kartu diblokir: ${cardRecord.status.replace("blocked_", "")}`,
+      reason: `Kartu diblokir: ${cardRecord.status.replaceAll("blocked_", "")}`,
     };
   }
 
@@ -367,7 +367,7 @@ describe("Property 2: Preservation - Active Card/Member Operations", () => {
             const usersDb = new Map<string, UserRecord>();
 
             // Normalize to get the key that would be stored in localDb
-            const normalizedSerial = formattedSerial.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+            const normalizedSerial = formattedSerial.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
 
             // Card is active (stored with normalized key)
             cardsDb.set(`${tenantId},${normalizedSerial}`, {

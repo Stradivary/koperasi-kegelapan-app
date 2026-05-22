@@ -237,7 +237,7 @@ async function pushBatchWithRetry(
 
       // 429: rate limited — respect Retry-After header
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get("Retry-After") ?? "5", 10);
+        const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
         const pauseMs = Math.min(retryAfter * 1000, 120_000);
         await sleep(pauseMs);
         continue;

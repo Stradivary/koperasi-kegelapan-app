@@ -23,7 +23,7 @@ export async function checkLocalBlockedStatus(
   serialNumber: string,
 ): Promise<LocalStatusResult> {
   // Normalize serial number to lowercase hex (strip colons/dashes)
-  const normalizedSerial = serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+  const normalizedSerial = serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
 
   // Look up card by [tenantId, normalizedSerial]
   const cardRecord = await localDb.cards.get([tenantId, normalizedSerial]);
@@ -36,7 +36,7 @@ export async function checkLocalBlockedStatus(
   if (cardRecord.status !== "active") {
     return {
       blocked: true,
-      reason: `Kartu diblokir: ${cardRecord.status.replace("blocked_", "")}`,
+      reason: `Kartu diblokir: ${cardRecord.status.replaceAll("blocked_", "")}`,
       notInLocalDb: false,
     };
   }

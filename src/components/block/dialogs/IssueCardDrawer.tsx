@@ -89,7 +89,7 @@ export function IssueCardDrawer({
 
   const activeMembers = members.filter((m) => m.status === "active");
 
-  const parsedAmount = parseInt(amount, 10);
+  const parsedAmount = Number.parseInt(amount, 10);
   const isValidAmount = !isNaN(parsedAmount) && parsedAmount >= 0;
   const canSubmit = name.trim().length > 0 && isValidAmount;
 

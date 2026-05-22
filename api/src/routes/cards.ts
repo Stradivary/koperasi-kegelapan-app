@@ -22,7 +22,7 @@ function isValidHexUid(uid: string): boolean {
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
   }
   return bytes;
 }
@@ -78,7 +78,7 @@ cardsRoutes.get("/check-uid", async (c) => {
   }
 
   // Normalize: lowercase, strip any non-hex characters
-  const normalizedUid = uid.toLowerCase().replace(/[^0-9a-f]/g, "");
+  const normalizedUid = uid.toLowerCase().replaceAll(/[^0-9a-f]/g, "");
 
   // Validate: must be valid hex and between 8-14 characters
   if (!isValidHexUid(normalizedUid)) {

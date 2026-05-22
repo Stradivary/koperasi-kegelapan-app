@@ -84,7 +84,7 @@ async function fetchDevGrant(tenantId: string): Promise<SessionGrant> {
   if (!res.ok) throw new Error(`Failed to fetch dev grant: ${res.status}`);
   const data = await res.json();
   const b64ToBytes = (b64: string): Uint8Array => {
-    const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+    const std = b64.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
     const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
     const bin = atob(padded);
     const bytes = new Uint8Array(bin.length);
@@ -198,14 +198,14 @@ export function IssuanceTestSection() {
     setPhase("writing");
     setErrorMsg(null);
 
-    const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresOffset, 10) * 86400;
+    const expiresAt = Math.floor(Date.now() / 1000) + Number.parseInt(expiresOffset, 10) * 86400;
 
     let originalPayload: CardPayload;
     try {
       originalPayload = makeFreshCard({
         name,
         userId: userId,
-        balance: parseInt(balance, 10),
+        balance: Number.parseInt(balance, 10),
         expiresAt,
       });
 

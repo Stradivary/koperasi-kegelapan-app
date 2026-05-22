@@ -62,7 +62,7 @@ export function StationFixCardPanel({
       await onFixCard({
         cardId: cardId.toLowerCase(),
         userId,
-        balance: parseInt(balance, 10) || 0,
+        balance: Number.parseInt(balance, 10) || 0,
         expiresAt: expiry ? Math.floor(new Date(expiry).getTime() / 1000) : null,
       });
       setPhase("success");

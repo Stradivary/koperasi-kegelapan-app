@@ -62,7 +62,7 @@ function NfcTestPage() {
       // Normalize serial: strip non-hex chars, lowercase — this is the stable hardware UID
       const rawSerial = event.serialNumber || "(none)";
       const normalizedSerial = event.serialNumber
-        ? event.serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase()
+        ? event.serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase()
         : "(none)";
       addLog(
         `✅ Card detected  serial=${rawSerial}  normalized=${normalizedSerial}  records=${event.message.records.length}`,
@@ -164,11 +164,11 @@ function NfcTestPage() {
     }
     let raw: Uint8Array | undefined;
     try {
-      const expiresAt = Math.floor(Date.now() / 1000) + parseInt(payloadExpiresOffset, 10) * 86400;
+      const expiresAt = Math.floor(Date.now() / 1000) + Number.parseInt(payloadExpiresOffset, 10) * 86400;
       const payload = makeFreshCard({
         name: payloadName,
         userId: payloadUserId,
-        balance: parseInt(payloadBalance, 10),
+        balance: Number.parseInt(payloadBalance, 10),
         expiresAt,
       });
 
@@ -184,7 +184,7 @@ function NfcTestPage() {
         if (res.ok) {
           const data = await res.json();
           const b64ToBytes = (b64: string): Uint8Array => {
-            const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+            const std = b64.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
             const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
             const bin = atob(padded);
             const bytes = new Uint8Array(bin.length);

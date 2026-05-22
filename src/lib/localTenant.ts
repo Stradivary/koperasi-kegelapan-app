@@ -47,8 +47,8 @@ async function pbkdf2Verify(password: string, storedHash: string): Promise<boole
   const parts = storedHash.split(":");
   if (parts.length !== 3) return false;
   const [iterStr, saltHex, expectedHex] = parts;
-  const iterations = parseInt(iterStr, 10);
-  const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+  const iterations = Number.parseInt(iterStr, 10);
+  const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((h) => Number.parseInt(h, 16)));
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, [
     "deriveBits",

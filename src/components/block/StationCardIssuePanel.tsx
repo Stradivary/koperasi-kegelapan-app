@@ -44,7 +44,7 @@ export function StationCardIssuePanel({
       await onIssueCard({
         name: issueName.trim(),
         userId: issueUserId,
-        balance: parseInt(issueBalance, 10) || 0,
+        balance: Number.parseInt(issueBalance, 10) || 0,
         expiresAt: issueExpiry ? Math.floor(new Date(issueExpiry).getTime() / 1000) : null,
       });
       // Reset form on success — parent handles navigation

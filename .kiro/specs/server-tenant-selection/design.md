@@ -603,7 +603,7 @@ export const Route = createFileRoute("/api/tenants/search")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const q = url.searchParams.get("q") ?? "";
-        const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "10"), 50);
+        const limit = Math.min(Number.parseInt(url.searchParams.get("limit") ?? "10"), 50);
 
         if (q.length < 2) return errJson(400, "Query must be at least 2 characters");
 

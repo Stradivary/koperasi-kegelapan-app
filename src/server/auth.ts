@@ -26,7 +26,7 @@ export function verifyPassword(password: string, stored: string): boolean {
   const colonParts = stored.split(":");
   if (colonParts.length === 3) {
     const [iterStr, saltHex, hashHex] = colonParts;
-    const iterations = parseInt(iterStr, 10);
+    const iterations = Number.parseInt(iterStr, 10);
     if (!Number.isInteger(iterations) || iterations <= 0) return false;
     const safeIterations = Math.min(iterations, 100_000);
     const computed = pbkdf2Sync(

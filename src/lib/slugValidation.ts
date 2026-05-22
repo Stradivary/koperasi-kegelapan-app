@@ -20,9 +20,9 @@ export function createSlug(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/-{2,}/g, "-")
+    .replaceAll(/^-+|-+$/g, "");
 }
 
 /**

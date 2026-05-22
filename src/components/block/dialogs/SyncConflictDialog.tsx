@@ -135,7 +135,7 @@ export function SyncConflictDialog({
                 id="conflict-slug"
                 value={newSlug}
                 onChange={(e) => {
-                  setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                  setNewSlug(e.target.value.toLowerCase().replaceAll(/[^a-z0-9-]/g, ""));
                   setSlugError(null);
                 }}
                 placeholder="slug-baru"
@@ -154,7 +154,7 @@ export function SyncConflictDialog({
                 id="conflict-username"
                 value={newAdminUsername}
                 onChange={(e) => {
-                  setNewAdminUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""));
+                  setNewAdminUsername(e.target.value.toLowerCase().replaceAll(/[^a-z0-9_-]/g, ""));
                   setUsernameError(null);
                 }}
                 placeholder="username-baru"

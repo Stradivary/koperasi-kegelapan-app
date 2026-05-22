@@ -39,7 +39,7 @@ async function pbkdf2(
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    bytes[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
   }
   return bytes;
 }
@@ -73,7 +73,7 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   const colonParts = stored.split(":");
   if (colonParts.length === 3) {
     const [iterStr, saltHex, hashHex] = colonParts;
-    const iterations = parseInt(iterStr, 10);
+    const iterations = Number.parseInt(iterStr, 10);
     if (!Number.isInteger(iterations) || iterations <= 0) return false;
     const safeIterations = Math.min(iterations, 100_000);
     const saltBytes = hexToBytes(saltHex);

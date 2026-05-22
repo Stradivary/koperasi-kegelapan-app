@@ -21,7 +21,7 @@ export interface UIDValidationResult {
  * Strips colons, dashes, and any non-hex characters.
  */
 export function normalizeUID(serialNumber: string): string {
-  return serialNumber.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+  return serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
 }
 
 // ── Validation Functions ───────────────────────────────────────────────

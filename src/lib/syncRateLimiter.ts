@@ -142,7 +142,7 @@ export function handleRateLimitResponse(response: Response): boolean {
   if (response.status !== 429) return false;
 
   const retryAfterHeader = response.headers.get("Retry-After");
-  const retryAfterSeconds = parseInt(retryAfterHeader ?? "5", 10);
+  const retryAfterSeconds = Number.parseInt(retryAfterHeader ?? "5", 10);
 
   // If parsing fails (NaN), default to 5 seconds
   const effectiveSeconds = Number.isNaN(retryAfterSeconds) ? 5 : retryAfterSeconds;

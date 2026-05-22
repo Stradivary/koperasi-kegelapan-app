@@ -38,7 +38,7 @@ export function KioskSection({ tenantId, accountId, deviceId, terminalId }: Kios
 
   async function handleConfirm() {
     if (!state.payload || !grant) return;
-    const amt = parseInt(amount, 10);
+    const amt = Number.parseInt(amount, 10);
     if (amt > MAX_AMOUNT) {
       setTxError(`Maks Rp ${MAX_AMOUNT.toLocaleString("id-ID")}`);
       return;
@@ -82,7 +82,7 @@ export function KioskSection({ tenantId, accountId, deviceId, terminalId }: Kios
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const balance = registerBalance ? parseInt(registerBalance, 10) : state.payload.wallet.balance;
+    const balance = registerBalance ? Number.parseInt(registerBalance, 10) : state.payload.wallet.balance;
 
     const now = Math.floor(Date.now() / 1000);
     try {
@@ -225,7 +225,7 @@ export function KioskSection({ tenantId, accountId, deviceId, terminalId }: Kios
                 <div className="rounded-2xl bg-brand/5 border border-brand/20 p-5 text-center">
                   <p className="type-body1 text-signal-text-secondary">Jumlah pembelian</p>
                   <p className="type-h3 text-brand font-heading mt-1">
-                    Rp {parseInt(amount || "0").toLocaleString("id-ID")}
+                    Rp {Number.parseInt(amount || "0").toLocaleString("id-ID")}
                   </p>
                 </div>
                 {txError && <p className="type-body2 text-signal-error text-center">{txError}</p>}

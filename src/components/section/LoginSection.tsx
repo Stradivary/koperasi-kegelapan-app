@@ -574,7 +574,7 @@ export function LoginSection() {
       onUsernameChange={setUsername}
       onPasswordChange={setPassword}
       onTenantSlugChange={(value) => {
-        setTenantSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+        setTenantSlug(value.toLowerCase().replaceAll(/[^a-z0-9-]/g, ""));
         setSelectedServerTenant(null);
       }}
       onSubmit={handleUnifiedLogin}

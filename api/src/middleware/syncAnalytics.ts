@@ -94,7 +94,7 @@ export const syncAnalytics = createMiddleware<{ Bindings: Env }>(async (c, next)
   const { tenantId, deviceId } = extractTokenInfo(c.req.raw);
 
   // Estimate request body size (Content-Length header or 0)
-  const requestSize = parseInt(c.req.header("content-length") ?? "0", 10);
+  const requestSize = Number.parseInt(c.req.header("content-length") ?? "0", 10);
 
   await next();
 

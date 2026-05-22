@@ -210,7 +210,7 @@ async function pushEntitiesWithRetry(
 
       // 429: rate limited
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get("Retry-After") ?? "5", 10);
+        const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
         console.warn(`[SyncPushEntities] Rate limited, retry after ${retryAfter}s`);
         await sleep(Math.min(retryAfter * 1000, 120_000));
         continue;

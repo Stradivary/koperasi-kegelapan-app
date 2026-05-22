@@ -123,7 +123,7 @@ test.describe("Station — card management", () => {
 test.describe("Scout — balance check (no NFC on desktop)", () => {
   test("scout page shows scan button", async ({ page }: any) => {
     await login(page, `${TENANT_A}-station`); // station can access scout-like views
-    await page.goto(page.url().replace("/station", "/scout"));
+    await page.goto(page.url().replaceAll("/station", "/scout"));
     // Scout page should render even without NFC hardware
     await expect(page.getByText(/Cek Saldo|Tempelkan/i)).toBeVisible();
   });

@@ -59,12 +59,12 @@ function roleToOps(role: string): string[] {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCodePoint(bytes[i]);
   return btoa(bin);
 }
 
 function base64ToBytes(b64: string): Uint8Array {
-  const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const std = b64.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
   const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
   const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
