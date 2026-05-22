@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { cn, setDeviceSetupLaunchContext, consumeDeviceSetupLaunchContext } from "../utils";
+import {
+  cn,
+  setDeviceSetupLaunchContext,
+  consumeDeviceSetupLaunchContext,
+} from "#/presentation/lib/utils";
 
 describe("cn", () => {
   it("merges class names", () => {
@@ -7,7 +11,7 @@ describe("cn", () => {
   });
 
   it("handles conditional classes", () => {
-    const stateHidden = false
+    const stateHidden = false;
     expect(cn("base", stateHidden && "hidden", "visible")).toBe("base visible");
   });
 

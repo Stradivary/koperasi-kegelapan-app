@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -12,9 +12,11 @@ const config = defineConfig({
     devtools(),
     basicSsl(),
     tailwindcss(),
-    tanstackRouter(),
-    viteReact(),
     svgr(),
+    tanstackRouter({
+      routesDirectory: "src/presentation/routes",
+    }),
+    viteReact(),
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
@@ -133,7 +135,7 @@ const config = defineConfig({
         enabled: process.env.PWA_DEV === "1",
       },
     }),
-  ],
+  ] as PluginOption[],
 
   resolve: {
     dedupe: ["react", "react-dom"],

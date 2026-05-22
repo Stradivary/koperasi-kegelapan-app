@@ -1,7 +1,7 @@
 ﻿import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
-import { getContext } from "./integrations/tanstack-query/root-provider";
+import { getContext } from "#/presentation/providers/tanstack-query/root-provider";
 import { createRoot } from "react-dom/client";
 import { initDeviceIdFromStorage } from "#/infrastructure/device/initDeviceId";
 import { setQueryClient } from "#/infrastructure/api/realTimeSync";
