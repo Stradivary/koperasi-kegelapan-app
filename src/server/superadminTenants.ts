@@ -1,5 +1,5 @@
-import { getDb } from "#/db";
-import { tenants, accounts } from "#/db/schema";
+﻿import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { tenants, accounts } from "#/infrastructure/persistence/drizzle/schema";
 import { eq, sql, like, or, desc, count } from "drizzle-orm";
 import {
   validateSlug,
@@ -9,7 +9,7 @@ import {
   buildConflictResult,
   type ValidationError,
 } from "./tenantSync";
-import { hashPassword } from "./auth";
+import { hashPassword } from "#/domain/auth/authRules";
 
 // Import types and constants from the shared types file
 import type {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side sync pull logic.
  *
  * Reads current sync cursors from IndexedDB, calls GET /api/sync/pull,
@@ -12,10 +12,15 @@
  * @see Requirements 7.1, 7.4, 7.5, 7.6, 7.9, 7.10
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
-import { isDeviceBlocked } from "./deviceBlock";
-import { localDb } from "../db/local-db";
-import type { User, Card, TransactionLog } from "../db/local-db";
+import {
+  apiFetch,
+  API_BASE_URL,
+  DeviceBlockedError,
+  getAccessToken,
+} from "#/infrastructure/api/apiClient";
+import { isDeviceBlocked } from "#/infrastructure/api/deviceBlock";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
+import type { User, Card, TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Constants ──────────────────────────────────────────────────────────
 

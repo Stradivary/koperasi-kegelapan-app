@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
-import { accounts } from "#/db/schema";
-import { hashPassword, generateId } from "#/server/auth";
+import { accounts } from "#/infrastructure/persistence/drizzle/schema";
+import { hashPassword, generateId } from "#/domain/auth/authRules";
 
 type Env = {
   DB: D1Database;

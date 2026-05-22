@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side sync push logic.
  *
  * Reads pending Outbox entries from IndexedDB, batches them (max 500),
@@ -13,10 +13,18 @@
  * @see Requirements 2.5, 3.4, 3.8, 6.1, 6.2, 6.5, 6.7, 6.8
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
-import { isDeviceBlocked } from "./deviceBlock";
-import { getSyncableEntries, updateSyncStatus } from "./transactionLogService";
-import type { TransactionLog } from "../db/local-db";
+import {
+  apiFetch,
+  API_BASE_URL,
+  DeviceBlockedError,
+  getAccessToken,
+} from "#/infrastructure/api/apiClient";
+import { isDeviceBlocked } from "#/infrastructure/api/deviceBlock";
+import {
+  getSyncableEntries,
+  updateSyncStatus,
+} from "#/infrastructure/persistence/dexie/transactionLogService";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Constants ──────────────────────────────────────────────────────────
 

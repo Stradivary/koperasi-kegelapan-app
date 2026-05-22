@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+﻿import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 import {
   RefreshCw,
@@ -16,8 +16,8 @@ import {
   reconciliationOutbox,
   type TenantContext,
   type LocalTenantConfig,
-} from "../../lib/indexeddb";
-import { API_BASE_URL } from "../../lib/api";
+} from "#/infrastructure/persistence/dexie/indexeddb";
+import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";

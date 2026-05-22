@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { tenantContextStore, type TenantContext } from "../lib/indexeddb";
-import { getDeviceFingerprint } from "../lib/getOrCreateDeviceId";
-import { restoreAuthState } from "../lib/api";
+import {
+  tenantContextStore,
+  type TenantContext,
+} from "#/infrastructure/persistence/dexie/indexeddb";
+import { getDeviceFingerprint } from "#/infrastructure/device/getOrCreateDeviceId";
+import { restoreAuthState } from "#/infrastructure/api/apiClient";
 import { LoadingState } from "../components/block/LoadingState";
 
 function getRoleRoute(tenantId: string, role: string): string {

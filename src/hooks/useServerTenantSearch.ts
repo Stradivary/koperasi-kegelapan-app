@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { API_BASE_URL } from "../lib/api";
+﻿import { useEffect, useRef, useState } from "react";
+import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 export interface TenantSearchResult {
   tenantId: string;
   slug: string;

@@ -1,7 +1,7 @@
-import { getDb } from "#/db";
-import { tenants, accounts } from "#/db/schema";
+﻿import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { tenants, accounts } from "#/infrastructure/persistence/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
-import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/slugValidation";
+import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/domain/validation/slugValidation";
 
 export interface SyncRequest {
   slug: string;

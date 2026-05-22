@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import {
   tenants,
   accounts,
@@ -11,7 +11,7 @@ import {
   transactionLog,
   syncCursors,
   cardEvents,
-} from "./schema";
+} from "#/infrastructure/persistence/drizzle/schema";
 
 describe("schema", () => {
   it("exports tenants table", () => {

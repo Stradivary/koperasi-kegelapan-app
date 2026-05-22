@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { addSyncLog, getSyncLogs, clearSyncLogs, subscribeSyncLogs } from "../syncLogStore";
+﻿import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  addSyncLog,
+  getSyncLogs,
+  clearSyncLogs,
+  subscribeSyncLogs,
+} from "#/infrastructure/persistence/dexie/syncLogStore";
 
 describe("syncLogStore", () => {
   beforeEach(() => {

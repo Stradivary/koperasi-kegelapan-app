@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, ne } from "drizzle-orm";
-import { cards, cardEvents } from "../../../src/db/schema";
+import { cards, cardEvents } from "#/infrastructure/persistence/drizzle/schema";
 
 type Env = {
   DB: D1Database;

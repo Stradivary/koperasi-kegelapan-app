@@ -1,7 +1,7 @@
-import { eq, and, isNull, gt, asc } from "drizzle-orm";
+﻿import { eq, and, isNull, gt, asc } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
-import { authSessions } from "#/db/schema";
-import type { AuthSession } from "#/db/schema";
+import { authSessions } from "#/infrastructure/persistence/drizzle/schema";
+import type { AuthSession } from "#/infrastructure/persistence/drizzle/schema";
 
 /** Maximum concurrent sessions allowed per account within a tenant. */
 const MAX_SESSIONS_PER_ACCOUNT = 5;

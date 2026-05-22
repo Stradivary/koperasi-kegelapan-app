@@ -114,9 +114,7 @@ export function clearRateLimitState(): void {
 /**
  * Subscribe to rate limit state changes. Returns an unsubscribe function.
  */
-export function subscribeToRateLimit(
-  listener: (state: RateLimitState) => void,
-): () => void {
+export function subscribeToRateLimit(listener: (state: RateLimitState) => void): () => void {
   _listeners.add(listener);
   return () => {
     _listeners.delete(listener);

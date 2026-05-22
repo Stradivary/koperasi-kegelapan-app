@@ -6,7 +6,7 @@ import {
   generateSessionKey,
   signGrantPayload,
   nowSeconds,
-} from "../auth";
+} from "#/domain/auth/authRules";
 
 describe("auth", () => {
   describe("hashPassword", () => {

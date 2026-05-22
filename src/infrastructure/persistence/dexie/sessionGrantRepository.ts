@@ -13,9 +13,9 @@
  * device can reach the server to get a "real" grant.
  */
 
-import type { SessionGrant } from "../core/payload/types";
+import type { SessionGrant } from "#/core/payload/types";
 import { sessionGrantCacheStore, type CachedSessionGrant } from "./indexeddb";
-import { roleToOps } from "./roleOps";
+import { roleToOps } from "#/domain/auth/roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
 const LOCAL_MASTER_KEY = "dev-insecure-master-key-change-in-prod-32b";

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the database module
 const mockGet = vi.fn();
@@ -37,7 +37,7 @@ const makeUpdateWhereChain = () => ({ run: mockRun });
 const makeUpdateSetChain = () => ({ where: vi.fn(() => makeUpdateWhereChain()) });
 const makeUpdateChain = () => ({ set: vi.fn(() => makeUpdateSetChain()) });
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => makeFromChain()),

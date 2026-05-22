@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   notifyCheckin,
   verifyCheckinSynced,
@@ -6,12 +6,12 @@ import {
   setActiveTenantId,
   registerTriggerSync,
   peerSyncCoordinator,
-} from "../peerSyncCoordinator";
-import type { TransactionLog } from "../../db/local-db";
+} from "#/infrastructure/sync/peerSyncCoordinator";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("../../db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const mockWhere = vi.fn();
   const mockBetween = vi.fn();
   const mockFilter = vi.fn();
@@ -42,7 +42,7 @@ vi.mock("../syncPush", () => ({
   }),
 }));
 
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { syncPush } from "../syncPush";
 
 // ── Helpers ────────────────────────────────────────────────────────────

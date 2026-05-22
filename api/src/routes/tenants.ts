@@ -1,10 +1,8 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq, like, or, asc, sql } from "drizzle-orm";
-import { tenants, accounts } from "../../../src/db/schema";
-import {
-  validateSyncRequest,
-} from "../../../src/server/tenantSync";
+import { tenants, accounts } from "#/infrastructure/persistence/drizzle/schema";
+import { validateSyncRequest } from "../../../src/server/tenantSync";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 

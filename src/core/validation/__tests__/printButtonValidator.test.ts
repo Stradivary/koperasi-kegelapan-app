@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for PrintButtonValidator
  *
  * Tests the evaluatePrintEligibilitySync function which contains the core
@@ -9,9 +9,9 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { evaluatePrintEligibilitySync, evaluatePrintEligibility } from "../printButtonValidator";
-import type { Card } from "../../../db/local-db";
+import type { Card } from "#/infrastructure/persistence/dexie/localDb";
 
-vi.mock("../../../db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("../../../db/local-db", () => ({
   },
 }));
 
-import { localDb } from "../../../db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 
 // ---------------------------------------------------------------------------
 // Helpers

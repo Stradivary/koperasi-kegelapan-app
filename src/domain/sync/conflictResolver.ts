@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sync Conflict Resolution Module.
  *
  * Implements conflict resolution strategies for the bidirectional sync engine:
@@ -13,8 +13,8 @@
  */
 
 import { toast } from "sonner";
-import { localDb, type User, type Card } from "../db/local-db";
-import { syncPull, SyncPullError } from "./syncPull";
+import { localDb, type User, type Card } from "#/infrastructure/persistence/dexie/localDb";
+import { syncPull, SyncPullError } from "#/lib/syncPull";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

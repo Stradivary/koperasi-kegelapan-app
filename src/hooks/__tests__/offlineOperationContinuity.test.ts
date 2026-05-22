@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 /**
  * Offline Operation Continuity Tests
  *
@@ -16,7 +16,7 @@ import { renderHook, act } from "@testing-library/react";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("../../lib/indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   sessionGrantCacheStore: {
     get: vi.fn(),
     put: vi.fn(),
@@ -35,32 +35,32 @@ vi.mock("../../lib/indexeddb", () => ({
     `${tenantId}:${cardIdHex}:${counter}`,
 }));
 
-vi.mock("../../lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "http://localhost:3000",
 }));
 
-vi.mock("../../lib/localSessionGrant", () => ({
+vi.mock("#/infrastructure/persistence/dexie/sessionGrantRepository", () => ({
   issueAndCacheLocalSessionGrant: vi.fn(),
 }));
 
-vi.mock("../../lib/syncPush", () => ({
+vi.mock("#/lib/syncPush", () => ({
   syncPush: vi.fn(),
 }));
 
-vi.mock("../../lib/syncPull", () => ({
+vi.mock("#/lib/syncPull", () => ({
   syncPull: vi.fn(),
 }));
 
-vi.mock("../../lib/deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("../../lib/transactionLogService", () => ({
+vi.mock("#/infrastructure/persistence/dexie/transactionLogService", () => ({
   getSyncableEntries: vi.fn().mockResolvedValue([]),
   recordTransaction: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../lib/syncPushEntities", () => ({
+vi.mock("#/lib/syncPushEntities", () => ({
   syncPushEntities: vi.fn(),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
@@ -74,10 +74,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { sessionGrantCacheStore, reconciliationOutbox } from "../../lib/indexeddb";
-import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
-import { syncPush } from "../../lib/syncPush";
-import { syncPull } from "../../lib/syncPull";
+import {
+  sessionGrantCacheStore,
+  reconciliationOutbox,
+} from "#/infrastructure/persistence/dexie/indexeddb";
+import { issueAndCacheLocalSessionGrant } from "#/infrastructure/persistence/dexie/sessionGrantRepository";
+import { syncPush } from "#/lib/syncPush";
+import { syncPull } from "#/lib/syncPull";
 import { useSessionGrant, OFFLINE_GRACE_PERIOD_SECONDS } from "../useSessionGrant";
 import { useSyncEngine } from "../useSyncEngine";
 
@@ -331,7 +334,7 @@ describe("Offline Operation Continuity", () => {
       // checkLocalBlockedStatus uses localDb.cards.get([tenantId, normalizedSerial])
       // which is a direct primary key lookup (O(1) via B-tree index).
 
-      const { checkLocalBlockedStatus } = await import("../../core/nfc/localStatusCheck");
+      const { checkLocalBlockedStatus } = await import("#/core/nfc/localStatusCheck");
 
       // The function signature accepts tenantId and serialNumber
       expect(typeof checkLocalBlockedStatus).toBe("function");

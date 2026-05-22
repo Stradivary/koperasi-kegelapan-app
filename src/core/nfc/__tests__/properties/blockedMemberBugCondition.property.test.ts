@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bug Condition Exploration Property-Based Tests
  *
  * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkLocalBlockedStatus } from "../../localStatusCheck";
 
 // Mock the local-db module
-vi.mock("../../../../db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const cardsStore = new Map<string, any>();
   const usersStore = new Map<string, any>();
 
@@ -47,7 +47,7 @@ vi.mock("../../../../db/local-db", () => {
 });
 
 // Import the mocked module to access test stores
-import { localDb } from "../../../../db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 
 const cardsStore = (localDb as any).__cardsStore as Map<string, any>;
 const usersStore = (localDb as any).__usersStore as Map<string, any>;

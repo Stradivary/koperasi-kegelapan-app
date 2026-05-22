@@ -1,8 +1,8 @@
 import { CheckCircle2 } from "lucide-react";
 import failedImg from "../../../assets/images/nfc/failed.svg";
-import type { CardPayload } from "../../../core/payload/types";
-import { CardState, CardStatus } from "../../../core/payload/types";
-import type { NfcPhase } from "../../../core/nfc/stateMachine";
+import type { CardPayload } from "#/core/payload/types";
+import { CardState, CardStatus } from "#/core/payload/types";
+import type { NfcPhase } from "#/core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,

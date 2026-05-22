@@ -38,7 +38,7 @@ export async function generateDeviceFingerprint(): Promise<DeviceFingerprint> {
     typeof crypto.subtle.digest !== "function"
   ) {
     throw new Error(
-      "Web Crypto API is not available. Your browser does not support the required security features for device authentication."
+      "Web Crypto API is not available. Your browser does not support the required security features for device authentication.",
     );
   }
 
@@ -48,9 +48,7 @@ export async function generateDeviceFingerprint(): Promise<DeviceFingerprint> {
   const language = navigator.language;
   const platform = navigator.platform;
 
-  const raw = [userAgent, screenResolution, timezone, language, platform].join(
-    "|"
-  );
+  const raw = [userAgent, screenResolution, timezone, language, platform].join("|");
 
   const encoded = new TextEncoder().encode(raw);
   const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);

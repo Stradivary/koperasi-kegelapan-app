@@ -1,4 +1,4 @@
-import { CardStatus } from "../../core/payload/types";
+import { CardStatus } from "#/core/payload/types";
 
 const STATUS_LABELS: Record<number, string> = {
   [CardStatus.ACTIVE]: "Active",

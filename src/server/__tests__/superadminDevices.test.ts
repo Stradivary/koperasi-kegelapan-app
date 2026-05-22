@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for superadmin device management API routes.
  *
  * Tests validation logic, auth enforcement, and error handling for:
@@ -72,7 +72,7 @@ vi.mock("#/server/superadminAuth", () => ({
   isAuthError: (result: unknown) => result instanceof Response,
 }));
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
@@ -88,7 +88,7 @@ vi.mock("#/db", () => ({
   })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   devices: {
     deviceId: "device_id",
   },

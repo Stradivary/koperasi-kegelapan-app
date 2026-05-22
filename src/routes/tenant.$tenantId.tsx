@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SyncEngineProvider } from "../hooks/SyncEngineContext";
-import { tenantContextStore } from "../lib/indexeddb";
+import { tenantContextStore } from "#/infrastructure/persistence/dexie/indexeddb";
 
 export const Route = createFileRoute("/tenant/$tenantId")({
   component: TenantLayout,
@@ -19,7 +19,9 @@ function TenantLayout() {
         setIsAuthenticated(!!ctx);
       }
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [tenantId]);
 
   return (

@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock deviceBlock module
-vi.mock("../deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
   checkDeviceBlockResponse: vi.fn().mockResolvedValue(false),
 }));
 
 // Mock indexeddb module
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   authTokenCacheStore: {
     put: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),
@@ -26,9 +26,9 @@ import {
   apiFetch,
   DeviceBlockedError,
   restoreAuthState,
-} from "../api";
-import { isDeviceBlocked, checkDeviceBlockResponse } from "../deviceBlock";
-import { authTokenCacheStore } from "../indexeddb";
+} from "#/infrastructure/api/apiClient";
+import { isDeviceBlocked, checkDeviceBlockResponse } from "#/infrastructure/api/deviceBlock";
+import { authTokenCacheStore } from "#/infrastructure/persistence/dexie/indexeddb";
 
 describe("api module", () => {
   let mockLocalStorage: Record<string, string>;

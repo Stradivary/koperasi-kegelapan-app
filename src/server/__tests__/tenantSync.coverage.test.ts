@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Coverage tests for tenantSync.ts — processTenantSync and its conflict/race paths.
  */
 
@@ -10,7 +10,7 @@ const getQueue: Array<unknown> = [];
 const mockBatch = vi.fn();
 const mockGet = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn().mockReturnThis(),

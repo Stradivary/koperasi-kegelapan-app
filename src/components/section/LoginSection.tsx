@@ -1,23 +1,26 @@
-import { useNavigate } from "@tanstack/react-router";
+﻿import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import {
   tenantContextStore,
   localTenantConfigStore,
   type LocalTenantConfig,
-} from "../../lib/indexeddb";
-import { localLoginWithReason, cacheServerCredentials } from "../../lib/localTenant";
-import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
-import { localDb } from "../../db/local-db";
-import { BRAND } from "../../lib/brand";
+} from "#/infrastructure/persistence/dexie/indexeddb";
+import {
+  localLoginWithReason,
+  cacheServerCredentials,
+} from "#/infrastructure/persistence/dexie/tenantRepository";
+import { getDeviceFingerprint } from "#/infrastructure/device/getOrCreateDeviceId";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
+import { BRAND } from "#/lib/brand";
 import {
   API_BASE_URL,
   setCurrentDeviceId,
   setAccessToken,
   restoreAuthState,
   getAccessToken,
-} from "../../lib/api";
-import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
-import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "../../lib/utils";
+} from "#/infrastructure/api/apiClient";
+import { issueAndCacheLocalSessionGrant } from "#/infrastructure/persistence/dexie/sessionGrantRepository";
+import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "#/lib/utils";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";

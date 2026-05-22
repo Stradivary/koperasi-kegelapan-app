@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { cn } from "../../lib/utils";
+import { cn } from "#/lib/utils";
 import { DataTable } from "./data-table";
 import type { StationCardRow } from "./StationCardsPanel";
 
@@ -197,7 +197,9 @@ export function StationCardListPanel({
                   variant={isBlocked ? "destructive" : "default"}
                   className="text-[10px] px-1.5 py-0"
                 >
-                  {card.status === "active" ? "Aktif" : card.status.replaceAll("blocked_", "Blokir ")}
+                  {card.status === "active"
+                    ? "Aktif"
+                    : card.status.replaceAll("blocked_", "Blokir ")}
                 </Badge>
                 <span className="text-sm font-semibold text-emerald-600">
                   Rp {card.balance?.toLocaleString("id-ID")}

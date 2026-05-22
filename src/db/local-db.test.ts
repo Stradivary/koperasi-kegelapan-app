@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+﻿import { describe, it, expect, vi } from "vitest";
 
 // Mock Dexie to avoid actual IndexedDB operations
 vi.mock("dexie", () => {
@@ -39,7 +39,7 @@ vi.mock("dexie", () => {
   return { default: MockDexie };
 });
 
-import { localDb } from "./local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import type {
   User,
   Card,
@@ -48,7 +48,7 @@ import type {
   TransactionLog,
   SyncCursor,
   DeviceInfo,
-} from "./local-db";
+} from "#/infrastructure/persistence/dexie/localDb";
 
 describe("local-db", () => {
   it("exports localDb instance", () => {

@@ -1,5 +1,5 @@
-import { getDb } from "#/db";
-import { tenants } from "#/db/schema";
+﻿import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { tenants } from "#/infrastructure/persistence/drizzle/schema";
 import { and, eq, like, or, asc } from "drizzle-orm";
 
 export interface TenantSearchResult {

@@ -1,5 +1,5 @@
-import { getDb } from "#/db";
-import { accounts } from "#/db/schema";
+﻿import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { accounts } from "#/infrastructure/persistence/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface SuperadminAccount {

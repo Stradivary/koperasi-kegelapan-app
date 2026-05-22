@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { requireSuperadmin, isAuthError } from "#/server/superadminAuth";
 import {
   listTenants,
@@ -13,8 +13,8 @@ import {
   changeAccountPassword,
   updateAccountStatus,
 } from "#/server/superadminAccounts";
-import { getDb } from "#/db";
-import { devices } from "#/db/schema";
+import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { devices } from "#/infrastructure/persistence/drizzle/schema";
 import { eq } from "drizzle-orm";
 import {
   getDevicesByTenant,

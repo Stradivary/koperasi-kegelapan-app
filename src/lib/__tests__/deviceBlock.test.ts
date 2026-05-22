@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getDeviceBlockState,
   isDeviceBlocked,
@@ -9,10 +9,10 @@ import {
   subscribeToDeviceBlock,
   onDeviceUnblock,
   setupBlockVisibilityHandler,
-} from "../deviceBlock";
+} from "#/infrastructure/api/deviceBlock";
 
 // Mock the indexeddb module to avoid actual IndexedDB operations in tests
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn().mockResolvedValue([]),
     delete: vi.fn().mockResolvedValue(undefined),

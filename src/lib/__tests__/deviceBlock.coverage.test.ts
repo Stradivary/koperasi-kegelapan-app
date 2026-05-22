@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Coverage tests for deviceBlock.ts — clearSessionGrantCache paths
  * and scheduleUnblock timer replacement.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn().mockResolvedValue([]),
     delete: vi.fn().mockResolvedValue(undefined),
@@ -17,7 +17,7 @@ import {
   clearBlockState,
   getDeviceBlockState,
   isDeviceBlocked,
-} from "../deviceBlock";
+} from "#/infrastructure/api/deviceBlock";
 
 // ---------------------------------------------------------------------------
 // Helpers — build a minimal fake IndexedDB
@@ -261,7 +261,7 @@ describe("handleDeviceBlocked — clearAuthState paths", () => {
   });
 
   it("deletes specific tenant context when tenantId is provided", async () => {
-    const { tenantContextStore } = await import("../indexeddb");
+    const { tenantContextStore } = await import("#/infrastructure/persistence/dexie/indexeddb");
     vi.mocked(tenantContextStore.delete).mockResolvedValue(undefined);
 
     const futureTime = Math.floor(Date.now() / 1000) + 3600;
@@ -271,7 +271,7 @@ describe("handleDeviceBlocked — clearAuthState paths", () => {
   });
 
   it("clears all tenant contexts when no tenantId is provided", async () => {
-    const { tenantContextStore } = await import("../indexeddb");
+    const { tenantContextStore } = await import("#/infrastructure/persistence/dexie/indexeddb");
     vi.mocked(tenantContextStore.getAll).mockResolvedValue([
       { tenantId: "t1" } as never,
       { tenantId: "t2" } as never,

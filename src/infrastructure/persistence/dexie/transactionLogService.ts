@@ -1,4 +1,4 @@
-import { localDb, type TransactionLog } from "../db/local-db";
+import { localDb, type TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -26,15 +26,16 @@ export type TransactionInput = Omit<TransactionLog, "id" | "syncStatus" | "synce
 
 export class DuplicateTransactionError extends Error {
   constructor(tenantId: string, cardId: string, counter: number) {
-    super(
-      `Duplicate transaction: [tenantId=${tenantId}, cardId=${cardId}, counter=${counter}]`,
-    );
+    super(`Duplicate transaction: [tenantId=${tenantId}, cardId=${cardId}, counter=${counter}]`);
     this.name = "DuplicateTransactionError";
   }
 }
 
 export class TransactionWriteError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "TransactionWriteError";
   }
@@ -83,10 +84,7 @@ export async function recordTransaction(entry: TransactionInput): Promise<Transa
     }
   }
 
-  throw new TransactionWriteError(
-    "Failed to persist transaction after retry",
-    lastError,
-  );
+  throw new TransactionWriteError("Failed to persist transaction after retry", lastError);
 }
 
 /**

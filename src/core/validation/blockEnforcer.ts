@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BlockEnforcer — Enforces card block status on all operations (online & offline).
  *
  * Checks both on-card status AND local IndexedDB record. Rejects if either is blocked.
@@ -8,7 +8,7 @@
  */
 
 import { CardStatus } from "../payload/types";
-import { localDb, type Card } from "../../db/local-db";
+import { localDb, type Card } from "#/infrastructure/persistence/dexie/localDb";
 
 /** Result of a block check */
 export interface BlockCheckResult {

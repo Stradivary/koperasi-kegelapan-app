@@ -1,6 +1,6 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { generateDeviceFingerprint } from "../deviceFingerprint";
+import { generateDeviceFingerprint } from "#/infrastructure/device/fingerprint";
 
 describe("generateDeviceFingerprint", () => {
   const mockUserAgent = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36";
@@ -37,7 +37,7 @@ describe("generateDeviceFingerprint", () => {
       () =>
         ({
           resolvedOptions: () => ({ timeZone: mockTimezone }),
-        }) as unknown as Intl.DateTimeFormat
+        }) as unknown as Intl.DateTimeFormat,
     );
   });
 
@@ -93,9 +93,7 @@ describe("generateDeviceFingerprint", () => {
       configurable: true,
     });
 
-    await expect(generateDeviceFingerprint()).rejects.toThrow(
-      "Web Crypto API is not available"
-    );
+    await expect(generateDeviceFingerprint()).rejects.toThrow("Web Crypto API is not available");
 
     // Restore
     Object.defineProperty(globalThis, "crypto", {

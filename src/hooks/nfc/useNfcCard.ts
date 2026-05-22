@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { prepareWrite } from "../../core/nfc/pipelineEngine";
-import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../../core/nfc/engine";
-import type { CardPayload, SessionGrant } from "../../core/payload/types";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { isNfcSupported, extractCardBytes, friendlyWriteError } from "#/core/nfc/engine";
+import type { CardPayload, SessionGrant } from "#/core/payload/types";
 import { decodeAndValidateCard } from "./cardValidation";
 import { UNREGISTERED_CARD_MESSAGE } from "./cardValidation";
 import { verifyWrittenPayload } from "./writeVerification";

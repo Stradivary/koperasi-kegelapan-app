@@ -1,10 +1,10 @@
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+﻿import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 import { getContext } from "./integrations/tanstack-query/root-provider";
 import { createRoot } from "react-dom/client";
-import { initDeviceIdFromStorage } from "./lib/initDeviceId";
-import { setQueryClient } from "./lib/realTimeSync";
+import { initDeviceIdFromStorage } from "#/infrastructure/device/initDeviceId";
+import { setQueryClient } from "#/infrastructure/api/realTimeSync";
 import "./styles.css";
 
 // Restore deviceId from IndexedDB into the API client's in-memory cache.

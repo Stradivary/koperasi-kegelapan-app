@@ -4,7 +4,7 @@ import {
   validateSlugFormat,
   SLUG_MIN_LENGTH,
   SLUG_MAX_LENGTH,
-} from "../slugValidation";
+} from "#/domain/validation/slugValidation";
 
 describe("slugValidation", () => {
   describe("createSlug", () => {

@@ -1,7 +1,7 @@
-import { getDb } from "#/db";
-import { accounts, tenants } from "#/db/schema";
+﻿import { getDb } from "#/infrastructure/persistence/drizzle/index";
+import { accounts, tenants } from "#/infrastructure/persistence/drizzle/schema";
 import { eq, sql, like, or, desc, count } from "drizzle-orm";
-import { hashPassword, generateId } from "./auth";
+import { hashPassword, generateId } from "#/domain/auth/authRules";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

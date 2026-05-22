@@ -1,5 +1,5 @@
-import { localDb } from "../../db/local-db";
-import { API_BASE_URL, apiFetch } from "../../lib/api";
+﻿import { localDb } from "#/infrastructure/persistence/dexie/localDb";
+import { API_BASE_URL, apiFetch } from "#/infrastructure/api/apiClient";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

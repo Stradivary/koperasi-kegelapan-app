@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Local-only tenant management.
  *
  * Provides PBKDF2-based account auth, tenant setup, and AES-GCM encrypted
@@ -11,7 +11,7 @@ import {
   type LocalAccount,
   type LocalTenantConfig,
 } from "./indexeddb";
-import { createSlug, validateSlugFormat } from "./slugValidation";
+import { createSlug, validateSlugFormat } from "#/domain/validation/slugValidation";
 
 const PBKDF2_ITERATIONS = 100_000;
 const PBKDF2_HASH = "SHA-256";
@@ -79,7 +79,7 @@ export async function isLocalSlugTaken(slug: string): Promise<boolean> {
  */
 export async function isRemoteSlugTaken(slug: string): Promise<boolean> {
   try {
-    const { API_BASE_URL } = await import("./api");
+    const { API_BASE_URL } = await import("#/infrastructure/api/apiClient");
     const res = await fetch(
       `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(slug)}&limit=10`,
     );

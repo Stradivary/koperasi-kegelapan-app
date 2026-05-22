@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side sync push logic for members and cards.
  *
  * Reads pending User and Card entries from IndexedDB (syncStatus === "pending"),
@@ -8,11 +8,16 @@
  * This complements syncPush.ts which handles transactions only.
  */
 
-import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
-import { isDeviceBlocked } from "./deviceBlock";
-import { localDb } from "../db/local-db";
-import type { User, Card } from "../db/local-db";
-import { addSyncLog } from "./syncLogStore";
+import {
+  apiFetch,
+  API_BASE_URL,
+  DeviceBlockedError,
+  getAccessToken,
+} from "#/infrastructure/api/apiClient";
+import { isDeviceBlocked } from "#/infrastructure/api/deviceBlock";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
+import type { User, Card } from "#/infrastructure/persistence/dexie/localDb";
+import { addSyncLog } from "#/infrastructure/persistence/dexie/syncLogStore";
 
 // ── Constants ──────────────────────────────────────────────────────────
 

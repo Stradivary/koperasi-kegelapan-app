@@ -2,7 +2,7 @@
   x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
      ,-[src/hooks/useUnifiedNfc.ts:105:25]
  104 |   if (!pipelineResult.ok) {
- 105 |     const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+ 105 |     const payloadError: import("#/core/nfc/payloadTypes").PayloadError = {
      :                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  106 |       code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
      `----

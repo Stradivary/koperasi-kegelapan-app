@@ -1,15 +1,15 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { initDeviceIdFromStorage } from "../initDeviceId";
-import { setCurrentDeviceId, getCurrentDeviceId } from "../api";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { initDeviceIdFromStorage } from "#/infrastructure/device/initDeviceId";
+import { setCurrentDeviceId, getCurrentDeviceId } from "#/infrastructure/api/apiClient";
 
 // Mock the indexeddb module
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn(),
   },
 }));
 
-import { tenantContextStore } from "../indexeddb";
+import { tenantContextStore } from "#/infrastructure/persistence/dexie/indexeddb";
 
 describe("initDeviceIdFromStorage", () => {
   beforeEach(() => {

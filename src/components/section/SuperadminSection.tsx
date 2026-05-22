@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
 import { ChangePasswordDialog } from "../block/dialogs/ChangePasswordDialog";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
-import { API_BASE_URL } from "#/lib/api";
+import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

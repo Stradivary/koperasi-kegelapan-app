@@ -1,7 +1,7 @@
-import { createMiddleware } from "hono/factory";
+﻿import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
-import { devices } from "#/db/schema";
+import { devices } from "#/infrastructure/persistence/drizzle/schema";
 import { extractDeviceIdFromToken } from "../lib/tokenExtract";
 
 type Env = {
@@ -45,10 +45,7 @@ export const deviceBlockCheck = createMiddleware<{ Bindings: Env }>(async (c, ne
 
   // Check if device is currently blocked
   if (device.blockedUntil !== null && device.blockedUntil > now) {
-    return c.json(
-      { error: "device_blocked", blockedUntil: device.blockedUntil },
-      403,
-    );
+    return c.json({ error: "device_blocked", blockedUntil: device.blockedUntil }, 403);
   }
 
   // Device is not blocked (or block has expired) — proceed

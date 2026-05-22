@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sync Engine orchestrator hook.
  *
  * Manages bidirectional sync lifecycle with debouncing, queuing,
@@ -9,13 +9,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { syncPush } from "../lib/syncPush";
-import { syncPushEntities } from "../lib/syncPushEntities";
-import { syncPull } from "../lib/syncPull";
-import { isDeviceBlocked } from "../lib/deviceBlock";
-import { getSyncableEntries } from "../lib/transactionLogService";
-import { getPendingEntityCount } from "../lib/syncPushEntities";
-import { addSyncLog } from "../lib/syncLogStore";
+import { syncPush } from "#/lib/syncPush";
+import { syncPushEntities } from "#/lib/syncPushEntities";
+import { syncPull } from "#/lib/syncPull";
+import { isDeviceBlocked } from "#/infrastructure/api/deviceBlock";
+import { getSyncableEntries } from "#/infrastructure/persistence/dexie/transactionLogService";
+import { getPendingEntityCount } from "#/lib/syncPushEntities";
+import { addSyncLog } from "#/infrastructure/persistence/dexie/syncLogStore";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
-import type { LogEntry } from "../../core/payload/types";
-import { TxType } from "../../core/payload/types";
+import type { LogEntry } from "#/core/payload/types";
+import { TxType } from "#/core/payload/types";
 
 interface TransactionListProps {
   entries: LogEntry[];

@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
-import { accounts, tenants } from "#/db/schema";
+import { accounts, tenants } from "#/infrastructure/persistence/drizzle/schema";
 import { registerDevice } from "#/server/deviceRegistry";
 import { createSession } from "#/server/authSession";
 

@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useCallback } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Separator } from "../components/ui/separator";
 import { makeFreshCard } from "../components/section/IssuanceTestSection";
-import { prepareWrite } from "../core/nfc/pipelineEngine";
-import { encodePayloadWire } from "../core/payload/engine";
-import type { SessionGrant } from "../core/payload/types";
-import { API_BASE_URL } from "../lib/api";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { encodePayloadWire } from "#/core/payload/engine";
+import type { SessionGrant } from "#/core/payload/types";
+import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Hook that provides "Sync to Server" functionality for admin layout routes.
  * Returns onSyncToServer callback and isSyncingToServer state only when
  * the tenant is local-only (mode !== "synced").
@@ -17,10 +17,10 @@ import {
   localTenantConfigStore,
   localAccountStore,
   type LocalTenantConfig,
-} from "../lib/indexeddb";
+} from "#/infrastructure/persistence/dexie/indexeddb";
 import { useTenantSync, type SyncConflict } from "./useTenantSync";
-import { syncPushMembers, syncPushCards } from "../lib/syncPushEntities";
-import { syncPush } from "../lib/syncPush";
+import { syncPushMembers, syncPushCards } from "#/lib/syncPushEntities";
+import { syncPush } from "#/lib/syncPush";
 import { toast } from "sonner";
 
 export type SyncStep =

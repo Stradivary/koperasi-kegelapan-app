@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { superadminRoutes } from "../superadmin";
 
@@ -13,21 +13,17 @@ vi.mock("#/server/superadminAuth", () => ({
 // Mock tenant functions
 vi.mock("#/server/superadminTenants", () => ({
   listTenants: vi.fn().mockResolvedValue({ tenants: [], total: 0, page: 1, pageSize: 20 }),
-  createTenant: vi
-    .fn()
-    .mockResolvedValue({
-      status: 201,
-      data: { tenantId: "t1", slug: "test", name: "Test", adminAccountId: "a1" },
-    }),
+  createTenant: vi.fn().mockResolvedValue({
+    status: 201,
+    data: { tenantId: "t1", slug: "test", name: "Test", adminAccountId: "a1" },
+  }),
   getTenantDetail: vi
     .fn()
     .mockResolvedValue({ status: 200, data: { tenantId: "t1", slug: "test", name: "Test" } }),
-  updateTenantStatus: vi
-    .fn()
-    .mockResolvedValue({
-      status: 200,
-      data: { tenantId: "t1", status: "suspended", updatedAt: "2025-01-01" },
-    }),
+  updateTenantStatus: vi.fn().mockResolvedValue({
+    status: 200,
+    data: { tenantId: "t1", status: "suspended", updatedAt: "2025-01-01" },
+  }),
 }));
 
 // Mock account functions
@@ -43,7 +39,7 @@ vi.mock("#/server/superadminAccounts", () => ({
 }));
 
 // Mock DB and device registry
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({

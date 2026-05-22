@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TransactionLog } from "../../db/local-db";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // Mock the local-db module — factory must not reference outer variables
-vi.mock("../../db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const mockAdd = vi.fn();
   const mockUpdate = vi.fn();
 
@@ -32,8 +32,8 @@ import {
   DuplicateTransactionError,
   TransactionWriteError,
   type TransactionInput,
-} from "../transactionLogService";
-import { localDb } from "../../db/local-db";
+} from "#/infrastructure/persistence/dexie/transactionLogService";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 
 function makeEntry(overrides: Partial<TransactionInput> = {}): TransactionInput {
   return {
@@ -93,7 +93,9 @@ describe("transactionLogService", () => {
 
     it("rejects duplicate composite key [tenantId, cardId, counter]", async () => {
       const table = getMockedTable();
-      const mockFirst = vi.fn().mockResolvedValue({ id: 1, tenantId: "tenant-1", cardId: "aabbccddee01", counter: 1 });
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValue({ id: 1, tenantId: "tenant-1", cardId: "aabbccddee01", counter: 1 });
       table.where.mockReturnValue({
         equals: vi.fn().mockReturnValue({ first: mockFirst }),
         between: vi.fn(),
@@ -112,9 +114,7 @@ describe("transactionLogService", () => {
         equals: vi.fn().mockReturnValue({ first: mockFirst }),
         between: vi.fn(),
       });
-      table.add
-        .mockRejectedValueOnce(new Error("QuotaExceededError"))
-        .mockResolvedValueOnce(7);
+      table.add.mockRejectedValueOnce(new Error("QuotaExceededError")).mockResolvedValueOnce(7);
 
       const entry = makeEntry();
       const result = await recordTransaction(entry);
@@ -162,9 +162,27 @@ describe("transactionLogService", () => {
     it("returns paginated results sorted by timestamp descending", async () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
-        { ...makeEntry({ timestamp: 1000 }), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ counter: 2, timestamp: 3000 }), id: 2, syncStatus: "pending", syncedAt: null, createdAt: 1700000001000 },
-        { ...makeEntry({ counter: 3, timestamp: 2000 }), id: 3, syncStatus: "pending", syncedAt: null, createdAt: 1700000002000 },
+        {
+          ...makeEntry({ timestamp: 1000 }),
+          id: 1,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000000000,
+        },
+        {
+          ...makeEntry({ counter: 2, timestamp: 3000 }),
+          id: 2,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000001000,
+        },
+        {
+          ...makeEntry({ counter: 3, timestamp: 2000 }),
+          id: 3,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000002000,
+        },
       ];
 
       table.where.mockReturnValue({
@@ -194,8 +212,20 @@ describe("transactionLogService", () => {
     it("filters by cardId (case-insensitive)", async () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
-        { ...makeEntry({ cardId: "AABBCCDDEE01" }), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ cardId: "112233445566", counter: 2 }), id: 2, syncStatus: "pending", syncedAt: null, createdAt: 1700000001000 },
+        {
+          ...makeEntry({ cardId: "AABBCCDDEE01" }),
+          id: 1,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000000000,
+        },
+        {
+          ...makeEntry({ cardId: "112233445566", counter: 2 }),
+          id: 2,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000001000,
+        },
       ];
 
       table.where.mockReturnValue({
@@ -221,8 +251,20 @@ describe("transactionLogService", () => {
     it("filters by type", async () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
-        { ...makeEntry({ type: "debit" }), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ type: "credit", counter: 2 }), id: 2, syncStatus: "pending", syncedAt: null, createdAt: 1700000001000 },
+        {
+          ...makeEntry({ type: "debit" }),
+          id: 1,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000000000,
+        },
+        {
+          ...makeEntry({ type: "credit", counter: 2 }),
+          id: 2,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000001000,
+        },
       ];
 
       table.where.mockReturnValue({
@@ -248,9 +290,27 @@ describe("transactionLogService", () => {
     it("filters by date range (inclusive on both bounds)", async () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
-        { ...makeEntry({ timestamp: 1000 }), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ timestamp: 2000, counter: 2 }), id: 2, syncStatus: "pending", syncedAt: null, createdAt: 1700000001000 },
-        { ...makeEntry({ timestamp: 3000, counter: 3 }), id: 3, syncStatus: "pending", syncedAt: null, createdAt: 1700000002000 },
+        {
+          ...makeEntry({ timestamp: 1000 }),
+          id: 1,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000000000,
+        },
+        {
+          ...makeEntry({ timestamp: 2000, counter: 2 }),
+          id: 2,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000001000,
+        },
+        {
+          ...makeEntry({ timestamp: 3000, counter: 3 }),
+          id: 3,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000002000,
+        },
       ];
 
       table.where.mockReturnValue({
@@ -277,9 +337,27 @@ describe("transactionLogService", () => {
     it("applies multiple filters as logical AND", async () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
-        { ...makeEntry({ cardId: "aabbccddee01", type: "debit", timestamp: 1500 }), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ cardId: "aabbccddee01", type: "credit", timestamp: 1500, counter: 2 }), id: 2, syncStatus: "pending", syncedAt: null, createdAt: 1700000001000 },
-        { ...makeEntry({ cardId: "112233445566", type: "debit", timestamp: 1500, counter: 3 }), id: 3, syncStatus: "pending", syncedAt: null, createdAt: 1700000002000 },
+        {
+          ...makeEntry({ cardId: "aabbccddee01", type: "debit", timestamp: 1500 }),
+          id: 1,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000000000,
+        },
+        {
+          ...makeEntry({ cardId: "aabbccddee01", type: "credit", timestamp: 1500, counter: 2 }),
+          id: 2,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000001000,
+        },
+        {
+          ...makeEntry({ cardId: "112233445566", type: "debit", timestamp: 1500, counter: 3 }),
+          id: 3,
+          syncStatus: "pending",
+          syncedAt: null,
+          createdAt: 1700000002000,
+        },
       ];
 
       table.where.mockReturnValue({
@@ -309,7 +387,13 @@ describe("transactionLogService", () => {
       const table = getMockedTable();
       const entries: TransactionLog[] = [
         { ...makeEntry(), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
-        { ...makeEntry({ counter: 2 }), id: 2, syncStatus: "synced", syncedAt: 1700000005000, createdAt: 1700000001000 },
+        {
+          ...makeEntry({ counter: 2 }),
+          id: 2,
+          syncStatus: "synced",
+          syncedAt: 1700000005000,
+          createdAt: 1700000001000,
+        },
       ];
 
       table.where.mockReturnValue({

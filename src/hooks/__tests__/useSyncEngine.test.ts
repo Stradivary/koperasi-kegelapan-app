@@ -1,29 +1,29 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DEBOUNCE_MS, PERIODIC_PULL_INTERVAL_MS } from "../useSyncEngine";
 
 // Mock dependencies
-vi.mock("../../lib/syncPush", () => ({
+vi.mock("#/lib/syncPush", () => ({
   syncPush: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../lib/syncPushEntities", () => ({
+vi.mock("#/lib/syncPushEntities", () => ({
   syncPushEntities: vi.fn().mockResolvedValue(undefined),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
 
-vi.mock("../../lib/syncPull", () => ({
+vi.mock("#/lib/syncPull", () => ({
   syncPull: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../lib/deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("../../lib/transactionLogService", () => ({
+vi.mock("#/infrastructure/persistence/dexie/transactionLogService", () => ({
   getSyncableEntries: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("../../lib/syncLogStore", () => ({
+vi.mock("#/infrastructure/persistence/dexie/syncLogStore", () => ({
   addSyncLog: vi.fn(),
 }));
 
@@ -59,37 +59,38 @@ describe("sync engine orchestration logic", () => {
   });
 
   it("syncPush is importable and mockable", async () => {
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPush } = await import("#/lib/syncPush");
     await syncPush("tenant-1");
     expect(syncPush).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPull is importable and mockable", async () => {
-    const { syncPull } = await import("../../lib/syncPull");
+    const { syncPull } = await import("#/lib/syncPull");
     await syncPull("tenant-1");
     expect(syncPull).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPushEntities is importable and mockable", async () => {
-    const { syncPushEntities } = await import("../../lib/syncPushEntities");
+    const { syncPushEntities } = await import("#/lib/syncPushEntities");
     await syncPushEntities("tenant-1");
     expect(syncPushEntities).toHaveBeenCalledWith("tenant-1");
   });
 
   it("getSyncableEntries returns empty array", async () => {
-    const { getSyncableEntries } = await import("../../lib/transactionLogService");
+    const { getSyncableEntries } =
+      await import("#/infrastructure/persistence/dexie/transactionLogService");
     const result = await getSyncableEntries("tenant-1");
     expect(result).toEqual([]);
   });
 
   it("getPendingEntityCount returns 0", async () => {
-    const { getPendingEntityCount } = await import("../../lib/syncPushEntities");
+    const { getPendingEntityCount } = await import("#/lib/syncPushEntities");
     const result = await getPendingEntityCount("tenant-1");
     expect(result).toBe(0);
   });
 
   it("isDeviceBlocked returns false by default", async () => {
-    const { isDeviceBlocked } = await import("../../lib/deviceBlock");
+    const { isDeviceBlocked } = await import("#/infrastructure/api/deviceBlock");
     expect(isDeviceBlocked()).toBe(false);
   });
 });

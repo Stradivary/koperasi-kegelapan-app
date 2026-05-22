@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, asc, sql } from "drizzle-orm";
-import { transactionLog, cards, users, devices } from "../../../src/db/schema";
+import { transactionLog, cards, users, devices } from "#/infrastructure/persistence/drizzle/schema";
 import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
@@ -224,7 +224,10 @@ syncRoutes.post("/push", async (c) => {
     // Validate required fields, type, and ranges
     const validation = validateTransaction(tx);
     if (!validation.valid) {
-      rejected.push({ key: tx.idempotencyKey ?? "unknown", reason: validation.reason ?? "malformed_event" });
+      rejected.push({
+        key: tx.idempotencyKey ?? "unknown",
+        reason: validation.reason ?? "malformed_event",
+      });
       continue;
     }
 

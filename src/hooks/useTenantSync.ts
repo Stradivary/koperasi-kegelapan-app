@@ -1,10 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+﻿import { useCallback, useRef, useState } from "react";
 import {
   localTenantConfigStore,
   localAccountStore,
   type LocalTenantConfig,
-} from "../lib/indexeddb";
-import { API_BASE_URL, setAccessToken } from "../lib/api";
+} from "#/infrastructure/persistence/dexie/indexeddb";
+import { API_BASE_URL, setAccessToken } from "#/infrastructure/api/apiClient";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
 

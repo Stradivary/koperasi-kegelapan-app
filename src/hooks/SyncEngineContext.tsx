@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SyncEngineContext provides the sync engine's notifyMutation callback
  * to all authenticated tenant views, enabling Outbox writes to trigger
  * the sync debounce timer.
@@ -14,7 +14,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { useSyncEngine, type UseSyncEngineReturn } from "./useSyncEngine";
-import { registerTriggerSync, setActiveTenantId } from "../lib/peerSyncCoordinator";
+import { registerTriggerSync, setActiveTenantId } from "#/infrastructure/sync/peerSyncCoordinator";
 // import { useRealTimeSync } from "./useRealTimeSync"; // SSE disabled
 
 // ── Context ────────────────────────────────────────────────────────────

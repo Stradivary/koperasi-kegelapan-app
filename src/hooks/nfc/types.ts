@@ -1,4 +1,4 @@
-import type { CardPayload } from "../../core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for checkLocalBlockedStatus — offline block enforcement via IndexedDB.
  *
  * Covers all branches:
@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock("../../../db/local-db", () => ({
 }));
 
 import { checkLocalBlockedStatus } from "../localStatusCheck";
-import { localDb } from "../../../db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { makeCard, makeUser, BLOCKED_CARD_STATUSES } from "./fixtures";
 
 // ---------------------------------------------------------------------------

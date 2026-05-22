@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CardState } from "../../core/payload/types";
+import { CardState } from "#/core/payload/types";
 import {
   applyCheckout,
   PARKING_RATE_PER_HOUR,
   validateCheckoutBalance,
   validateTransition,
-} from "../../core/state-machine/engine";
+} from "#/core/state-machine/engine";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
 import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { formatDuration } from "../../lib/formatters";
+import { formatDuration } from "#/lib/formatters";
 import { FeedbackCard } from "../block/FeedbackCard";
 import { LoadingState } from "../block/LoadingState";
 import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
-import type { CardPayload } from "../../core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
 
 interface TerminalSectionProps {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 import { buildSelectChain } from "./dbMocks";
 
 // ---------------------------------------------------------------------------
@@ -10,7 +10,7 @@ const mockSelect = vi.fn();
 const mockInsert = vi.fn();
 const mockTransaction = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: mockSelect,
     update: mockUpdate,

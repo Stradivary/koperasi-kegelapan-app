@@ -2,10 +2,10 @@ import {
   validateCard,
   TENANT_MISMATCH_REASON,
   UNREGISTERED_CARD_MESSAGE,
-} from "../../core/nfc/pipelineEngine";
-import { decodePayload } from "../../core/payload/engine";
-import { isTenantBindValid } from "../../core/payload/tenantBind";
-import type { SessionGrant } from "../../core/payload/types";
+} from "#/core/nfc/pipelineEngine";
+import { decodePayload } from "#/core/payload/engine";
+import { isTenantBindValid } from "#/core/payload/tenantBind";
+import type { SessionGrant } from "#/core/payload/types";
 import { decryptRawCard } from "./cardDecryption";
 import type { CardValidationResult } from "./types";
 

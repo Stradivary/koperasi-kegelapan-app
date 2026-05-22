@@ -5,7 +5,7 @@
  * Fire-and-forget: never throws, never blocks the UI.
  */
 
-import { API_BASE_URL, getCurrentDeviceId, getAccessToken } from "./api";
+import { API_BASE_URL, getCurrentDeviceId, getAccessToken } from "#/infrastructure/api/apiClient";
 
 export interface ErrorEvent {
   /** Error category (e.g. "nfc_write_failure", "nfc_session_expired") */

@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+﻿import { useNavigate } from "@tanstack/react-router";
 import {
   BookOpen,
   ChevronLeft,
@@ -13,9 +13,9 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { BRAND } from "../../lib/brand";
+import { BRAND } from "#/lib/brand";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { tenantContextStore } from "#/infrastructure/persistence/dexie/indexeddb";
 import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";

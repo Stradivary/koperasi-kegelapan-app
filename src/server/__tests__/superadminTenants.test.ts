@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for superadmin tenant management logic.
  *
  * Tests the createTenant validation logic (password validation, field validation).
@@ -26,7 +26,7 @@ const makeTxInsertChain = () => ({
   values: vi.fn(),
 });
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => makeFromChain()),

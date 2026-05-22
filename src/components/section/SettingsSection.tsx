@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircle2,
   ChevronDown,
   Circle,
@@ -15,16 +15,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useAdminTenantSync } from "../../hooks/useAdminTenantSync";
-import { API_BASE_URL, apiFetch, getAccessToken } from "../../lib/api";
+import { API_BASE_URL, apiFetch, getAccessToken } from "#/infrastructure/api/apiClient";
 import {
   localTenantConfigStore,
   tenantContextStore,
   type LocalTenantConfig,
   type TenantContext,
-} from "../../lib/indexeddb";
+} from "#/infrastructure/persistence/dexie/indexeddb";
 import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";

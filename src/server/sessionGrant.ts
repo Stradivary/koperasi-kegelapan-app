@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { roleToOps } from "../lib/roleOps";
+import { roleToOps } from "#/domain/auth/roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
 

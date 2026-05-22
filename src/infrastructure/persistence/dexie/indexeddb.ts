@@ -1,4 +1,4 @@
-import type { ReconciliationEvent } from "../core/payload/types";
+import type { ReconciliationEvent } from "#/core/payload/types";
 
 const DB_NAME = "koperasi-wallet";
 const DB_VERSION = 4;

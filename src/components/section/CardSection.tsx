@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { localDb, type Card } from "../../db/local-db";
-import { syncPull } from "../../lib/syncPull";
+import { localDb, type Card } from "#/infrastructure/persistence/dexie/localDb";
+import { syncPull } from "#/lib/syncPull";
 import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import { validateUID } from "../../core/validation/uidGlobalValidator";
-import { trackError } from "../../lib/errorTracker";
+import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+import { validateUID } from "#/core/validation/uidGlobalValidator";
+import { trackError } from "#/infrastructure/error/errorTracker";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -27,9 +27,9 @@ import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { AlertTriangle } from "lucide-react";
-import { applyTopup, applyResetState } from "../../core/state-machine/engine";
-import { prepareWrite } from "../../core/nfc/pipelineEngine";
-import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
+import { applyTopup, applyResetState } from "#/core/state-machine/engine";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { extractCardBytes, isNfcSupported } from "#/core/nfc/engine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -37,8 +37,8 @@ import {
   CardStatus,
   type CardPayload,
   type SessionGrant,
-} from "../../core/payload/types";
-import { encodeTenantBind } from "../../core/payload/tenantBind";
+} from "#/core/payload/types";
+import { encodeTenantBind } from "#/core/payload/tenantBind";
 
 interface CardSectionProps {
   tenantId: string;

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   shouldServerWin,
   resolveMemberConflicts,
@@ -9,8 +9,8 @@ import {
   CONFLICT_TOAST_DURATION_MS,
   type ServerMemberEntry,
   type ServerCardEntry,
-} from "../syncConflictResolver";
-import type { User, Card, TransactionLog } from "../../db/local-db";
+} from "#/domain/sync/conflictResolver";
+import type { User, Card, TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ const mockCardsPut = vi.fn();
 const mockTransactionLogWhere = vi.fn();
 const mockTransactionLogDelete = vi.fn();
 
-vi.mock("../../db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockUsersGet(...args),

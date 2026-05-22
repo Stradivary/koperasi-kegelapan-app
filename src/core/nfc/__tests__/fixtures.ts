@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Shared test fixtures for NFC and card-related unit tests.
  *
  * Provides factory functions for Card and User records used across
  * localStatusCheck, blockEnforcer, and property-based tests.
  */
 
-import type { Card, User } from "../../../db/local-db";
+import type { Card, User } from "#/infrastructure/persistence/dexie/localDb";
 
 /**
  * Creates a full Card record with sensible defaults.

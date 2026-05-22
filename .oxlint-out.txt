@@ -317,7 +317,7 @@
   x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
     ,-[src/hooks/useUnifiedNfc.ts:82:35]
  81 |   onCardReadRef: { current: ((payload: CardPayload, result: RawNfcResult) => void) | undefined },
- 82 |   onErrorRef: { current: ((error: import("../core/nfc/adapters/types").NfcError | import("../core/nfc/payloadTypes").PayloadError) => void) | undefined },
+ 82 |   onErrorRef: { current: ((error: import("#/core/nfc/adapters/types").NfcError | import("#/core/nfc/payloadTypes").PayloadError) => void) | undefined },
     :                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  83 | ): Promise<void> {
     `----
@@ -325,7 +325,7 @@
   x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
     ,-[src/hooks/useUnifiedNfc.ts:82:83]
  81 |   onCardReadRef: { current: ((payload: CardPayload, result: RawNfcResult) => void) | undefined },
- 82 |   onErrorRef: { current: ((error: import("../core/nfc/adapters/types").NfcError | import("../core/nfc/payloadTypes").PayloadError) => void) | undefined },
+ 82 |   onErrorRef: { current: ((error: import("#/core/nfc/adapters/types").NfcError | import("#/core/nfc/payloadTypes").PayloadError) => void) | undefined },
     :                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  83 | ): Promise<void> {
     `----
@@ -333,7 +333,7 @@
   x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
     ,-[src/hooks/useUnifiedNfc.ts:88:25]
  87 |   if (!sessionValidation.valid) {
- 88 |     const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+ 88 |     const payloadError: import("#/core/nfc/payloadTypes").PayloadError = {
     :                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  89 |       code: sessionValidation.errorCode ?? "NO_SESSION",
     `----
@@ -341,7 +341,7 @@
   x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
      ,-[src/hooks/useUnifiedNfc.ts:105:25]
  104 |   if (!pipelineResult.ok) {
- 105 |     const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+ 105 |     const payloadError: import("#/core/nfc/payloadTypes").PayloadError = {
      :                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  106 |       code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
      `----

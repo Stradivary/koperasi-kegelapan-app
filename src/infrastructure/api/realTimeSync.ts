@@ -14,10 +14,10 @@
  */
 
 import type { QueryClient } from "@tanstack/react-query";
-import { syncPull } from "./syncPull";
-import { localDb } from "../db/local-db";
-import { getAccessToken } from "./api";
-import { addSyncLog } from "./syncLogStore";
+import { syncPull } from "#/lib/syncPull";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
+import { getAccessToken } from "#/infrastructure/api/apiClient";
+import { addSyncLog } from "#/infrastructure/persistence/dexie/syncLogStore";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
