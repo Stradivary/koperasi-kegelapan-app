@@ -1,4 +1,5 @@
 import { createMiddleware } from "hono/factory";
+import { extractDeviceIdFromToken } from "../lib/tokenExtract";
 
 type Env = {
   DB: D1Database;
@@ -20,27 +21,6 @@ const MAX_REQUESTS = 60;
 
 // In-memory store: device_id → array of request timestamps (ms)
 const requestLog = new Map<string, number[]>();
-
-/**
- * Extracts the deviceId from the Bearer token payload.
- * Token format: header.payload.signature (JWT-like, base64-encoded JSON payload)
- */
-function extractDeviceIdFromToken(request: Request): string | null {
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.slice(7);
-  if (!token) return null;
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return payload.deviceId ?? null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Prunes timestamps older than the sliding window from the log.

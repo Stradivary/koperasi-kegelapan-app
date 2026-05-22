@@ -68,20 +68,14 @@ async function simulateHandleUnifiedLogin(params: {
   }
 
   // 3. Online: attempt server fetch as fallback
-  try {
-    // Simulate server response for online case
-    return {
-      error: "Username atau password salah",
-      redirected: false,
-      networkFetchAttempted: true,
-    };
-  } catch {
-    return {
-      error: "Gagal terhubung ke server. Periksa koneksi Anda.",
-      redirected: false,
-      networkFetchAttempted: true,
-    };
-  }
+
+  // Simulate server response for online case
+  return {
+    error: "Username atau password salah",
+    redirected: false,
+    networkFetchAttempted: true,
+  };
+
 }
 
 /**

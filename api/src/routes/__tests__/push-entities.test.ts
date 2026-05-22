@@ -1,58 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Hono } from "hono";
 import { pushEntitiesRoute } from "../push-entities";
-
-type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
-
-function makeToken(payload: Record<string, unknown>): string {
-  const header = btoa(JSON.stringify({ alg: "HS256" }));
-  const body = btoa(JSON.stringify(payload));
-  return `${header}.${body}.sig`;
-}
-
-function createMockD1(options?: {
-  selectResult?: unknown;
-  runResult?: unknown;
-  throwOnInsert?: string;
-}) {
-  const mockRun = options?.throwOnInsert
-    ? vi.fn().mockRejectedValue(new Error(options.throwOnInsert))
-    : vi.fn().mockResolvedValue({ success: true });
-
-  return {
-    prepare: () => ({
-      bind: (..._args: unknown[]) => ({
-        raw: async () => [],
-        first: async () => options?.selectResult ?? null,
-        all: async () => ({ results: options?.selectResult ? [options.selectResult] : [] }),
-        run: mockRun,
-      }),
-      raw: async () => [],
-      first: async () => options?.selectResult ?? null,
-      all: async () => ({ results: [] }),
-      run: mockRun,
-    }),
-    exec: async () => ({ count: 0, duration: 0 }),
-    batch: async (stmts: unknown[]) => stmts.map(() => ({ results: [] })),
-    dump: async () => new ArrayBuffer(0),
-  } as unknown as D1Database;
-}
-
-function createApp(db?: D1Database) {
-  const app = new Hono<{ Bindings: Env }>();
-  app.use("*", async (c, next) => {
-    c.env = { DB: db ?? createMockD1(), SESSION_MASTER_KEY: "test-key" };
-    await next();
-  });
-  app.route("/api/sync", pushEntitiesRoute);
-  return app;
-}
+import { makeToken, createMockD1, createTestApp } from "./testHelpers";
 
 describe("POST /push-entities", () => {
-  let app: ReturnType<typeof createApp>;
+  let app: ReturnType<typeof createTestApp>;
 
   beforeEach(() => {
-    app = createApp();
+    app = createTestApp(pushEntitiesRoute, "/api/sync");
   });
 
   it("returns 401 without auth token", async () => {

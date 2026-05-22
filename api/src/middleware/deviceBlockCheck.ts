@@ -2,32 +2,12 @@ import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { devices } from "#/db/schema";
+import { extractDeviceIdFromToken } from "../lib/tokenExtract";
 
 type Env = {
   DB: D1Database;
   SESSION_MASTER_KEY: string;
 };
-
-/**
- * Extracts the deviceId from the Bearer token payload.
- * Token format: header.payload.signature (JWT-like, base64-encoded JSON payload)
- */
-function extractDeviceIdFromToken(request: Request): string | null {
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.slice(7);
-  if (!token) return null;
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return payload.deviceId ?? null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Middleware that checks if the requesting device is blocked.

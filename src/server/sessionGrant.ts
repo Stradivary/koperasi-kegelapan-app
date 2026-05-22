@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { nowSeconds } from "./auth";
+import { roleToOps } from "../lib/roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
 
@@ -54,21 +55,3 @@ export function issueSessionGrant(
   return { ...payload, signature };
 }
 
-function roleToOps(role: string): string[] {
-  switch (role) {
-    case "terminal":
-      return ["read", "debit", "checkout"];
-    case "gate":
-      return ["read", "checkin"];
-    case "scout":
-      return ["read"];
-    case "kiosk":
-      return ["read", "debit"];
-    case "station":
-      return ["read", "credit", "checkin", "checkout", "admin"];
-    case "admin":
-      return ["read", "debit", "credit", "checkin", "checkout", "admin", "station"];
-    default:
-      return ["read"];
-  }
-}

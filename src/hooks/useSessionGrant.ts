@@ -96,11 +96,11 @@ async function fetchSessionGrant(
 
 function base64ToBytes(b64: string): Uint8Array {
   // Normalize base64url (uses - and _ without padding) to standard base64
-  const std = b64.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
+  const std = b64.replaceAll("-", "+").replaceAll("_", "/");
   const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
   const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i);
   return bytes;
 }
 
@@ -198,7 +198,7 @@ async function tryLocalGrant(
   deviceId: string,
 ): Promise<SessionGrant | null> {
   try {
-    return generateLocalSessionGrant(tenantId, accountId, deviceId);
+    return await generateLocalSessionGrant(tenantId, accountId, deviceId);
   } catch {
     // Web Crypto unavailable or other unexpected error
     return null;

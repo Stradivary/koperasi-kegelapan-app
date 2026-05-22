@@ -15,6 +15,7 @@
 
 import type { SessionGrant } from "../core/payload/types";
 import { sessionGrantCacheStore, type CachedSessionGrant } from "./indexeddb";
+import { roleToOps } from "./roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
 const LOCAL_MASTER_KEY = "dev-insecure-master-key-change-in-prod-32b";
@@ -38,25 +39,6 @@ async function deriveTenantKey(tenantId: string, keyVersion: number): Promise<Ui
   return hmacSha256(masterKeyBytes, ENC.encode(`${tenantId}:${keyVersion}`));
 }
 
-function roleToOps(role: string): string[] {
-  switch (role) {
-    case "terminal":
-      return ["read", "debit", "checkout"];
-    case "gate":
-      return ["read", "checkin"];
-    case "scout":
-      return ["read"];
-    case "kiosk":
-      return ["read", "debit"];
-    case "station":
-      return ["read", "credit", "checkin", "checkout", "admin"];
-    case "admin":
-      return ["read", "debit", "credit", "checkin", "checkout", "admin", "station"];
-    default:
-      return ["read"];
-  }
-}
-
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCodePoint(bytes[i]);
@@ -64,11 +46,11 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 function base64ToBytes(b64: string): Uint8Array {
-  const std = b64.replaceAll(/-/g, "+").replaceAll(/_/g, "/");
+  const std = b64.replaceAll("-", "+").replaceAll("_", "/");
   const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
   const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i);
   return bytes;
 }
 

@@ -201,7 +201,7 @@ export function TransactionsSection({ tenantId, accountId }: TransactionsSection
   const dateFromTimestamp = useMemo(() => {
     if (!dateFrom) return undefined;
     const d = new Date(dateFrom);
-    if (isNaN(d.getTime())) return undefined;
+    if (Number.isNaN(d.getTime())) return undefined;
     d.setHours(0, 0, 0, 0);
     return Math.floor(d.getTime() / 1000);
   }, [dateFrom]);
@@ -209,7 +209,7 @@ export function TransactionsSection({ tenantId, accountId }: TransactionsSection
   const dateToTimestamp = useMemo(() => {
     if (!dateTo) return undefined;
     const d = new Date(dateTo);
-    if (isNaN(d.getTime())) return undefined;
+    if (Number.isNaN(d.getTime())) return undefined;
     d.setHours(23, 59, 59, 999);
     return Math.floor(d.getTime() / 1000);
   }, [dateTo]);

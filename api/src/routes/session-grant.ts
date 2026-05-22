@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { createHmac } from "node:crypto";
+import { roleToOps } from "../../../src/lib/roleOps";
 
 type Env = {
   DB: D1Database;
@@ -55,25 +56,6 @@ function issueSessionGrant(
     .digest("base64url");
 
   return { ...payload, signature };
-}
-
-function roleToOps(role: string): string[] {
-  switch (role) {
-    case "terminal":
-      return ["read", "debit", "checkout"];
-    case "gate":
-      return ["read", "checkin"];
-    case "scout":
-      return ["read"];
-    case "kiosk":
-      return ["read", "debit"];
-    case "station":
-      return ["read", "credit", "checkin", "checkout", "admin"];
-    case "admin":
-      return ["read", "debit", "credit", "checkin", "checkout", "admin", "station"];
-    default:
-      return ["read"];
-  }
 }
 
 function decodeField(token: string, field: string): string {

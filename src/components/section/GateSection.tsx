@@ -74,7 +74,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
   const getNowSeconds = useCallback(() => {
     if (simulationMode && simulatedDateTime) {
       const simDate = new Date(simulatedDateTime);
-      if (!isNaN(simDate.getTime())) {
+      if (!Number.isNaN(simDate.getTime())) {
         return Math.floor(simDate.getTime() / 1000);
       }
     }

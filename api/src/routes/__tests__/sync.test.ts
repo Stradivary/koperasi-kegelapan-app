@@ -1,57 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { Hono } from "hono";
 import { syncRoutes } from "../sync";
-
-type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
-
-function makeToken(payload: Record<string, unknown>): string {
-  const header = btoa(JSON.stringify({ alg: "HS256" }));
-  const body = btoa(JSON.stringify(payload));
-  return `${header}.${body}.sig`;
-}
-
-function createMockD1(options?: {
-  selectResults?: unknown[];
-  getResult?: unknown;
-  insertThrow?: string;
-}) {
-  const mockRun = options?.insertThrow
-    ? vi.fn().mockRejectedValue(new Error(options.insertThrow))
-    : vi.fn().mockResolvedValue({ success: true, meta: {} });
-
-  return {
-    prepare: (_query: string) => ({
-      bind: (..._args: unknown[]) => ({
-        raw: async () => [],
-        first: async () => options?.getResult ?? null,
-        all: async () => ({ results: options?.selectResults ?? [] }),
-        run: mockRun,
-      }),
-      raw: async () => [],
-      first: async () => options?.getResult ?? null,
-      all: async () => ({ results: options?.selectResults ?? [] }),
-      run: mockRun,
-    }),
-    exec: async () => ({ count: 0, duration: 0 }),
-    batch: async (stmts: unknown[]) => stmts.map(() => ({ results: [] })),
-    dump: async () => new ArrayBuffer(0),
-  } as unknown as D1Database;
-}
-
-function createApp(db?: D1Database) {
-  const app = new Hono<{ Bindings: Env }>();
-  app.use("*", async (c, next) => {
-    c.env = { DB: db ?? createMockD1(), SESSION_MASTER_KEY: "test-key" };
-    await next();
-  });
-  app.route("/api/sync", syncRoutes);
-  return app;
-}
+import { makeToken, createMockD1, createTestApp } from "./testHelpers";
 
 describe("sync routes", () => {
   describe("POST /push", () => {
     it("returns 401 without auth token", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const res = await app.request("/api/sync/push", {
         method: "POST",
         body: JSON.stringify({ tenantId: "t1", transactions: [] }),
@@ -61,7 +15,7 @@ describe("sync routes", () => {
     });
 
     it("returns 400 with malformed body", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -75,7 +29,7 @@ describe("sync routes", () => {
     });
 
     it("returns 400 when transactions is not an array", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -89,7 +43,7 @@ describe("sync routes", () => {
     });
 
     it("returns success with empty transactions", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -107,7 +61,7 @@ describe("sync routes", () => {
     });
 
     it("returns 400 when batch exceeds 500", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const transactions = Array.from({ length: 501 }, (_, i) => ({
         cardId: "04a2b3c4d5e6f7",
@@ -131,7 +85,7 @@ describe("sync routes", () => {
     });
 
     it("rejects transactions with missing required fields", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -151,7 +105,7 @@ describe("sync routes", () => {
     });
 
     it("rejects transactions with invalid type", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -181,7 +135,7 @@ describe("sync routes", () => {
     });
 
     it("rejects transactions with invalid amount", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -211,7 +165,7 @@ describe("sync routes", () => {
     });
 
     it("rejects transactions with invalid balance", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -241,7 +195,7 @@ describe("sync routes", () => {
     });
 
     it("rejects transactions with invalid counter", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/push", {
         method: "POST",
@@ -273,13 +227,13 @@ describe("sync routes", () => {
 
   describe("GET /pull", () => {
     it("returns 401 without auth token", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const res = await app.request("/api/sync/pull");
       expect(res.status).toBe(401);
     });
 
     it("returns empty data with valid token", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/pull", {
         headers: { Authorization: `Bearer ${token}` },
@@ -294,7 +248,7 @@ describe("sync routes", () => {
     });
 
     it("accepts cursor query parameters", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request(
         "/api/sync/pull?membersCursor=100&cardsCursor=200&txCursor=300",
@@ -306,7 +260,7 @@ describe("sync routes", () => {
     });
 
     it("handles empty/zero cursors", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/pull?membersCursor=0&cardsCursor=&txCursor=", {
         headers: { Authorization: `Bearer ${token}` },
@@ -317,13 +271,13 @@ describe("sync routes", () => {
 
   describe("GET /devices", () => {
     it("returns 401 without auth token", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const res = await app.request("/api/sync/devices");
       expect(res.status).toBe(401);
     });
 
     it("returns device list with valid token", async () => {
-      const app = createApp();
+      const app = createTestApp(syncRoutes, "/api/sync");
       const token = makeToken({ tenantId: "t1", accountId: "a1", deviceId: "d1" });
       const res = await app.request("/api/sync/devices", {
         headers: { Authorization: `Bearer ${token}` },

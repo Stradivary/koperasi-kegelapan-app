@@ -5,6 +5,8 @@ import { transactionLog, cards, users, devices } from "../../../src/db/schema";
 import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
+import { extractTokenPayload } from "../lib/tokenExtract";
+import type { TokenPayload } from "../lib/tokenExtract";
 
 type Env = {
   DB: D1Database;
@@ -18,36 +20,6 @@ syncRoutes.route("/", syncSseRoutes);
 
 // Mount entity push route (provides /push-entities under /api/sync/)
 syncRoutes.route("/", pushEntitiesRoute);
-
-// ─── Token Payload Extraction ────────────────────────────────────────────────
-
-interface TokenPayload {
-  tenantId: string;
-  accountId: string;
-  deviceId?: string;
-}
-
-function extractTokenPayload(request: Request): TokenPayload | null {
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.slice(7);
-  if (!token) return null;
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    if (!payload.tenantId || !payload.accountId) return null;
-    return {
-      tenantId: payload.tenantId,
-      accountId: payload.accountId,
-      deviceId: payload.deviceId ?? undefined,
-    };
-  } catch {
-    return null;
-  }
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -337,7 +309,7 @@ function parseCursor(cursor: string | undefined | null): number {
     return 0;
   }
   const parsed = Number.parseInt(cursor, 10);
-  return isNaN(parsed) ? 0 : parsed;
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 // ─── GET /pull ───────────────────────────────────────────────────────────────
