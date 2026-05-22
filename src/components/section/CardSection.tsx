@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { localDb, type Card } from "#/infrastructure/persistence/dexie/localDb";
-import { syncPull } from "#/lib/syncPull";
+import { syncPull } from "#/application/sync/syncPull.usecase";
 import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";

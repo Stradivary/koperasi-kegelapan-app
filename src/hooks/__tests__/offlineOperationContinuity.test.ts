@@ -43,11 +43,11 @@ vi.mock("#/infrastructure/persistence/dexie/sessionGrantRepository", () => ({
   issueAndCacheLocalSessionGrant: vi.fn(),
 }));
 
-vi.mock("#/lib/syncPush", () => ({
+vi.mock("#/application/sync/syncPush.usecase", () => ({
   syncPush: vi.fn(),
 }));
 
-vi.mock("#/lib/syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn(),
 }));
 
@@ -60,7 +60,7 @@ vi.mock("#/infrastructure/persistence/dexie/transactionLogService", () => ({
   recordTransaction: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#/lib/syncPushEntities", () => ({
+vi.mock("#/application/sync/syncPushEntities.usecase", () => ({
   syncPushEntities: vi.fn(),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
@@ -79,8 +79,8 @@ import {
   reconciliationOutbox,
 } from "#/infrastructure/persistence/dexie/indexeddb";
 import { issueAndCacheLocalSessionGrant } from "#/infrastructure/persistence/dexie/sessionGrantRepository";
-import { syncPush } from "#/lib/syncPush";
-import { syncPull } from "#/lib/syncPull";
+import { syncPush } from "#/application/sync/syncPush.usecase";
+import { syncPull } from "#/application/sync/syncPull.usecase";
 import { useSessionGrant, OFFLINE_GRACE_PERIOD_SECONDS } from "../useSessionGrant";
 import { useSyncEngine } from "../useSyncEngine";
 

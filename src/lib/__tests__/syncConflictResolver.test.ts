@@ -23,7 +23,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("../syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue({
     membersPulled: 0,
     cardsPulled: 0,
@@ -67,7 +67,7 @@ vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
 }));
 
 import { toast } from "sonner";
-import { syncPull, SyncPullError } from "../syncPull";
+import { syncPull, SyncPullError } from "#/application/sync/syncPull.usecase";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 

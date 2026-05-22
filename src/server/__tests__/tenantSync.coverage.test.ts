@@ -25,7 +25,7 @@ vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   })),
 }));
 
-import { processTenantSync } from "../tenantSync";
+import { processTenantSync } from "#/application/tenant/tenantSync.usecase";
 
 const VALID_HASH = `100000:${"a".repeat(32)}:${"b".repeat(64)}`;
 

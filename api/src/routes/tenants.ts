@@ -2,7 +2,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq, like, or, asc, sql } from "drizzle-orm";
 import { tenants, accounts } from "#/infrastructure/persistence/drizzle/schema";
-import { validateSyncRequest } from "../../../src/server/tenantSync";
+import { validateSyncRequest } from "#/application/tenant/tenantSync.usecase";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 

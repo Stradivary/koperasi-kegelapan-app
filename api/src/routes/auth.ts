@@ -2,8 +2,8 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
 import { accounts, tenants } from "#/infrastructure/persistence/drizzle/schema";
-import { registerDevice } from "#/server/deviceRegistry";
-import { createSession } from "#/server/authSession";
+import { registerDevice } from "#/application/device/deviceRegistry.usecase";
+import { createSession } from "#/application/auth/authSession.usecase";
 
 type Env = {
   DB: D1Database;

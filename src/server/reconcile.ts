@@ -3,14 +3,14 @@ import {
   processReconciliation as _processReconciliation,
   type ReconcileEvent,
   type ReconcileResult,
-} from "./reconcileCore";
+} from "#/application/sync/reconcile.usecase";
 
 export type {
   ReconcileEvent,
   ReconcileResult,
   ReconcileFlag,
   ReconcileRequest,
-} from "./reconcileCore";
+} from "#/application/sync/reconcile.usecase";
 
 export async function processReconciliation(body: {
   terminalId: number;

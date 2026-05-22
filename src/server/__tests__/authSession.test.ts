@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for Auth Session service.
  *
  * Tests the core session management logic: token hashing, generation,
@@ -16,7 +16,7 @@ import {
   refreshSession,
   // revokeSession, revokeDeviceSessions, getActiveSessions - used in integration tests (task 14.3)
   AuthSessionError,
-} from "../authSession";
+} from "#/application/auth/authSession.usecase";
 
 // --- Tests for pure utility functions ---
 

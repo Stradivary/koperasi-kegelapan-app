@@ -6,7 +6,7 @@ import {
   validateAdminUsername,
   validateAdminPasswordHash,
   validateSyncRequest,
-} from "../tenantSync";
+} from "#/application/tenant/tenantSync.usecase";
 
 // Mock the database module (needed for processTenantSync but not for validators)
 vi.mock("#/infrastructure/persistence/drizzle/index", () => ({

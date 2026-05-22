@@ -8,7 +8,7 @@ import {
   validateAdminUsername,
   buildConflictResult,
   type ValidationError,
-} from "./tenantSync";
+} from "#/application/tenant/tenantSync.usecase";
 import { hashPassword } from "#/domain/auth/authRules";
 
 // Import types and constants from the shared types file

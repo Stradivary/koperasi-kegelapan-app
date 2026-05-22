@@ -19,8 +19,8 @@ import {
   type LocalTenantConfig,
 } from "#/infrastructure/persistence/dexie/indexeddb";
 import { useTenantSync, type SyncConflict } from "./useTenantSync";
-import { syncPushMembers, syncPushCards } from "#/lib/syncPushEntities";
-import { syncPush } from "#/lib/syncPush";
+import { syncPushMembers, syncPushCards } from "#/application/sync/syncPushEntities.usecase";
+import { syncPush } from "#/application/sync/syncPush.usecase";
 import { toast } from "sonner";
 
 export type SyncStep =

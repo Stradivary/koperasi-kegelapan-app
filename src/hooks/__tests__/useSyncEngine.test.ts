@@ -2,16 +2,16 @@
 import { DEBOUNCE_MS, PERIODIC_PULL_INTERVAL_MS } from "../useSyncEngine";
 
 // Mock dependencies
-vi.mock("#/lib/syncPush", () => ({
+vi.mock("#/application/sync/syncPush.usecase", () => ({
   syncPush: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#/lib/syncPushEntities", () => ({
+vi.mock("#/application/sync/syncPushEntities.usecase", () => ({
   syncPushEntities: vi.fn().mockResolvedValue(undefined),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
 
-vi.mock("#/lib/syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -59,19 +59,19 @@ describe("sync engine orchestration logic", () => {
   });
 
   it("syncPush is importable and mockable", async () => {
-    const { syncPush } = await import("#/lib/syncPush");
+    const { syncPush } = await import("#/application/sync/syncPush.usecase");
     await syncPush("tenant-1");
     expect(syncPush).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPull is importable and mockable", async () => {
-    const { syncPull } = await import("#/lib/syncPull");
+    const { syncPull } = await import("#/application/sync/syncPull.usecase");
     await syncPull("tenant-1");
     expect(syncPull).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPushEntities is importable and mockable", async () => {
-    const { syncPushEntities } = await import("#/lib/syncPushEntities");
+    const { syncPushEntities } = await import("#/application/sync/syncPushEntities.usecase");
     await syncPushEntities("tenant-1");
     expect(syncPushEntities).toHaveBeenCalledWith("tenant-1");
   });
@@ -84,7 +84,7 @@ describe("sync engine orchestration logic", () => {
   });
 
   it("getPendingEntityCount returns 0", async () => {
-    const { getPendingEntityCount } = await import("#/lib/syncPushEntities");
+    const { getPendingEntityCount } = await import("#/application/sync/syncPushEntities.usecase");
     const result = await getPendingEntityCount("tenant-1");
     expect(result).toBe(0);
   });

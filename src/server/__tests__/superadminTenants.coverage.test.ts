@@ -36,7 +36,7 @@ import {
   getTenantDetail,
   updateTenantStatus,
   createTenant,
-} from "../superadminTenants";
+} from "#/application/admin/superadminTenants.usecase";
 
 describe("listTenants", () => {
   beforeEach(() => {

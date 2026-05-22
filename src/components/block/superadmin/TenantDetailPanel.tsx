@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Button } from "../../ui/button";
@@ -10,8 +10,8 @@ import type {
   TenantDetail,
   TenantAccountInfo,
   TenantStatus,
-} from "#/server/superadminTenants.types";
-import { VALID_TRANSITIONS } from "#/server/superadminTenants.types";
+} from "#/application/admin/superadminTenants.types";
+import { VALID_TRANSITIONS } from "#/application/admin/superadminTenants.types";
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 

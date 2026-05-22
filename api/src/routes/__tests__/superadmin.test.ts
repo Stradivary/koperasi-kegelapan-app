@@ -5,13 +5,13 @@ import { superadminRoutes } from "../superadmin";
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
 // Mock superadmin auth
-vi.mock("#/server/superadminAuth", () => ({
+vi.mock("#/application/admin/superadminAuth.usecase", () => ({
   requireSuperadmin: vi.fn().mockResolvedValue({ accountId: "sa1", role: "superadmin" }),
   isAuthError: vi.fn().mockReturnValue(false),
 }));
 
 // Mock tenant functions
-vi.mock("#/server/superadminTenants", () => ({
+vi.mock("#/application/admin/superadminTenants.usecase", () => ({
   listTenants: vi.fn().mockResolvedValue({ tenants: [], total: 0, page: 1, pageSize: 20 }),
   createTenant: vi.fn().mockResolvedValue({
     status: 201,
@@ -27,7 +27,7 @@ vi.mock("#/server/superadminTenants", () => ({
 }));
 
 // Mock account functions
-vi.mock("#/server/superadminAccounts", () => ({
+vi.mock("#/application/admin/superadminAccounts.usecase", () => ({
   listAccounts: vi.fn().mockResolvedValue({ accounts: [], total: 0, page: 1, pageSize: 20 }),
   createAccount: vi
     .fn()
@@ -56,7 +56,7 @@ vi.mock("#/infrastructure/persistence/drizzle/index", () => ({
   })),
 }));
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   getDevicesByTenant: vi.fn().mockResolvedValue([{ deviceId: "d1", tenantId: "t1" }]),
   blockDevice: vi.fn().mockResolvedValue(undefined),
   unblockDevice: vi.fn().mockResolvedValue(undefined),

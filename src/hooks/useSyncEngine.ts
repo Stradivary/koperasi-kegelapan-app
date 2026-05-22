@@ -9,12 +9,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { syncPush } from "#/lib/syncPush";
-import { syncPushEntities } from "#/lib/syncPushEntities";
-import { syncPull } from "#/lib/syncPull";
+import { syncPush } from "#/application/sync/syncPush.usecase";
+import { syncPushEntities } from "#/application/sync/syncPushEntities.usecase";
+import { syncPull } from "#/application/sync/syncPull.usecase";
 import { isDeviceBlocked } from "#/infrastructure/api/deviceBlock";
 import { getSyncableEntries } from "#/infrastructure/persistence/dexie/transactionLogService";
-import { getPendingEntityCount } from "#/lib/syncPushEntities";
+import { getPendingEntityCount } from "#/application/sync/syncPushEntities.usecase";
 import { addSyncLog } from "#/infrastructure/persistence/dexie/syncLogStore";
 
 // ── Helpers ────────────────────────────────────────────────────────────

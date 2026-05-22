@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PeerSyncCoordinator
  *
  * Ensures cross-device check-in consistency by coordinating sync pushes
@@ -15,7 +15,7 @@
  */
 
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
-import { syncPush } from "#/lib/syncPush";
+import { syncPush } from "#/application/sync/syncPush.usecase";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

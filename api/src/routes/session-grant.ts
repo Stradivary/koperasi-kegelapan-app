@@ -1,5 +1,5 @@
-import { Hono } from "hono";
-import { issueSessionGrant } from "../../../src/server/sessionGrant";
+﻿import { Hono } from "hono";
+import { issueSessionGrant } from "#/application/auth/sessionGrant.usecase";
 
 type Env = {
   DB: D1Database;

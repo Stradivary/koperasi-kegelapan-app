@@ -14,7 +14,7 @@
 
 import { toast } from "sonner";
 import { localDb, type User, type Card } from "#/infrastructure/persistence/dexie/localDb";
-import { syncPull, SyncPullError } from "#/lib/syncPull";
+import { syncPull, SyncPullError } from "#/application/sync/syncPull.usecase";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

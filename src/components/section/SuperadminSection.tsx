@@ -23,7 +23,7 @@ import {
 } from "../block/dialogs/AccountCreateDialog";
 import { ChangePasswordDialog } from "../block/dialogs/ChangePasswordDialog";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
-import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
+import type { TenantDetail, TenantStatus } from "#/application/admin/superadminTenants.types";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 
 // ─── Constants ───────────────────────────────────────────────────────────────

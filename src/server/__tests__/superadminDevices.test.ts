@@ -45,7 +45,7 @@ const mockUnblockDevice = vi.fn<(...args: any[]) => any>();
 const mockGetDevicesByTenant = vi.fn<(...args: any[]) => any>(() => mockDevices);
 
 // Mock modules
-vi.mock("#/server/superadminAuth", () => ({
+vi.mock("#/application/admin/superadminAuth.usecase", () => ({
   requireSuperadmin: vi.fn(async (request: Request) => {
     const authHeader = request.headers.get("authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) {
@@ -98,7 +98,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: unknown[]) => args),
 }));
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   getDevicesByTenant: (...args: any[]) => mockGetDevicesByTenant(...args),
   blockDevice: (...args: any[]) => mockBlockDevice(...args),
   unblockDevice: (...args: any[]) => mockUnblockDevice(...args),

@@ -58,7 +58,7 @@ import {
   createAccount,
   changeAccountPassword,
   updateAccountStatus,
-} from "../superadminAccounts";
+} from "#/application/admin/superadminAccounts.usecase";
 
 describe("superadminAccounts", () => {
   beforeEach(() => {

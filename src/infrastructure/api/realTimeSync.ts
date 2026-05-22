@@ -1,4 +1,4 @@
-/**
+﻿/**
  * RealTimeSyncManager — manages real-time data synchronization between devices
  * via Server-Sent Events (SSE) with fallback to periodic pull.
  *
@@ -14,7 +14,7 @@
  */
 
 import type { QueryClient } from "@tanstack/react-query";
-import { syncPull } from "#/lib/syncPull";
+import { syncPull } from "#/application/sync/syncPull.usecase";
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { getAccessToken } from "#/infrastructure/api/apiClient";
 import { addSyncLog } from "#/infrastructure/persistence/dexie/syncLogStore";

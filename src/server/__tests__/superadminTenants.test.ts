@@ -45,7 +45,7 @@ vi.mock("./auth", () => ({
   hashPassword: vi.fn(() => "pbkdf2$mocksalt$mockhash"),
 }));
 
-import { createTenant } from "../superadminTenants";
+import { createTenant } from "#/application/admin/superadminTenants.usecase";
 
 describe("createTenant - validation", () => {
   it("returns 400 when body is null", async () => {

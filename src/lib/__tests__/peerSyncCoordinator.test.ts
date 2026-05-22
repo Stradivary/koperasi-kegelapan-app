@@ -32,7 +32,7 @@ vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   };
 });
 
-vi.mock("../syncPush", () => ({
+vi.mock("#/application/sync/syncPush.usecase", () => ({
   syncPush: vi.fn().mockResolvedValue({
     totalAccepted: 0,
     totalRejected: 0,
@@ -43,7 +43,7 @@ vi.mock("../syncPush", () => ({
 }));
 
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
-import { syncPush } from "../syncPush";
+import { syncPush } from "#/application/sync/syncPush.usecase";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 

@@ -1,18 +1,18 @@
 ﻿import { Hono } from "hono";
-import { requireSuperadmin, isAuthError } from "#/server/superadminAuth";
+import { requireSuperadmin, isAuthError } from "#/application/admin/superadminAuth.usecase";
 import {
   listTenants,
   createTenant,
   getTenantDetail,
   updateTenantStatus,
   type TenantStatus,
-} from "#/server/superadminTenants";
+} from "#/application/admin/superadminTenants.usecase";
 import {
   listAccounts,
   createAccount,
   changeAccountPassword,
   updateAccountStatus,
-} from "#/server/superadminAccounts";
+} from "#/application/admin/superadminAccounts.usecase";
 import { getDb } from "#/infrastructure/persistence/drizzle/index";
 import { devices } from "#/infrastructure/persistence/drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -21,7 +21,7 @@ import {
   blockDevice,
   unblockDevice,
   revokeDeviceSessions,
-} from "#/server/deviceRegistry";
+} from "#/application/device/deviceRegistry.usecase";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
