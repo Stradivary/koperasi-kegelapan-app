@@ -1,169 +1,313 @@
-﻿import { describe, it, expect, vi } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock Dexie to avoid actual IndexedDB operations
+// Set up globals BEFORE vi.mock runs (vi.hoisted ensures this runs before mock hoisting)
+const testState = vi.hoisted(() => {
+  const upgradeCallbacks: Array<(tx: unknown) => unknown> = [];
+  const storeDefinitions: Array<Record<string, string>> = [];
+  const versionCalls: number[] = [];
+  return { upgradeCallbacks, storeDefinitions, versionCalls };
+});
+
 vi.mock("dexie", () => {
-  const mockTable = {
-    get: vi.fn(),
-    put: vi.fn(),
-    add: vi.fn(),
-    delete: vi.fn(),
-    toArray: vi.fn().mockResolvedValue([]),
-    filter: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    equals: vi.fn().mockReturnThis(),
-    toCollection: vi.fn().mockReturnValue({ modify: vi.fn() }),
-  };
+  const MockDexie = class {
+    users: unknown;
+    cards: unknown;
+    auditLog: unknown;
+    sessionGrants: unknown;
+    transactionLog: unknown;
+    syncCursors: unknown;
+    deviceInfo: unknown;
 
-  class MockDexie {
-    users = mockTable;
-    cards = mockTable;
-    auditLog = mockTable;
-    sessionGrants = mockTable;
-    transactionLog = mockTable;
-    syncCursors = mockTable;
-    deviceInfo = mockTable;
+    constructor(_name: string) {
+      // no-op
+    }
 
-    constructor(_name: string) {}
-
-    version(_num: number) {
-      const storesResult = {
-        upgrade: (_fn: Function) => ({}),
-        stores: (_s: Record<string, string>) => ({ upgrade: (_f: Function) => ({}) }),
-      };
+    version(v: number) {
+      testState.versionCalls.push(v);
       return {
-        stores: (_schema: Record<string, string>) => storesResult,
+        stores: (schema: Record<string, string>) => {
+          testState.storeDefinitions.push(schema);
+          return {
+            upgrade: (cb: (tx: unknown) => unknown) => {
+              testState.upgradeCallbacks.push(cb);
+            },
+          };
+        },
       };
     }
-  }
+  };
 
   return { default: MockDexie };
 });
 
+// Import triggers LocalDb constructor
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
-import type {
-  User,
-  Card,
-  AuditEntry,
-  SessionGrant,
-  TransactionLog,
-  SyncCursor,
-  DeviceInfo,
-} from "#/infrastructure/persistence/dexie/localDb";
 
-describe("local-db", () => {
-  it("exports localDb instance", () => {
-    expect(localDb).toBeDefined();
+describe("localDb", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("localDb has table properties", () => {
-    // localDb is a Dexie instance - tables are defined via version().stores()
-    // In the mock environment, they may not be populated the same way
-    // Just verify the instance exists and is the right type
-    expect(localDb).toBeDefined();
-    expect(typeof localDb).toBe("object");
+  describe("database instance", () => {
+    it("exports a localDb instance", () => {
+      expect(localDb).toBeDefined();
+    });
+
+    it("defines 5 schema versions", () => {
+      expect(testState.versionCalls).toContain(1);
+      expect(testState.versionCalls).toContain(2);
+      expect(testState.versionCalls).toContain(3);
+      expect(testState.versionCalls).toContain(4);
+      expect(testState.versionCalls).toContain(5);
+      expect(testState.versionCalls).toHaveLength(5);
+    });
   });
 
-  // Type checks (compile-time verification)
-  describe("type definitions", () => {
-    it("User type has required fields", () => {
-      const user: User = {
-        tenantId: "t1",
-        userId: "u1",
-        name: "Test User",
-        status: "active",
-        createdAt: 1000,
-        updatedAt: 1000,
-      };
-      expect(user.tenantId).toBe("t1");
-      expect(user.status).toBe("active");
+  describe("schema definitions", () => {
+    it("v1 defines users, cards, auditLog, sessionGrants", () => {
+      expect(testState.storeDefinitions[0]).toEqual({
+        users: "[tenantId+userId], tenantId",
+        cards: "[tenantId+cardId], tenantId, userId",
+        auditLog: "++id, tenantId, cardId, [tenantId+timestamp]",
+        sessionGrants: "grantId, tenantId, accountId",
+      });
     });
 
-    it("Card type has required fields", () => {
-      const card: Card = {
-        tenantId: "t1",
-        cardId: "c1",
-        userId: null,
-        status: "active",
-        balance: 100000,
-        counter: 5,
-        keyVersion: 1,
-        createdAt: 1000,
-        lastActivityAt: null,
-        expiresAt: null,
-        notes: null,
-      };
-      expect(card.balance).toBe(100000);
+    it("v2 adds transactionLog, syncCursors, deviceInfo tables", () => {
+      expect(testState.storeDefinitions[1]).toHaveProperty("transactionLog");
+      expect(testState.storeDefinitions[1]).toHaveProperty("syncCursors");
+      expect(testState.storeDefinitions[1]).toHaveProperty("deviceInfo");
     });
 
-    it("TransactionLog type has required fields", () => {
-      const tx: TransactionLog = {
-        tenantId: "t1",
-        cardId: "c1",
-        userId: null,
-        counter: 1,
-        type: "debit",
-        amount: 5000,
-        balanceAfter: 95000,
-        timestamp: 1000,
-        hash: "abc123",
-        terminalId: null,
-        deviceId: null,
-        syncStatus: "pending",
-        syncedAt: null,
-        createdAt: 1000,
-      };
-      expect(tx.syncStatus).toBe("pending");
+    it("v3 adds syncStatus+timestamp compound index to transactionLog", () => {
+      expect(testState.storeDefinitions[2].transactionLog).toContain(
+        "[tenantId+syncStatus+timestamp]",
+      );
     });
 
-    it("SyncCursor type has required fields", () => {
-      const cursor: SyncCursor = {
-        tenantId: "t1",
-        entityType: "members",
-        lastCursor: "100",
-        updatedAt: 1000,
-      };
-      expect(cursor.entityType).toBe("members");
+    it("v4 adds syncStatus compound index to users and cards", () => {
+      expect(testState.storeDefinitions[3].users).toContain("[tenantId+syncStatus]");
+      expect(testState.storeDefinitions[3].cards).toContain("[tenantId+syncStatus]");
     });
 
-    it("DeviceInfo type has required fields", () => {
-      const device: DeviceInfo = {
-        deviceId: "d1",
-        tenantId: "t1",
-        fingerprintHash: "hash123",
-        registeredAt: 1000,
+    it("v5 retains all indexes from v4", () => {
+      expect(testState.storeDefinitions[4]).toEqual(testState.storeDefinitions[3]);
+    });
+  });
+
+  describe("version 4 upgrade", () => {
+    it("sets syncStatus to 'synced' for users without syncStatus", async () => {
+      const users = [
+        { tenantId: "t1", userId: "u1", name: "Alice", syncStatus: undefined },
+        { tenantId: "t1", userId: "u2", name: "Bob", syncStatus: "pending" },
+      ];
+      const cards = [{ tenantId: "t1", cardId: "c1", syncStatus: undefined }];
+
+      const userModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        users.forEach(cb);
+        return Promise.resolve();
+      });
+      const cardModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        cards.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "users") {
+            return { toCollection: () => ({ modify: userModify }) };
+          }
+          if (name === "cards") {
+            return { toCollection: () => ({ modify: cardModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn().mockResolvedValue(undefined) }) };
+        }),
       };
-      expect(device.deviceId).toBe("d1");
+
+      // upgradeCallbacks[0] is v4 upgrade (first upgrade registered)
+      await testState.upgradeCallbacks[0](tx);
+
+      // User without syncStatus gets "synced"
+      expect(users[0].syncStatus).toBe("synced");
+      // User with existing syncStatus is unchanged
+      expect(users[1].syncStatus).toBe("pending");
+      // Card without syncStatus gets "synced"
+      expect(cards[0].syncStatus).toBe("synced");
     });
 
-    it("SessionGrant type has required fields", () => {
-      const grant: SessionGrant = {
-        grantId: "g1",
-        tenantId: "t1",
-        accountId: "a1",
-        deviceId: "d1",
-        keyVersion: 1,
-        allowedOps: "read,write",
-        expiresAt: 9999999999,
-        issuedAt: 1000,
+    it("does not overwrite existing syncStatus on users", async () => {
+      const users = [{ tenantId: "t1", userId: "u1", name: "Alice", syncStatus: "pending" }];
+
+      const userModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        users.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "users") {
+            return { toCollection: () => ({ modify: userModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn().mockResolvedValue(undefined) }) };
+        }),
       };
-      expect(grant.grantId).toBe("g1");
+
+      await testState.upgradeCallbacks[0](tx);
+
+      expect(users[0].syncStatus).toBe("pending");
     });
 
-    it("AuditEntry type has required fields", () => {
-      const entry: AuditEntry = {
-        tenantId: "t1",
-        cardId: "c1",
-        counter: 1,
-        type: "debit",
-        amount: 5000,
-        balanceAfter: 95000,
-        timestamp: 1000,
-        hash: "abc",
-        terminalId: null,
-        flagged: false,
-        createdAt: 1000,
+    it("does not overwrite existing syncStatus on cards", async () => {
+      const cards = [{ tenantId: "t1", cardId: "c1", syncStatus: "pending" }];
+
+      const cardModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        cards.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "cards") {
+            return { toCollection: () => ({ modify: cardModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn().mockResolvedValue(undefined) }) };
+        }),
       };
-      expect(entry.type).toBe("debit");
+
+      await testState.upgradeCallbacks[0](tx);
+
+      expect(cards[0].syncStatus).toBe("pending");
+    });
+  });
+
+  describe("version 5 upgrade", () => {
+    it("converts numeric userId to string in users table", async () => {
+      const users = [
+        { tenantId: "t1", userId: 1001, name: "Alice" },
+        { tenantId: "t1", userId: "1002", name: "Bob" },
+      ];
+      const cards = [{ tenantId: "t1", cardId: "c1", userId: 42 }];
+      const transactions = [{ tenantId: "t1", cardId: "c1", userId: 99 }];
+
+      const userModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        users.forEach(cb);
+        return Promise.resolve();
+      });
+      const cardModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        cards.forEach(cb);
+        return Promise.resolve();
+      });
+      const txLogModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        transactions.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "users") {
+            return { toCollection: () => ({ modify: userModify }) };
+          }
+          if (name === "cards") {
+            return { toCollection: () => ({ modify: cardModify }) };
+          }
+          if (name === "transactionLog") {
+            return { toCollection: () => ({ modify: txLogModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn() }) };
+        }),
+      };
+
+      // upgradeCallbacks[1] is v5 upgrade (second upgrade registered)
+      await testState.upgradeCallbacks[1](tx);
+
+      // Numeric userId converted to string
+      expect(users[0].userId).toBe("1001");
+      // Already-string userId unchanged
+      expect(users[1].userId).toBe("1002");
+      // Card userId converted
+      expect(cards[0].userId).toBe("42");
+      // TransactionLog userId converted
+      expect(transactions[0].userId).toBe("99");
+    });
+
+    it("does not modify userId that is already a string", async () => {
+      const users = [{ tenantId: "t1", userId: "u-abc", name: "Alice" }];
+      const cards = [{ tenantId: "t1", cardId: "c1", userId: "u-abc" }];
+      const transactions = [{ tenantId: "t1", cardId: "c1", userId: "u-abc" }];
+
+      const userModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        users.forEach(cb);
+        return Promise.resolve();
+      });
+      const cardModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        cards.forEach(cb);
+        return Promise.resolve();
+      });
+      const txLogModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        transactions.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "users") {
+            return { toCollection: () => ({ modify: userModify }) };
+          }
+          if (name === "cards") {
+            return { toCollection: () => ({ modify: cardModify }) };
+          }
+          if (name === "transactionLog") {
+            return { toCollection: () => ({ modify: txLogModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn() }) };
+        }),
+      };
+
+      await testState.upgradeCallbacks[1](tx);
+
+      expect(users[0].userId).toBe("u-abc");
+      expect(cards[0].userId).toBe("u-abc");
+      expect(transactions[0].userId).toBe("u-abc");
+    });
+
+    it("handles null userId in cards and transactionLog without modification", async () => {
+      const users = [{ tenantId: "t1", userId: "u1", name: "Alice" }];
+      const cards = [{ tenantId: "t1", cardId: "c1", userId: null }];
+      const transactions = [{ tenantId: "t1", cardId: "c1", userId: null }];
+
+      const userModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        users.forEach(cb);
+        return Promise.resolve();
+      });
+      const cardModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        cards.forEach(cb);
+        return Promise.resolve();
+      });
+      const txLogModify = vi.fn((cb: (item: Record<string, unknown>) => void) => {
+        transactions.forEach(cb);
+        return Promise.resolve();
+      });
+
+      const tx = {
+        table: vi.fn((name: string) => {
+          if (name === "users") {
+            return { toCollection: () => ({ modify: userModify }) };
+          }
+          if (name === "cards") {
+            return { toCollection: () => ({ modify: cardModify }) };
+          }
+          if (name === "transactionLog") {
+            return { toCollection: () => ({ modify: txLogModify }) };
+          }
+          return { toCollection: () => ({ modify: vi.fn() }) };
+        }),
+      };
+
+      await testState.upgradeCallbacks[1](tx);
+
+      // null is not typeof "number", so it stays null
+      expect(cards[0].userId).toBeNull();
+      expect(transactions[0].userId).toBeNull();
     });
   });
 });

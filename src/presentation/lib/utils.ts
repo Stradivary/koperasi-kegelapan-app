@@ -15,16 +15,16 @@ export interface DeviceSetupLaunchContext {
 
 export function setDeviceSetupLaunchContext(context: DeviceSetupLaunchContext) {
   if (typeof window === "undefined") return;
-  globalThis.sessionStorage.setItem(DEVICE_SETUP_LAUNCH_KEY, JSON.stringify(context));
+  window.sessionStorage.setItem(DEVICE_SETUP_LAUNCH_KEY, JSON.stringify(context));
 }
 
 export function consumeDeviceSetupLaunchContext(): DeviceSetupLaunchContext | null {
   if (typeof window === "undefined") return null;
 
-  const raw = globalThis.sessionStorage.getItem(DEVICE_SETUP_LAUNCH_KEY);
+  const raw = window.sessionStorage.getItem(DEVICE_SETUP_LAUNCH_KEY);
   if (!raw) return null;
 
-  globalThis.sessionStorage.removeItem(DEVICE_SETUP_LAUNCH_KEY);
+  window.sessionStorage.removeItem(DEVICE_SETUP_LAUNCH_KEY);
 
   try {
     const parsed = JSON.parse(raw) as Partial<DeviceSetupLaunchContext>;
