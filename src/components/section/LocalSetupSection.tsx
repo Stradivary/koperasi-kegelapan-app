@@ -1,4 +1,4 @@
-import { CheckCircle } from "lucide-react";
+import successHumanImg from "../../assets/images/success_human.svg";
 import { useCallback, useEffect, useState } from "react";
 import { BRAND } from "../../lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
@@ -253,9 +253,11 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
       {/* Step: Done */}
       {step === "done" && (
         <div className="text-center space-y-3 py-4">
-          <div className="w-16 h-16 rounded-full bg-signal-bg-valid flex items-center justify-center mx-auto">
-            <CheckCircle size={32} className="text-signal-valid" />
-          </div>
+          <img
+            src={successHumanImg}
+            alt="Setup selesai"
+            className="w-40 h-40 object-contain mx-auto drop-shadow-md"
+          />
           <p className="type-title-bold text-foreground">Siap!</p>
           <p className="type-body1 text-signal-text-secondary">
             {BRAND.APP_NAME} siap digunakan secara lokal.

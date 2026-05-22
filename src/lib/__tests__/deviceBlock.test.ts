@@ -7,6 +7,8 @@ import {
   checkDeviceBlockResponse,
   formatBlockedUntil,
   subscribeToDeviceBlock,
+  onDeviceUnblock,
+  setupBlockVisibilityHandler,
 } from "../deviceBlock";
 
 // Mock the indexeddb module to avoid actual IndexedDB operations in tests
@@ -130,10 +132,9 @@ describe("deviceBlock", () => {
 
     it("returns true and sets block state for 403 device_blocked", async () => {
       const blockedUntil = Math.floor(Date.now() / 1000) + 3600;
-      const response = new Response(
-        JSON.stringify({ error: "device_blocked", blockedUntil }),
-        { status: 403 },
-      );
+      const response = new Response(JSON.stringify({ error: "device_blocked", blockedUntil }), {
+        status: 403,
+      });
 
       const result = await checkDeviceBlockResponse(response, "tenant-123");
       expect(result).toBe(true);
@@ -174,6 +175,120 @@ describe("deviceBlock", () => {
       const state = getDeviceBlockState();
       expect(state.blocked).toBe(false);
       expect(state.blockedUntil).toBeNull();
+    });
+
+    it("calls onDeviceUnblock callback when timer fires", async () => {
+      const callback = vi.fn();
+      onDeviceUnblock(callback);
+
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const blockedUntil = nowSeconds + 30;
+      await handleDeviceBlocked(blockedUntil);
+
+      vi.advanceTimersByTime(31_000);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it("caps delay at 24 hours for very large blockedUntil values", async () => {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const blockedUntil = nowSeconds + 365 * 24 * 60 * 60; // 1 year from now
+      await handleDeviceBlocked(blockedUntil);
+
+      expect(isDeviceBlocked()).toBe(true);
+      // After 24 hours, the timer should fire (capped)
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1000);
+      expect(getDeviceBlockState().blocked).toBe(false);
+    });
+  });
+
+  describe("onDeviceUnblock", () => {
+    it("registers a callback for unblock events", async () => {
+      const callback = vi.fn();
+      onDeviceUnblock(callback);
+
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      await handleDeviceBlocked(nowSeconds + 10);
+      vi.advanceTimersByTime(11_000);
+
+      expect(callback).toHaveBeenCalled();
+    });
+  });
+
+  describe("setupBlockVisibilityHandler", () => {
+    it("returns a cleanup function", () => {
+      const mockAddEventListener = vi.fn();
+      const mockRemoveEventListener = vi.fn();
+      vi.stubGlobal("document", {
+        addEventListener: mockAddEventListener,
+        removeEventListener: mockRemoveEventListener,
+        visibilityState: "visible",
+      });
+
+      const cleanup = setupBlockVisibilityHandler();
+      expect(typeof cleanup).toBe("function");
+      expect(mockAddEventListener).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+
+      cleanup();
+      expect(mockRemoveEventListener).toHaveBeenCalledWith(
+        "visibilitychange",
+        expect.any(Function),
+      );
+
+      vi.unstubAllGlobals();
+    });
+
+    it("clears expired block when tab becomes visible", async () => {
+      const mockListeners: Record<string, Function> = {};
+      vi.stubGlobal("document", {
+        addEventListener: (event: string, handler: Function) => {
+          mockListeners[event] = handler;
+        },
+        removeEventListener: vi.fn(),
+        visibilityState: "visible",
+      });
+
+      setupBlockVisibilityHandler();
+
+      // Set a block that has already expired
+      const pastTime = Math.floor(Date.now() / 1000) - 10;
+      await handleDeviceBlocked(pastTime);
+      // The block is already expired but state is still set
+      // Simulate visibility change
+      if (mockListeners["visibilitychange"]) {
+        mockListeners["visibilitychange"]();
+      }
+
+      // Block should be cleared
+      expect(getDeviceBlockState().blocked).toBe(false);
+
+      vi.unstubAllGlobals();
+    });
+
+    it("does nothing when tab is not visible", async () => {
+      const mockListeners: Record<string, Function> = {};
+      vi.stubGlobal("document", {
+        addEventListener: (event: string, handler: Function) => {
+          mockListeners[event] = handler;
+        },
+        removeEventListener: vi.fn(),
+        visibilityState: "hidden",
+      });
+
+      setupBlockVisibilityHandler();
+
+      const futureTime = Math.floor(Date.now() / 1000) + 3600;
+      await handleDeviceBlocked(futureTime);
+
+      if (mockListeners["visibilitychange"]) {
+        mockListeners["visibilitychange"]();
+      }
+
+      // Block should still be active (tab is hidden)
+      expect(getDeviceBlockState().blocked).toBe(true);
+
+      vi.unstubAllGlobals();
+      clearBlockState();
     });
   });
 });

@@ -1,23 +1,7 @@
 import * as React from "react";
-import { useIsMobile } from "#/hooks/use-mobile.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "#/components/ui/dialog.tsx";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "#/components/ui/drawer.tsx";
+import { BaseDialogDrawer } from "#/components/ui/base-dialog-drawer.tsx";
 
 export interface PromptDialogDrawerProps {
   open: boolean;
@@ -63,7 +47,6 @@ export function PromptDialogDrawer({
   icon,
   validate,
 }: PromptDialogDrawerProps) {
-  const isMobile = useIsMobile();
   const [value, setValue] = React.useState(defaultValue);
   const [error, setError] = React.useState<string | undefined>();
 
@@ -117,7 +100,7 @@ export function PromptDialogDrawer({
     </div>
   );
 
-  const footerContent = (
+  const footer = (
     <>
       <Button variant={confirmVariant} onClick={handleConfirm} disabled={isProcessing}>
         {isProcessing ? (processingLabel ?? confirmLabel) : confirmLabel}
@@ -128,50 +111,16 @@ export function PromptDialogDrawer({
     </>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange} direction="bottom" repositionInputs={false}>
-        <DrawerContent>
-          <DrawerHeader>
-            {icon && <div className="flex items-center justify-center mb-2">{icon}</div>}
-            <DrawerTitle>{title}</DrawerTitle>
-            {description && (
-              <DrawerDescription asChild>
-                <div>{description}</div>
-              </DrawerDescription>
-            )}
-          </DrawerHeader>
-          <div className="px-4 pb-4">{inputContent}</div>
-          <DrawerFooter>{footerContent}</DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          {icon && (
-            <div className="flex items-center justify-center sm:justify-start mb-2">{icon}</div>
-          )}
-          <DialogTitle>{title}</DialogTitle>
-          {description && (
-            <DialogDescription asChild>
-              <div>{description}</div>
-            </DialogDescription>
-          )}
-        </DialogHeader>
-        {inputContent}
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isProcessing}>
-            {cancelLabel}
-          </Button>
-          <Button variant={confirmVariant} onClick={handleConfirm} disabled={isProcessing}>
-            {isProcessing ? (processingLabel ?? confirmLabel) : confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <BaseDialogDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      icon={icon}
+      footer={footer}
+    >
+      {inputContent}
+    </BaseDialogDrawer>
   );
 }

@@ -37,8 +37,8 @@ export function DataTable<TData>({
   onPaginationChange,
   onSortingChange,
   sorting: controlledSorting,
-  pageSize = 10,
-  pageSizeOptions = [10, 20, 30, 50],
+  pageSize: pageSizeProp,
+  pageSizeOptions = [5, 10, 20, 30, 50],
   searchValue: controlledSearch,
   onSearchChange,
   searchPlaceholder = "Search...",
@@ -55,6 +55,9 @@ export function DataTable<TData>({
   enableSorting = true,
 }: DataTableProps<TData>) {
   const isMobile = useIsMobile();
+
+  // Responsive default: 5 on mobile, 10 on desktop (caller can override)
+  const pageSize = pageSizeProp ?? (isMobile ? 5 : 10);
 
   // Internal search state (uncontrolled mode)
   const [internalSearch, setInternalSearch] = useState("");

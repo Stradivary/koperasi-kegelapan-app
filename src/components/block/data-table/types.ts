@@ -51,7 +51,7 @@ export interface DataTableProps<TData> {
   /** Current sorting state (controlled, for server mode) */
   sorting?: SortingState;
 
-  /** Default page size */
+  /** Default page size (defaults to 10 on desktop, 5 on mobile) */
   pageSize?: number;
 
   /** Available page size options */

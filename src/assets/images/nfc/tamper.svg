@@ -1,0 +1,13 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Card body -->
+  <rect x="16" y="36" width="96" height="64" rx="8" fill="#FEE2E2" stroke="#ED1F2E" stroke-width="3"/>
+  <!-- Crack lines on card -->
+  <path d="M48 44 L56 60 L50 68 L62 84" stroke="#ED1F2E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M56 60 L68 56" stroke="#ED1F2E" stroke-width="2" stroke-linecap="round"/>
+  <!-- Warning triangle -->
+  <path d="M64 14 L82 46 H46 Z" fill="#FAA22E" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+  <text x="64" y="40" text-anchor="middle" font-size="18" font-weight="bold" fill="white">!</text>
+  <!-- NFC waves (broken) -->
+  <path d="M76 58 Q82 64 76 70" stroke="#ED1F2E" stroke-width="2.5" stroke-linecap="round" fill="none" stroke-dasharray="3 2"/>
+  <path d="M82 54 Q92 64 82 74" stroke="#ED1F2E" stroke-width="2.5" stroke-linecap="round" fill="none" stroke-dasharray="3 2"/>
+</svg>

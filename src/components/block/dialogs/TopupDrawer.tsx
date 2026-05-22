@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { CheckCircle2, XCircle, CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
+import successHandImg from "../../../assets/images/success_hand.svg";
+import failedImg from "../../../assets/images/nfc/failed.svg";
 import type { NfcCardPhase } from "../../../hooks/useNfcCard";
 import type { CardPayload } from "../../../core/payload/types";
 import type { NfcPhase } from "../../../core/nfc/stateMachine";
@@ -171,10 +173,12 @@ export function TopupDrawer({
 
           {/* Success */}
           {isSuccess && (
-            <div className="flex flex-col items-center py-8 gap-4">
-              <div className="w-24 h-24 rounded-full bg-signal-bg-valid border-2 border-signal-valid flex items-center justify-center">
-                <CheckCircle2 size={48} className="text-signal-valid" />
-              </div>
+            <div className="flex flex-col items-center py-6 gap-4">
+              <img
+                src={successHandImg}
+                alt="Top-up Berhasil"
+                className="w-44 h-44 object-contain drop-shadow-md"
+              />
               <div className="text-center">
                 <p className="text-lg font-bold text-signal-valid">Top-up Berhasil</p>
                 {payload && (
@@ -189,10 +193,12 @@ export function TopupDrawer({
 
           {/* Error */}
           {isError && (
-            <div className="flex flex-col items-center py-8 gap-4">
-              <div className="w-24 h-24 rounded-full bg-signal-bg-error border-2 border-signal-error flex items-center justify-center">
-                <XCircle size={48} className="text-signal-error" />
-              </div>
+            <div className="flex flex-col items-center py-6 gap-4">
+              <img
+                src={failedImg}
+                alt="Gagal"
+                className="w-44 h-44 object-contain drop-shadow-md"
+              />
               <div className="text-center">
                 <p className="font-bold text-signal-error">Gagal</p>
                 {error && <p className="text-sm text-muted-foreground mt-1">{error}</p>}

@@ -1,4 +1,5 @@
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import failedImg from "../../../assets/images/nfc/failed.svg";
 import type { CardPayload } from "../../../core/payload/types";
 import { CardState, CardStatus } from "../../../core/payload/types";
 import type { NfcPhase } from "../../../core/nfc/stateMachine";
@@ -223,10 +224,12 @@ export function IssuanceScanDrawer({
 
           {/* Error state */}
           {isError && (
-            <div className="flex flex-col items-center py-8 gap-4">
-              <div className="w-24 h-24 rounded-full bg-destructive/10 border-2 border-destructive flex items-center justify-center">
-                <XCircle size={48} className="text-destructive" />
-              </div>
+            <div className="flex flex-col items-center py-6 gap-4">
+              <img
+                src={failedImg}
+                alt="Gagal"
+                className="w-44 h-44 object-contain drop-shadow-md"
+              />
               <div className="text-center">
                 <p className="font-bold text-destructive">Gagal</p>
                 {error && <p className="text-sm text-muted-foreground mt-1">{error}</p>}

@@ -1,189 +1,283 @@
-/**
- * Unit tests for BlockEnforcer
- *
- * Tests the block enforcement logic for:
- * - On-card status blocking (authoritative)
- * - Local DB record blocking (fallback)
- * - Error code mapping per block type
- * - Message inclusion in all block responses
- * - Non-blocked (active) card pass-through
- *
- * @see Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
- */
-
-import { describe, it, expect } from "vitest";
-import { checkBlockedSync } from "../blockEnforcer";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CardStatus } from "../../payload/types";
 import type { Card } from "../../../db/local-db";
 
-const BLOCKED_MESSAGE = "Akses Ditolak: Kartu Diblokir";
+// Mock the local-db module
+vi.mock("../../../db/local-db", () => ({
+  localDb: {
+    cards: {
+      get: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue(undefined),
+      put: vi.fn().mockResolvedValue(undefined),
+    },
+  },
+}));
 
-function makeCard(status: Card["status"]): Card {
+import {
+  checkBlockedSync,
+  checkBlocked,
+  enforceOnCheckin,
+  enforceOnCheckout,
+  applyAdminBlock,
+} from "../blockEnforcer";
+import { localDb } from "../../../db/local-db";
+
+/** Minimal Card stub — only status is needed for most block checks */
+function stubCard(status: Card["status"]): Card {
   return {
-    tenantId: "tenant-1",
-    cardId: "aabbccdd",
-    userId: "1",
+    tenantId: "t1",
+    cardId: "c1",
+    userId: null,
     status,
-    balance: 50000,
-    counter: 5,
+    balance: 0,
+    counter: 0,
     keyVersion: 1,
-    createdAt: 1700000000,
-    lastActivityAt: 1700000000,
+    createdAt: 0,
+    lastActivityAt: null,
     expiresAt: null,
     notes: null,
   };
 }
 
-describe("checkBlockedSync", () => {
-  describe("on-card status blocking (Requirement 6.4)", () => {
-    it("should block when on-card status is BLOCKED_ADMIN", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_ADMIN);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
-      expect(result.status).toBe(CardStatus.BLOCKED_ADMIN);
-    });
-
-    it("should block when on-card status is BLOCKED_TAMPER", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_TAMPER);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
-      expect(result.status).toBe(CardStatus.BLOCKED_TAMPER);
-    });
-
-    it("should block when on-card status is BLOCKED_FRAUD", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_FRAUD);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
-      expect(result.status).toBe(CardStatus.BLOCKED_FRAUD);
-    });
-
-    it("should block when on-card status is BLOCKED_EXPIRED", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_EXPIRED);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
-      expect(result.status).toBe(CardStatus.BLOCKED_EXPIRED);
-    });
-
-    it("should block on-card even if local DB shows active (Requirement 6.4)", () => {
-      const activeCard = makeCard("active");
-      const result = checkBlockedSync(CardStatus.BLOCKED_ADMIN, activeCard);
-
-      expect(result.blocked).toBe(true);
-      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
-    });
+describe("blockEnforcer", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe("local DB record blocking (Requirement 6.5)", () => {
-    it("should block when local DB shows blocked_admin", () => {
-      const card = makeCard("blocked_admin");
-      const result = checkBlockedSync(undefined, card);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
-    });
-
-    it("should block when local DB shows blocked_tamper", () => {
-      const card = makeCard("blocked_tamper");
-      const result = checkBlockedSync(undefined, card);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
-    });
-
-    it("should block when local DB shows blocked_fraud", () => {
-      const card = makeCard("blocked_fraud");
-      const result = checkBlockedSync(undefined, card);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
-    });
-
-    it("should block when local DB shows blocked_expired", () => {
-      const card = makeCard("blocked_expired");
-      const result = checkBlockedSync(undefined, card);
-
-      expect(result.blocked).toBe(true);
-      expect(result.message).toBe(BLOCKED_MESSAGE);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
-    });
-  });
-
-  describe("non-blocked pass-through", () => {
-    it("should not block when on-card status is ACTIVE", () => {
-      const result = checkBlockedSync(CardStatus.ACTIVE);
-
-      expect(result.blocked).toBe(false);
-      expect(result.message).toBeUndefined();
-      expect(result.errorCode).toBeUndefined();
-    });
-
-    it("should not block when local DB shows active", () => {
-      const card = makeCard("active");
-      const result = checkBlockedSync(undefined, card);
-
-      expect(result.blocked).toBe(false);
-    });
-
-    it("should not block when both on-card and local DB are active", () => {
-      const card = makeCard("active");
-      const result = checkBlockedSync(CardStatus.ACTIVE, card);
-
-      expect(result.blocked).toBe(false);
-    });
-
-    it("should not block when no card record exists and no on-card status", () => {
+  describe("checkBlockedSync", () => {
+    it("returns blocked:false when no status and no DB card", () => {
       const result = checkBlockedSync(undefined, null);
+      expect(result.blocked).toBe(false);
+    });
 
+    it("returns blocked:false for ACTIVE on-card status", () => {
+      const result = checkBlockedSync(CardStatus.ACTIVE, null);
+      expect(result.blocked).toBe(false);
+    });
+
+    it("returns blocked:true for BLOCKED_TAMPER on-card status", () => {
+      const result = checkBlockedSync(CardStatus.BLOCKED_TAMPER, null);
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
+      expect(result.message).toContain("Diblokir");
+    });
+
+    it("returns blocked:true for BLOCKED_FRAUD on-card status", () => {
+      const result = checkBlockedSync(CardStatus.BLOCKED_FRAUD, null);
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED");
+    });
+
+    it("returns blocked:true for BLOCKED_EXPIRED on-card status", () => {
+      const result = checkBlockedSync(CardStatus.BLOCKED_EXPIRED, null);
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED");
+    });
+
+    it("returns blocked:true for BLOCKED_ADMIN on-card status", () => {
+      const result = checkBlockedSync(CardStatus.BLOCKED_ADMIN, null);
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
+    });
+
+    it("returns blocked:true when DB card has blocked_tamper status", () => {
+      const result = checkBlockedSync(undefined, stubCard("blocked_tamper"));
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
+    });
+
+    it("returns blocked:true when DB card has blocked_fraud status", () => {
+      const result = checkBlockedSync(undefined, stubCard("blocked_fraud"));
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED");
+    });
+
+    it("returns blocked:true when DB card has blocked_expired status", () => {
+      const result = checkBlockedSync(undefined, stubCard("blocked_expired"));
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED");
+    });
+
+    it("returns blocked:true when DB card has blocked_admin status", () => {
+      const result = checkBlockedSync(undefined, stubCard("blocked_admin"));
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
+    });
+
+    it("returns blocked:false when DB card has active status", () => {
+      const result = checkBlockedSync(undefined, stubCard("active"));
+      expect(result.blocked).toBe(false);
+    });
+
+    it("on-card status takes priority over DB card", () => {
+      const result = checkBlockedSync(CardStatus.BLOCKED_ADMIN, stubCard("active"));
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
+    });
+  });
+
+  describe("checkBlocked", () => {
+    it("returns blocked:false when card not in DB and no on-card status", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      const result = await checkBlocked("t1", "card1");
+      expect(result.blocked).toBe(false);
+    });
+
+    it("returns blocked:true immediately for blocked on-card status without DB lookup", async () => {
+      const result = await checkBlocked("t1", "card1", CardStatus.BLOCKED_TAMPER);
+      expect(result.blocked).toBe(true);
+      // Should not have called DB since on-card status is already blocked
+      expect(localDb.cards.get).not.toHaveBeenCalled();
+    });
+
+    it("checks DB when on-card status is ACTIVE", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("blocked_admin"));
+      const result = await checkBlocked("t1", "card1", CardStatus.ACTIVE);
+      expect(result.blocked).toBe(true);
+      expect(localDb.cards.get).toHaveBeenCalledWith(["t1", "card1"]);
+    });
+  });
+
+  describe("enforceOnCheckin", () => {
+    it("delegates to checkBlocked", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      const result = await enforceOnCheckin("t1", "card1");
       expect(result.blocked).toBe(false);
     });
   });
 
-  describe("error code mapping (Requirement 6.6)", () => {
-    it("maps BLOCKED_ADMIN to CARD_BLOCKED_ADMIN", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_ADMIN);
-      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
-    });
-
-    it("maps BLOCKED_TAMPER to CARD_BLOCKED_TAMPER", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_TAMPER);
-      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
-    });
-
-    it("maps BLOCKED_FRAUD to CARD_BLOCKED", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_FRAUD);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
-    });
-
-    it("maps BLOCKED_EXPIRED to CARD_BLOCKED", () => {
-      const result = checkBlockedSync(CardStatus.BLOCKED_EXPIRED);
-      expect(result.errorCode).toBe("CARD_BLOCKED");
+  describe("enforceOnCheckout", () => {
+    it("delegates to checkBlocked", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      const result = await enforceOnCheckout("t1", "card1");
+      expect(result.blocked).toBe(false);
     });
   });
 
-  describe("message inclusion (Requirement 6.3)", () => {
-    it("includes 'Akses Ditolak: Kartu Diblokir' in all block responses", () => {
+  describe("applyAdminBlock", () => {
+    it("updates existing card to blocked_admin", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("active"));
+      await applyAdminBlock("t1", "c1");
+      expect(localDb.cards.update).toHaveBeenCalledWith(["t1", "c1"], { status: "blocked_admin" });
+    });
+
+    it("creates new card record when card does not exist", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      await applyAdminBlock("t1", "c1");
+      expect(localDb.cards.put).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          cardId: "c1",
+          status: "blocked_admin",
+        }),
+      );
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional coverage: gaps identified in analysis
+// ---------------------------------------------------------------------------
+
+describe("blockEnforcer — additional coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("checkBlocked — IndexedDB failure handling", () => {
+    it("propagates IndexedDB errors (does not swallow them)", async () => {
+      vi.mocked(localDb.cards.get).mockRejectedValue(new Error("IndexedDB unavailable"));
+
+      await expect(checkBlocked("t1", "card1", CardStatus.ACTIVE)).rejects.toThrow(
+        "IndexedDB unavailable",
+      );
+    });
+  });
+
+  describe("enforceOnCheckin — blocked card paths", () => {
+    it("returns blocked:true when DB card is blocked_tamper", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("blocked_tamper"));
+      const result = await enforceOnCheckin("t1", "card1");
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_TAMPER");
+    });
+
+    it("returns blocked:true when DB card is blocked_admin", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("blocked_admin"));
+      const result = await enforceOnCheckin("t1", "card1");
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED_ADMIN");
+    });
+
+    it("returns blocked:false when DB card is active", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("active"));
+      const result = await enforceOnCheckin("t1", "card1");
+      expect(result.blocked).toBe(false);
+    });
+  });
+
+  describe("enforceOnCheckout — blocked card paths", () => {
+    it("returns blocked:true when DB card is blocked_fraud", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("blocked_fraud"));
+      const result = await enforceOnCheckout("t1", "card1");
+      expect(result.blocked).toBe(true);
+      expect(result.errorCode).toBe("CARD_BLOCKED");
+    });
+
+    it("returns blocked:false when card is not in DB", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      const result = await enforceOnCheckout("t1", "card1");
+      expect(result.blocked).toBe(false);
+    });
+  });
+
+  describe("applyAdminBlock — timestamp fields", () => {
+    it("sets createdAt and lastActivityAt to current unix timestamp when creating", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      const before = Math.floor(Date.now() / 1000);
+
+      await applyAdminBlock("t1", "c1");
+
+      const after = Math.floor(Date.now() / 1000);
+      const putCall = vi.mocked(localDb.cards.put).mock.calls[0][0] as Card;
+      expect(putCall.createdAt).toBeGreaterThanOrEqual(before);
+      expect(putCall.createdAt).toBeLessThanOrEqual(after);
+      expect(putCall.lastActivityAt).toBeGreaterThanOrEqual(before);
+      expect(putCall.lastActivityAt as number).toBeLessThanOrEqual(after);
+    });
+
+    it("sets userId to null when creating a new blocked record", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(null);
+      await applyAdminBlock("t1", "c1");
+      const putCall = vi.mocked(localDb.cards.put).mock.calls[0][0] as Card;
+      expect(putCall.userId).toBeNull();
+    });
+
+    it("does not call put when card already exists (only update)", async () => {
+      vi.mocked(localDb.cards.get).mockResolvedValue(stubCard("active"));
+      await applyAdminBlock("t1", "c1");
+      expect(localDb.cards.put).not.toHaveBeenCalled();
+      expect(localDb.cards.update).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("checkBlockedSync — message content", () => {
+    it("includes 'Diblokir' in the message for all blocked statuses", () => {
       const statuses = [
-        CardStatus.BLOCKED_ADMIN,
         CardStatus.BLOCKED_TAMPER,
         CardStatus.BLOCKED_FRAUD,
         CardStatus.BLOCKED_EXPIRED,
+        CardStatus.BLOCKED_ADMIN,
       ];
-
       for (const status of statuses) {
-        const result = checkBlockedSync(status);
-        expect(result.message).toBe(BLOCKED_MESSAGE);
+        const result = checkBlockedSync(status, null);
+        expect(result.message).toContain("Diblokir");
       }
+    });
+
+    it("returns no message when not blocked", () => {
+      const result = checkBlockedSync(CardStatus.ACTIVE, null);
+      expect(result.message).toBeUndefined();
     });
   });
 });

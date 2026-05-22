@@ -1,6 +1,5 @@
-import { useState, useImperativeHandle, forwardRef } from "react";
+import { useImperativeHandle, forwardRef } from "react";
 import { StationCardListPanel } from "./StationCardListPanel";
-import { StationCardIssuePanel } from "./StationCardIssuePanel";
 
 export interface StationCardRow {
   cardId: string;
@@ -20,8 +19,6 @@ export interface StationUserRow {
   syncStatus: "pending" | "synced";
 }
 
-type CardView = "list" | "issue";
-
 export interface StationCardsPanelHandle {
   goToList: () => void;
 }
@@ -39,12 +36,7 @@ interface StationCardsPanelProps {
   hasGrant: boolean;
   onTopupCard: (cardId: string) => void;
   onRecoverCard: (card: StationCardRow) => void;
-  onIssueCard: (data: {
-    name: string;
-    userId: string | null;
-    balance: number;
-    expiresAt: number | null;
-  }) => Promise<void>;
+  onIssueNew: () => void;
   onUpdateCardStatus: (card: StationCardRow, newStatus: string) => void;
   onDeleteCard: (card: StationCardRow) => void;
   onResetCard: (card: StationCardRow) => void;
@@ -54,71 +46,36 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
   function StationCardsPanel(
     {
       cards,
-      members,
+      members: _members,
       isLoading,
       isTopping: _isTopping,
-      isIssuing,
+      isIssuing: _isIssuing,
       isRecovering,
       isDeleting,
       hasGrant: _hasGrant,
       onTopupCard,
       onRecoverCard,
-      onIssueCard,
+      onIssueNew,
       onDeleteCard,
     },
     ref,
   ) {
-    const [cardView, setCardView] = useState<CardView>("list");
-    const [success, setSuccess] = useState<string | null>(null);
-
     useImperativeHandle(ref, () => ({
-      goToList: () => {
-        setCardView("list");
-      },
+      goToList: () => {},
     }));
-
-    async function handleIssueCard(data: {
-      name: string;
-      userId: string | null;
-      balance: number;
-      expiresAt: number | null;
-    }) {
-      try {
-        await onIssueCard(data);
-        setCardView("list");
-      } catch {
-        // Error is handled upstream (override/not-blank dialogs shown by parent)
-      }
-    }
 
     return (
       <div className="space-y-4">
-        {success && <p className="text-sm text-green-600">{success}</p>}
-
-        {cardView === "list" && (
-          <StationCardListPanel
-            cards={cards}
-            isLoading={isLoading}
-            isRecovering={isRecovering}
-            isDeleting={isDeleting}
-            onTopupCard={onTopupCard}
-            onRecoverCard={onRecoverCard}
-            onDeleteCard={onDeleteCard}
-            onIssueNew={() => {
-              setSuccess(null);
-              setCardView("issue");
-            }}
-          />
-        )}
-
-        {cardView === "issue" && (
-          <StationCardIssuePanel
-            members={members}
-            isIssuing={isIssuing}
-            onIssueCard={handleIssueCard}
-            onCancel={() => setCardView("list")}
-          />
-        )}
+        <StationCardListPanel
+          cards={cards}
+          isLoading={isLoading}
+          isRecovering={isRecovering}
+          isDeleting={isDeleting}
+          onTopupCard={onTopupCard}
+          onRecoverCard={onRecoverCard}
+          onDeleteCard={onDeleteCard}
+          onIssueNew={onIssueNew}
+        />
       </div>
     );
   },

@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Wifi } from "lucide-react";
 import { triggerHaptic } from "#/lib/haptics";
+import tapNfcImg from "../../assets/images/nfc/tap_nfc.jpeg";
+import successPhoneImg from "../../assets/images/landing/success_phone.png";
+import failedImg from "../../assets/images/nfc/failed.svg";
+import tamperImg from "../../assets/images/nfc/tamper.svg";
 
 type NfcPhase = "idle" | "scanning" | "validating" | "ready" | "writing" | "success" | "error";
 
@@ -93,7 +96,14 @@ function getAriaLabel(phase: NfcPhase, label?: string): string {
   }
 }
 
-export function NfcTapArea({ phase, onClick, disabled, label, sublabel, tamperDetected }: NfcTapAreaProps) {
+export function NfcTapArea({
+  phase,
+  onClick,
+  disabled,
+  label,
+  sublabel,
+  tamperDetected,
+}: NfcTapAreaProps) {
   const config = phaseConfig[phase];
   const displayLabel = tamperDetected ? "⚠ Kartu terdeteksi rusak" : (label ?? config.label);
   const displaySublabel = sublabel ?? config.sublabel;
@@ -121,27 +131,88 @@ export function NfcTapArea({ phase, onClick, disabled, label, sublabel, tamperDe
 
   const isBusy = phase === "scanning" || phase === "validating" || phase === "writing";
 
+  // ── Illustration phases: full-size image, no circle container ──────────────
+  if (phase === "idle") {
+    return (
+      <button
+        role="button"
+        aria-label={getAriaLabel(phase, label)}
+        onClick={onClick}
+        disabled={disabled}
+        className={[
+          "flex flex-col items-center gap-3 focus:outline-none transition-all duration-200",
+          !disabled ? "cursor-pointer active:scale-95" : "opacity-50 cursor-default",
+        ].join(" ")}
+      >
+        <img
+          src={tapNfcImg}
+          alt="Tap kartu NFC"
+          className="w-40 h-40 object-cover rounded-2xl shadow-md"
+          aria-hidden="true"
+        />
+        <span className={["type-body1-bold text-center", config.iconColor].join(" ")}>
+          {displayLabel}
+        </span>
+        {displaySublabel && (
+          <span className="type-body2 text-signal-text-secondary text-center -mt-1">
+            {displaySublabel}
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  if (phase === "success") {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <img
+          src={successPhoneImg}
+          alt="Berhasil"
+          className="w-40 h-40 object-contain drop-shadow-md"
+          aria-hidden="true"
+        />
+        <span className={["type-body1-bold text-center", config.iconColor].join(" ")}>
+          {displayLabel}
+        </span>
+      </div>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <div className={["flex flex-col items-center gap-3 nfc-shake"].join(" ")}>
+        <img
+          src={tamperDetected ? tamperImg : failedImg}
+          alt={tamperDetected ? "Kartu rusak" : "Gagal"}
+          className="w-40 h-40 object-contain drop-shadow-md"
+          aria-hidden="true"
+        />
+        <span className={["type-body1-bold text-center", config.iconColor].join(" ")}>
+          {displayLabel}
+        </span>
+        {displaySublabel && (
+          <span className="type-body2 text-signal-text-secondary text-center -mt-1">
+            {displaySublabel}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // ── Active NFC phases: circle indicator with ring animation ────────────────
   return (
-    <button
-      role="button"
+    <div
       aria-label={getAriaLabel(phase, label)}
       aria-busy={isBusy}
-      onClick={phase === "idle" ? onClick : undefined}
-      disabled={disabled || phase !== "idle"}
       className={[
         "relative flex flex-col items-center justify-center gap-3",
         "w-48 h-48 rounded-full border-2 transition-all duration-300",
-        "focus:outline-none",
         config.bg,
         config.border,
-        phase === "idle" && !disabled
-          ? "cursor-pointer hover:border-brand hover:bg-brand/5 active:scale-95"
-          : "cursor-default",
-        disabled && phase === "idle" ? "opacity-50" : "",
       ].join(" ")}
     >
       {/* Outer pulse ring */}
-      {(phase === "idle" || phase === "scanning" || phase === "validating") && (
+      {(phase === "scanning" || phase === "validating") && (
         <span
           className={[
             "absolute inset-0 rounded-full border-2 border-brand/20",
@@ -149,60 +220,45 @@ export function NfcTapArea({ phase, onClick, disabled, label, sublabel, tamperDe
           ].join(" ")}
         />
       )}
+      {phase === "writing" && (
+        <span className="absolute inset-0 rounded-full border-2 border-signal-warning/20 nfc-ring-spin" />
+      )}
 
-      {/* Icon */}
+      {/* NFC wave icon */}
       <span className={["transition-colors", config.iconColor].join(" ")}>
-        {phase === "success" ? (
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        ) : phase === "error" ? (
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        ) : (
-          <Wifi
-            size={48}
-            className={
-              phase === "scanning" || phase === "validating" || phase === "writing"
-                ? "animate-pulse"
-                : ""
-            }
-          />
-        )}
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={
+            phase === "scanning" || phase === "validating" || phase === "writing"
+              ? "animate-pulse"
+              : ""
+          }
+          aria-hidden="true"
+        >
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <circle cx="12" cy="20" r="1" fill="currentColor" />
+        </svg>
       </span>
 
-      {/* Label under icon */}
+      {/* Label */}
       <span className={["type-body2-bold text-center px-2", config.iconColor].join(" ")}>
         {displayLabel}
       </span>
-
-      {/* Sublabel for additional context */}
       {displaySublabel && (
         <span className="type-body2 text-signal-text-secondary text-center px-2 -mt-1">
           {displaySublabel}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 

@@ -531,9 +531,34 @@ syncRoutes.get("/devices", async (c) => {
 
   try {
     const db = drizzle(c.env.DB);
-    const deviceList = await db.select().from(devices).where(eq(devices.tenantId, tenantId)).all();
 
-    return c.json({ devices: deviceList });
+    const [deviceList, memberCount, cardCount, txCount] = await Promise.all([
+      db.select().from(devices).where(eq(devices.tenantId, tenantId)).all(),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(and(eq(users.tenantId, tenantId), sql`${users.status} != 'deleted'`))
+        .get(),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(cards)
+        .where(and(eq(cards.tenantId, tenantId), sql`${cards.status} != 'deleted'`))
+        .get(),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(transactionLog)
+        .where(eq(transactionLog.tenantId, tenantId))
+        .get(),
+    ]);
+
+    return c.json({
+      devices: deviceList,
+      serverCounts: {
+        members: memberCount?.count ?? 0,
+        cards: cardCount?.count ?? 0,
+        transactions: txCount?.count ?? 0,
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     logger.error("sync/devices: failed to fetch devices", { tenantId, error: msg });

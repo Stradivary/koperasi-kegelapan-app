@@ -814,3 +814,134 @@ describe("nfcReducer", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Additional coverage: WRITE_PENDING_RETRY transitions (previously untested)
+// ---------------------------------------------------------------------------
+
+describe("WRITE_PENDING_RETRY", () => {
+  it("transitions from writing to write_pending_retry", () => {
+    const writingState: NfcState = {
+      ...initialNfcState,
+      phase: "writing",
+      payload: createMockPayload(),
+    };
+
+    const result = nfcReducer(writingState, { type: "WRITE_PENDING_RETRY" });
+
+    expect(result.phase).toBe("write_pending_retry");
+    expect(result.payload).toBe(writingState.payload);
+  });
+
+  it("ignores WRITE_PENDING_RETRY from non-writing phase", () => {
+    const result = nfcReducer(initialNfcState, { type: "WRITE_PENDING_RETRY" });
+    expect(result).toBe(initialNfcState);
+  });
+
+  it("ignores WRITE_PENDING_RETRY from ready phase", () => {
+    const readyState: NfcState = { ...initialNfcState, phase: "ready" };
+    const result = nfcReducer(readyState, { type: "WRITE_PENDING_RETRY" });
+    expect(result).toBe(readyState);
+  });
+
+  it("preserves payload and classification during write_pending_retry", () => {
+    const payload = createMockPayload();
+    const writingState: NfcState = {
+      ...initialNfcState,
+      phase: "writing",
+      payload,
+      classification: "valid_payload",
+    };
+
+    const result = nfcReducer(writingState, { type: "WRITE_PENDING_RETRY" });
+
+    expect(result.payload).toBe(payload);
+    expect(result.classification).toBe("valid_payload");
+  });
+});
+
+describe("START_WRITE from write_pending_retry (retry tap)", () => {
+  it("transitions from write_pending_retry back to writing", () => {
+    const retryState: NfcState = {
+      ...initialNfcState,
+      phase: "write_pending_retry",
+      payload: createMockPayload(),
+    };
+
+    const result = nfcReducer(retryState, { type: "START_WRITE" });
+
+    expect(result.phase).toBe("writing");
+  });
+
+  it("preserves payload when retrying from write_pending_retry", () => {
+    const payload = createMockPayload();
+    const retryState: NfcState = {
+      ...initialNfcState,
+      phase: "write_pending_retry",
+      payload,
+    };
+
+    const result = nfcReducer(retryState, { type: "START_WRITE" });
+
+    expect(result.payload).toBe(payload);
+  });
+});
+
+describe("CANCEL from write_pending_retry", () => {
+  it("transitions from write_pending_retry to idle", () => {
+    const retryState: NfcState = {
+      ...initialNfcState,
+      phase: "write_pending_retry",
+      payload: createMockPayload(),
+    };
+
+    const result = nfcReducer(retryState, { type: "CANCEL" });
+
+    expect(result).toEqual(initialNfcState);
+  });
+});
+
+describe("ERROR from write_pending_retry", () => {
+  it("transitions from write_pending_retry to error", () => {
+    const retryState: NfcState = {
+      ...initialNfcState,
+      phase: "write_pending_retry",
+      payload: createMockPayload(),
+    };
+    const error = createMockNfcError({ code: "WRITE_FAILED" });
+
+    const result = nfcReducer(retryState, { type: "ERROR", error });
+
+    expect(result.phase).toBe("error");
+    expect(result.error).toBe(error);
+  });
+});
+
+describe("full retry flow: writing → write_pending_retry → writing → success", () => {
+  it("completes a write after one retry", () => {
+    let state: NfcState = {
+      ...initialNfcState,
+      phase: "ready",
+      payload: createMockPayload(),
+      classification: "valid_payload",
+    };
+
+    // ready → writing
+    state = nfcReducer(state, { type: "START_WRITE" });
+    expect(state.phase).toBe("writing");
+
+    // writing → write_pending_retry (first write failed)
+    state = nfcReducer(state, { type: "WRITE_PENDING_RETRY" });
+    expect(state.phase).toBe("write_pending_retry");
+
+    // write_pending_retry → writing (user taps again)
+    state = nfcReducer(state, { type: "START_WRITE" });
+    expect(state.phase).toBe("writing");
+
+    // writing → success (second write succeeded)
+    const finalPayload = createMockPayload();
+    state = nfcReducer(state, { type: "WRITE_COMPLETE", payload: finalPayload });
+    expect(state.phase).toBe("success");
+    expect(state.payload).toBe(finalPayload);
+  });
+});

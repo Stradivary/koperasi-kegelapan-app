@@ -1,4 +1,7 @@
 import { CheckCircle2, LogIn, LogOut } from "lucide-react";
+import successPhoneImg from "../../../assets/images/landing/success_phone.png";
+import failedImg from "../../../assets/images/nfc/failed.svg";
+import tamperImg from "../../../assets/images/nfc/tamper.svg";
 import type { NfcCardPhase } from "../../../hooks/useNfcCard";
 import type { CardPayload } from "../../../core/payload/types";
 import { CardStatus } from "../../../core/payload/types";
@@ -175,10 +178,12 @@ export function NfcScanDrawer({
 
           {/* Success */}
           {isSuccess && (
-            <div className="flex flex-col items-center py-8 gap-4">
-              <div className="w-24 h-24 rounded-full bg-signal-bg-valid border-2 border-signal-valid flex items-center justify-center">
-                <CheckCircle2 size={48} className="text-signal-valid" />
-              </div>
+            <div className="flex flex-col items-center py-6 gap-4">
+              <img
+                src={successPhoneImg}
+                alt="Berhasil"
+                className="w-44 h-44 object-contain drop-shadow-md"
+              />
               <div className="text-center">
                 <p className="text-lg font-bold text-signal-valid">
                   {isCheckedIn ? "Check-in Berhasil" : "Check-out Berhasil"}
@@ -193,8 +198,12 @@ export function NfcScanDrawer({
 
           {/* Error */}
           {isError && (
-            <div className="flex flex-col items-center py-8 gap-4">
-              <NfcTapArea phase="error" />
+            <div className="flex flex-col items-center py-6 gap-4">
+              <img
+                src={tamperDetected ? tamperImg : failedImg}
+                alt={tamperDetected ? "Kartu rusak" : "Gagal"}
+                className="w-44 h-44 object-contain drop-shadow-md"
+              />
               <div className="text-center">
                 <p className="font-bold text-signal-error">
                   {tamperDetected ? "⚠ Kartu Terdeteksi Rusak" : "Gagal"}

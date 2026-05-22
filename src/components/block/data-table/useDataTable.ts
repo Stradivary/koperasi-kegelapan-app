@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -48,6 +48,15 @@ export function useDataTable<TData>({
 
   const isServer = paginationMode === "server";
   const sorting = controlledSorting ?? internalSorting;
+
+  // Reset to page 0 when pageSize changes (e.g. mobile ↔ desktop)
+  useEffect(() => {
+    if (!isServer) {
+      setInternalPagination((prev) =>
+        prev.pageSize !== pageSize ? { pageIndex: 0, pageSize } : prev,
+      );
+    }
+  }, [pageSize, isServer]);
 
   const pagination = useMemo(() => {
     if (isServer && serverPagination) {

@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { CreditCard, MoreHorizontal, Plus, RefreshCw, ShieldAlert, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -143,56 +152,57 @@ export function StationCardListPanel({
         renderMobileItem={(row) => {
           const card = row.original;
           const isBlocked = card.status !== "active";
+          const isSynced = card.syncStatus === "synced";
           return (
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="px-4 py-3 bg-white">
+              {/* Row 1: icon + name/id + action */}
+              <div className="flex items-center gap-3">
                 <div
                   className={cn(
-                    "size-8 rounded-lg flex items-center justify-center shrink-0",
+                    "size-9 rounded-xl flex items-center justify-center shrink-0",
                     isBlocked ? "bg-destructive/10" : "bg-primary/10",
                   )}
                 >
                   {isBlocked ? (
-                    <ShieldAlert size={14} className="text-destructive" />
+                    <ShieldAlert size={16} className="text-destructive" />
                   ) : (
-                    <CreditCard size={14} className="text-primary" />
+                    <CreditCard size={16} className="text-primary" />
                   )}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {card.userName ?? (card.userId ? `User #${card.userId}` : "Tanpa Pemilik")}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-mono truncate">{card.cardId}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Badge
-                      variant={isBlocked ? "destructive" : "default"}
-                      className="text-[10px] px-1.5 py-0"
-                    >
-                      {card.status === "active"
-                        ? "Aktif"
-                        : card.status.replace("blocked_", "Blokir ")}
-                    </Badge>
-                    <Badge
-                      variant={SYNC_BADGE_VARIANT[card.syncStatus]}
-                      className="text-[10px] px-1.5 py-0"
-                    >
-                      {card.syncStatus === "synced" ? "Synced" : "Pending"}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      Rp {card.balance?.toLocaleString("id-ID")}
-                    </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium truncate">
+                      {card.userName ?? (card.userId ? `User #${card.userId}` : "Tanpa Pemilik")}
+                    </p>
+                    {isSynced ? (
+                      <CheckCircle2 size={12} className="text-green-500 shrink-0" />
+                    ) : (
+                      <Clock size={12} className="text-amber-500 shrink-0" />
+                    )}
                   </div>
+                  <p className="text-xs text-muted-foreground font-mono truncate">{card.cardId}</p>
                 </div>
+                <CardActionsDropdown
+                  card={card}
+                  isRecovering={isRecovering}
+                  isDeleting={isDeleting}
+                  onTopup={() => onTopupCard(card.cardId)}
+                  onRecover={() => onRecoverCard(card)}
+                  onDelete={() => setDeleteTarget(card)}
+                />
               </div>
-
-              <CardActionsDropdown
-                card={card}
-                isRecovering={isRecovering}
-                isDeleting={isDeleting}
-                onTopup={() => onTopupCard(card.cardId)}
-                onRecover={() => onRecoverCard(card)}
-                onDelete={() => setDeleteTarget(card)}
-              />
+              {/* Row 2: status badge + balance */}
+              <div className="flex items-center justify-between mt-2 pl-12">
+                <Badge
+                  variant={isBlocked ? "destructive" : "default"}
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  {card.status === "active" ? "Aktif" : card.status.replace("blocked_", "Blokir ")}
+                </Badge>
+                <span className="text-sm font-semibold text-emerald-600">
+                  Rp {card.balance?.toLocaleString("id-ID")}
+                </span>
+              </div>
             </div>
           );
         }}

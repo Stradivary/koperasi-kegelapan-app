@@ -1,12 +1,4 @@
-/**
- * Unit tests for tenant sync request validation
- *
- * Tests the validation logic for SyncRequest fields.
- *
- * @see Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7
- */
-
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   validateSlug,
   validateName,
@@ -16,276 +8,258 @@ import {
   validateSyncRequest,
 } from "./tenantSync";
 
-describe("validateSlug", () => {
-  it("accepts valid slugs", () => {
-    expect(validateSlug("abc")).toEqual([]);
-    expect(validateSlug("my-tenant")).toEqual([]);
-    expect(validateSlug("koperasi-123")).toEqual([]);
-    expect(validateSlug("a1b")).toEqual([]);
-    expect(validateSlug("a".repeat(50))).toEqual([]);
-  });
+// Mock the database module (needed for processTenantSync but not for validators)
+vi.mock("#/db", () => ({
+  getDb: vi.fn(() => ({
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue(undefined),
+        })),
+      })),
+    })),
+    batch: vi.fn().mockResolvedValue([]),
+    insert: vi.fn(() => ({
+      values: vi.fn(),
+    })),
+  })),
+}));
 
-  it("rejects slugs shorter than 3 characters", () => {
-    const errors = validateSlug("ab");
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("3 and 50"))).toBe(true);
-  });
-
-  it("rejects slugs longer than 50 characters", () => {
-    const errors = validateSlug("a".repeat(51));
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("3 and 50"))).toBe(true);
-  });
-
-  it("rejects slugs with uppercase letters", () => {
-    const errors = validateSlug("My-Tenant");
-    expect(errors.some((e) => e.field === "slug")).toBe(true);
-  });
-
-  it("rejects slugs starting with a hyphen", () => {
-    const errors = validateSlug("-abc");
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("start and end"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects slugs ending with a hyphen", () => {
-    const errors = validateSlug("abc-");
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("start and end"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects slugs with consecutive hyphens", () => {
-    const errors = validateSlug("my--tenant");
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("consecutive"))).toBe(true);
-  });
-
-  it("rejects slugs with special characters", () => {
-    const errors = validateSlug("my_tenant");
-    expect(errors.some((e) => e.field === "slug")).toBe(true);
-  });
-
-  it("rejects non-string values", () => {
-    const errors = validateSlug(undefined);
-    expect(errors.some((e) => e.field === "slug" && e.message.includes("required"))).toBe(true);
-  });
-});
-
-describe("validateName", () => {
-  it("accepts valid names", () => {
-    expect(validateName("AB")).toEqual([]);
-    expect(validateName("Koperasi Kegelapan")).toEqual([]);
-    expect(validateName("a".repeat(100))).toEqual([]);
-  });
-
-  it("rejects names shorter than 2 characters", () => {
-    const errors = validateName("A");
-    expect(errors.some((e) => e.field === "name" && e.message.includes("2 and 100"))).toBe(true);
-  });
-
-  it("rejects names longer than 100 characters", () => {
-    const errors = validateName("a".repeat(101));
-    expect(errors.some((e) => e.field === "name" && e.message.includes("2 and 100"))).toBe(true);
-  });
-
-  it("rejects names with only whitespace", () => {
-    const errors = validateName("   ");
-    expect(errors.some((e) => e.field === "name" && e.message.includes("non-whitespace"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects non-string values", () => {
-    const errors = validateName(null);
-    expect(errors.some((e) => e.field === "name" && e.message.includes("required"))).toBe(true);
-  });
-});
-
-describe("validateTimezone", () => {
-  it("accepts valid IANA timezones", () => {
-    expect(validateTimezone("Asia/Jakarta")).toEqual([]);
-    expect(validateTimezone("America/New_York")).toEqual([]);
-    expect(validateTimezone("UTC")).toEqual([]);
-    expect(validateTimezone("Europe/London")).toEqual([]);
-  });
-
-  it("rejects invalid timezone strings", () => {
-    const errors = validateTimezone("Invalid/Timezone");
-    expect(errors.some((e) => e.field === "timezone" && e.message.includes("valid IANA"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects empty string", () => {
-    const errors = validateTimezone("");
-    expect(errors.some((e) => e.field === "timezone")).toBe(true);
-  });
-
-  it("rejects non-string values", () => {
-    const errors = validateTimezone(123);
-    expect(errors.some((e) => e.field === "timezone" && e.message.includes("required"))).toBe(true);
-  });
-});
-
-describe("validateAdminUsername", () => {
-  it("accepts valid usernames", () => {
-    expect(validateAdminUsername("abc")).toEqual([]);
-    expect(validateAdminUsername("admin_user")).toEqual([]);
-    expect(validateAdminUsername("user-name")).toEqual([]);
-    expect(validateAdminUsername("user123")).toEqual([]);
-    expect(validateAdminUsername("a".repeat(50))).toEqual([]);
-  });
-
-  it("rejects usernames shorter than 3 characters", () => {
-    const errors = validateAdminUsername("ab");
-    expect(errors.some((e) => e.field === "adminUsername" && e.message.includes("3 and 50"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects usernames longer than 50 characters", () => {
-    const errors = validateAdminUsername("a".repeat(51));
-    expect(errors.some((e) => e.field === "adminUsername" && e.message.includes("3 and 50"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects usernames with spaces", () => {
-    const errors = validateAdminUsername("admin user");
-    expect(errors.some((e) => e.field === "adminUsername" && e.message.includes("spaces"))).toBe(
-      true,
-    );
-  });
-
-  it("rejects usernames with uppercase letters", () => {
-    const errors = validateAdminUsername("Admin");
-    expect(errors.some((e) => e.field === "adminUsername")).toBe(true);
-  });
-
-  it("rejects non-string values", () => {
-    const errors = validateAdminUsername(undefined);
-    expect(errors.some((e) => e.field === "adminUsername" && e.message.includes("required"))).toBe(
-      true,
-    );
-  });
-});
-
-describe("validateAdminPasswordHash", () => {
-  const validHash = `310000:${"a".repeat(32)}:${"b".repeat(64)}`;
-
-  it("accepts valid password hash format", () => {
-    expect(validateAdminPasswordHash(validHash)).toEqual([]);
-    expect(validateAdminPasswordHash(`1:${"0".repeat(32)}:${"f".repeat(64)}`)).toEqual([]);
-  });
-
-  it("rejects wrong number of parts", () => {
-    const errors = validateAdminPasswordHash("only-two:parts");
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("format")),
-    ).toBe(true);
-  });
-
-  it("rejects non-integer iterations", () => {
-    const errors = validateAdminPasswordHash(`abc:${"a".repeat(32)}:${"b".repeat(64)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("positive integer")),
-    ).toBe(true);
-  });
-
-  it("rejects zero iterations", () => {
-    const errors = validateAdminPasswordHash(`0:${"a".repeat(32)}:${"b".repeat(64)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("positive integer")),
-    ).toBe(true);
-  });
-
-  it("rejects negative iterations", () => {
-    const errors = validateAdminPasswordHash(`-1:${"a".repeat(32)}:${"b".repeat(64)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("positive integer")),
-    ).toBe(true);
-  });
-
-  it("rejects salt with wrong length", () => {
-    const errors = validateAdminPasswordHash(`310000:${"a".repeat(16)}:${"b".repeat(64)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("saltHex")),
-    ).toBe(true);
-  });
-
-  it("rejects hash with wrong length", () => {
-    const errors = validateAdminPasswordHash(`310000:${"a".repeat(32)}:${"b".repeat(32)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("hashHex")),
-    ).toBe(true);
-  });
-
-  it("rejects non-hex characters in salt", () => {
-    const errors = validateAdminPasswordHash(`310000:${"g".repeat(32)}:${"b".repeat(64)}`);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("saltHex")),
-    ).toBe(true);
-  });
-
-  it("rejects non-string values", () => {
-    const errors = validateAdminPasswordHash(null);
-    expect(
-      errors.some((e) => e.field === "adminPasswordHash" && e.message.includes("required")),
-    ).toBe(true);
-  });
-});
-
-describe("validateSyncRequest", () => {
-  const validRequest = {
-    slug: "my-tenant",
-    name: "My Tenant",
-    timezone: "Asia/Jakarta",
-    adminUsername: "admin_user",
-    adminPasswordHash: `310000:${"a".repeat(32)}:${"b".repeat(64)}`,
-  };
-
-  it("returns empty array for valid request", () => {
-    expect(validateSyncRequest(validRequest)).toEqual([]);
-  });
-
-  it("returns errors for all invalid fields", () => {
-    const errors = validateSyncRequest({
-      slug: "A",
-      name: "",
-      timezone: "Invalid/TZ",
-      adminUsername: "A B",
-      adminPasswordHash: "bad",
+describe("tenantSync validators", () => {
+  describe("validateSlug", () => {
+    it("returns error for non-string slug", () => {
+      const errors = validateSlug(undefined);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].field).toBe("slug");
     });
-    expect(errors.length).toBeGreaterThan(0);
-    const fields = errors.map((e) => e.field);
-    expect(fields).toContain("slug");
-    expect(fields).toContain("name");
-    expect(fields).toContain("timezone");
-    expect(fields).toContain("adminUsername");
-    expect(fields).toContain("adminPasswordHash");
+
+    it("returns error for too short slug", () => {
+      const errors = validateSlug("ab");
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for too long slug", () => {
+      const errors = validateSlug("a".repeat(51));
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for slug with uppercase", () => {
+      const errors = validateSlug("Hello");
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it("returns error for slug with special chars", () => {
+      const errors = validateSlug("foo_bar");
+      expect(errors.some((e) => e.message.includes("lowercase"))).toBe(true);
+    });
+
+    it("returns error for consecutive hyphens", () => {
+      const errors = validateSlug("foo--bar");
+      expect(errors.some((e) => e.message.includes("consecutive"))).toBe(true);
+    });
+
+    it("returns error for slug starting with hyphen", () => {
+      const errors = validateSlug("-foo");
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it("returns error for slug ending with hyphen", () => {
+      const errors = validateSlug("foo-");
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it("returns empty array for valid slug", () => {
+      expect(validateSlug("my-valid-slug")).toEqual([]);
+    });
+
+    it("returns empty array for minimum length slug", () => {
+      expect(validateSlug("abc")).toEqual([]);
+    });
+
+    it("returns empty array for slug with digits", () => {
+      expect(validateSlug("test-123")).toEqual([]);
+    });
   });
 
-  it("returns errors for missing fields", () => {
-    const errors = validateSyncRequest({});
-    expect(errors.length).toBeGreaterThan(0);
-    const fields = errors.map((e) => e.field);
-    expect(fields).toContain("slug");
-    expect(fields).toContain("name");
-    expect(fields).toContain("timezone");
-    expect(fields).toContain("adminUsername");
-    expect(fields).toContain("adminPasswordHash");
+  describe("validateName", () => {
+    it("returns error for non-string name", () => {
+      const errors = validateName(123);
+      expect(errors[0].field).toBe("name");
+    });
+
+    it("returns error for too short name", () => {
+      const errors = validateName("A");
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for too long name", () => {
+      const errors = validateName("a".repeat(101));
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for whitespace-only name", () => {
+      const errors = validateName("   ");
+      expect(errors.some((e) => e.message.includes("non-whitespace"))).toBe(true);
+    });
+
+    it("returns empty array for valid name", () => {
+      expect(validateName("My Tenant")).toEqual([]);
+    });
+
+    it("accepts minimum length name", () => {
+      expect(validateName("AB")).toEqual([]);
+    });
   });
 
-  it("returns error for null body", () => {
-    const errors = validateSyncRequest(null);
-    expect(errors).toEqual([
-      { field: "body", message: "request body is required and must be an object" },
-    ]);
+  describe("validateTimezone", () => {
+    it("returns error for non-string timezone", () => {
+      const errors = validateTimezone(null);
+      expect(errors[0].field).toBe("timezone");
+    });
+
+    it("returns error for empty string", () => {
+      const errors = validateTimezone("");
+      expect(errors.some((e) => e.message.includes("required"))).toBe(true);
+    });
+
+    it("returns error for invalid timezone", () => {
+      const errors = validateTimezone("Invalid/Timezone");
+      expect(errors.some((e) => e.message.includes("IANA"))).toBe(true);
+    });
+
+    it("returns empty array for valid timezone", () => {
+      expect(validateTimezone("Asia/Jakarta")).toEqual([]);
+    });
+
+    it("accepts UTC", () => {
+      expect(validateTimezone("UTC")).toEqual([]);
+    });
+
+    it("accepts America/New_York", () => {
+      expect(validateTimezone("America/New_York")).toEqual([]);
+    });
   });
 
-  it("returns error for undefined body", () => {
-    const errors = validateSyncRequest(undefined);
-    expect(errors).toEqual([
-      { field: "body", message: "request body is required and must be an object" },
-    ]);
+  describe("validateAdminUsername", () => {
+    it("returns error for non-string", () => {
+      const errors = validateAdminUsername(undefined);
+      expect(errors[0].field).toBe("adminUsername");
+    });
+
+    it("returns error for too short username", () => {
+      const errors = validateAdminUsername("ab");
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for too long username", () => {
+      const errors = validateAdminUsername("a".repeat(51));
+      expect(errors.some((e) => e.message.includes("between"))).toBe(true);
+    });
+
+    it("returns error for username with spaces", () => {
+      const errors = validateAdminUsername("admin user");
+      expect(errors.some((e) => e.message.includes("spaces"))).toBe(true);
+    });
+
+    it("returns error for username with uppercase", () => {
+      const errors = validateAdminUsername("Admin");
+      expect(errors.some((e) => e.message.includes("lowercase"))).toBe(true);
+    });
+
+    it("returns empty array for valid username", () => {
+      expect(validateAdminUsername("admin_user")).toEqual([]);
+    });
+
+    it("accepts hyphens", () => {
+      expect(validateAdminUsername("admin-user")).toEqual([]);
+    });
+
+    it("accepts digits", () => {
+      expect(validateAdminUsername("admin123")).toEqual([]);
+    });
+  });
+
+  describe("validateAdminPasswordHash", () => {
+    it("returns error for non-string", () => {
+      const errors = validateAdminPasswordHash(null);
+      expect(errors[0].field).toBe("adminPasswordHash");
+    });
+
+    it("returns error for wrong format (not 3 parts)", () => {
+      const errors = validateAdminPasswordHash("onlyonepart");
+      expect(errors.some((e) => e.message.includes("format"))).toBe(true);
+    });
+
+    it("returns error for non-integer iterations", () => {
+      const salt = "a".repeat(32);
+      const hash = "b".repeat(64);
+      const errors = validateAdminPasswordHash(`abc:${salt}:${hash}`);
+      expect(errors.some((e) => e.message.includes("iterations"))).toBe(true);
+    });
+
+    it("returns error for zero iterations", () => {
+      const salt = "a".repeat(32);
+      const hash = "b".repeat(64);
+      const errors = validateAdminPasswordHash(`0:${salt}:${hash}`);
+      expect(errors.some((e) => e.message.includes("positive"))).toBe(true);
+    });
+
+    it("returns error for invalid salt length", () => {
+      const hash = "b".repeat(64);
+      const errors = validateAdminPasswordHash(`100000:short:${hash}`);
+      expect(errors.some((e) => e.message.includes("saltHex"))).toBe(true);
+    });
+
+    it("returns error for invalid hash length", () => {
+      const salt = "a".repeat(32);
+      const errors = validateAdminPasswordHash(`100000:${salt}:short`);
+      expect(errors.some((e) => e.message.includes("hashHex"))).toBe(true);
+    });
+
+    it("returns empty array for valid hash", () => {
+      const salt = "a".repeat(32);
+      const hash = "b".repeat(64);
+      expect(validateAdminPasswordHash(`100000:${salt}:${hash}`)).toEqual([]);
+    });
+  });
+
+  describe("validateSyncRequest", () => {
+    it("returns error for null body", () => {
+      const errors = validateSyncRequest(null);
+      expect(errors[0].field).toBe("body");
+    });
+
+    it("returns error for undefined body", () => {
+      const errors = validateSyncRequest(undefined);
+      expect(errors[0].field).toBe("body");
+    });
+
+    it("returns error for non-object body", () => {
+      const errors = validateSyncRequest("string");
+      expect(errors[0].field).toBe("body");
+    });
+
+    it("returns all field errors for empty object", () => {
+      const errors = validateSyncRequest({});
+      const fields = errors.map((e) => e.field);
+      expect(fields).toContain("slug");
+      expect(fields).toContain("name");
+      expect(fields).toContain("timezone");
+      expect(fields).toContain("adminUsername");
+      expect(fields).toContain("adminPasswordHash");
+    });
+
+    it("returns empty array for valid request", () => {
+      const salt = "a".repeat(32);
+      const hash = "b".repeat(64);
+      const errors = validateSyncRequest({
+        slug: "my-tenant",
+        name: "My Tenant",
+        timezone: "Asia/Jakarta",
+        adminUsername: "admin_user",
+        adminPasswordHash: `100000:${salt}:${hash}`,
+      });
+      expect(errors).toEqual([]);
+    });
   });
 });

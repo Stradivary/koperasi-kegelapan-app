@@ -23,6 +23,7 @@ import { CardOverwriteDrawer } from "../block/dialogs/CardOverwriteDrawer";
 import { CardNotBlankDrawer } from "../block/dialogs/CardNotBlankDrawer";
 import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
+import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
@@ -197,11 +198,10 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
   // ── Issuance flow state ──
   type IssuancePhase = "idle" | "scanning" | "writing" | "done" | "error";
-  const [issuanceDrawerOpen, setIssuanceDrawerOpen] = useState(false);
+  const [issueCardDrawerOpen, setIssueCardDrawerOpen] = useState(false);
   const [issuancePhase, setIssuancePhase] = useState<IssuancePhase>("idle");
   const [issuanceError, setIssuanceError] = useState<string | null>(null);
   const [issuancePayload, setIssuancePayload] = useState<CardPayload | null>(null);
-  const [issuanceSerial, setIssuanceSerial] = useState<string | null>(null);
 
   const [overwriteDialog, setOverwriteDialog] = useState<{
     existingCard: CardOwnerInfo;
@@ -540,7 +540,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
             await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
             setIssuancePayload(payload);
-            setIssuanceSerial(capturedSerial);
             // Hold writing phase so user keeps card in place
             await new Promise((r) => setTimeout(r, 1500));
             setIssuancePhase("done");
@@ -551,11 +550,10 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       }
 
       // ── Fresh NFC session — open drawer and scan ──
-      setIssuanceDrawerOpen(true);
+      setIssueCardDrawerOpen(true);
       setIssuancePhase("scanning");
       setIssuanceError(null);
       setIssuancePayload(null);
-      setIssuanceSerial(null);
 
       // Clean up any previous session
       issuanceAbortRef.current?.abort();
@@ -692,7 +690,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
         await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
         setIssuancePayload(payload);
-        setIssuanceSerial(capturedSerial);
         // Hold writing phase so user keeps card in place
         await new Promise((r) => setTimeout(r, 1500));
         setIssuancePhase("done");
@@ -729,7 +726,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
       syncEngineCtx?.notifyMutation();
-      cardsPanelRef.current?.goToList();
     },
   });
 
@@ -747,11 +743,10 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
   const handleIssuanceDrawerClose = useCallback(() => {
     cleanupIssuanceSession();
-    setIssuanceDrawerOpen(false);
+    setIssueCardDrawerOpen(false);
     setIssuancePhase("idle");
     setIssuanceError(null);
     setIssuancePayload(null);
-    setIssuanceSerial(null);
   }, [cleanupIssuanceSession]);
 
   // Auto-close issuance drawer after success
@@ -1006,6 +1001,14 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     }
   }, [state.phase, resetCardPending, state.payload, handleResetWrite]);
 
+  // Open the IssueCardDrawer in form phase
+  const handleIssueNew = useCallback(() => {
+    setIssueCardDrawerOpen(true);
+    setIssuancePhase("idle");
+    setIssuanceError(null);
+    setIssuancePayload(null);
+  }, []);
+
   return (
     <>
       {/* {state.error && (
@@ -1031,28 +1034,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           hasGrant={!!grant}
           onTopupCard={handleTopupCard}
           onRecoverCard={(card) => startCardRecovery(card.cardId)}
-          onIssueCard={async (data) => {
-            try {
-              await issueCard.mutateAsync(data);
-            } catch (e) {
-              if (e instanceof CardAlreadyRegisteredError) {
-                // Pause the NFC timeout while user reads the overwrite dialog
-                if (issuanceTimeoutRef.current) {
-                  clearTimeout(issuanceTimeoutRef.current);
-                  issuanceTimeoutRef.current = null;
-                }
-                setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
-              } else if (e instanceof CardNotBlankError) {
-                // Pause the NFC timeout while user reads the not-blank dialog
-                if (issuanceTimeoutRef.current) {
-                  clearTimeout(issuanceTimeoutRef.current);
-                  issuanceTimeoutRef.current = null;
-                }
-                setNotBlankDialog({ cardSerial: e.cardSerial, pendingIssue: data });
-              }
-              throw e;
-            }
-          }}
+          onIssueNew={handleIssueNew}
           onUpdateCardStatus={(card, newStatus) =>
             updateCardStatus.mutate({ card, status: newStatus })
           }
@@ -1104,17 +1086,44 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         onRetry={scan}
       />
 
-      <IssuanceScanDrawer
-        open={issuanceDrawerOpen}
+      <IssueCardDrawer
+        open={issueCardDrawerOpen}
         onOpenChange={(open) => {
           if (!open) handleIssuanceDrawerClose();
         }}
-        phase={issuancePhase}
-        mode="write"
+        phase={
+          issuancePhase === "idle"
+            ? "form"
+            : issuancePhase === "scanning"
+              ? "scanning"
+              : issuancePhase === "writing"
+                ? "writing"
+                : issuancePhase === "done"
+                  ? "done"
+                  : "error"
+        }
         payload={issuancePayload}
-        serialNumber={issuanceSerial}
         error={issuanceError}
-        minimal
+        members={members.data ?? []}
+        onIssue={async (data) => {
+          try {
+            await issueCard.mutateAsync(data);
+          } catch (e) {
+            if (e instanceof CardAlreadyRegisteredError) {
+              if (issuanceTimeoutRef.current) {
+                clearTimeout(issuanceTimeoutRef.current);
+                issuanceTimeoutRef.current = null;
+              }
+              setOverwriteDialog({ existingCard: e.existingCard, pendingIssue: data });
+            } else if (e instanceof CardNotBlankError) {
+              if (issuanceTimeoutRef.current) {
+                clearTimeout(issuanceTimeoutRef.current);
+                issuanceTimeoutRef.current = null;
+              }
+              setNotBlankDialog({ cardSerial: e.cardSerial, pendingIssue: data });
+            }
+          }
+        }}
         onClose={handleIssuanceDrawerClose}
         onRetry={() => {
           const prepared = issuancePreparedRef.current;
@@ -1122,7 +1131,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
             cleanupIssuanceSession();
             issueCard.mutate(prepared.issueData);
           } else {
-            handleIssuanceDrawerClose();
+            setIssuancePhase("idle");
           }
         }}
       />
@@ -1156,7 +1165,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           if (isConfirmingOverwriteRef.current) return;
           setOverwriteDialog(null);
           cleanupIssuanceSession();
-          setIssuanceDrawerOpen(false);
+          setIssueCardDrawerOpen(false);
           setIssuancePhase("idle");
         }}
         onConfirm={async () => {
@@ -1192,7 +1201,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
           if (isConfirmingNotBlankRef.current) return;
           setNotBlankDialog(null);
           cleanupIssuanceSession();
-          setIssuanceDrawerOpen(false);
+          setIssueCardDrawerOpen(false);
           setIssuancePhase("idle");
         }}
         onConfirm={async () => {

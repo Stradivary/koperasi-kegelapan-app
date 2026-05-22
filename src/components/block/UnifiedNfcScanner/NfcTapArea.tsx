@@ -2,6 +2,7 @@ import { Wifi } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
 import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
+import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
 
 // ============================================================================
 // Types
@@ -137,6 +138,28 @@ export function NfcTapArea({ phase, labels }: NfcTapAreaProps) {
     phase === "writing" ||
     phase === "write_pending_retry";
 
+  // ── Idle: full-size illustration, no circle ─────────────────────────────
+  if (phase === "idle") {
+    return (
+      <div
+        role="status"
+        aria-label={label}
+        aria-live="polite"
+        className="flex flex-col items-center gap-3"
+      >
+        <img
+          src={tapNfcImg}
+          alt="Tap kartu NFC"
+          className="w-40 h-40 object-cover rounded-2xl shadow-md"
+        />
+        {showLabel && (
+          <span className={cn("type-body1-bold text-center", config.iconColor)}>{label}</span>
+        )}
+      </div>
+    );
+  }
+
+  // ── Active phases: circle indicator ────────────────────────────────────
   return (
     <div
       role="status"
