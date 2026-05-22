@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { sql } from "drizzle-orm";
+import { processReconciliation } from "../../../src/server/reconcileCore";
 
 type Env = {
   DB: D1Database;
@@ -8,71 +8,6 @@ type Env = {
 };
 
 export const reconcileRoute = new Hono<{ Bindings: Env }>();
-
-interface ReconcileEvent {
-  cardId: string;
-  counter: number;
-  type: string;
-  amount: number;
-  balanceAfter: number;
-  timestamp: number;
-  hash: string;
-  idempotencyKey: string;
-  tenantId?: string;
-  terminalId?: number;
-  status?: string;
-  createdAt?: number;
-  attempts?: number;
-}
-
-interface ReconcileFlag {
-  cardId: string;
-  counter: number;
-  reason: string;
-}
-
-interface ReconcileResult {
-  accepted: number;
-  rejected: number;
-  flags: ReconcileFlag[];
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
-  }
-  return bytes;
-}
-
-/**
- * Validate required fields on a reconcile event.
- * Returns { valid: true } when all fields are present, or { valid: false, reason } otherwise.
- */
-function validateReconcileEvent(event: ReconcileEvent): { valid: boolean; reason?: string } {
-  if (
-    !event.cardId ||
-    event.counter == null ||
-    !event.type ||
-    event.amount == null ||
-    event.balanceAfter == null ||
-    event.timestamp == null ||
-    !event.hash
-  ) {
-    return { valid: false, reason: "malformed_event" };
-  }
-  return { valid: true };
-}
-
-/**
- * Extract tenantId from the event — either from the explicit field
- * or parsed from the idempotencyKey (format: "tenantId:cardIdHex:counter")
- */
-function extractTenantId(event: ReconcileEvent): string | null {
-  if (event.tenantId) return event.tenantId;
-  const parts = event.idempotencyKey?.split(":");
-  return parts && parts.length >= 3 ? parts[0] : null;
-}
 
 reconcileRoute.post("/", async (c) => {
   const body = await c.req.json().catch(() => null);
@@ -86,95 +21,11 @@ reconcileRoute.post("/", async (c) => {
   }
 
   try {
-    const result = await processReconciliation(c.env.DB, { terminalId, events });
+    const db = drizzle(c.env.DB);
+    const result = await processReconciliation(db, { terminalId, events });
     return c.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return c.json({ error: msg }, 500);
   }
 });
-
-async function processReconciliation(
-  d1: D1Database,
-  body: { terminalId: number; events: ReconcileEvent[] },
-): Promise<ReconcileResult> {
-  const { terminalId, events } = body;
-
-  if (!Array.isArray(events) || events.length === 0) {
-    return { accepted: 0, rejected: 0, flags: [] };
-  }
-
-  const db = drizzle(d1);
-  let accepted = 0;
-  let rejected = 0;
-  const flags: ReconcileFlag[] = [];
-
-  for (const event of events) {
-    try {
-      // Validate required fields
-      const validation = validateReconcileEvent(event);
-      if (!validation.valid) {
-        rejected++;
-        flags.push({
-          cardId: event.cardId ?? "unknown",
-          counter: event.counter ?? 0,
-          reason: validation.reason ?? "malformed_event",
-        });
-        continue;
-      }
-
-      const tenantId = extractTenantId(event);
-      if (!tenantId) {
-        rejected++;
-        flags.push({ cardId: event.cardId, counter: event.counter, reason: "missing_tenant_id" });
-        continue;
-      }
-
-      // Convert hex strings to binary for blob columns
-      const cardIdBlob = hexToBytes(event.cardId);
-      const hashBlob = hexToBytes(event.hash);
-
-      // Check for duplicate first
-      const existing = await db.get<{ id: number }>(sql`
-        SELECT id FROM audit_log
-        WHERE card_id = ${cardIdBlob} AND counter = ${event.counter}
-        LIMIT 1
-      `);
-
-      if (existing) {
-        rejected++;
-        flags.push({ cardId: event.cardId, counter: event.counter, reason: "duplicate_counter" });
-        continue;
-      }
-
-      // Insert into audit_log
-      await db.run(sql`
-        INSERT INTO audit_log (tenant_id, card_id, counter, type, amount, balance_after, timestamp, hash, terminal_id, flagged)
-        VALUES (${tenantId}, ${cardIdBlob}, ${event.counter}, ${event.type}, ${event.amount}, ${event.balanceAfter}, ${event.timestamp}, ${hashBlob}, ${terminalId}, 0)
-      `);
-
-      accepted++;
-
-      // Update card balance in cards table (only if this is a newer counter)
-      await db.run(sql`
-        UPDATE cards
-        SET balance = ${event.balanceAfter},
-            counter = ${event.counter},
-            last_activity_at = ${event.timestamp}
-        WHERE card_id = ${cardIdBlob}
-          AND counter < ${event.counter}
-      `);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
-        rejected++;
-        flags.push({ cardId: event.cardId, counter: event.counter, reason: "duplicate_counter" });
-      } else {
-        rejected++;
-        flags.push({ cardId: event.cardId, counter: event.counter, reason: "internal_error" });
-      }
-    }
-  }
-
-  return { accepted, rejected, flags };
-}

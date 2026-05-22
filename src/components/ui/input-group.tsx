@@ -55,15 +55,15 @@ const inputGroupAddonVariants = cva(
   },
 );
 
+function focusSiblingInput(currentTarget: HTMLDivElement) {
+  currentTarget.parentElement?.querySelector<HTMLElement>("input, textarea")?.focus();
+}
+
 function InputGroupAddon({
   className,
   align = "inline-start",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
-  function focusSiblingInput(currentTarget: HTMLDivElement) {
-    currentTarget.parentElement?.querySelector<HTMLElement>("input, textarea")?.focus();
-  }
-
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest("button")) return;
     focusSiblingInput(e.currentTarget);
@@ -81,7 +81,6 @@ function InputGroupAddon({
     <div
       data-slot="input-group-addon"
       data-align={align}
-      role="presentation"
       className={cn(inputGroupAddonVariants({ align }), className)}
       onClick={handleClick}
       onKeyDown={handleKeyDown}

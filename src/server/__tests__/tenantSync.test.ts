@@ -6,7 +6,7 @@ import {
   validateAdminUsername,
   validateAdminPasswordHash,
   validateSyncRequest,
-} from "./tenantSync";
+} from "../tenantSync";
 
 // Mock the database module (needed for processTenantSync but not for validators)
 vi.mock("#/db", () => ({

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildSelectChain } from "./__tests__/dbMocks";
+import { buildSelectChain } from "./dbMocks";
 
 // ---------------------------------------------------------------------------
 // DB mock factory — returns a configurable mock per test
@@ -36,7 +36,7 @@ import {
   getTenantDetail,
   updateTenantStatus,
   createTenant,
-} from "./superadminTenants";
+} from "../superadminTenants";
 
 describe("listTenants", () => {
   beforeEach(() => {

@@ -420,14 +420,16 @@ export function LoginSection() {
     try {
       // Early offline check: device setup requires internet for initial activation
       // Try local login first to see if cached credentials exist
-      const localOutcome = await localLoginWithReason(username, password, undefined);
-      const localResult = localOutcome.success ? {
-        tenantId: localOutcome.tenantId,
-        tenantSlug: localOutcome.tenantSlug,
-        tenantName: localOutcome.tenantName,
-        accountId: localOutcome.accountId,
-        role: localOutcome.role,
-      } : null;
+      const localOutcome = await localLoginWithReason(username, password);
+      const localResult = localOutcome.success
+        ? {
+            tenantId: localOutcome.tenantId,
+            tenantSlug: localOutcome.tenantSlug,
+            tenantName: localOutcome.tenantName,
+            accountId: localOutcome.accountId,
+            role: localOutcome.role,
+          }
+        : null;
 
       if (navigator.onLine === false) {
         // Offline: if no cached credentials, show educative message and skip network

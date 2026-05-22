@@ -1,5 +1,4 @@
 import { createHmac } from "node:crypto";
-import { nowSeconds } from "./auth";
 import { roleToOps } from "../lib/roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
@@ -14,16 +13,16 @@ export interface GrantPayload {
   deviceId: string;
 }
 
-const MASTER_KEY = Buffer.from(
-  process.env.SESSION_MASTER_KEY ?? "dev-insecure-master-key-change-in-prod-32b",
-  "utf8",
-).slice(0, 32);
+function nowSeconds(): number {
+  return Math.floor(Date.now() / 1000);
+}
 
-function deriveTenantKey(tenantId: string, keyVersion: number): Buffer {
-  return createHmac("sha256", MASTER_KEY).update(`${tenantId}:${keyVersion}`).digest();
+function deriveTenantKey(masterKey: Buffer, tenantId: string, keyVersion: number): Buffer {
+  return createHmac("sha256", masterKey).update(`${tenantId}:${keyVersion}`).digest();
 }
 
 export function issueSessionGrant(
+  masterKey: Buffer,
   tenantId: string,
   accountId: string,
   deviceId: string,
@@ -32,7 +31,7 @@ export function issueSessionGrant(
 ): GrantPayload & { signature: string } {
   // Session key is deterministic — derived from tenant key so all devices
   // in the same tenant can read/write cards encrypted with this key.
-  const tenantKey = deriveTenantKey(tenantId, keyVersion);
+  const tenantKey = deriveTenantKey(masterKey, tenantId, keyVersion);
   const sessionKey = createHmac("sha256", tenantKey).update("session-key").digest();
   const expiresAt = nowSeconds() + SESSION_KEY_LIFETIME_SECONDS;
 
@@ -54,4 +53,3 @@ export function issueSessionGrant(
 
   return { ...payload, signature };
 }
-

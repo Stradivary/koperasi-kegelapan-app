@@ -160,7 +160,7 @@ authRoutes.post("/token", async (c) => {
     .where(eq(tenants.tenantId, account.tenantId))
     .get();
 
-  if (tenant?.status !== "active") {
+  if (!tenant || tenant.status !== "active") {
     return c.json({ error: "Tenant inactive" }, 401);
   }
 

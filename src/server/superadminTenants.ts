@@ -193,24 +193,21 @@ function buildConflictResponse(
   existingBySlug: { slug: string; name: string } | undefined,
   existingByAdmin: { tenantId: string } | undefined,
   conflictTenant?: { slug: string; name: string } | undefined,
-): CreateTenantConflict["data"] {
-  const hasSlug = existingBySlug !== undefined;
-  const hasAdmin = existingByAdmin !== undefined;
-
-  if (hasSlug && hasAdmin) {
+): CreateTenantConflict {
+  if (existingBySlug !== undefined && existingByAdmin !== undefined) {
     return {
       error: "conflict",
       conflictType: "slug_and_admin",
-      existingTenantName: existingBySlug!.name,
-      existingSlug: existingBySlug!.slug,
+      existingTenantName: existingBySlug.name,
+      existingSlug: existingBySlug.slug,
     };
   }
-  if (hasSlug) {
+  if (existingBySlug !== undefined) {
     return {
       error: "conflict",
       conflictType: "slug_only",
-      existingTenantName: existingBySlug!.name,
-      existingSlug: existingBySlug!.slug,
+      existingTenantName: existingBySlug.name,
+      existingSlug: existingBySlug.slug,
     };
   }
   // admin_only
@@ -230,7 +227,7 @@ async function handleRaceConflict(
   db: ReturnType<typeof getDb>,
   slug: string,
   adminUsername: string,
-): Promise<CreateTenantConflict["data"] | null> {
+): Promise<CreateTenantConflict | null> {
   const recheckSlug = await db
     .select({ tenantId: tenants.tenantId, slug: tenants.slug, name: tenants.name })
     .from(tenants)

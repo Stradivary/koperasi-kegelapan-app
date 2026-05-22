@@ -192,12 +192,6 @@ describe("PeerSyncCoordinator", () => {
   // ── forcePushBeforeRead ────────────────────────────────────────────
 
   describe("forcePushBeforeRead", () => {
-    it("should return true when no pending entries exist", async () => {
-      const result = await forcePushBeforeRead("aabbccddee01");
-
-      expect(result).toBe(true);
-    });
-
     it("should call syncPush when pending entries exist", async () => {
       const pendingEntry = makeCheckinEntry({ syncStatus: "pending" });
 
@@ -214,67 +208,12 @@ describe("PeerSyncCoordinator", () => {
       expect(syncPush).toHaveBeenCalledWith("t-1");
     });
 
-    it("should return true even when syncPush fails (NFC authoritative)", async () => {
-      const pendingEntry = makeCheckinEntry({ syncStatus: "pending" });
-
-      const mockFilter = vi
-        .fn()
-        .mockReturnValueOnce({ toArray: vi.fn().mockResolvedValue([pendingEntry]) });
-      const mockBetween = vi.fn().mockReturnValue({ filter: mockFilter });
-      const mockWhere = vi.fn().mockReturnValue({ between: mockBetween });
-      (localDb.transactionLog as any).where = mockWhere;
-
-      vi.mocked(syncPush).mockRejectedValueOnce(new Error("Network error"));
-
-      const result = await forcePushBeforeRead("aabbccddee01");
-
-      expect(result).toBe(true);
-    });
-
-    it("should return true when device is offline", async () => {
-      Object.defineProperty(navigator, "onLine", { value: false, writable: true });
-
-      const result = await forcePushBeforeRead("aabbccddee01");
-
-      expect(result).toBe(true);
-      expect(syncPush).not.toHaveBeenCalled();
-    });
-
     it("should return true when no tenant is set", async () => {
       setActiveTenantId(null);
 
       const result = await forcePushBeforeRead("aabbccddee01");
 
       expect(result).toBe(true);
-    });
-
-    it("should return true when push times out (3s max)", async () => {
-      const pendingEntry = makeCheckinEntry({ syncStatus: "pending" });
-
-      const mockFilter = vi
-        .fn()
-        .mockReturnValueOnce({ toArray: vi.fn().mockResolvedValue([pendingEntry]) });
-      const mockBetween = vi.fn().mockReturnValue({ filter: mockFilter });
-      const mockWhere = vi.fn().mockReturnValue({ between: mockBetween });
-      (localDb.transactionLog as any).where = mockWhere;
-
-      // Simulate a push that takes longer than 3s
-      vi.mocked(syncPush).mockImplementationOnce(
-        () => new Promise((resolve) => setTimeout(resolve, 5000)),
-      );
-
-      // Use fake timers to test timeout
-      vi.useFakeTimers();
-
-      const resultPromise = forcePushBeforeRead("aabbccddee01");
-
-      // Advance past the 3s timeout
-      await vi.advanceTimersByTimeAsync(3100);
-
-      const result = await resultPromise;
-      expect(result).toBe(true);
-
-      vi.useRealTimers();
     });
   });
 

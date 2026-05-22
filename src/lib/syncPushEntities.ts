@@ -260,7 +260,12 @@ async function pushMemberBatch(
   tenantId: string,
   memberBatch: User[],
   cardBatch: Card[],
-): Promise<{ membersAccepted: number; membersRejected: number; cardsAccepted: number; cardsRejected: number }> {
+): Promise<{
+  membersAccepted: number;
+  membersRejected: number;
+  cardsAccepted: number;
+  cardsRejected: number;
+}> {
   const payload: EntityPushPayload = {
     tenantId,
     members: memberBatch.map((m) => ({
@@ -287,7 +292,9 @@ async function pushMemberBatch(
   const response = await pushEntitiesWithRetry(payload, tenantId);
 
   const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
-  const acceptedMemberIds = memberBatch.map((m) => m.userId).filter((id) => !rejectedMemberIds.has(id));
+  const acceptedMemberIds = memberBatch
+    .map((m) => m.userId)
+    .filter((id) => !rejectedMemberIds.has(id));
   await markMembersSynced(tenantId, acceptedMemberIds);
 
   const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));

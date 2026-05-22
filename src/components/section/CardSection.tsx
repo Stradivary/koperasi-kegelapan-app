@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { localDb, type Card } from "../../db/local-db";
 import { syncPull } from "../../lib/syncPull";
@@ -65,7 +65,7 @@ function parseHexBytes(hex: string): Uint8Array {
 function toPayloadCardId(cardId: string): Uint8Array {
   const rawBytes = parseHexBytes(cardId);
   if (rawBytes.length === 6) return rawBytes;
-  if (rawBytes.length > 6) return rawBytes.slice(rawBytes.length - 6);
+  if (rawBytes.length > 6) return rawBytes.slice(-6);
 
   const padded = new Uint8Array(6);
   padded.set(rawBytes, 6 - rawBytes.length);
@@ -162,6 +162,8 @@ class CardNotBlankError extends Error {
 
 // ─── Issuance helpers (module-level, outside component) ──────────────────────
 
+type IssuancePhase = "idle" | "scanning" | "writing" | "done" | "error";
+
 interface IssuanceRefs {
   issuancePreparedRef: React.MutableRefObject<{
     bytes: Uint8Array;
@@ -175,7 +177,7 @@ interface IssuanceRefs {
 }
 
 interface IssuanceSetters {
-  setIssuancePhase: (phase: "idle" | "scanning" | "writing" | "done" | "error") => void;
+  setIssuancePhase: (phase: IssuancePhase) => void;
   setIssueCardDrawerOpen: (open: boolean) => void;
   setIssuanceError: (err: string | null) => void;
   setIssuancePayload: (payload: CardPayload | null) => void;
@@ -210,7 +212,7 @@ async function handleForceOverwrite({
   expiresAt: number | null;
   name: string;
   grant: SessionGrant;
-  qc: import("@tanstack/react-query").QueryClient;
+  qc: QueryClient;
 }): Promise<boolean> {
   const prepared = issuancePreparedRef.current!;
   const reader = issuanceReaderRef.current;
@@ -302,6 +304,79 @@ async function handleForceOverwrite({
 }
 
 /**
+ * Validate UID and throw appropriate errors for conflicts.
+ * Returns true if validation passed (caller may proceed to write).
+ */
+async function validateUIDForIssuance(
+  capturedSerial: string,
+  tenantId: string,
+  forceOverwrite: boolean | undefined,
+  abort: AbortController,
+  issuancePreparedRef: IssuanceRefs["issuancePreparedRef"],
+): Promise<void> {
+  const uidResult = await validateUID(capturedSerial, tenantId);
+  if (!uidResult.valid) {
+    const isRegisteredSameTenant = uidResult.reason === "UID_ALREADY_REGISTERED";
+    const isRegisteredOtherTenant = uidResult.reason === "UID_REGISTERED_OTHER_TENANT";
+
+    if (forceOverwrite && (isRegisteredSameTenant || isRegisteredOtherTenant)) {
+      // Allow overwrite for same-tenant or cross-tenant re-registration
+      return;
+    }
+
+    if (isRegisteredSameTenant) {
+      const existing = await localDb.cards.get([tenantId, capturedSerial]);
+      throw new CardAlreadyRegisteredError({
+        cardId: capturedSerial,
+        ownerName: existing?.notes ?? null,
+        userId: existing?.userId ?? null,
+        balance: existing?.balance ?? 0,
+        status: existing?.status ?? "active",
+      });
+    }
+
+    if (isRegisteredOtherTenant) {
+      throw new CardAlreadyRegisteredError({
+        cardId: capturedSerial,
+        ownerName: `Tenant lain (${uidResult.existingTenantId ?? "unknown"})`,
+        userId: null,
+        balance: 0,
+        status: "active",
+      });
+    }
+
+    abort.abort();
+    issuancePreparedRef.current = null;
+    const uidErrorMessages: Record<string, string> = {
+      NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
+      INVALID_UID_FORMAT: "Format UID tidak valid",
+    };
+    throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
+  }
+}
+
+/**
+ * Check local DB for existing card registration and throw if found.
+ */
+async function checkLocalCardConflict(capturedSerial: string, tenantId: string): Promise<void> {
+  const existing = await localDb.cards.get([tenantId, capturedSerial]);
+  if (existing) {
+    let ownerName: string | null = existing.notes;
+    if (existing.userId != null && !ownerName) {
+      const user = await localDb.users.get([tenantId, existing.userId]);
+      ownerName = user?.name ?? null;
+    }
+    throw new CardAlreadyRegisteredError({
+      cardId: capturedSerial,
+      ownerName,
+      userId: existing.userId,
+      balance: existing.balance,
+      status: existing.status,
+    });
+  }
+}
+
+/**
  * Handles the fresh NFC scan path for card issuance.
  */
 async function handleFreshNfcSession({
@@ -341,7 +416,7 @@ async function handleFreshNfcSession({
   name: string;
   grant: SessionGrant;
   forceOverwrite: boolean | undefined;
-  qc: import("@tanstack/react-query").QueryClient;
+  qc: QueryClient;
 }): Promise<void> {
   setIssueCardDrawerOpen(true);
   setIssuancePhase("scanning");
@@ -392,61 +467,17 @@ async function handleFreshNfcSession({
       throw new CardNotBlankError(capturedSerial);
     }
 
-    const uidResult = await validateUID(capturedSerial, tenantId);
-    if (!uidResult.valid) {
-      if (
-        forceOverwrite &&
-        (uidResult.reason === "UID_ALREADY_REGISTERED" ||
-          uidResult.reason === "UID_REGISTERED_OTHER_TENANT")
-      ) {
-        // Allow overwrite for same-tenant or cross-tenant re-registration
-      } else if (uidResult.reason === "UID_ALREADY_REGISTERED") {
-        // Keep the NFC session alive — the write might fail, so preserve
-        // issuancePreparedRef for the overwrite dialog retry flow.
-        const existing = await localDb.cards.get([tenantId, capturedSerial]);
-        throw new CardAlreadyRegisteredError({
-          cardId: capturedSerial,
-          ownerName: existing?.notes ?? null,
-          userId: existing?.userId ?? null,
-          balance: existing?.balance ?? 0,
-          status: existing?.status ?? "active",
-        });
-      } else if (uidResult.reason === "UID_REGISTERED_OTHER_TENANT") {
-        // Keep the NFC session alive for override flow (same as same-tenant)
-        throw new CardAlreadyRegisteredError({
-          cardId: capturedSerial,
-          ownerName: `Tenant lain (${uidResult.existingTenantId ?? "unknown"})`,
-          userId: null,
-          balance: 0,
-          status: "active",
-        });
-      } else {
-        abort.abort();
-        issuancePreparedRef.current = null;
-        const uidErrorMessages: Record<string, string> = {
-          NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
-          INVALID_UID_FORMAT: "Format UID tidak valid",
-        };
-        throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
-      }
-    }
+    // Keep the NFC session alive during UID validation — issuancePreparedRef is already set
+    await validateUIDForIssuance(
+      capturedSerial,
+      tenantId,
+      forceOverwrite,
+      abort,
+      issuancePreparedRef,
+    );
 
     if (!forceOverwrite) {
-      const existing = await localDb.cards.get([tenantId, capturedSerial]);
-      if (existing) {
-        let ownerName: string | null = existing.notes;
-        if (existing.userId != null && !ownerName) {
-          const user = await localDb.users.get([tenantId, existing.userId]);
-          ownerName = user?.name ?? null;
-        }
-        throw new CardAlreadyRegisteredError({
-          cardId: capturedSerial,
-          ownerName,
-          userId: existing.userId,
-          balance: existing.balance,
-          status: existing.status,
-        });
-      }
+      await checkLocalCardConflict(capturedSerial, tenantId);
     }
 
     // ── All checks passed — write to card ──
@@ -538,7 +569,7 @@ async function executeRecovery({
   setRecoveryError: (err: string | null) => void;
   setRecoveryPayload: (payload: CardPayload | null) => void;
   setRecoverySerial: (serial: string | null) => void;
-  qc: import("@tanstack/react-query").QueryClient;
+  qc: QueryClient;
 }): Promise<void> {
   await syncPull(tenantId);
 
@@ -550,9 +581,7 @@ async function executeRecovery({
     throw new Error("Perubahan kartu ini belum tersinkron. Sinkronkan dulu sebelum recovery.");
   }
 
-  const owner = latestCard.userId
-    ? await localDb.users.get([tenantId, latestCard.userId])
-    : null;
+  const owner = latestCard.userId ? await localDb.users.get([tenantId, latestCard.userId]) : null;
   const payload = buildRecoveryPayload({
     tenantId,
     card: latestCard,
@@ -656,7 +685,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const [resetCardPending, setResetCardPending] = useState(false);
 
   // ── Issuance flow state ──
-  type IssuancePhase = "idle" | "scanning" | "writing" | "done" | "error";
   const [issueCardDrawerOpen, setIssueCardDrawerOpen] = useState(false);
   const [issuancePhase, setIssuancePhase] = useState<IssuancePhase>("idle");
   const [issuanceError, setIssuanceError] = useState<string | null>(null);

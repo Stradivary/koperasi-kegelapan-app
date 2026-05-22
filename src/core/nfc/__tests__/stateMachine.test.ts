@@ -11,11 +11,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { nfcReducer, initialNfcState, type NfcState, type NfcAction } from "./stateMachine";
-import type { RawNfcResult } from "./types";
-import type { CardPayload } from "../payload/types";
-import type { NfcError } from "./adapters/types";
-import type { PayloadError } from "./payloadTypes";
+import { nfcReducer, initialNfcState, type NfcState, type NfcAction } from "../stateMachine";
+import type { RawNfcResult } from "../types";
+import type { CardPayload } from "../../payload/types";
+import type { NfcError } from "../adapters/types";
+import type { PayloadError } from "../payloadTypes";
 
 // ============================================================================
 // Test Helpers

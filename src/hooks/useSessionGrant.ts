@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "../core/payload/types";
 import { API_BASE_URL } from "../lib/api";
-import {
-  sessionGrantCacheStore,
-  type CachedSessionGrant,
-} from "../lib/indexeddb";
+import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
 import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
@@ -205,6 +202,12 @@ async function tryLocalGrant(
   }
 }
 
+interface OnlineRefreshCallbacks {
+  setGrant: (g: SessionGrant) => void;
+  scheduleRefreshFn: (g: SessionGrant) => void;
+  setError: (e: string) => void;
+}
+
 /** Handles the online branch of the refresh logic. */
 async function handleOnlineRefresh(
   tenantId: string,
@@ -212,10 +215,9 @@ async function handleOnlineRefresh(
   deviceId: string,
   role: string | undefined,
   cachedGrant: SessionGrant | null,
-  setGrant: (g: SessionGrant) => void,
-  scheduleRefreshFn: (g: SessionGrant) => void,
-  setError: (e: string) => void,
+  callbacks: OnlineRefreshCallbacks,
 ): Promise<void> {
+  const { setGrant, scheduleRefreshFn, setError } = callbacks;
   try {
     const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
     setGrant(newGrant);
@@ -302,18 +304,21 @@ export function useSessionGrant(
     const cachedGrant = await readGrantFromCache(tenantId, accountId, deviceId);
 
     if (isOnline) {
-      await handleOnlineRefresh(
+      await handleOnlineRefresh(tenantId, accountId, deviceId, role, cachedGrant, {
+        setGrant,
+        scheduleRefreshFn: (g) => scheduleRefresh(refreshTimerRef, g, refresh),
+        setError,
+      });
+    } else {
+      await handleOfflineRefresh(
         tenantId,
         accountId,
         deviceId,
         role,
         cachedGrant,
         setGrant,
-        (g) => scheduleRefresh(refreshTimerRef, g, refresh),
         setError,
       );
-    } else {
-      await handleOfflineRefresh(tenantId, accountId, deviceId, role, cachedGrant, setGrant, setError);
     }
 
     setLoading(false);

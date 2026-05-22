@@ -232,10 +232,10 @@ function injectIntoRecord(
   deviceId: string | null,
   token: string | null,
 ): Record<string, string> {
-  const keys = Object.keys(headers).map((k) => k.toLowerCase());
+  const keys = new Set(Object.keys(headers).map((k) => k.toLowerCase()));
   const result: Record<string, string> = { ...headers };
-  if (deviceId && !keys.includes("x-device-id")) result["X-Device-Id"] = deviceId;
-  if (token && !keys.includes("authorization")) result["Authorization"] = `Bearer ${token}`;
+  if (deviceId && !keys.has("x-device-id")) result["X-Device-Id"] = deviceId;
+  if (token && !keys.has("authorization")) result["Authorization"] = `Bearer ${token}`;
   return result;
 }
 
@@ -253,17 +253,9 @@ function injectAuthHeaders(options?: RequestInit): RequestInit | undefined {
   if (existingHeaders instanceof Headers) {
     headers = injectIntoHeaders(existingHeaders, _cachedDeviceId, _cachedAccessToken);
   } else if (Array.isArray(existingHeaders)) {
-    headers = injectIntoArray(
-      existingHeaders as [string, string][],
-      _cachedDeviceId,
-      _cachedAccessToken,
-    );
+    headers = injectIntoArray(existingHeaders, _cachedDeviceId, _cachedAccessToken);
   } else {
-    headers = injectIntoRecord(
-      (existingHeaders ?? {}) as Record<string, string>,
-      _cachedDeviceId,
-      _cachedAccessToken,
-    );
+    headers = injectIntoRecord(existingHeaders ?? {}, _cachedDeviceId, _cachedAccessToken);
   }
 
   return { ...options, headers };

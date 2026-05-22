@@ -16,7 +16,7 @@ import {
   refreshSession,
   // revokeSession, revokeDeviceSessions, getActiveSessions - used in integration tests (task 14.3)
   AuthSessionError,
-} from "./authSession";
+} from "../authSession";
 
 // --- Tests for pure utility functions ---
 
@@ -178,9 +178,9 @@ describe("refreshSession", () => {
 
   it("throws SESSION_NOT_FOUND for non-existent session", async () => {
     mockDb.setSessionLookup(null);
-    await expect(
-      refreshSession(mockDb.db as any, "non-existent", "some-token"),
-    ).rejects.toThrow(AuthSessionError);
+    await expect(refreshSession(mockDb.db as any, "non-existent", "some-token")).rejects.toThrow(
+      AuthSessionError,
+    );
 
     try {
       await refreshSession(mockDb.db as any, "non-existent", "some-token");
@@ -201,9 +201,9 @@ describe("refreshSession", () => {
       createdAt: Math.floor(Date.now() / 1000) - 1000,
     });
 
-    await expect(
-      refreshSession(mockDb.db as any, "session-1", "some-token"),
-    ).rejects.toThrow(AuthSessionError);
+    await expect(refreshSession(mockDb.db as any, "session-1", "some-token")).rejects.toThrow(
+      AuthSessionError,
+    );
 
     try {
       await refreshSession(mockDb.db as any, "session-1", "some-token");
@@ -224,9 +224,9 @@ describe("refreshSession", () => {
       createdAt: Math.floor(Date.now() / 1000) - 1000,
     });
 
-    await expect(
-      refreshSession(mockDb.db as any, "session-1", "some-token"),
-    ).rejects.toThrow(AuthSessionError);
+    await expect(refreshSession(mockDb.db as any, "session-1", "some-token")).rejects.toThrow(
+      AuthSessionError,
+    );
 
     try {
       await refreshSession(mockDb.db as any, "session-1", "some-token");
@@ -250,9 +250,9 @@ describe("refreshSession", () => {
       createdAt: Math.floor(Date.now() / 1000) - 1000,
     });
 
-    await expect(
-      refreshSession(mockDb.db as any, "session-1", "wrong-token"),
-    ).rejects.toThrow(AuthSessionError);
+    await expect(refreshSession(mockDb.db as any, "session-1", "wrong-token")).rejects.toThrow(
+      AuthSessionError,
+    );
 
     try {
       await refreshSession(mockDb.db as any, "session-1", "wrong-token");

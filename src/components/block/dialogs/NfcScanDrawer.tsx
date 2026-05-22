@@ -19,21 +19,21 @@ import { CardStatusBadge } from "../CardStatusBadge";
 import { NfcTapArea, StepIndicator } from "../UnifiedNfcScanner";
 
 interface NfcScanDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  phase: NfcCardPhase;
-  payload: CardPayload | null;
-  isCheckedIn: boolean;
-  error: string | null;
-  tamperDetected: boolean;
-  onCheckin: () => void;
-  onCheckout: () => void;
-  onClose: () => void;
-  onRetry: () => void;
-  onFixCard?: () => void;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly phase: NfcCardPhase;
+  readonly payload: CardPayload | null;
+  readonly isCheckedIn: boolean;
+  readonly error: string | null;
+  readonly tamperDetected: boolean;
+  readonly onCheckin: () => void;
+  readonly onCheckout: () => void;
+  readonly onClose: () => void;
+  readonly onRetry: () => void;
+  readonly onFixCard?: () => void;
   /** When true, card-ready state shows synced info instead of masuk/keluar buttons */
-  syncMode?: boolean;
-  syncSuccess?: boolean;
+  readonly syncMode?: boolean;
+  readonly syncSuccess?: boolean;
 }
 
 function formatRupiah(amount: number): string {
@@ -47,23 +47,23 @@ function formatRupiah(amount: number): string {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface DrawerBodyContentProps {
-  phase: NfcCardPhase;
-  payload: CardPayload | null;
-  isCheckedIn: boolean;
-  error: string | null;
-  tamperDetected: boolean;
-  onCheckin: () => void;
-  onCheckout: () => void;
-  onFixCard?: () => void;
-  syncMode: boolean;
-  syncSuccess: boolean;
-  nfcPhase: NfcPhase;
-  isScanning: boolean;
-  hasCard: boolean;
-  isWriting: boolean;
-  isSuccess: boolean;
-  isError: boolean;
-  isBlocked: boolean;
+  readonly phase: NfcCardPhase;
+  readonly payload: CardPayload | null;
+  readonly isCheckedIn: boolean;
+  readonly error: string | null;
+  readonly tamperDetected: boolean;
+  readonly onCheckin: () => void;
+  readonly onCheckout: () => void;
+  readonly onFixCard?: () => void;
+  readonly syncMode: boolean;
+  readonly syncSuccess: boolean;
+  readonly nfcPhase: NfcPhase;
+  readonly isScanning: boolean;
+  readonly hasCard: boolean;
+  readonly isWriting: boolean;
+  readonly isSuccess: boolean;
+  readonly isError: boolean;
+  readonly isBlocked: boolean;
 }
 
 function DrawerBodyContent({
@@ -98,9 +98,7 @@ function DrawerBodyContent({
         <div className="space-y-4 py-4">
           <div className="rounded-2xl bg-brand/5 border border-brand/20 p-4 text-center">
             <p className="text-sm text-muted-foreground">Saldo</p>
-            <p className="text-2xl font-bold text-brand">
-              {formatRupiah(payload.wallet.balance)}
-            </p>
+            <p className="text-2xl font-bold text-brand">{formatRupiah(payload.wallet.balance)}</p>
           </div>
           {syncMode ? (
             <div className="space-y-3">
@@ -198,15 +196,15 @@ function DrawerBodyContent({
 }
 
 interface DrawerFooterContentProps {
-  isScanning: boolean;
-  hasCard: boolean;
-  isWriting: boolean;
-  isSuccess: boolean;
-  isError: boolean;
-  tamperDetected: boolean;
-  onClose: () => void;
-  onRetry: () => void;
-  onFixCard?: () => void;
+  readonly isScanning: boolean;
+  readonly hasCard: boolean;
+  readonly isWriting: boolean;
+  readonly isSuccess: boolean;
+  readonly isError: boolean;
+  readonly tamperDetected: boolean;
+  readonly onClose: () => void;
+  readonly onRetry: () => void;
+  readonly onFixCard?: () => void;
 }
 
 function DrawerFooterContent({

@@ -93,6 +93,16 @@ const MAX_RETRY_BACKOFF_MS = 60_000;
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
+interface SyncErrorContext {
+  mountedRef: { current: boolean };
+  setSyncStatus: (s: SyncEngineStatus) => void;
+  setLastPushSucceeded: (v: boolean) => void;
+  errorRetryCountRef: { current: number };
+  retryTimerRef: { current: ReturnType<typeof setTimeout> | null };
+  enabledRef: { current: boolean };
+  executeSyncCycle: () => Promise<void>;
+}
+
 /**
  * Handle the catch block of executeSyncCycle: log the error, update status,
  * and schedule a retry with exponential backoff if under the retry limit.
@@ -101,14 +111,18 @@ function handleSyncError(
   err: unknown,
   pushSucceeded: boolean,
   tid: string,
-  mountedRef: { current: boolean },
-  setSyncStatus: (s: SyncEngineStatus) => void,
-  setLastPushSucceeded: (v: boolean) => void,
-  errorRetryCountRef: { current: number },
-  retryTimerRef: { current: ReturnType<typeof setTimeout> | null },
-  enabledRef: { current: boolean },
-  executeSyncCycle: () => Promise<void>,
+  ctx: SyncErrorContext,
 ): void {
+  const {
+    mountedRef,
+    setSyncStatus,
+    setLastPushSucceeded,
+    errorRetryCountRef,
+    retryTimerRef,
+    enabledRef,
+    executeSyncCycle,
+  } = ctx;
+
   if (!mountedRef.current) return;
 
   const errorDetail = extractErrorDetail(err);
@@ -116,11 +130,7 @@ function handleSyncError(
     setLastPushSucceeded(false);
     addSyncLog("error", "Push sync gagal", `tenantId=${tid} | ${errorDetail}`);
   } else {
-    addSyncLog(
-      "error",
-      "Pull sync gagal (push berhasil)",
-      `tenantId=${tid} | ${errorDetail}`,
-    );
+    addSyncLog("error", "Pull sync gagal (push berhasil)", `tenantId=${tid} | ${errorDetail}`);
   }
   setSyncStatus("error");
   errorRetryCountRef.current += 1;
@@ -258,10 +268,7 @@ export function useSyncEngine(
       }
     } catch (err) {
       if (mountedRef.current) {
-        handleSyncError(
-          err,
-          pushSucceeded,
-          tid,
+        handleSyncError(err, pushSucceeded, tid, {
           mountedRef,
           setSyncStatus,
           setLastPushSucceeded,
@@ -269,7 +276,7 @@ export function useSyncEngine(
           retryTimerRef,
           enabledRef,
           executeSyncCycle,
-        );
+        });
       }
     } finally {
       isSyncingRef.current = false;

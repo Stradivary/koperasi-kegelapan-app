@@ -16,6 +16,8 @@ import { recordTransaction } from "../lib/transactionLogService";
 
 const WRITE_VERIFICATION_FAILED_MESSAGE = "Gagal menulis kartu";
 
+type TransactionOperationType = "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin";
+
 function arraysEqual(left: Uint8Array, right: Uint8Array): boolean {
   if (left.length !== right.length) return false;
 
@@ -117,6 +119,101 @@ export type NfcCardPhase =
   | "writing"
   | "success"
   | "error";
+
+interface CardValidationResult {
+  phase: "ready" | "error";
+  payload: CardPayload | null;
+  error: string | null;
+  tamperDetected: boolean;
+  warning: string | null;
+}
+
+/**
+ * Decode and validate a raw NFC card payload.
+ * Returns a discriminated result indicating ready or error state.
+ */
+async function decodeAndValidateCard(
+  raw: Uint8Array,
+  grant: SessionGrant,
+  _serialNumber: string,
+  lenient: boolean,
+  signal: AbortSignal,
+): Promise<CardValidationResult> {
+  const version = raw[4];
+  let decodableRaw = raw;
+  if (version >= 2) {
+    const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
+    const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
+    const cardId = raw.slice(6, 12);
+    const decryptedBuf = await decryptCardBody(
+      raw.slice(0, BUFFER_SIZE),
+      grant.sessionKey,
+      cardId,
+      BigInt(counterBind),
+    );
+    const full = new Uint8Array(WIRE_SIZE);
+    full.set(decryptedBuf, 0);
+    full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
+    decodableRaw = full;
+  }
+
+  const payload = decodePayload(decodableRaw);
+  const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+
+  if (isOffline) {
+    if (!isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
+      if (lenient) {
+        return {
+          phase: "ready",
+          payload,
+          error: null,
+          tamperDetected: false,
+          warning: UNREGISTERED_CARD_MESSAGE,
+        };
+      }
+      return {
+        phase: "error",
+        payload: null,
+        error: UNREGISTERED_CARD_MESSAGE,
+        tamperDetected: false,
+        warning: null,
+      };
+    }
+    return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+  }
+
+  const validation = await validateCard(payload, raw, grant);
+  if (signal.aborted) {
+    return { phase: "error", payload: null, error: null, tamperDetected: false, warning: null };
+  }
+
+  if (!validation.valid) {
+    const isTenantMismatch =
+      validation.reason === TENANT_MISMATCH_REASON ||
+      validation.reason === UNREGISTERED_CARD_MESSAGE;
+    const isTamper = validation.tamper ?? false;
+
+    if (lenient && !isTamper) {
+      const warning = isTenantMismatch
+        ? UNREGISTERED_CARD_MESSAGE
+        : (validation.reason ?? "Validasi gagal");
+      return { phase: "ready", payload, error: null, tamperDetected: false, warning };
+    }
+
+    const error = isTenantMismatch
+      ? UNREGISTERED_CARD_MESSAGE
+      : (validation.reason ?? "Validasi gagal");
+    return {
+      phase: "error",
+      payload: isTenantMismatch ? null : payload,
+      error,
+      tamperDetected: isTamper,
+      warning: null,
+    };
+  }
+
+  return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+}
 
 export interface NfcCardState {
   phase: NfcCardPhase;
@@ -308,42 +405,91 @@ export function useNfcCard(
             const currentReader = readerRef.current;
             if (currentReader && signal && !signal.aborted) {
               await currentReader.write(
-                { records: [{ recordType: "unknown", data: pending.raw.buffer.slice(pending.raw.byteOffset, pending.raw.byteOffset + pending.raw.byteLength) as ArrayBuffer }] },
+                {
+                  records: [
+                    {
+                      recordType: "unknown",
+                      data: pending.raw.buffer.slice(
+                        pending.raw.byteOffset,
+                        pending.raw.byteOffset + pending.raw.byteLength,
+                      ) as ArrayBuffer,
+                    },
+                  ],
+                },
                 { signal, overwrite: true },
               );
-              const cardIdHex = Array.from(pending.updatedPayload.header.cardId).map((b) => b.toString(16).padStart(2, "0")).join("");
+              const cardIdHex = Array.from(pending.updatedPayload.header.cardId)
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join("");
               await reconciliationOutbox.add({
-                tenantId, terminalId, cardId: cardIdHex,
+                tenantId,
+                terminalId,
+                cardId: cardIdHex,
                 counter: Number(pending.updatedPayload.wallet.counter),
                 type: pending.operationType,
-                amount: pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
+                amount:
+                  pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
                 balanceAfter: pending.updatedPayload.wallet.balance,
                 timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6)).map((b) => b.toString(16).padStart(2, "0")).join(""),
-                idempotencyKey: makeIdempotencyKey(tenantId, cardIdHex, Number(pending.updatedPayload.wallet.counter)),
+                hash: Array.from(
+                  pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
+                )
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join(""),
+                idempotencyKey: makeIdempotencyKey(
+                  tenantId,
+                  cardIdHex,
+                  Number(pending.updatedPayload.wallet.counter),
+                ),
               });
               try {
                 await recordTransaction({
-                  tenantId, cardId: cardIdHex,
-                  userId: pending.updatedPayload.identity.userId ? pending.updatedPayload.identity.userId : null,
+                  tenantId,
+                  cardId: cardIdHex,
+                  userId: pending.updatedPayload.identity.userId
+                    ? pending.updatedPayload.identity.userId
+                    : null,
                   counter: Number(pending.updatedPayload.wallet.counter),
-                  type: pending.operationType as "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin",
-                  amount: Math.abs(pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance),
+                  type: pending.operationType as TransactionOperationType,
+                  amount: Math.abs(
+                    pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
+                  ),
                   balanceAfter: pending.updatedPayload.wallet.balance,
                   timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                  hash: Array.from(pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6)).map((b) => b.toString(16).padStart(2, "0")).join(""),
-                  terminalId, deviceId: null,
+                  hash: Array.from(
+                    pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
+                  )
+                    .map((b) => b.toString(16).padStart(2, "0"))
+                    .join(""),
+                  terminalId,
+                  deviceId: null,
                 });
-              } catch { /* Non-critical */ }
-              await verifyWrittenPayload(pending.payload, grant);
+              } catch {
+                /* Non-critical */
+              }
+              await verifyWrittenPayload(pending.payload, grant!);
               phaseRef.current = "success";
-              setState({ phase: "success", payload: pending.payload, serialNumber: pending.serialNumber, error: null, tamperDetected: false, warning: null });
+              setState({
+                phase: "success",
+                payload: pending.payload,
+                serialNumber: pending.serialNumber,
+                error: null,
+                tamperDetected: false,
+                warning: null,
+              });
               lastWriteTimestamp.current = Date.now();
             }
           } catch (e) {
             if (signal.aborted) return;
             phaseRef.current = "error";
-            setState((s) => ({ ...s, phase: "error", error: e instanceof Error && e.message === WRITE_VERIFICATION_FAILED_MESSAGE ? WRITE_VERIFICATION_FAILED_MESSAGE : friendlyWriteError(e) }));
+            setState((s) => ({
+              ...s,
+              phase: "error",
+              error:
+                e instanceof Error && e.message === WRITE_VERIFICATION_FAILED_MESSAGE
+                  ? WRITE_VERIFICATION_FAILED_MESSAGE
+                  : friendlyWriteError(e),
+            }));
           }
           return;
         } else {
@@ -360,76 +506,88 @@ export function useNfcCard(
         const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
         const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
         phaseRef.current = "error";
-        setState((s) => ({ ...s, phase: "error", payload: null, error: isPostWriteReadError ? "Lepas kartu sebentar lalu tap ulang" : UNREGISTERED_CARD_MESSAGE, tamperDetected: false }));
+        setState((s) => ({
+          ...s,
+          phase: "error",
+          payload: null,
+          error: isPostWriteReadError
+            ? "Lepas kartu sebentar lalu tap ulang"
+            : UNREGISTERED_CARD_MESSAGE,
+          tamperDetected: false,
+        }));
         if (isPostWriteReadError) {
           clearPostWriteAutoReset();
           postWriteAutoResetRef.current = setTimeout(() => {
             phaseRef.current = "idle";
-            setState({ phase: "idle", payload: null, serialNumber: null, error: null, tamperDetected: false, warning: null });
+            setState({
+              phase: "idle",
+              payload: null,
+              serialNumber: null,
+              error: null,
+              tamperDetected: false,
+              warning: null,
+            });
           }, 3000);
         }
         return;
       }
 
       try {
-        const version = raw[4];
-        let decodableRaw = raw;
-        if (version >= 2) {
-          const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
-          const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
-          const cardId = raw.slice(6, 12);
-          const decryptedBuf = await decryptCardBody(raw.slice(0, BUFFER_SIZE), grant.sessionKey, cardId, BigInt(counterBind));
-          const full = new Uint8Array(WIRE_SIZE);
-          full.set(decryptedBuf, 0);
-          full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
-          decodableRaw = full;
-        }
-        const payload = decodePayload(decodableRaw);
-        const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+        const result = await decodeAndValidateCard(
+          raw,
+          grant!,
+          event.serialNumber,
+          lenient,
+          signal,
+        );
+        if (signal.aborted) return;
 
-        if (isOffline) {
-          if (!isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
-            if (lenient) {
-              phaseRef.current = "ready";
-              setState({ phase: "ready", payload, serialNumber: event.serialNumber, error: null, tamperDetected: false, warning: UNREGISTERED_CARD_MESSAGE });
-              return;
-            }
-            phaseRef.current = "error";
-            setState((s) => ({ ...s, phase: "error", payload: null, error: UNREGISTERED_CARD_MESSAGE, tamperDetected: false, warning: null }));
-            return;
-          }
-          if (signal.aborted) return;
-          phaseRef.current = "ready";
-          setState({ phase: "ready", payload, serialNumber: event.serialNumber, error: null, tamperDetected: false, warning: null });
+        phaseRef.current = result.phase;
+        if (result.phase === "ready") {
+          setState({
+            phase: "ready",
+            payload: result.payload,
+            serialNumber: event.serialNumber,
+            error: null,
+            tamperDetected: false,
+            warning: result.warning,
+          });
         } else {
-          const validation = await validateCard(payload, raw, grant);
-          if (signal.aborted) return;
-          if (!validation.valid) {
-            const isTenantMismatch = validation.reason === TENANT_MISMATCH_REASON || validation.reason === UNREGISTERED_CARD_MESSAGE;
-            const isTamper = validation.tamper ?? false;
-            if (lenient && !isTamper) {
-              phaseRef.current = "ready";
-              setState({ phase: "ready", payload, serialNumber: event.serialNumber, error: null, tamperDetected: false, warning: isTenantMismatch ? UNREGISTERED_CARD_MESSAGE : (validation.reason ?? "Validasi gagal") });
-              return;
-            }
-            phaseRef.current = "error";
-            setState((s) => ({ ...s, phase: "error", payload: isTenantMismatch ? null : s.payload, error: isTenantMismatch ? UNREGISTERED_CARD_MESSAGE : (validation.reason ?? "Validasi gagal"), tamperDetected: isTamper, warning: null }));
-            return;
-          }
-          phaseRef.current = "ready";
-          setState({ phase: "ready", payload, serialNumber: event.serialNumber, error: null, tamperDetected: false, warning: null });
+          setState((s) => ({
+            ...s,
+            phase: "error",
+            payload: result.payload ?? s.payload,
+            error: result.error,
+            tamperDetected: result.tamperDetected,
+            warning: null,
+          }));
         }
       } catch {
         if (signal.aborted) return;
         const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
         const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
         phaseRef.current = "error";
-        setState((s) => ({ ...s, phase: "error", payload: null, error: isPostWriteReadError ? "Lepas kartu sebentar lalu tap ulang" : UNREGISTERED_CARD_MESSAGE, tamperDetected: false }));
+        setState((s) => ({
+          ...s,
+          phase: "error",
+          payload: null,
+          error: isPostWriteReadError
+            ? "Lepas kartu sebentar lalu tap ulang"
+            : UNREGISTERED_CARD_MESSAGE,
+          tamperDetected: false,
+        }));
         if (isPostWriteReadError) {
           clearPostWriteAutoReset();
           postWriteAutoResetRef.current = setTimeout(() => {
             phaseRef.current = "idle";
-            setState({ phase: "idle", payload: null, serialNumber: null, error: null, tamperDetected: false, warning: null });
+            setState({
+              phase: "idle",
+              payload: null,
+              serialNumber: null,
+              error: null,
+              tamperDetected: false,
+              warning: null,
+            });
           }, 3000);
         }
       }
@@ -444,35 +602,68 @@ export function useNfcCard(
       try {
         const { raw, currentPayload, updatedPayload, serialNumber } = pending;
         await reader.write(
-          { records: [{ recordType: "unknown", data: raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer }] },
+          {
+            records: [
+              {
+                recordType: "unknown",
+                data: raw.buffer.slice(
+                  raw.byteOffset,
+                  raw.byteOffset + raw.byteLength,
+                ) as ArrayBuffer,
+              },
+            ],
+          },
           { signal, overwrite: true },
         );
-        const cardIdHex = Array.from(updatedPayload.header.cardId).map((b) => b.toString(16).padStart(2, "0")).join("");
+        const cardIdHex = Array.from(updatedPayload.header.cardId)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
         await reconciliationOutbox.add({
-          tenantId, terminalId, cardId: cardIdHex,
+          tenantId,
+          terminalId,
+          cardId: cardIdHex,
           counter: Number(updatedPayload.wallet.counter),
           type: pending.operationType,
           amount: currentPayload.wallet.balance - updatedPayload.wallet.balance,
           balanceAfter: updatedPayload.wallet.balance,
           timestamp: updatedPayload.wallet.lastTimestamp,
-          hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6)).map((b) => b.toString(16).padStart(2, "0")).join(""),
-          idempotencyKey: makeIdempotencyKey(tenantId, cardIdHex, Number(updatedPayload.wallet.counter)),
+          hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(""),
+          idempotencyKey: makeIdempotencyKey(
+            tenantId,
+            cardIdHex,
+            Number(updatedPayload.wallet.counter),
+          ),
         });
         try {
           await recordTransaction({
-            tenantId, cardId: cardIdHex,
+            tenantId,
+            cardId: cardIdHex,
             userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
             counter: Number(updatedPayload.wallet.counter),
-            type: pending.operationType as "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin",
+            type: pending.operationType as TransactionOperationType,
             amount: Math.abs(currentPayload.wallet.balance - updatedPayload.wallet.balance),
             balanceAfter: updatedPayload.wallet.balance,
             timestamp: updatedPayload.wallet.lastTimestamp,
-            hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6)).map((b) => b.toString(16).padStart(2, "0")).join(""),
-            terminalId, deviceId: null,
+            hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join(""),
+            terminalId,
+            deviceId: null,
           });
-        } catch { /* Non-critical */ }
+        } catch {
+          /* Non-critical */
+        }
         phaseRef.current = "success";
-        setState({ phase: "success", payload: pending.payload, serialNumber, error: null, tamperDetected: false, warning: null });
+        setState({
+          phase: "success",
+          payload: pending.payload,
+          serialNumber,
+          error: null,
+          tamperDetected: false,
+          warning: null,
+        });
         lastWriteTimestamp.current = Date.now();
       } catch (e) {
         if (signal.aborted) return;

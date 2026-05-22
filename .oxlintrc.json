@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript"],
+  "plugins": ["react", "typescript", "unicorn"],
   "env": {
     "browser": true,
     "es2022": true
@@ -8,9 +8,26 @@
   "ignorePatterns": ["dist", "node_modules", ".wrangler", "src/routeTree.gen.ts", "coverage"],
   "rules": {
     "no-unused-vars": "error",
+    "no-negated-condition": "warn",
+
     "typescript/no-explicit-any": "warn",
     "typescript/consistent-type-imports": "error",
+    "typescript/no-unused-vars": "error",
+    "typescript/prefer-optional-chain": "warn",
+    "typescript/no-unnecessary-type-assertion": "warn",
+    "typescript/no-redundant-type-constituents": "warn",
+
     "react/rules-of-hooks": "error",
-    "react/exhaustive-deps": "warn"
+    "react/exhaustive-deps": "warn",
+    "react/no-array-index-key": "warn",
+    "react/no-unstable-nested-components": "warn",
+    "react/hook-use-state": "warn",
+    "react/no-unused-prop-types": "warn",
+
+    "unicorn/no-nested-ternary": "warn",
+    "unicorn/prefer-at": "warn",
+    "unicorn/prefer-math-min-max": "warn",
+    "unicorn/prefer-negative-index": "warn",
+    "unicorn/prefer-dom-node-dataset": "warn"
   }
 }

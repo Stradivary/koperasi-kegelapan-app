@@ -1,0 +1,55 @@
+
+  x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
+     ,-[src/hooks/useUnifiedNfc.ts:105:25]
+ 104 |   if (!pipelineResult.ok) {
+ 105 |     const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+     :                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 106 |       code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
+     `----
+
+  ! eslint(no-negated-condition): Unexpected negated condition.
+     ,-[src/components/section/CardSection.tsx:660:17]
+ 659 |       userId: c.userId,
+ 660 |       userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
+     :                 ^^^^^^^^^^^^^^^^
+ 661 |       status: c.status,
+     `----
+  help: Remove the negation operator and switch the consequent and alternate branches.
+
+  ! eslint(no-negated-condition): Unexpected negated condition.
+     ,-[src/components/section/CardSection.tsx:666:9]
+ 665 |       expiresAt:
+ 666 |         c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
+     :         ^^^^^^^^^^^^^^^^^^^
+ 667 |     }));
+     `----
+  help: Remove the negation operator and switch the consequent and alternate branches.
+
+  x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
+     ,-[src/components/section/CardSection.tsx:422:7]
+ 421 |   forceOverwrite: boolean | undefined;
+ 422 |   qc: import("@tanstack/react-query").QueryClient;
+     :       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 423 | }): Promise<void> {
+     `----
+
+  x typescript-eslint(consistent-type-imports): `import()` type annotations are forbidden.
+     ,-[src/components/section/CardSection.tsx:569:7]
+ 568 |   setRecoverySerial: (serial: string | null) => void;
+ 569 |   qc: import("@tanstack/react-query").QueryClient;
+     :       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 570 | }): Promise<void> {
+     `----
+
+  ! eslint-plugin-unicorn(no-nested-ternary): Unexpected deeply nested ternary expression.
+      ,-[src/components/section/CardSection.tsx:1302:19]
+ 1301 |                     ? "writing"
+ 1302 | ,->                 : issuancePhase === "done"
+ 1303 | |                     ? "done"
+ 1304 | `->                   : "error"
+ 1305 |             }
+      `----
+  help: Avoid nesting ternary expressions for more than one level.
+
+Found 3 warnings and 3 errors.
+Finished in 17ms on 3 files with 98 rules using 8 threads.

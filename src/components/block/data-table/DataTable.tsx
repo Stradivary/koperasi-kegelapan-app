@@ -23,19 +23,16 @@ import { DataTableSkeleton } from "./DataTableSkeleton";
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface MobileRowProps<TData> {
-  row: Row<TData>;
-  index: number;
-  onRowClick?: (row: TData) => void;
-  renderMobileItem: (row: Row<TData>, index: number) => React.ReactNode;
+  readonly row: Row<TData>;
+  readonly index: number;
+  readonly onRowClick?: (row: TData) => void;
+  readonly renderMobileItem: (row: Row<TData>, index: number) => React.ReactNode;
 }
 
 function MobileRow<TData>({ row, index, onRowClick, renderMobileItem }: MobileRowProps<TData>) {
   return (
     <div
-      className={cn(
-        "transition-colors hover:bg-muted/30",
-        onRowClick && "cursor-pointer",
-      )}
+      className={cn("transition-colors hover:bg-muted/30", onRowClick && "cursor-pointer")}
       onClick={() => onRowClick?.(row.original)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -52,13 +49,22 @@ function MobileRow<TData>({ row, index, onRowClick, renderMobileItem }: MobileRo
 }
 
 interface SortableHeaderProps<TData> {
-  headerCell: Header<TData, unknown>;
+  readonly headerCell: Header<TData, unknown>;
 }
 
 function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
   const canSort = headerCell.column.getCanSort();
   const sorted = headerCell.column.getIsSorted();
   const toggleSort = canSort ? headerCell.column.getToggleSortingHandler() : undefined;
+
+  let ariaSort: "ascending" | "descending" | "none" | undefined;
+  if (sorted === "asc") {
+    ariaSort = "ascending";
+  } else if (sorted === "desc") {
+    ariaSort = "descending";
+  } else if (canSort) {
+    ariaSort = "none";
+  }
 
   return (
     <TableHead
@@ -77,15 +83,7 @@ function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
       }
       role={canSort ? "button" : undefined}
       tabIndex={canSort ? 0 : undefined}
-      aria-sort={
-        sorted === "asc"
-          ? "ascending"
-          : sorted === "desc"
-            ? "descending"
-            : canSort
-              ? "none"
-              : undefined
-      }
+      aria-sort={ariaSort}
     >
       <div className="flex items-center gap-1">
         {headerCell.isPlaceholder
@@ -224,7 +222,7 @@ export function DataTable<TData>({
       {isLoading && (
         <DataTableSkeleton
           columns={columns.length}
-          rows={pageSize > 5 ? 5 : pageSize}
+          rows={Math.min(5, pageSize)}
           isMobile={isMobile}
         />
       )}
@@ -257,11 +255,13 @@ export function DataTable<TData>({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {table.getHeaderGroups().map((headerGroup) =>
-                      headerGroup.headers.map((headerCell) => (
-                        <SortableHeader key={headerCell.id} headerCell={headerCell} />
-                      )),
-                    )}
+                    {table
+                      .getHeaderGroups()
+                      .map((headerGroup) =>
+                        headerGroup.headers.map((headerCell) => (
+                          <SortableHeader key={headerCell.id} headerCell={headerCell} />
+                        )),
+                      )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>

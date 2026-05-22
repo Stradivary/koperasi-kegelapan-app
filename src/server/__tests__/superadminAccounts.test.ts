@@ -24,28 +24,26 @@ const makeWhereChain = () => ({
   all: mockAll,
 });
 
+const makeFromChain = () => ({
+  leftJoin: vi.fn(() => ({
+    where: vi.fn(() => makeWhereChainWithJoin()),
+  })),
+  where: vi.fn(() => makeWhereChain()),
+});
+
+const makeInsertValuesChain = () => ({ run: mockRun });
+const makeInsertChain = () => ({ values: vi.fn(() => makeInsertValuesChain()) });
+const makeUpdateWhereChain = () => ({ run: mockRun });
+const makeUpdateSetChain = () => ({ where: vi.fn(() => makeUpdateWhereChain()) });
+const makeUpdateChain = () => ({ set: vi.fn(() => makeUpdateSetChain()) });
+
 vi.mock("#/db", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        leftJoin: vi.fn(() => ({
-          where: vi.fn(() => makeWhereChainWithJoin()),
-        })),
-        where: vi.fn(() => makeWhereChain()),
-      })),
+      from: vi.fn(() => makeFromChain()),
     })),
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        run: mockRun,
-      })),
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: mockRun,
-        })),
-      })),
-    })),
+    insert: vi.fn(() => makeInsertChain()),
+    update: vi.fn(() => makeUpdateChain()),
   })),
 }));
 
@@ -60,7 +58,7 @@ import {
   createAccount,
   changeAccountPassword,
   updateAccountStatus,
-} from "./superadminAccounts";
+} from "../superadminAccounts";
 
 describe("superadminAccounts", () => {
   beforeEach(() => {

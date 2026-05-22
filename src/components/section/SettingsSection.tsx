@@ -165,7 +165,15 @@ function isCurrentServerDevice(
 }
 
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
-  const { onSyncToServer, isSyncingToServer, syncStep, syncError, syncConflict, retryWithChanges, resetSync } = useAdminTenantSync(tenantId);
+  const {
+    onSyncToServer,
+    isSyncingToServer,
+    syncStep,
+    syncError,
+    syncConflict,
+    retryWithChanges,
+    resetSync,
+  } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
   const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);

@@ -7,9 +7,9 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { classify } from "./cardClassifier";
-import type { NfcRecord } from "./adapters/types";
-import { MAGIC, WIRE_SIZE, CARD_SCHEMA_VERSION } from "../payload/types";
+import { classify } from "../cardClassifier";
+import type { NfcRecord } from "../adapters/types";
+import { MAGIC, WIRE_SIZE, CARD_SCHEMA_VERSION } from "../../payload/types";
 
 // Helper to create a valid payload structure
 function createValidPayload(): Uint8Array {

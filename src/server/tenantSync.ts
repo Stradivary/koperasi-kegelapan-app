@@ -44,7 +44,10 @@ export function validateSlug(slug: unknown): ValidationError[] {
     return errors;
   }
   if (slug.length < SLUG_MIN_LENGTH || slug.length > SLUG_MAX_LENGTH) {
-    errors.push({ field: "slug", message: `slug must be between ${SLUG_MIN_LENGTH} and ${SLUG_MAX_LENGTH} characters` });
+    errors.push({
+      field: "slug",
+      message: `slug must be between ${SLUG_MIN_LENGTH} and ${SLUG_MAX_LENGTH} characters`,
+    });
   }
   if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(slug) && slug.length >= SLUG_MIN_LENGTH) {
     errors.push({
@@ -222,23 +225,20 @@ function buildConflictResult(
   existingByAdmin: { tenantId: string } | undefined,
   conflictTenant?: { slug: string; name: string } | undefined,
 ): SyncConflictResponse {
-  const hasSlug = existingBySlug !== undefined;
-  const hasAdmin = existingByAdmin !== undefined;
-
-  if (hasSlug && hasAdmin) {
+  if (existingBySlug !== undefined && existingByAdmin !== undefined) {
     return {
       error: "conflict",
       conflictType: "slug_and_admin",
-      existingTenantName: existingBySlug!.name,
-      existingSlug: existingBySlug!.slug,
+      existingTenantName: existingBySlug.name,
+      existingSlug: existingBySlug.slug,
     };
   }
-  if (hasSlug) {
+  if (existingBySlug !== undefined) {
     return {
       error: "conflict",
       conflictType: "slug_only",
-      existingTenantName: existingBySlug!.name,
-      existingSlug: existingBySlug!.slug,
+      existingTenantName: existingBySlug.name,
+      existingSlug: existingBySlug.slug,
     };
   }
   return {

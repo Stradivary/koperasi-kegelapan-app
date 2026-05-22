@@ -79,13 +79,13 @@ async function handlePayloadScan(
   tenantIdRef: { current: string },
   dispatch: (action: { type: string; [key: string]: unknown }) => void,
   onCardReadRef: { current: ((payload: CardPayload, result: RawNfcResult) => void) | undefined },
-  onErrorRef: { current: ((error: import("../core/nfc/adapters/types").NfcError | import("../core/nfc/payloadTypes").PayloadError) => void) | undefined },
+  onErrorRef: { current: ((error: NfcError | PayloadError) => void) | undefined },
 ): Promise<void> {
   // Validate session before payload operations
   const sessionValidation = validateSession(sessionGrantRef.current, tenantIdRef.current);
 
   if (!sessionValidation.valid) {
-    const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+    const payloadError: PayloadError = {
       code: sessionValidation.errorCode ?? "NO_SESSION",
       message: sessionValidation.error ?? "Sesi tidak aktif",
       tamperDetected: false,
@@ -102,7 +102,7 @@ async function handlePayloadScan(
   if (signal.aborted) return;
 
   if (!pipelineResult.ok) {
-    const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+    const payloadError: PayloadError = {
       code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
       message: pipelineResult.error,
       tamperDetected: pipelineResult.tamper ?? false,

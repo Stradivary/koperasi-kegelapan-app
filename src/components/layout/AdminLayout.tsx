@@ -337,11 +337,10 @@ export function AdminLayout({
       {/* ── Mobile slide-in drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div
+          <button
+            type="button"
             className="absolute inset-0 bg-black/50"
-            role="button"
             aria-label="Tutup menu"
-            tabIndex={0}
             onClick={() => setMobileOpen(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " " || e.key === "Escape") {

@@ -32,7 +32,7 @@ export function generateRefreshToken(): string {
   crypto.getRandomValues(bytes);
   // Convert to base64url
   const base64 = btoa(String.fromCodePoint(...bytes));
-  return base64.replaceAll('+', "-").replaceAll('/', "_").replaceAll(/=+$/, "");
+  return base64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
 export interface CreateSessionInput {
@@ -162,7 +162,10 @@ export async function refreshSession(
 
   // Check if session is expired
   if (session.expiresAt <= now) {
-    throw new AuthSessionError("SESSION_EXPIRED", "Session has expired. Re-authentication required.");
+    throw new AuthSessionError(
+      "SESSION_EXPIRED",
+      "Session has expired. Re-authentication required.",
+    );
   }
 
   // Verify the refresh token hash

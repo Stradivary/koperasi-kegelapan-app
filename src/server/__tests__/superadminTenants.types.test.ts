@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { VALID_TRANSITIONS, isValidTransition } from "./superadminTenants.types";
+import { VALID_TRANSITIONS, isValidTransition } from "../superadminTenants.types";
 
 describe("superadminTenants.types", () => {
   describe("VALID_TRANSITIONS", () => {

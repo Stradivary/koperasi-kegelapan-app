@@ -11,8 +11,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { validateSession } from "./sessionValidator";
-import type { SessionGrant } from "../payload/types";
+import { validateSession } from "../sessionValidator";
+import type { SessionGrant } from "../../payload/types";
 
 /**
  * Creates a valid mock SessionGrant for testing

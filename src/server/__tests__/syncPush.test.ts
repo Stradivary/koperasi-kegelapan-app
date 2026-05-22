@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { syncRoutes } from "../../api/src/routes/sync";
+import { syncRoutes } from "../../../api/src/routes/sync";
 
 type Env = {
   DB: D1Database;
@@ -55,19 +55,19 @@ function createApp() {
   return app;
 }
 
-function makeRequest(
-  app: ReturnType<typeof createApp>,
-  token: string | null,
-  body: unknown,
-) {
+function makeRequest(app: ReturnType<typeof createApp>, token: string | null, body: unknown) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  return app.request("/api/sync/push", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  }, { DB: createMockD1(), SESSION_MASTER_KEY: "test-key" });
+  return app.request(
+    "/api/sync/push",
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    },
+    { DB: createMockD1(), SESSION_MASTER_KEY: "test-key" },
+  );
 }
 
 describe("POST /api/sync/push", () => {
@@ -122,11 +122,15 @@ describe("POST /api/sync/push", () => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
-    const res = await app.request("/api/sync/push", {
-      method: "POST",
-      headers,
-      body: "not json",
-    }, { DB: createMockD1(), SESSION_MASTER_KEY: "test-key" });
+    const res = await app.request(
+      "/api/sync/push",
+      {
+        method: "POST",
+        headers,
+        body: "not json",
+      },
+      { DB: createMockD1(), SESSION_MASTER_KEY: "test-key" },
+    );
     expect(res.status).toBe(400);
   });
 

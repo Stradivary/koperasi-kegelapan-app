@@ -10,26 +10,30 @@
 import { describe, it, expect, vi } from "vitest";
 
 // Mock the database module before importing the module under test
+// Extracted chain builders to reduce nesting depth
+const makeWhereChain = () => ({
+  get: vi.fn(() => undefined),
+  all: vi.fn(() => []),
+});
+
+const makeFromChain = () => ({
+  where: vi.fn(() => makeWhereChain()),
+  get: vi.fn(() => undefined),
+  all: vi.fn(() => []),
+});
+
+const makeTxInsertChain = () => ({
+  values: vi.fn(),
+});
+
 vi.mock("#/db", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
-      from: vi.fn(() => {
-        const whereChain = {
-          get: vi.fn(() => undefined),
-          all: vi.fn(() => []),
-        };
-        return {
-          where: vi.fn(() => whereChain),
-          get: vi.fn(() => undefined),
-          all: vi.fn(() => []),
-        };
-      }),
+      from: vi.fn(() => makeFromChain()),
     })),
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => {
       const tx = {
-        insert: vi.fn(() => ({
-          values: vi.fn(),
-        })),
+        insert: vi.fn(() => makeTxInsertChain()),
       };
       await fn(tx);
     }),
@@ -41,7 +45,7 @@ vi.mock("./auth", () => ({
   hashPassword: vi.fn(() => "pbkdf2$mocksalt$mockhash"),
 }));
 
-import { createTenant } from "./superadminTenants";
+import { createTenant } from "../superadminTenants";
 
 describe("createTenant - validation", () => {
   it("returns 400 when body is null", async () => {
