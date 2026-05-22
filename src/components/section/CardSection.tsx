@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 import { localDb, type Card } from "../../db/local-db";
 import { syncPull } from "../../lib/syncPull";
-import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
@@ -25,8 +24,6 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
-import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
-import { AlertTriangle } from "lucide-react";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
@@ -39,6 +36,7 @@ import {
   type SessionGrant,
 } from "../../core/payload/types";
 import { encodeTenantBind } from "../../core/payload/tenantBind";
+import { useNfcCard } from "#/hooks/nfc";
 
 interface CardSectionProps {
   tenantId: string;
@@ -674,8 +672,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);
-  const [topupMismatchOpen, setTopupMismatchOpen] = useState(false);
-  const [topupMismatchSerial, setTopupMismatchSerial] = useState<string | null>(null);
   const [recoveryDrawerOpen, setRecoveryDrawerOpen] = useState(false);
   const [recoveryPhase, setRecoveryPhase] = useState<
     "idle" | "scanning" | "writing" | "done" | "error"
@@ -771,8 +767,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         setIsDrawerOpen(false);
         setTopupDrawerOpen(false);
         setTopupTargetCardId(null);
-        setTopupMismatchOpen(false);
-        setTopupMismatchSerial(null);
         setResetCardPending(false);
       }, 2500);
       return () => clearTimeout(timer);
@@ -791,9 +785,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   // Auto-sync card data to local DB when scanned
   useEffect(() => {
     if (state.phase !== "ready" || !state.payload) return;
-
-    // Skip auto-sync entirely during top-up flow — the success handler will update DB
-    if (topupTargetCardId) return;
 
     const payload = state.payload;
     const cardId = normalizeSerial(state.serialNumber);
@@ -825,7 +816,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
     });
-  }, [state.phase, state.payload, state.serialNumber, tenantId, qc, topupTargetCardId]);
+  }, [state.phase, state.payload, state.serialNumber, tenantId, qc]);
 
   const handleDrawerClose = useCallback(() => {
     if (state.phase === "scanning" || state.phase === "validating") {
@@ -836,8 +827,6 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     setIsDrawerOpen(false);
     setTopupDrawerOpen(false);
     setTopupTargetCardId(null);
-    setTopupMismatchOpen(false);
-    setTopupMismatchSerial(null);
     setResetCardPending(false);
   }, [state.phase, cancel, reset]);
 
@@ -1172,9 +1161,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
     // Validate scanned card matches the selected card
     if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
-      setTopupMismatchSerial(scannedId);
-      setTopupMismatchOpen(true);
-      setTopupDrawerOpen(false);
+      toast.error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
+      handleDrawerClose();
       return;
     }
 
@@ -1288,80 +1276,17 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       />
 
       <TopupDrawer
-        open={topupDrawerOpen && !topupMismatchOpen}
+        open={topupDrawerOpen}
         onOpenChange={(open) => {
           if (!open) handleDrawerClose();
         }}
-        phase={
-          // Show scanning state while mismatch check is pending to prevent keyboard flash
-          state.phase === "ready" &&
-          topupTargetCardId &&
-          normalizeSerial(state.serialNumber) !== topupTargetCardId
-            ? "scanning"
-            : state.phase
-        }
-        payload={
-          // Don't pass payload for mismatched cards
-          state.phase === "ready" &&
-          topupTargetCardId &&
-          normalizeSerial(state.serialNumber) !== topupTargetCardId
-            ? null
-            : state.payload
-        }
+        phase={state.phase}
+        payload={state.payload}
         error={state.error}
         onTopup={handleTopupConfirm}
         onClose={handleDrawerClose}
         onRetry={scan}
       />
-
-      <ConfirmationDialogDrawer
-        open={topupMismatchOpen}
-        onOpenChange={(o) => {
-          if (!o) {
-            setTopupMismatchOpen(false);
-            handleDrawerClose();
-          }
-        }}
-        title="Kartu Tidak Sesuai"
-        description={<p>Kartu yang di-scan tidak sesuai dengan kartu yang dipilih untuk top-up.</p>}
-        icon={
-          <div className="flex items-center justify-center size-12 rounded-full bg-amber-100">
-            <AlertTriangle size={24} className="text-amber-600" />
-          </div>
-        }
-        confirmLabel="Scan Ulang"
-        cancelLabel="Batal"
-        confirmVariant="default"
-        onConfirm={() => {
-          setTopupMismatchOpen(false);
-          setTopupMismatchSerial(null);
-          reset();
-          // Use setTimeout to ensure NFC state is cleared before reopening the drawer
-          setTimeout(() => {
-            setTopupDrawerOpen(true);
-            scan();
-          }, 0);
-        }}
-        onCancel={() => {
-          setTopupMismatchOpen(false);
-          setTopupMismatchSerial(null);
-          handleDrawerClose();
-        }}
-      >
-        <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
-          <p>
-            <span className="text-muted-foreground">Kartu dipilih:</span>{" "}
-            <span className="font-mono">{topupTargetCardId ?? "-"}</span>
-          </p>
-          <p>
-            <span className="text-muted-foreground">Kartu di-scan:</span>{" "}
-            <span className="font-mono">{topupMismatchSerial ?? "-"}</span>
-          </p>
-        </div>
-        <p className="text-sm text-muted-foreground mt-3">
-          Pastikan kartu yang di-tap adalah kartu yang benar.
-        </p>
-      </ConfirmationDialogDrawer>
 
       <IssueCardDrawer
         open={issueCardDrawerOpen}
