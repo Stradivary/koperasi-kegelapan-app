@@ -792,6 +792,9 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   useEffect(() => {
     if (state.phase !== "ready" || !state.payload) return;
 
+    // Skip auto-sync entirely during top-up flow — the success handler will update DB
+    if (topupTargetCardId) return;
+
     const payload = state.payload;
     const cardId = normalizeSerial(state.serialNumber);
     if (!cardId) return;
@@ -822,7 +825,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
     });
-  }, [state.phase, state.payload, state.serialNumber, tenantId, qc]);
+  }, [state.phase, state.payload, state.serialNumber, tenantId, qc, topupTargetCardId]);
 
   const handleDrawerClose = useCallback(() => {
     if (state.phase === "scanning" || state.phase === "validating") {
@@ -1171,6 +1174,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
       setTopupMismatchSerial(scannedId);
       setTopupMismatchOpen(true);
+      setTopupDrawerOpen(false);
       return;
     }
 
@@ -1284,12 +1288,26 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       />
 
       <TopupDrawer
-        open={topupDrawerOpen}
+        open={topupDrawerOpen && !topupMismatchOpen}
         onOpenChange={(open) => {
           if (!open) handleDrawerClose();
         }}
-        phase={state.phase}
-        payload={state.payload}
+        phase={
+          // Show scanning state while mismatch check is pending to prevent keyboard flash
+          state.phase === "ready" &&
+          topupTargetCardId &&
+          normalizeSerial(state.serialNumber) !== topupTargetCardId
+            ? "scanning"
+            : state.phase
+        }
+        payload={
+          // Don't pass payload for mismatched cards
+          state.phase === "ready" &&
+          topupTargetCardId &&
+          normalizeSerial(state.serialNumber) !== topupTargetCardId
+            ? null
+            : state.payload
+        }
         error={state.error}
         onTopup={handleTopupConfirm}
         onClose={handleDrawerClose}
@@ -1317,10 +1335,16 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         onConfirm={() => {
           setTopupMismatchOpen(false);
           setTopupMismatchSerial(null);
-          scan();
+          reset();
+          // Use setTimeout to ensure NFC state is cleared before reopening the drawer
+          setTimeout(() => {
+            setTopupDrawerOpen(true);
+            scan();
+          }, 0);
         }}
         onCancel={() => {
           setTopupMismatchOpen(false);
+          setTopupMismatchSerial(null);
           handleDrawerClose();
         }}
       >

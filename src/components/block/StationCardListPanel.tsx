@@ -197,7 +197,9 @@ export function StationCardListPanel({
                   variant={isBlocked ? "destructive" : "default"}
                   className="text-[10px] px-1.5 py-0"
                 >
-                  {card.status === "active" ? "Aktif" : card.status.replaceAll("blocked_", "Blokir ")}
+                  {card.status === "active"
+                    ? "Aktif"
+                    : card.status.replaceAll("blocked_", "Blokir ")}
                 </Badge>
                 <span className="text-sm font-semibold text-emerald-600">
                   Rp {card.balance?.toLocaleString("id-ID")}
@@ -271,11 +273,7 @@ function CardActionsDropdown({
           <CreditCard size={14} />
           Top-up
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="h-10"
-          onClick={onRecover}
-          disabled={isRecovering || card.syncStatus !== "synced"}
-        >
+        <DropdownMenuItem className="h-10" onClick={onRecover} disabled={isRecovering}>
           <RefreshCw size={14} />
           Pulihkan Kartu
         </DropdownMenuItem>

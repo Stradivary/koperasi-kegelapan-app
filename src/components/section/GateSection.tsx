@@ -143,6 +143,12 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
       autoCheckinTriggered.current = true;
       if (result.reason?.includes("Insufficient balance")) {
         setCardRejectionReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+      } else if (payload.wallet.state === CardState.CHECKED_IN) {
+        setCardRejectionReason("Anda sudah melakukan check in");
+      } else if (payload.wallet.state === CardState.STATION_OPERATION) {
+        setCardRejectionReason("Anda sedang dalam operasi di station");
+      } else if (result.reason?.includes("Session expired")) {
+        setCardRejectionReason("Sesi telah berakhir");
       } else {
         setCardRejectionReason(result.reason ?? "Tidak dapat check-in");
       }
