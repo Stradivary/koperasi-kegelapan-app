@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { localDb, type Card } from "../../db/local-db";
@@ -34,6 +34,7 @@ import {
   CardState,
   CardStatus,
   type CardPayload,
+  type SessionGrant,
 } from "../../core/payload/types";
 import { encodeTenantBind } from "../../core/payload/tenantBind";
 
@@ -156,6 +157,464 @@ class CardNotBlankError extends Error {
   constructor(public cardSerial: string) {
     super("Kartu sudah berisi data");
     this.name = "CardNotBlankError";
+  }
+}
+
+// ─── Issuance helpers (module-level, outside component) ──────────────────────
+
+interface IssuanceRefs {
+  issuancePreparedRef: React.MutableRefObject<{
+    bytes: Uint8Array;
+    serial: string;
+    payload: CardPayload;
+    issueData: { name: string; userId: string | null; balance: number; expiresAt: number | null };
+  } | null>;
+  issuanceReaderRef: React.MutableRefObject<NDEFReader | null>;
+  issuanceAbortRef: React.MutableRefObject<AbortController | null>;
+  issuanceTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+}
+
+interface IssuanceSetters {
+  setIssuancePhase: (phase: "idle" | "scanning" | "writing" | "done" | "error") => void;
+  setIssueCardDrawerOpen: (open: boolean) => void;
+  setIssuanceError: (err: string | null) => void;
+  setIssuancePayload: (payload: CardPayload | null) => void;
+}
+
+/**
+ * Handles the forceOverwrite path when a prepared NFC session already exists.
+ * Returns `true` if the write completed (caller should return), `false` if the
+ * session was dead and the caller should fall through to a fresh NFC scan.
+ */
+async function handleForceOverwrite({
+  bytes,
+  issuancePreparedRef,
+  issuanceReaderRef,
+  issuanceAbortRef,
+  setIssuancePhase,
+  tenantId,
+  userId,
+  balance,
+  expiresAt,
+  name,
+  qc,
+}: {
+  bytes: Uint8Array;
+  issuancePreparedRef: IssuanceRefs["issuancePreparedRef"];
+  issuanceReaderRef: IssuanceRefs["issuanceReaderRef"];
+  issuanceAbortRef: IssuanceRefs["issuanceAbortRef"];
+  setIssuancePhase: IssuanceSetters["setIssuancePhase"];
+  tenantId: string;
+  userId: string | null;
+  balance: number;
+  expiresAt: number | null;
+  name: string;
+  grant: SessionGrant;
+  qc: import("@tanstack/react-query").QueryClient;
+}): Promise<boolean> {
+  const prepared = issuancePreparedRef.current!;
+  const reader = issuanceReaderRef.current;
+  const abort = issuanceAbortRef.current;
+
+  if (!reader || !abort || abort.signal.aborted) {
+    // Session expired or card removed — start a fresh NFC session instead of failing
+    trackError({
+      category: "nfc_session_expired",
+      message: "NFC session expired during forceOverwrite, starting fresh scan",
+      context: { serial: prepared.serial, tenantId },
+    });
+
+    issuancePreparedRef.current = null;
+    issuanceAbortRef.current?.abort();
+    issuanceAbortRef.current = null;
+    issuanceReaderRef.current = null;
+
+    return false; // fall through to fresh scan
+  }
+
+  setIssuancePhase("writing");
+
+  try {
+    await reader.write(
+      {
+        records: [
+          {
+            recordType: "unknown",
+            data: bytes.buffer.slice(
+              bytes.byteOffset,
+              bytes.byteOffset + bytes.byteLength,
+            ) as ArrayBuffer,
+          },
+        ],
+      },
+      { signal: abort.signal, overwrite: true },
+    );
+  } catch (writeErr) {
+    // NFC write failed (card removed, signal aborted, etc.)
+    // Instead of throwing and killing the flow, start a fresh NFC session
+    trackError({
+      category: "nfc_write_failure",
+      message: writeErr instanceof Error ? writeErr.message : "Unknown NFC write error",
+      context: {
+        phase: "forceOverwrite",
+        serial: prepared.serial,
+        tenantId,
+        aborted: abort.signal.aborted,
+      },
+    });
+
+    // Clean up the dead session
+    abort.abort();
+    issuanceAbortRef.current = null;
+    issuanceReaderRef.current = null;
+    issuancePreparedRef.current = null;
+
+    return false; // fall through to fresh scan
+  }
+
+  // If write succeeded (no catch triggered), finalize
+  if (!abort.signal.aborted && issuancePreparedRef.current) {
+    const capturedSerial = prepared.serial;
+    const now = Math.floor(Date.now() / 1000);
+
+    await localDb.cards.put({
+      tenantId,
+      cardId: capturedSerial,
+      userId,
+      status: "active",
+      balance,
+      counter: 1,
+      keyVersion: prepared.payload.trailer.keyVersion,
+      createdAt: now,
+      lastActivityAt: now,
+      expiresAt,
+      notes: name,
+      syncStatus: "pending",
+    });
+
+    await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+    setIssuancePhase("done");
+    issuancePreparedRef.current = null;
+    return true; // write complete
+  }
+
+  return false; // fall through to fresh scan
+}
+
+/**
+ * Handles the fresh NFC scan path for card issuance.
+ */
+async function handleFreshNfcSession({
+  bytes,
+  payload,
+  issuanceAbortRef,
+  issuanceReaderRef,
+  issuanceTimeoutRef,
+  issuancePreparedRef,
+  setIssueCardDrawerOpen,
+  setIssuancePhase,
+  setIssuanceError,
+  setIssuancePayload,
+  tenantId,
+  userId,
+  balance,
+  expiresAt,
+  name,
+  grant,
+  forceOverwrite,
+  qc,
+}: {
+  bytes: Uint8Array;
+  payload: CardPayload;
+  issuanceAbortRef: IssuanceRefs["issuanceAbortRef"];
+  issuanceReaderRef: IssuanceRefs["issuanceReaderRef"];
+  issuanceTimeoutRef: IssuanceRefs["issuanceTimeoutRef"];
+  issuancePreparedRef: IssuanceRefs["issuancePreparedRef"];
+  setIssueCardDrawerOpen: IssuanceSetters["setIssueCardDrawerOpen"];
+  setIssuancePhase: IssuanceSetters["setIssuancePhase"];
+  setIssuanceError: IssuanceSetters["setIssuanceError"];
+  setIssuancePayload: IssuanceSetters["setIssuancePayload"];
+  tenantId: string;
+  userId: string | null;
+  balance: number;
+  expiresAt: number | null;
+  name: string;
+  grant: SessionGrant;
+  forceOverwrite: boolean | undefined;
+  qc: import("@tanstack/react-query").QueryClient;
+}): Promise<void> {
+  setIssueCardDrawerOpen(true);
+  setIssuancePhase("scanning");
+  setIssuanceError(null);
+  setIssuancePayload(null);
+
+  // Clean up any previous session
+  issuanceAbortRef.current?.abort();
+  if (issuanceTimeoutRef.current) clearTimeout(issuanceTimeoutRef.current);
+
+  const abort = new AbortController();
+  issuanceAbortRef.current = abort;
+  const reader = new NDEFReader();
+  issuanceReaderRef.current = reader;
+
+  const timeout = setTimeout(() => abort.abort(), 30_000);
+  issuanceTimeoutRef.current = timeout;
+
+  let capturedSerial: string | null = null;
+
+  try {
+    const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
+      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
+        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+        if (serial) {
+          const existingBytes = extractCardBytes(event.message);
+          resolve({ serial, hasData: existingBytes !== null });
+        } else {
+          reject(new Error("Kartu tidak memiliki serial number"));
+        }
+      });
+      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
+    });
+
+    await reader.scan({ signal: abort.signal });
+
+    const { serial, hasData } = await scanResult;
+    capturedSerial = serial;
+
+    issuancePreparedRef.current = {
+      bytes,
+      serial,
+      payload,
+      issueData: { name, userId, balance, expiresAt },
+    };
+
+    if (hasData && !forceOverwrite) {
+      throw new CardNotBlankError(capturedSerial);
+    }
+
+    const uidResult = await validateUID(capturedSerial, tenantId);
+    if (!uidResult.valid) {
+      if (
+        forceOverwrite &&
+        (uidResult.reason === "UID_ALREADY_REGISTERED" ||
+          uidResult.reason === "UID_REGISTERED_OTHER_TENANT")
+      ) {
+        // Allow overwrite for same-tenant or cross-tenant re-registration
+      } else if (uidResult.reason === "UID_ALREADY_REGISTERED") {
+        // Keep the NFC session alive — the write might fail, so preserve
+        // issuancePreparedRef for the overwrite dialog retry flow.
+        const existing = await localDb.cards.get([tenantId, capturedSerial]);
+        throw new CardAlreadyRegisteredError({
+          cardId: capturedSerial,
+          ownerName: existing?.notes ?? null,
+          userId: existing?.userId ?? null,
+          balance: existing?.balance ?? 0,
+          status: existing?.status ?? "active",
+        });
+      } else if (uidResult.reason === "UID_REGISTERED_OTHER_TENANT") {
+        // Keep the NFC session alive for override flow (same as same-tenant)
+        throw new CardAlreadyRegisteredError({
+          cardId: capturedSerial,
+          ownerName: `Tenant lain (${uidResult.existingTenantId ?? "unknown"})`,
+          userId: null,
+          balance: 0,
+          status: "active",
+        });
+      } else {
+        abort.abort();
+        issuancePreparedRef.current = null;
+        const uidErrorMessages: Record<string, string> = {
+          NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
+          INVALID_UID_FORMAT: "Format UID tidak valid",
+        };
+        throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
+      }
+    }
+
+    if (!forceOverwrite) {
+      const existing = await localDb.cards.get([tenantId, capturedSerial]);
+      if (existing) {
+        let ownerName: string | null = existing.notes;
+        if (existing.userId != null && !ownerName) {
+          const user = await localDb.users.get([tenantId, existing.userId]);
+          ownerName = user?.name ?? null;
+        }
+        throw new CardAlreadyRegisteredError({
+          cardId: capturedSerial,
+          ownerName,
+          userId: existing.userId,
+          balance: existing.balance,
+          status: existing.status,
+        });
+      }
+    }
+
+    // ── All checks passed — write to card ──
+    setIssuancePhase("writing");
+    await reader.write(
+      {
+        records: [
+          {
+            recordType: "unknown",
+            data: bytes.buffer.slice(
+              bytes.byteOffset,
+              bytes.byteOffset + bytes.byteLength,
+            ) as ArrayBuffer,
+          },
+        ],
+      },
+      { signal: abort.signal, overwrite: true },
+    );
+
+    const now = Math.floor(Date.now() / 1000);
+    await localDb.cards.put({
+      tenantId,
+      cardId: capturedSerial,
+      userId,
+      status: "active",
+      balance,
+      counter: 1,
+      keyVersion: grant.keyVersion,
+      createdAt: now,
+      lastActivityAt: now,
+      expiresAt,
+      notes: name,
+      syncStatus: "pending",
+    });
+
+    await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+    setIssuancePayload(payload);
+    // Hold writing phase so user keeps card in place
+    await new Promise((r) => setTimeout(r, 1500));
+    setIssuancePhase("done");
+    issuancePreparedRef.current = null;
+  } catch (e) {
+    if (issuanceTimeoutRef.current) {
+      clearTimeout(issuanceTimeoutRef.current);
+      issuanceTimeoutRef.current = null;
+    }
+
+    if (e instanceof CardNotBlankError || e instanceof CardAlreadyRegisteredError) {
+      throw e;
+    }
+
+    // Track the error for monitoring
+    trackError({
+      category: "nfc_write_failure",
+      message: e instanceof Error ? e.message : "Unknown NFC write error",
+      context: {
+        phase: "freshSession",
+        serial: capturedSerial ?? "unknown",
+        tenantId,
+        forceOverwrite: forceOverwrite ?? false,
+      },
+    });
+
+    abort.abort();
+    issuancePreparedRef.current = null;
+    setIssuancePhase("error");
+    setIssuanceError(e instanceof Error ? e.message : "Gagal menerbitkan kartu");
+    throw e;
+  }
+}
+
+/**
+ * Handles the full NFC recovery scan-and-write flow.
+ */
+async function executeRecovery({
+  cardId,
+  tenantId,
+  grant,
+  setRecoveryPhase,
+  setRecoveryError,
+  setRecoveryPayload,
+  setRecoverySerial,
+  qc,
+}: {
+  cardId: string;
+  tenantId: string;
+  grant: SessionGrant;
+  setRecoveryPhase: (phase: "idle" | "scanning" | "writing" | "done" | "error") => void;
+  setRecoveryError: (err: string | null) => void;
+  setRecoveryPayload: (payload: CardPayload | null) => void;
+  setRecoverySerial: (serial: string | null) => void;
+  qc: import("@tanstack/react-query").QueryClient;
+}): Promise<void> {
+  await syncPull(tenantId);
+
+  const latestCard = await localDb.cards.get([tenantId, cardId]);
+  if (!latestCard || latestCard.status === "deleted") {
+    throw new Error("Data kartu tidak ditemukan di penyimpanan lokal");
+  }
+  if (latestCard.syncStatus === "pending") {
+    throw new Error("Perubahan kartu ini belum tersinkron. Sinkronkan dulu sebelum recovery.");
+  }
+
+  const owner = latestCard.userId
+    ? await localDb.users.get([tenantId, latestCard.userId])
+    : null;
+  const payload = buildRecoveryPayload({
+    tenantId,
+    card: latestCard,
+    ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
+    keyVersion: grant.keyVersion,
+  });
+  const { bytes } = await prepareWrite(payload, payload, grant);
+
+  const abort = new AbortController();
+  const reader = new NDEFReader();
+  const timeout = setTimeout(() => abort.abort(), 30_000);
+
+  let scannedSerial: string | null = null;
+
+  try {
+    const scanResult = new Promise<string>((resolve, reject) => {
+      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
+        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+        if (!serial) {
+          reject(new Error("Kartu tidak memiliki serial number"));
+          return;
+        }
+        resolve(serial);
+      });
+      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
+    });
+
+    await reader.scan({ signal: abort.signal });
+    scannedSerial = await scanResult;
+
+    if (scannedSerial !== cardId.toLowerCase()) {
+      throw new Error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
+    }
+
+    setRecoveryPhase("writing");
+    await reader.write(
+      {
+        records: [
+          {
+            recordType: "unknown",
+            data: bytes.buffer.slice(
+              bytes.byteOffset,
+              bytes.byteOffset + bytes.byteLength,
+            ) as ArrayBuffer,
+          },
+        ],
+      },
+      { signal: abort.signal, overwrite: true },
+    );
+
+    setRecoveryPayload(payload);
+    setRecoverySerial(scannedSerial);
+    await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setRecoveryPhase("done");
+  } catch (error) {
+    setRecoveryPhase("error");
+    setRecoveryError(error instanceof Error ? error.message : "Gagal memulihkan kartu");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    abort.abort();
   }
 }
 
@@ -459,269 +918,50 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
       // ── If forceOverwrite with a prepared session, write immediately ──
       if (forceOverwrite && issuancePreparedRef.current) {
-        const prepared = issuancePreparedRef.current;
-        const reader = issuanceReaderRef.current;
-        const abort = issuanceAbortRef.current;
-
-        if (!reader || !abort || abort.signal.aborted) {
-          // Session expired or card removed — start a fresh NFC session instead of failing
-          trackError({
-            category: "nfc_session_expired",
-            message: "NFC session expired during forceOverwrite, starting fresh scan",
-            context: { serial: prepared.serial, tenantId },
-          });
-
-          issuancePreparedRef.current = null;
-          issuanceAbortRef.current?.abort();
-          issuanceAbortRef.current = null;
-          issuanceReaderRef.current = null;
-
-          // Fall through to the fresh NFC session flow below
-        } else {
-          setIssuancePhase("writing");
-
-          try {
-            await reader.write(
-              {
-                records: [
-                  {
-                    recordType: "unknown",
-                    data: bytes.buffer.slice(
-                      bytes.byteOffset,
-                      bytes.byteOffset + bytes.byteLength,
-                    ) as ArrayBuffer,
-                  },
-                ],
-              },
-              { signal: abort.signal, overwrite: true },
-            );
-          } catch (writeErr) {
-            // NFC write failed (card removed, signal aborted, etc.)
-            // Instead of throwing and killing the flow, start a fresh NFC session
-            trackError({
-              category: "nfc_write_failure",
-              message: writeErr instanceof Error ? writeErr.message : "Unknown NFC write error",
-              context: {
-                phase: "forceOverwrite",
-                serial: prepared.serial,
-                tenantId,
-                aborted: abort.signal.aborted,
-              },
-            });
-
-            // Clean up the dead session
-            abort.abort();
-            issuanceAbortRef.current = null;
-            issuanceReaderRef.current = null;
-            issuancePreparedRef.current = null;
-
-            // Fall through to the fresh NFC session flow below
-            // (don't return — let it continue to the scan block)
-          }
-
-          // If write succeeded (no catch triggered), finalize
-          if (!abort.signal.aborted && issuancePreparedRef.current) {
-            const capturedSerial = prepared.serial;
-
-            await localDb.cards.put({
-              tenantId,
-              cardId: capturedSerial,
-              userId,
-              status: "active",
-              balance,
-              counter: 1,
-              keyVersion: grant.keyVersion,
-              createdAt: now,
-              lastActivityAt: now,
-              expiresAt,
-              notes: name,
-              syncStatus: "pending",
-            });
-
-            await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-            setIssuancePayload(payload);
-            // Hold writing phase so user keeps card in place
-            await new Promise((r) => setTimeout(r, 1500));
-            setIssuancePhase("done");
-            issuancePreparedRef.current = null;
-            return;
-          }
+        const done = await handleForceOverwrite({
+          bytes,
+          issuancePreparedRef,
+          issuanceReaderRef,
+          issuanceAbortRef,
+          setIssuancePhase,
+          tenantId,
+          userId,
+          balance,
+          expiresAt,
+          name,
+          grant,
+          qc,
+        });
+        if (done) {
+          setIssuancePayload(payload);
+          // Hold writing phase so user keeps card in place
+          await new Promise((r) => setTimeout(r, 1500));
+          return;
         }
+        // Session was dead — fall through to fresh NFC scan
       }
 
       // ── Fresh NFC session — open drawer and scan ──
-      setIssueCardDrawerOpen(true);
-      setIssuancePhase("scanning");
-      setIssuanceError(null);
-      setIssuancePayload(null);
-
-      // Clean up any previous session
-      issuanceAbortRef.current?.abort();
-      if (issuanceTimeoutRef.current) clearTimeout(issuanceTimeoutRef.current);
-
-      const abort = new AbortController();
-      issuanceAbortRef.current = abort;
-      const reader = new NDEFReader();
-      issuanceReaderRef.current = reader;
-
-      const timeout = setTimeout(() => abort.abort(), 30_000);
-      issuanceTimeoutRef.current = timeout;
-
-      let capturedSerial: string | null = null;
-
-      try {
-        const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
-          reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-            const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-            if (serial) {
-              const existingBytes = extractCardBytes(event.message);
-              resolve({ serial, hasData: existingBytes !== null });
-            } else {
-              reject(new Error("Kartu tidak memiliki serial number"));
-            }
-          });
-          abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
-        });
-
-        await reader.scan({ signal: abort.signal });
-
-        const { serial, hasData } = await scanResult;
-        capturedSerial = serial;
-
-        issuancePreparedRef.current = {
-          bytes,
-          serial,
-          payload,
-          issueData: { name, userId, balance, expiresAt },
-        };
-
-        if (hasData && !forceOverwrite) {
-          throw new CardNotBlankError(capturedSerial);
-        }
-
-        const uidResult = await validateUID(capturedSerial, tenantId);
-        if (!uidResult.valid) {
-          if (
-            forceOverwrite &&
-            (uidResult.reason === "UID_ALREADY_REGISTERED" ||
-              uidResult.reason === "UID_REGISTERED_OTHER_TENANT")
-          ) {
-            // Allow overwrite for same-tenant or cross-tenant re-registration
-          } else if (uidResult.reason === "UID_ALREADY_REGISTERED") {
-            // Keep the NFC session alive — the write might fail, so preserve
-            // issuancePreparedRef for the overwrite dialog retry flow.
-            const existing = await localDb.cards.get([tenantId, capturedSerial]);
-            throw new CardAlreadyRegisteredError({
-              cardId: capturedSerial,
-              ownerName: existing?.notes ?? null,
-              userId: existing?.userId ?? null,
-              balance: existing?.balance ?? 0,
-              status: existing?.status ?? "active",
-            });
-          } else if (uidResult.reason === "UID_REGISTERED_OTHER_TENANT") {
-            // Keep the NFC session alive for override flow (same as same-tenant)
-            throw new CardAlreadyRegisteredError({
-              cardId: capturedSerial,
-              ownerName: `Tenant lain (${uidResult.existingTenantId ?? "unknown"})`,
-              userId: null,
-              balance: 0,
-              status: "active",
-            });
-          } else {
-            abort.abort();
-            issuancePreparedRef.current = null;
-            const uidErrorMessages: Record<string, string> = {
-              NETWORK_ERROR: "Gagal memvalidasi UID: kesalahan jaringan",
-              INVALID_UID_FORMAT: "Format UID tidak valid",
-            };
-            throw new Error(uidErrorMessages[uidResult.reason!] ?? "Validasi UID gagal");
-          }
-        }
-
-        if (!forceOverwrite) {
-          const existing = await localDb.cards.get([tenantId, capturedSerial]);
-          if (existing) {
-            let ownerName: string | null = existing.notes;
-            if (existing.userId != null && !ownerName) {
-              const user = await localDb.users.get([tenantId, existing.userId]);
-              ownerName = user?.name ?? null;
-            }
-            throw new CardAlreadyRegisteredError({
-              cardId: capturedSerial,
-              ownerName,
-              userId: existing.userId,
-              balance: existing.balance,
-              status: existing.status,
-            });
-          }
-        }
-
-        // ── All checks passed — write to card ──
-        setIssuancePhase("writing");
-        await reader.write(
-          {
-            records: [
-              {
-                recordType: "unknown",
-                data: bytes.buffer.slice(
-                  bytes.byteOffset,
-                  bytes.byteOffset + bytes.byteLength,
-                ) as ArrayBuffer,
-              },
-            ],
-          },
-          { signal: abort.signal, overwrite: true },
-        );
-
-        await localDb.cards.put({
-          tenantId,
-          cardId: capturedSerial,
-          userId,
-          status: "active",
-          balance,
-          counter: 1,
-          keyVersion: grant.keyVersion,
-          createdAt: now,
-          lastActivityAt: now,
-          expiresAt,
-          notes: name,
-          syncStatus: "pending",
-        });
-
-        await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-        setIssuancePayload(payload);
-        // Hold writing phase so user keeps card in place
-        await new Promise((r) => setTimeout(r, 1500));
-        setIssuancePhase("done");
-        issuancePreparedRef.current = null;
-      } catch (e) {
-        if (issuanceTimeoutRef.current) {
-          clearTimeout(issuanceTimeoutRef.current);
-          issuanceTimeoutRef.current = null;
-        }
-
-        if (e instanceof CardNotBlankError || e instanceof CardAlreadyRegisteredError) {
-          throw e;
-        }
-
-        // Track the error for monitoring
-        trackError({
-          category: "nfc_write_failure",
-          message: e instanceof Error ? e.message : "Unknown NFC write error",
-          context: {
-            phase: "freshSession",
-            serial: capturedSerial ?? "unknown",
-            tenantId,
-            forceOverwrite: forceOverwrite ?? false,
-          },
-        });
-
-        abort.abort();
-        issuancePreparedRef.current = null;
-        setIssuancePhase("error");
-        setIssuanceError(e instanceof Error ? e.message : "Gagal menerbitkan kartu");
-        throw e;
-      }
+      await handleFreshNfcSession({
+        bytes,
+        payload,
+        issuanceAbortRef,
+        issuanceReaderRef,
+        issuanceTimeoutRef,
+        issuancePreparedRef,
+        setIssueCardDrawerOpen,
+        setIssuancePhase,
+        setIssuanceError,
+        setIssuancePayload,
+        tenantId,
+        userId,
+        balance,
+        expiresAt,
+        name,
+        grant,
+        forceOverwrite,
+        qc,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
@@ -816,82 +1056,16 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
       setRecoveryPayload(null);
       setRecoverySerial(null);
 
-      await syncPull(tenantId);
-
-      const latestCard = await localDb.cards.get([tenantId, cardId]);
-      if (!latestCard || latestCard.status === "deleted") {
-        throw new Error("Data kartu tidak ditemukan di penyimpanan lokal");
-      }
-      if (latestCard.syncStatus === "pending") {
-        throw new Error("Perubahan kartu ini belum tersinkron. Sinkronkan dulu sebelum recovery.");
-      }
-
-      const owner = latestCard.userId
-        ? await localDb.users.get([tenantId, latestCard.userId])
-        : null;
-      const payload = buildRecoveryPayload({
+      await executeRecovery({
+        cardId,
         tenantId,
-        card: latestCard,
-        ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
-        keyVersion: grant.keyVersion,
+        grant,
+        setRecoveryPhase,
+        setRecoveryError,
+        setRecoveryPayload,
+        setRecoverySerial,
+        qc,
       });
-      const { bytes } = await prepareWrite(payload, payload, grant);
-
-      const abort = new AbortController();
-      const reader = new NDEFReader();
-      const timeout = setTimeout(() => abort.abort(), 30_000);
-
-      let scannedSerial: string | null = null;
-
-      try {
-        const scanResult = new Promise<string>((resolve, reject) => {
-          reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-            const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-            if (!serial) {
-              reject(new Error("Kartu tidak memiliki serial number"));
-              return;
-            }
-            resolve(serial);
-          });
-          abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
-        });
-
-        await reader.scan({ signal: abort.signal });
-        scannedSerial = await scanResult;
-
-        if (scannedSerial !== cardId.toLowerCase()) {
-          throw new Error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
-        }
-
-        setRecoveryPhase("writing");
-        await reader.write(
-          {
-            records: [
-              {
-                recordType: "unknown",
-                data: bytes.buffer.slice(
-                  bytes.byteOffset,
-                  bytes.byteOffset + bytes.byteLength,
-                ) as ArrayBuffer,
-              },
-            ],
-          },
-          { signal: abort.signal, overwrite: true },
-        );
-
-        setRecoveryPayload(payload);
-        setRecoverySerial(scannedSerial);
-        await qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setRecoveryPhase("done");
-      } catch (error) {
-        setRecoveryPhase("error");
-        setRecoveryError(error instanceof Error ? error.message : "Gagal memulihkan kartu");
-        throw error;
-      } finally {
-        clearTimeout(timeout);
-        abort.abort();
-      }
     },
     onSuccess: () => {
       toast.success("Kartu berhasil dipulihkan dari data server terbaru");

@@ -87,6 +87,6 @@ describe("StationCardListPanel", () => {
     fireEvent.pointerDown(screen.getByLabelText("Aksi kartu"));
 
     const recoveryItem = await screen.findByText("Pulihkan Kartu");
-    expect(recoveryItem.closest("div")?.getAttribute("data-disabled")).toBe("");
+    expect(recoveryItem.closest("div")?.dataset.disabled).toBe("");
   });
 });

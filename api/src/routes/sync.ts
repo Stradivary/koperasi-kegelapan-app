@@ -64,6 +64,115 @@ function hexToBytes(hex: string): Uint8Array {
 
 const VALID_TYPES = new Set(["debit", "credit", "checkin", "checkout", "topup", "admin"]);
 
+// ─── Push helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Validate all fields and ranges on a push transaction.
+ * Returns { valid: true } or { valid: false, reason }.
+ */
+function validateTransaction(tx: PushTransaction): { valid: boolean; reason?: string } {
+  if (
+    !tx.cardId ||
+    tx.counter == null ||
+    !tx.type ||
+    tx.amount == null ||
+    tx.balanceAfter == null ||
+    tx.timestamp == null ||
+    !tx.hash ||
+    !tx.idempotencyKey
+  ) {
+    return { valid: false, reason: "malformed_event" };
+  }
+  if (!VALID_TYPES.has(tx.type)) {
+    return { valid: false, reason: "invalid_type" };
+  }
+  if (tx.amount < 0 || tx.amount > 16000000) {
+    return { valid: false, reason: "invalid_amount" };
+  }
+  if (tx.balanceAfter < 0 || tx.balanceAfter > 16000000) {
+    return { valid: false, reason: "invalid_balance" };
+  }
+  if (tx.counter < 0 || tx.counter > 65535) {
+    return { valid: false, reason: "invalid_counter" };
+  }
+  return { valid: true };
+}
+
+/**
+ * Persist a single validated transaction to the DB.
+ * Returns { accepted: true } on success/duplicate, or { accepted: false, reason } on rejection.
+ */
+async function processTransaction(
+  db: ReturnType<typeof drizzle>,
+  tenantId: string,
+  tx: PushTransaction,
+  now: number,
+  tokenPayload: { deviceId?: string | null },
+): Promise<{ accepted: boolean; reason?: string }> {
+  try {
+    // Check idempotency: skip duplicates silently
+    const existing = await db
+      .select({ id: transactionLog.id })
+      .from(transactionLog)
+      .where(eq(transactionLog.idempotencyKey, tx.idempotencyKey))
+      .get();
+
+    if (existing) {
+      return { accepted: true };
+    }
+
+    // Check stale counter: get the server's known counter for this card
+    const cardIdBlob = hexToBytes(tx.cardId);
+    const cardRecord = await db
+      .select({ counter: cards.counter })
+      .from(cards)
+      .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
+      .get();
+
+    if (cardRecord && tx.counter <= cardRecord.counter) {
+      return { accepted: false, reason: "stale_counter" };
+    }
+
+    // Insert into transaction_log
+    await db.insert(transactionLog).values({
+      tenantId,
+      cardId: tx.cardId,
+      userId: tx.userId ?? null,
+      counter: tx.counter,
+      type: tx.type,
+      amount: tx.amount,
+      balanceAfter: tx.balanceAfter,
+      timestamp: tx.timestamp,
+      hash: tx.hash,
+      terminalId: tx.terminalId ?? null,
+      deviceId: tx.deviceId ?? tokenPayload.deviceId ?? null,
+      idempotencyKey: tx.idempotencyKey,
+      flagged: 0,
+      createdAt: now,
+    });
+
+    // Update card balance/counter if this transaction has a higher counter
+    await db.run(sql`
+      UPDATE cards
+      SET balance = ${tx.balanceAfter},
+          counter = ${tx.counter},
+          last_activity_at = ${tx.timestamp},
+          updated_at = ${now}
+      WHERE tenant_id = ${tenantId}
+        AND card_id = ${cardIdBlob}
+        AND counter < ${tx.counter}
+    `);
+
+    return { accepted: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return { accepted: true };
+    }
+    return { accepted: false, reason: "internal_error" };
+  }
+}
+
 // ─── POST /push ──────────────────────────────────────────────────────────────
 
 syncRoutes.post("/push", async (c) => {
@@ -112,111 +221,18 @@ syncRoutes.post("/push", async (c) => {
   const rejected: RejectedEntry[] = [];
 
   for (const tx of transactions) {
-    // Validate required fields
-    if (
-      !tx.cardId ||
-      tx.counter == null ||
-      !tx.type ||
-      tx.amount == null ||
-      tx.balanceAfter == null ||
-      tx.timestamp == null ||
-      !tx.hash ||
-      !tx.idempotencyKey
-    ) {
-      rejected.push({ key: tx.idempotencyKey ?? "unknown", reason: "malformed_event" });
+    // Validate required fields, type, and ranges
+    const validation = validateTransaction(tx);
+    if (!validation.valid) {
+      rejected.push({ key: tx.idempotencyKey ?? "unknown", reason: validation.reason ?? "malformed_event" });
       continue;
     }
 
-    // Validate type
-    if (!VALID_TYPES.has(tx.type)) {
-      rejected.push({ key: tx.idempotencyKey, reason: "invalid_type" });
-      continue;
-    }
-
-    // Validate amount and balance ranges
-    if (tx.amount < 0 || tx.amount > 16000000) {
-      rejected.push({ key: tx.idempotencyKey, reason: "invalid_amount" });
-      continue;
-    }
-    if (tx.balanceAfter < 0 || tx.balanceAfter > 16000000) {
-      rejected.push({ key: tx.idempotencyKey, reason: "invalid_balance" });
-      continue;
-    }
-
-    // Validate counter range
-    if (tx.counter < 0 || tx.counter > 65535) {
-      rejected.push({ key: tx.idempotencyKey, reason: "invalid_counter" });
-      continue;
-    }
-
-    try {
-      // Check idempotency: skip duplicates silently
-      const existing = await db
-        .select({ id: transactionLog.id })
-        .from(transactionLog)
-        .where(eq(transactionLog.idempotencyKey, tx.idempotencyKey))
-        .get();
-
-      if (existing) {
-        // Duplicate idempotency key — skip silently (counts as accepted per spec)
-        accepted++;
-        continue;
-      }
-
-      // Check stale counter: get the server's known counter for this card
-      const cardIdBlob = hexToBytes(tx.cardId);
-      const cardRecord = await db
-        .select({ counter: cards.counter })
-        .from(cards)
-        .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
-        .get();
-
-      // If card exists and counter is stale, reject
-      if (cardRecord && tx.counter <= cardRecord.counter) {
-        rejected.push({ key: tx.idempotencyKey, reason: "stale_counter" });
-        continue;
-      }
-
-      // Insert into transaction_log
-      await db.insert(transactionLog).values({
-        tenantId,
-        cardId: tx.cardId,
-        userId: tx.userId ?? null,
-        counter: tx.counter,
-        type: tx.type,
-        amount: tx.amount,
-        balanceAfter: tx.balanceAfter,
-        timestamp: tx.timestamp,
-        hash: tx.hash,
-        terminalId: tx.terminalId ?? null,
-        deviceId: tx.deviceId ?? tokenPayload.deviceId ?? null,
-        idempotencyKey: tx.idempotencyKey,
-        flagged: 0,
-        createdAt: now,
-      });
-
-      // Update card balance/counter if this transaction has a higher counter
-      await db.run(sql`
-        UPDATE cards
-        SET balance = ${tx.balanceAfter},
-            counter = ${tx.counter},
-            last_activity_at = ${tx.timestamp},
-            updated_at = ${now}
-        WHERE tenant_id = ${tenantId}
-          AND card_id = ${cardIdBlob}
-          AND counter < ${tx.counter}
-      `);
-
+    const result = await processTransaction(db, tenantId, tx, now, tokenPayload);
+    if (result.accepted) {
       accepted++;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      // Handle UNIQUE constraint violations (idempotency_key or tenant_card_counter)
-      if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
-        // Idempotency key collision or tenant+card+counter collision — skip silently
-        accepted++;
-      } else {
-        rejected.push({ key: tx.idempotencyKey, reason: "internal_error" });
-      }
+    } else {
+      rejected.push({ key: tx.idempotencyKey, reason: result.reason ?? "internal_error" });
     }
   }
 

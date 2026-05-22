@@ -95,16 +95,16 @@ export function AdminLayout({
   }
 
   function handleNavClick(id: AdminView) {
-    if (id === "scout") {
-      navigate({ to: `/tenant/${tenantId}/scout` });
-    } else if (id === "transactions") {
-      navigate({ to: `/tenant/${tenantId}/transactions` });
-    } else if (id === "cards") {
-      navigate({ to: `/tenant/${tenantId}/cards` });
-    } else if (id === "members") {
-      navigate({ to: `/tenant/${tenantId}/members` });
-    } else if (id === "settings") {
-      navigate({ to: `/tenant/${tenantId}/settings` });
+    const routes: Partial<Record<AdminView, string>> = {
+      scout: `/tenant/${tenantId}/scout`,
+      transactions: `/tenant/${tenantId}/transactions`,
+      cards: `/tenant/${tenantId}/cards`,
+      members: `/tenant/${tenantId}/members`,
+      settings: `/tenant/${tenantId}/settings`,
+    };
+    const route = routes[id];
+    if (route) {
+      navigate({ to: route });
     } else {
       onSectionChange(id);
     }

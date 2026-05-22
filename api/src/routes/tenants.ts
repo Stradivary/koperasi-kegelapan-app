@@ -8,6 +8,178 @@ import {
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type DrizzleDb = ReturnType<typeof drizzle>;
+
+interface ExistingBySlug {
+  tenantId: string;
+  slug: string;
+  name: string;
+}
+
+interface ExistingByAdmin {
+  accountId: string;
+  tenantId: string;
+  username: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Build a conflict JSON response for pre-insert slug/admin conflicts.
+ * Returns a Response when a conflict is detected, or null when there is none.
+ */
+async function handleConflictResponse(
+  c: { json: (body: unknown, status?: number) => Response },
+  existingBySlug: ExistingBySlug | undefined,
+  existingByAdmin: ExistingByAdmin | undefined,
+  db: DrizzleDb,
+): Promise<Response | null> {
+  const hasSlugConflict = existingBySlug !== undefined;
+  const hasAdminConflict = existingByAdmin !== undefined;
+
+  if (hasSlugConflict && hasAdminConflict) {
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "slug_and_admin",
+        existingTenantName: existingBySlug.name,
+        existingSlug: existingBySlug.slug,
+      },
+      409,
+    );
+  }
+
+  if (hasSlugConflict) {
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "slug_only",
+        existingTenantName: existingBySlug.name,
+        existingSlug: existingBySlug.slug,
+      },
+      409,
+    );
+  }
+
+  if (hasAdminConflict) {
+    const conflictTenant = await db
+      .select({
+        tenantId: tenants.tenantId,
+        slug: tenants.slug,
+        name: tenants.name,
+      })
+      .from(tenants)
+      .where(eq(tenants.tenantId, existingByAdmin.tenantId))
+      .get();
+
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "admin_only",
+        existingTenantName: conflictTenant?.name ?? "Unknown",
+        existingSlug: conflictTenant?.slug ?? "",
+      },
+      409,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Handle a race-condition unique-constraint error after a failed batch insert.
+ * Re-queries the DB to determine which constraint was violated and returns the
+ * appropriate 409 conflict response.
+ */
+async function handleRaceConditionConflict(
+  c: { json: (body: unknown, status?: number) => Response },
+  db: DrizzleDb,
+  slug: string,
+  adminUsername: string,
+): Promise<Response> {
+  const recheckSlug = await db
+    .select({
+      tenantId: tenants.tenantId,
+      slug: tenants.slug,
+      name: tenants.name,
+    })
+    .from(tenants)
+    .where(eq(sql`lower(${tenants.slug})`, slug.toLowerCase()))
+    .get();
+
+  const recheckAdmin = await db
+    .select({
+      accountId: accounts.accountId,
+      tenantId: accounts.tenantId,
+    })
+    .from(accounts)
+    .where(
+      and(
+        eq(sql`lower(${accounts.username})`, adminUsername.toLowerCase()),
+        eq(accounts.role, "admin"),
+      ),
+    )
+    .get();
+
+  if (recheckSlug && recheckAdmin) {
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "slug_and_admin",
+        existingTenantName: recheckSlug.name,
+        existingSlug: recheckSlug.slug,
+      },
+      409,
+    );
+  }
+
+  if (recheckSlug) {
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "slug_only",
+        existingTenantName: recheckSlug.name,
+        existingSlug: recheckSlug.slug,
+      },
+      409,
+    );
+  }
+
+  if (recheckAdmin) {
+    const conflictTenant = await db
+      .select({
+        slug: tenants.slug,
+        name: tenants.name,
+      })
+      .from(tenants)
+      .where(eq(tenants.tenantId, recheckAdmin.tenantId))
+      .get();
+
+    return c.json(
+      {
+        error: "conflict",
+        conflictType: "admin_only",
+        existingTenantName: conflictTenant?.name ?? "Unknown",
+        existingSlug: conflictTenant?.slug ?? "",
+      },
+      409,
+    );
+  }
+
+  // Fallback
+  return c.json(
+    {
+      error: "conflict",
+      conflictType: "slug_and_admin",
+      existingTenantName: "Unknown",
+      existingSlug: slug,
+    },
+    409,
+  );
+}
+
 // ─── Hono routes ──────────────────────────────────────────────────────────────
 
 export const tenantsRoutes = new Hono<{ Bindings: Env }>();
@@ -117,54 +289,8 @@ tenantsRoutes.post("/sync", async (c) => {
       .get();
 
     // Step 5: Determine conflict type
-    const hasSlugConflict = existingBySlug !== undefined;
-    const hasAdminConflict = existingByAdmin !== undefined;
-
-    if (hasSlugConflict && hasAdminConflict) {
-      return c.json(
-        {
-          error: "conflict",
-          conflictType: "slug_and_admin",
-          existingTenantName: existingBySlug.name,
-          existingSlug: existingBySlug.slug,
-        },
-        409,
-      );
-    }
-
-    if (hasSlugConflict) {
-      return c.json(
-        {
-          error: "conflict",
-          conflictType: "slug_only",
-          existingTenantName: existingBySlug.name,
-          existingSlug: existingBySlug.slug,
-        },
-        409,
-      );
-    }
-
-    if (hasAdminConflict) {
-      const conflictTenant = await db
-        .select({
-          tenantId: tenants.tenantId,
-          slug: tenants.slug,
-          name: tenants.name,
-        })
-        .from(tenants)
-        .where(eq(tenants.tenantId, existingByAdmin.tenantId))
-        .get();
-
-      return c.json(
-        {
-          error: "conflict",
-          conflictType: "admin_only",
-          existingTenantName: conflictTenant?.name ?? "Unknown",
-          existingSlug: conflictTenant?.slug ?? "",
-        },
-        409,
-      );
-    }
+    const conflictResponse = await handleConflictResponse(c, existingBySlug, existingByAdmin, db);
+    if (conflictResponse) return conflictResponse;
 
     // Step 6: No conflict — create tenant + admin account atomically via D1 batch
     // Use the client's localTenantId if provided so local and server IDs match
@@ -193,88 +319,8 @@ tenantsRoutes.post("/sync", async (c) => {
       // Handle race condition: unique constraint violation
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
-        // Re-check to determine which constraint was violated
-        const recheckSlug = await db
-          .select({
-            tenantId: tenants.tenantId,
-            slug: tenants.slug,
-            name: tenants.name,
-          })
-          .from(tenants)
-          .where(eq(sql`lower(${tenants.slug})`, req.slug.toLowerCase()))
-          .get();
-
-        const recheckAdmin = await db
-          .select({
-            accountId: accounts.accountId,
-            tenantId: accounts.tenantId,
-          })
-          .from(accounts)
-          .where(
-            and(
-              eq(sql`lower(${accounts.username})`, req.adminUsername.toLowerCase()),
-              eq(accounts.role, "admin"),
-            ),
-          )
-          .get();
-
-        if (recheckSlug && recheckAdmin) {
-          return c.json(
-            {
-              error: "conflict",
-              conflictType: "slug_and_admin",
-              existingTenantName: recheckSlug.name,
-              existingSlug: recheckSlug.slug,
-            },
-            409,
-          );
-        }
-
-        if (recheckSlug) {
-          return c.json(
-            {
-              error: "conflict",
-              conflictType: "slug_only",
-              existingTenantName: recheckSlug.name,
-              existingSlug: recheckSlug.slug,
-            },
-            409,
-          );
-        }
-
-        if (recheckAdmin) {
-          const conflictTenant = await db
-            .select({
-              slug: tenants.slug,
-              name: tenants.name,
-            })
-            .from(tenants)
-            .where(eq(tenants.tenantId, recheckAdmin.tenantId))
-            .get();
-
-          return c.json(
-            {
-              error: "conflict",
-              conflictType: "admin_only",
-              existingTenantName: conflictTenant?.name ?? "Unknown",
-              existingSlug: conflictTenant?.slug ?? "",
-            },
-            409,
-          );
-        }
-
-        // Fallback
-        return c.json(
-          {
-            error: "conflict",
-            conflictType: "slug_and_admin",
-            existingTenantName: "Unknown",
-            existingSlug: req.slug,
-          },
-          409,
-        );
+        return handleRaceConditionConflict(c, db, req.slug, req.adminUsername);
       }
-
       // Non-constraint error — rethrow
       throw e;
     }

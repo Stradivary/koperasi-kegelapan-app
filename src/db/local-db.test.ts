@@ -26,18 +26,11 @@ vi.mock("dexie", () => {
     constructor(_name: string) {}
 
     version(_num: number) {
-      const self = this;
       return {
-        stores(_schema: Record<string, string>) {
-          return {
-            upgrade(_fn: Function) {
-              return self.version(0);
-            },
-            stores(_s: Record<string, string>) {
-              return { upgrade: (_f: Function) => ({}) };
-            },
-          };
-        },
+        stores: (_schema: Record<string, string>) => ({
+          upgrade: (_fn: Function) => this.version(0),
+          stores: (_s: Record<string, string>) => ({ upgrade: (_f: Function) => ({}) }),
+        }),
       };
     }
   }

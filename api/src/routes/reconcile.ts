@@ -46,6 +46,25 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
+ * Validate required fields on a reconcile event.
+ * Returns { valid: true } when all fields are present, or { valid: false, reason } otherwise.
+ */
+function validateReconcileEvent(event: ReconcileEvent): { valid: boolean; reason?: string } {
+  if (
+    !event.cardId ||
+    event.counter == null ||
+    !event.type ||
+    event.amount == null ||
+    event.balanceAfter == null ||
+    event.timestamp == null ||
+    !event.hash
+  ) {
+    return { valid: false, reason: "malformed_event" };
+  }
+  return { valid: true };
+}
+
+/**
  * Extract tenantId from the event — either from the explicit field
  * or parsed from the idempotencyKey (format: "tenantId:cardIdHex:counter")
  */
@@ -93,20 +112,13 @@ async function processReconciliation(
   for (const event of events) {
     try {
       // Validate required fields
-      if (
-        !event.cardId ||
-        event.counter == null ||
-        !event.type ||
-        event.amount == null ||
-        event.balanceAfter == null ||
-        event.timestamp == null ||
-        !event.hash
-      ) {
+      const validation = validateReconcileEvent(event);
+      if (!validation.valid) {
         rejected++;
         flags.push({
           cardId: event.cardId ?? "unknown",
           counter: event.counter ?? 0,
-          reason: "malformed_event",
+          reason: validation.reason ?? "malformed_event",
         });
         continue;
       }

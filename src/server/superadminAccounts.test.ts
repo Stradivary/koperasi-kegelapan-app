@@ -5,26 +5,33 @@ const mockGet = vi.fn();
 const mockAll = vi.fn();
 const mockRun = vi.fn();
 
+// Extracted chain builders to reduce nesting depth
+const makeOrderByChain = () => ({
+  limit: vi.fn(() => ({
+    offset: vi.fn(() => ({
+      all: mockAll,
+    })),
+  })),
+});
+
+const makeWhereChainWithJoin = () => ({
+  orderBy: vi.fn(() => makeOrderByChain()),
+  get: mockGet,
+});
+
+const makeWhereChain = () => ({
+  get: mockGet,
+  all: mockAll,
+});
+
 vi.mock("#/db", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         leftJoin: vi.fn(() => ({
-          where: vi.fn(() => ({
-            orderBy: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                offset: vi.fn(() => ({
-                  all: mockAll,
-                })),
-              })),
-            })),
-            get: mockGet,
-          })),
+          where: vi.fn(() => makeWhereChainWithJoin()),
         })),
-        where: vi.fn(() => ({
-          get: mockGet,
-          all: mockAll,
-        })),
+        where: vi.fn(() => makeWhereChain()),
       })),
     })),
     insert: vi.fn(() => ({

@@ -29,6 +29,105 @@ type DeviceSetupStep = "auth" | "pick-role";
 const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
 const AUTH_TIMEOUT_MS = 10_000;
 
+// ── Extracted login helpers ───────────────────────────────────────────────────
+
+interface LocalLoginResult {
+  tenantId: string;
+  tenantSlug: string;
+  tenantName: string;
+  accountId: string;
+  role: string;
+}
+
+/**
+ * Attempts local login. Returns the result on success, or null if local login
+ * failed for a reason other than wrong_tenant. Throws if wrong_tenant so the
+ * caller can surface the error immediately.
+ */
+async function tryLocalLogin(
+  username: string,
+  password: string,
+  effectiveSlug: string | undefined,
+  fingerprintId: string,
+): Promise<LocalLoginResult | null> {
+  const localOutcome = await localLoginWithReason(username, password, effectiveSlug);
+  if (!localOutcome.success && localOutcome.reason === "wrong_tenant") {
+    throw new Error("wrong_tenant");
+  }
+  if (!localOutcome.success) return null;
+
+  await tenantContextStore.put({
+    tenantId: localOutcome.tenantId,
+    tenantSlug: localOutcome.tenantSlug,
+    tenantName: localOutcome.tenantName,
+    deviceId: fingerprintId,
+    accountId: localOutcome.accountId,
+    role: localOutcome.role,
+    canAccessStation: ["admin", "station"].includes(localOutcome.role),
+    terminalId: 0,
+    updatedAt: Date.now(),
+  });
+  setCurrentDeviceId(fingerprintId);
+  await restoreAuthState(fingerprintId);
+
+  return {
+    tenantId: localOutcome.tenantId,
+    tenantSlug: localOutcome.tenantSlug,
+    tenantName: localOutcome.tenantName,
+    accountId: localOutcome.accountId,
+    role: localOutcome.role,
+  };
+}
+
+/**
+ * Attempts server login. Returns parsed response data on success, or throws
+ * with an appropriate error message on failure.
+ */
+async function tryServerLogin(
+  username: string,
+  password: string,
+  effectiveSlug: string | undefined,
+  fingerprintHash: string,
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+  const body: Record<string, unknown> = {
+    username,
+    password,
+    deviceFingerprint: {
+      hash: fingerprintHash,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+    },
+  };
+  if (effectiveSlug) {
+    body.tenantSlug = effectiveSlug;
+  }
+
+  const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  });
+  clearTimeout(timeout);
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({ error: "" }));
+    const errorMsg = (errorBody?.error ?? "").toLowerCase();
+    if (res.status === 401 && errorMsg.includes("inactive")) {
+      throw new Error("tenant_inactive");
+    }
+    if (res.status === 404) {
+      throw new Error("tenant_not_found");
+    }
+    throw new Error("invalid_credentials");
+  }
+
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export function LoginSection() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<LoginMode>("detecting");
@@ -156,37 +255,22 @@ export function LoginSection() {
     setError(null);
 
     try {
-      // 1. Try local login first (works offline)
       const effectiveSlug = selectedServerTenant?.slug ?? (tenantSlug || undefined);
-      const localOutcome = await localLoginWithReason(username, password, effectiveSlug);
+      const fingerprintId = await getDeviceFingerprint();
 
-      // If local login failed due to wrong tenant, surface immediately — no need to
-      // hit the server because the user clearly picked the wrong koperasi.
-      if (!localOutcome.success && localOutcome.reason === "wrong_tenant") {
-        setError("Akun ini tidak terdaftar di koperasi yang dipilih");
-        return;
+      // 1. Try local login first (works offline)
+      let localResult: LocalLoginResult | null = null;
+      try {
+        localResult = await tryLocalLogin(username, password, effectiveSlug, fingerprintId);
+      } catch (err) {
+        if (err instanceof Error && err.message === "wrong_tenant") {
+          setError("Akun ini tidak terdaftar di koperasi yang dipilih");
+          return;
+        }
+        throw err;
       }
 
-      const localResult = localOutcome.success ? localOutcome : null;
       if (localResult) {
-        const fingerprintId = await getDeviceFingerprint();
-        await tenantContextStore.put({
-          tenantId: localResult.tenantId,
-          tenantSlug: localResult.tenantSlug,
-          tenantName: localResult.tenantName,
-          deviceId: fingerprintId,
-          accountId: localResult.accountId,
-          role: localResult.role,
-          canAccessStation: ["admin", "station"].includes(localResult.role),
-          terminalId: 0,
-          updatedAt: Date.now(),
-        });
-        setCurrentDeviceId(fingerprintId);
-
-        // Restore access token from IndexedDB/localStorage so sync works
-        // (token was saved during the original server login)
-        await restoreAuthState(fingerprintId);
-
         // If online and no token yet, try to get a fresh one from server silently
         if (!getAccessToken() && navigator.onLine) {
           try {
@@ -220,8 +304,6 @@ export function LoginSection() {
           }
         }
 
-        // Pre-generate and cache session grant so it's available immediately
-        // when the role page loads (avoids race with useSessionGrant hook)
         issueAndCacheLocalSessionGrant(
           localResult.tenantId,
           localResult.accountId,
@@ -242,117 +324,84 @@ export function LoginSection() {
       }
 
       // 3. Try server login as fallback (online only)
-      const fingerprintHash = await getDeviceFingerprint();
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-
-      const body: Record<string, unknown> = {
-        username,
-        password,
-        deviceFingerprint: {
-          hash: fingerprintHash,
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-        },
-      };
-
-      // Scope to tenant slug if provided (from server browse or manual input)
-      if (effectiveSlug) {
-        body.tenantSlug = effectiveSlug;
-      }
-
-      const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (res.ok) {
-        const data = await res.json();
-
-        // Validate that the server response matches the selected tenant
-        if (effectiveSlug && data.tenantSlug !== effectiveSlug) {
-          setError("Akun ini bukan milik koperasi yang dipilih");
-          return;
+      let data: Record<string, unknown>;
+      try {
+        data = await tryServerLogin(username, password, effectiveSlug, fingerprintId);
+      } catch (err) {
+        if (err instanceof Error) {
+          if (err.message === "tenant_inactive") {
+            setError("Tenant tidak lagi aktif");
+          } else if (err.message === "tenant_not_found") {
+            setError("Koperasi tidak ditemukan");
+          } else {
+            setError("Username atau password salah");
+          }
         }
-
-        const deviceId = fingerprintHash;
-
-        // Store tenant context
-        await tenantContextStore.put({
-          tenantId: data.tenantId,
-          tenantSlug: data.tenantSlug,
-          tenantName: data.tenantName,
-          deviceId,
-          accountId: data.accountId,
-          role: data.role,
-          canAccessStation: ["admin", "station"].includes(data.role),
-          terminalId: 0,
-          updatedAt: Date.now(),
-        });
-
-        // Ensure LocalTenantConfig exists for sync/offline operations
-        const existingConfig = await localTenantConfigStore.get(data.tenantId);
-        if (!existingConfig) {
-          await localTenantConfigStore.put({
-            tenantId: data.tenantId,
-            slug: data.tenantSlug,
-            name: data.tenantName,
-            timezone: "Asia/Jakarta",
-            mode: "synced",
-            createdAt: Date.now(),
-            syncedAt: Date.now(),
-            serverTenantId: data.tenantId,
-          });
-        }
-
-        // Store device registration info in Dexie for sync engine use
-        if (data.deviceId) {
-          await localDb.deviceInfo.put({
-            deviceId: data.deviceId,
-            tenantId: data.tenantId,
-            fingerprintHash,
-            registeredAt: Date.now(),
-          });
-        }
-
-        setCurrentDeviceId(deviceId);
-
-        if (data.accessToken) {
-          setAccessToken(data.accessToken);
-        }
-
-        // Cache credentials locally for offline replay (fire-and-forget)
-        cacheServerCredentials({
-          tenantId: data.tenantId,
-          tenantSlug: data.tenantSlug,
-          tenantName: data.tenantName,
-          accountId: data.accountId,
-          role: data.role,
-          username,
-          password,
-        }).catch(() => {
-          // Non-critical — offline replay won't work but login still succeeds
-        });
-
-        redirectToRole(data.tenantId, data.role);
         return;
       }
 
-      // Handle error responses
-      const errorBody = await res.json().catch(() => ({ error: "" }));
-      const errorMsg = (errorBody?.error ?? "").toLowerCase();
-
-      if (res.status === 401 && errorMsg.includes("inactive")) {
-        setError("Tenant tidak lagi aktif");
-      } else if (res.status === 404) {
-        setError("Koperasi tidak ditemukan");
-      } else {
-        setError("Username atau password salah");
+      // Validate that the server response matches the selected tenant
+      if (effectiveSlug && data.tenantSlug !== effectiveSlug) {
+        setError("Akun ini bukan milik koperasi yang dipilih");
+        return;
       }
+
+      const deviceId = fingerprintId;
+
+      await tenantContextStore.put({
+        tenantId: data.tenantId as string,
+        tenantSlug: data.tenantSlug as string,
+        tenantName: data.tenantName as string,
+        deviceId,
+        accountId: data.accountId as string,
+        role: data.role as string,
+        canAccessStation: ["admin", "station"].includes(data.role as string),
+        terminalId: 0,
+        updatedAt: Date.now(),
+      });
+
+      const existingConfig = await localTenantConfigStore.get(data.tenantId as string);
+      if (!existingConfig) {
+        await localTenantConfigStore.put({
+          tenantId: data.tenantId as string,
+          slug: data.tenantSlug as string,
+          name: data.tenantName as string,
+          timezone: "Asia/Jakarta",
+          mode: "synced",
+          createdAt: Date.now(),
+          syncedAt: Date.now(),
+          serverTenantId: data.tenantId as string,
+        });
+      }
+
+      if (data.deviceId) {
+        await localDb.deviceInfo.put({
+          deviceId: data.deviceId as string,
+          tenantId: data.tenantId as string,
+          fingerprintHash: fingerprintId,
+          registeredAt: Date.now(),
+        });
+      }
+
+      setCurrentDeviceId(deviceId);
+
+      if (data.accessToken) {
+        setAccessToken(data.accessToken as string);
+      }
+
+      cacheServerCredentials({
+        tenantId: data.tenantId as string,
+        tenantSlug: data.tenantSlug as string,
+        tenantName: data.tenantName as string,
+        accountId: data.accountId as string,
+        role: data.role as string,
+        username,
+        password,
+      }).catch(() => {
+        // Non-critical — offline replay won't work but login still succeeds
+      });
+
+      redirectToRole(data.tenantId as string, data.role as string);
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError("Tidak dapat terhubung ke server. Periksa koneksi Anda.");
@@ -371,7 +420,14 @@ export function LoginSection() {
     try {
       // Early offline check: device setup requires internet for initial activation
       // Try local login first to see if cached credentials exist
-      const localResult = await localLogin(username, password);
+      const localOutcome = await localLoginWithReason(username, password, undefined);
+      const localResult = localOutcome.success ? {
+        tenantId: localOutcome.tenantId,
+        tenantSlug: localOutcome.tenantSlug,
+        tenantName: localOutcome.tenantName,
+        accountId: localOutcome.accountId,
+        role: localOutcome.role,
+      } : null;
 
       if (navigator.onLine === false) {
         // Offline: if no cached credentials, show educative message and skip network

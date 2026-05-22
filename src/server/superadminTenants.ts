@@ -187,6 +187,77 @@ export async function getTenantDetail(
 // ─── Create Tenant ───────────────────────────────────────────────────────────
 
 /**
+ * Build the conflict data object for a 409 response.
+ */
+function buildConflictResponse(
+  existingBySlug: { slug: string; name: string } | undefined,
+  existingByAdmin: { tenantId: string } | undefined,
+  conflictTenant?: { slug: string; name: string } | undefined,
+): CreateTenantConflict["data"] {
+  const hasSlug = existingBySlug !== undefined;
+  const hasAdmin = existingByAdmin !== undefined;
+
+  if (hasSlug && hasAdmin) {
+    return {
+      error: "conflict",
+      conflictType: "slug_and_admin",
+      existingTenantName: existingBySlug!.name,
+      existingSlug: existingBySlug!.slug,
+    };
+  }
+  if (hasSlug) {
+    return {
+      error: "conflict",
+      conflictType: "slug_only",
+      existingTenantName: existingBySlug!.name,
+      existingSlug: existingBySlug!.slug,
+    };
+  }
+  // admin_only
+  return {
+    error: "conflict",
+    conflictType: "admin_only",
+    existingTenantName: conflictTenant?.name ?? "Unknown",
+    existingSlug: conflictTenant?.slug ?? "",
+  };
+}
+
+/**
+ * Re-check slug and admin username after a UNIQUE constraint violation.
+ * Returns the conflict data object, or null if neither constraint can be confirmed.
+ */
+async function handleRaceConflict(
+  db: ReturnType<typeof getDb>,
+  slug: string,
+  adminUsername: string,
+): Promise<CreateTenantConflict["data"] | null> {
+  const recheckSlug = await db
+    .select({ tenantId: tenants.tenantId, slug: tenants.slug, name: tenants.name })
+    .from(tenants)
+    .where(eq(sql`lower(${tenants.slug})`, slug))
+    .get();
+
+  const recheckUsername = await db
+    .select({ accountId: accounts.accountId, tenantId: accounts.tenantId })
+    .from(accounts)
+    .where(eq(sql`lower(${accounts.username})`, adminUsername.toLowerCase()))
+    .get();
+
+  if (!recheckSlug && !recheckUsername) return null;
+
+  let conflictTenant: { slug: string; name: string } | undefined;
+  if (!recheckSlug && recheckUsername) {
+    conflictTenant = await db
+      .select({ slug: tenants.slug, name: tenants.name })
+      .from(tenants)
+      .where(eq(tenants.tenantId, recheckUsername.tenantId))
+      .get();
+  }
+
+  return buildConflictResponse(recheckSlug, recheckUsername, conflictTenant);
+}
+
+/**
  * Validate admin password.
  * Rules: 8-128 characters.
  */
@@ -286,49 +357,18 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
   const hasSlugConflict = existingBySlug !== undefined;
   const hasUsernameConflict = existingByUsername !== undefined;
 
-  if (hasSlugConflict && hasUsernameConflict) {
+  if (hasSlugConflict || hasUsernameConflict) {
+    let conflictTenant: { slug: string; name: string } | undefined;
+    if (!hasSlugConflict && hasUsernameConflict) {
+      conflictTenant = await db
+        .select({ slug: tenants.slug, name: tenants.name })
+        .from(tenants)
+        .where(eq(tenants.tenantId, existingByUsername!.tenantId))
+        .get();
+    }
     return {
       status: 409,
-      data: {
-        error: "conflict",
-        conflictType: "slug_and_admin",
-        existingTenantName: existingBySlug.name,
-        existingSlug: existingBySlug.slug,
-      },
-    };
-  }
-
-  if (hasSlugConflict) {
-    return {
-      status: 409,
-      data: {
-        error: "conflict",
-        conflictType: "slug_only",
-        existingTenantName: existingBySlug.name,
-        existingSlug: existingBySlug.slug,
-      },
-    };
-  }
-
-  if (hasUsernameConflict) {
-    // Look up the tenant that the existing account belongs to
-    const conflictTenant = await db
-      .select({
-        slug: tenants.slug,
-        name: tenants.name,
-      })
-      .from(tenants)
-      .where(eq(tenants.tenantId, existingByUsername.tenantId))
-      .get();
-
-    return {
-      status: 409,
-      data: {
-        error: "conflict",
-        conflictType: "admin_only",
-        existingTenantName: conflictTenant?.name ?? "Unknown",
-        existingSlug: conflictTenant?.slug ?? "",
-      },
+      data: buildConflictResponse(existingBySlug, existingByUsername, conflictTenant),
     };
   }
 
@@ -363,72 +403,11 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
     // Handle race condition: unique constraint violation
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
-      // Re-check to determine which constraint was violated
-      const recheckSlug = await db
-        .select({
-          tenantId: tenants.tenantId,
-          slug: tenants.slug,
-          name: tenants.name,
-        })
-        .from(tenants)
-        .where(eq(sql`lower(${tenants.slug})`, slug))
-        .get();
-
-      const recheckUsername = await db
-        .select({
-          accountId: accounts.accountId,
-          tenantId: accounts.tenantId,
-        })
-        .from(accounts)
-        .where(eq(sql`lower(${accounts.username})`, adminUsername.toLowerCase()))
-        .get();
-
-      if (recheckSlug && recheckUsername) {
-        return {
-          status: 409,
-          data: {
-            error: "conflict",
-            conflictType: "slug_and_admin",
-            existingTenantName: recheckSlug.name,
-            existingSlug: recheckSlug.slug,
-          },
-        };
+      const conflictData = await handleRaceConflict(db, slug, adminUsername);
+      if (conflictData) {
+        return { status: 409, data: conflictData };
       }
-
-      if (recheckSlug) {
-        return {
-          status: 409,
-          data: {
-            error: "conflict",
-            conflictType: "slug_only",
-            existingTenantName: recheckSlug.name,
-            existingSlug: recheckSlug.slug,
-          },
-        };
-      }
-
-      if (recheckUsername) {
-        const conflictTenant = await db
-          .select({
-            slug: tenants.slug,
-            name: tenants.name,
-          })
-          .from(tenants)
-          .where(eq(tenants.tenantId, recheckUsername.tenantId))
-          .get();
-
-        return {
-          status: 409,
-          data: {
-            error: "conflict",
-            conflictType: "admin_only",
-            existingTenantName: conflictTenant?.name ?? "Unknown",
-            existingSlug: conflictTenant?.slug ?? "",
-          },
-        };
-      }
-
-      // Fallback
+      // Fallback: constraint violation but can't determine which
       return {
         status: 409,
         data: {

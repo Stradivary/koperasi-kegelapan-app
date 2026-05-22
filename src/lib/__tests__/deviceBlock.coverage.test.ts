@@ -23,6 +23,34 @@ import {
 // Helpers — build a minimal fake IndexedDB
 // ---------------------------------------------------------------------------
 
+/**
+ * Simulates cursor iteration over cursorEntries, firing onsuccess on the request.
+ */
+function simulateCursorIteration(
+  cursorEntries: Array<{ tenantId: string }>,
+  req: Record<string, unknown>,
+  cursorIndex: { value: number },
+) {
+  if (cursorIndex.value < cursorEntries.length) {
+    const entry = cursorEntries[cursorIndex.value++];
+    const cursor = {
+      value: entry,
+      delete: vi.fn(),
+      continue: vi.fn(() => {
+        setTimeout(() => {
+          simulateCursorIteration(cursorEntries, req, cursorIndex);
+        }, 0);
+      }),
+    };
+    req.result = cursor;
+  } else {
+    req.result = null;
+  }
+  if (typeof (req as Record<string, Function>).onsuccess === "function") {
+    (req as Record<string, Function>).onsuccess({ target: req });
+  }
+}
+
 function makeFakeIdb(
   options: {
     hasStore?: boolean;
@@ -46,40 +74,11 @@ function makeFakeIdb(
     openCursor: vi.fn(),
   };
 
-  let cursorIndex = 0;
+  const cursorIndex = { value: 0 };
   fakeStore.openCursor.mockImplementation(() => {
     const req: Record<string, unknown> = {};
     setTimeout(() => {
-      if (cursorIndex < cursorEntries.length) {
-        const entry = cursorEntries[cursorIndex++];
-        const cursor = {
-          value: entry,
-          delete: vi.fn(),
-          continue: vi.fn(() => {
-            setTimeout(() => {
-              if (cursorIndex < cursorEntries.length) {
-                const next = cursorEntries[cursorIndex++];
-                const nextCursor = { value: next, delete: vi.fn(), continue: vi.fn() };
-                (req as Record<string, unknown>).result = nextCursor;
-                if (typeof (req as Record<string, Function>).onsuccess === "function") {
-                  (req as Record<string, Function>).onsuccess({ target: req });
-                }
-              } else {
-                (req as Record<string, unknown>).result = null;
-                if (typeof (req as Record<string, Function>).onsuccess === "function") {
-                  (req as Record<string, Function>).onsuccess({ target: req });
-                }
-              }
-            }, 0);
-          }),
-        };
-        (req as Record<string, unknown>).result = cursor;
-      } else {
-        (req as Record<string, unknown>).result = null;
-      }
-      if (typeof (req as Record<string, Function>).onsuccess === "function") {
-        (req as Record<string, Function>).onsuccess({ target: req });
-      }
+      simulateCursorIteration(cursorEntries, req, cursorIndex);
     }, 0);
     return req;
   });

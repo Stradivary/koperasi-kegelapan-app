@@ -112,6 +112,133 @@ const VALID_CARD_STATUSES = new Set([
 
 // ─── Route ───────────────────────────────────────────────────────────────────
 
+// ─── Per-entity processors ────────────────────────────────────────────────────
+
+async function processMember(
+  db: ReturnType<typeof drizzle>,
+  tenantId: string,
+  member: PushMemberEntry,
+): Promise<{ accepted: boolean; rejection?: MemberRejection }> {
+  if (!member.name || !member.userId) {
+    return { accepted: false, rejection: { userId: member.userId ?? "", reason: "malformed_entry" } };
+  }
+
+  if (member.status && !VALID_MEMBER_STATUSES.has(member.status)) {
+    return { accepted: false, rejection: { userId: member.userId, reason: "invalid_status" } };
+  }
+
+  try {
+    const existing = await db
+      .select({ updatedAt: users.updatedAt })
+      .from(users)
+      .where(and(eq(users.tenantId, tenantId), eq(users.userId, member.userId)))
+      .get();
+
+    if (existing) {
+      const existingUpdatedAt =
+        existing.updatedAt instanceof Date
+          ? Math.floor(existing.updatedAt.getTime() / 1000)
+          : Number(existing.updatedAt);
+
+      if (member.updatedAt > existingUpdatedAt) {
+        await db
+          .update(users)
+          .set({
+            name: member.name,
+            status: (member.status as "active" | "suspended" | "closed") ?? "active",
+            updatedAt: new Date(member.updatedAt * 1000),
+          })
+          .where(and(eq(users.tenantId, tenantId), eq(users.userId, member.userId)));
+      }
+    } else {
+      await db.insert(users).values({
+        tenantId,
+        userId: member.userId,
+        name: member.name,
+        status: (member.status as "active" | "suspended" | "closed") ?? "active",
+        createdAt: new Date(member.createdAt * 1000),
+        updatedAt: new Date(member.updatedAt * 1000),
+      });
+    }
+    return { accepted: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return { accepted: true }; // Race condition — treat as accepted
+    }
+    logger.error("push-entities: member insert failed", {
+      userId: member.userId,
+      error: msg,
+      tenantId,
+    });
+    return { accepted: false, rejection: { userId: member.userId, reason: `internal_error: ${msg}` } };
+  }
+}
+
+async function processCard(
+  db: ReturnType<typeof drizzle>,
+  tenantId: string,
+  card: PushCardEntry,
+  now: number,
+): Promise<{ accepted: boolean; rejection?: CardRejection }> {
+  if (!card.cardId) {
+    return { accepted: false, rejection: { cardId: card.cardId ?? "unknown", reason: "malformed_entry" } };
+  }
+
+  if (card.status && !VALID_CARD_STATUSES.has(card.status)) {
+    return { accepted: false, rejection: { cardId: card.cardId, reason: "invalid_status" } };
+  }
+
+  try {
+    const cardIdBlob = hexToBytes(card.cardId);
+
+    const existing = await db
+      .select({ counter: cards.counter, updatedAt: cards.updatedAt })
+      .from(cards)
+      .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
+      .get();
+
+    if (existing) {
+      const existingUpdatedAt = Number(existing.updatedAt);
+      const incomingUpdatedAt = card.createdAt;
+
+      if (card.counter >= existing.counter || incomingUpdatedAt > existingUpdatedAt) {
+        await db.run(sql`
+          UPDATE cards
+          SET user_id = ${card.userId},
+              status = ${card.status ?? "active"},
+              balance = ${card.balance},
+              counter = CASE WHEN ${card.counter} > counter THEN ${card.counter} ELSE counter END,
+              key_version = ${card.keyVersion},
+              last_activity_at = ${card.lastActivityAt},
+              expires_at = ${card.expiresAt},
+              notes = ${card.notes},
+              updated_at = ${now}
+          WHERE tenant_id = ${tenantId}
+            AND card_id = ${cardIdBlob}
+        `);
+      }
+    } else {
+      await db.run(sql`
+        INSERT INTO cards (tenant_id, card_id, user_id, status, balance, counter, key_version, created_at, last_activity_at, expires_at, notes, updated_at)
+        VALUES (${tenantId}, ${cardIdBlob}, ${card.userId}, ${card.status ?? "active"}, ${card.balance}, ${card.counter}, ${card.keyVersion}, ${card.createdAt}, ${card.lastActivityAt}, ${card.expiresAt}, ${card.notes}, ${now})
+      `);
+    }
+    return { accepted: true };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return { accepted: true };
+    }
+    logger.error("push-entities: card insert failed", {
+      cardId: card.cardId,
+      error: msg,
+      tenantId,
+    });
+    return { accepted: false, rejection: { cardId: card.cardId, reason: `internal_error: ${msg}` } };
+  }
+}
+
 export const pushEntitiesRoute = new Hono<{ Bindings: Env }>();
 
 pushEntitiesRoute.post("/push-entities", async (c) => {
@@ -164,136 +291,21 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
 
   // 4. Process members — upsert (insert or update if newer)
   for (const member of members) {
-    // Validate required fields
-    if (!member.name || !member.userId) {
-      membersRejected.push({ userId: member.userId ?? "", reason: "malformed_entry" });
-      continue;
-    }
-
-    if (member.status && !VALID_MEMBER_STATUSES.has(member.status)) {
-      membersRejected.push({ userId: member.userId, reason: "invalid_status" });
-      continue;
-    }
-
-    try {
-      // Check if member already exists
-      const existing = await db
-        .select({ updatedAt: users.updatedAt })
-        .from(users)
-        .where(and(eq(users.tenantId, tenantId), eq(users.userId, member.userId)))
-        .get();
-
-      if (existing) {
-        // Update only if the incoming data is newer
-        const existingUpdatedAt =
-          existing.updatedAt instanceof Date
-            ? Math.floor(existing.updatedAt.getTime() / 1000)
-            : Number(existing.updatedAt);
-
-        if (member.updatedAt > existingUpdatedAt) {
-          await db
-            .update(users)
-            .set({
-              name: member.name,
-              status: (member.status as "active" | "suspended" | "closed") ?? "active",
-              updatedAt: new Date(member.updatedAt * 1000),
-            })
-            .where(and(eq(users.tenantId, tenantId), eq(users.userId, member.userId)));
-        }
-        membersAccepted++;
-      } else {
-        // Insert new member
-        await db.insert(users).values({
-          tenantId,
-          userId: member.userId,
-          name: member.name,
-          status: (member.status as "active" | "suspended" | "closed") ?? "active",
-          createdAt: new Date(member.createdAt * 1000),
-          updatedAt: new Date(member.updatedAt * 1000),
-        });
-        membersAccepted++;
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
-        // Race condition — treat as accepted
-        membersAccepted++;
-      } else {
-        logger.error("push-entities: member insert failed", {
-          userId: member.userId,
-          error: msg,
-          tenantId,
-        });
-        membersRejected.push({ userId: member.userId, reason: `internal_error: ${msg}` });
-      }
+    const result = await processMember(db, tenantId, member);
+    if (result.accepted) {
+      membersAccepted++;
+    } else if (result.rejection) {
+      membersRejected.push(result.rejection);
     }
   }
 
   // 5. Process cards — upsert (insert or update based on counter/updatedAt)
   for (const card of cardEntries) {
-    // Validate required fields
-    if (!card.cardId) {
-      cardsRejected.push({ cardId: card.cardId ?? "unknown", reason: "malformed_entry" });
-      continue;
-    }
-
-    if (card.status && !VALID_CARD_STATUSES.has(card.status)) {
-      cardsRejected.push({ cardId: card.cardId, reason: "invalid_status" });
-      continue;
-    }
-
-    try {
-      const cardIdBlob = hexToBytes(card.cardId);
-
-      // Check if card already exists
-      const existing = await db
-        .select({ counter: cards.counter, updatedAt: cards.updatedAt })
-        .from(cards)
-        .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
-        .get();
-
-      if (existing) {
-        // Update if incoming counter is higher or data is newer
-        const existingUpdatedAt = Number(existing.updatedAt);
-        const incomingUpdatedAt = card.createdAt; // Use createdAt as proxy if no updatedAt on card
-
-        if (card.counter >= existing.counter || incomingUpdatedAt > existingUpdatedAt) {
-          await db.run(sql`
-            UPDATE cards
-            SET user_id = ${card.userId},
-                status = ${card.status ?? "active"},
-                balance = ${card.balance},
-                counter = CASE WHEN ${card.counter} > counter THEN ${card.counter} ELSE counter END,
-                key_version = ${card.keyVersion},
-                last_activity_at = ${card.lastActivityAt},
-                expires_at = ${card.expiresAt},
-                notes = ${card.notes},
-                updated_at = ${now}
-            WHERE tenant_id = ${tenantId}
-              AND card_id = ${cardIdBlob}
-          `);
-        }
-        cardsAccepted++;
-      } else {
-        // Insert new card
-        await db.run(sql`
-          INSERT INTO cards (tenant_id, card_id, user_id, status, balance, counter, key_version, created_at, last_activity_at, expires_at, notes, updated_at)
-          VALUES (${tenantId}, ${cardIdBlob}, ${card.userId}, ${card.status ?? "active"}, ${card.balance}, ${card.counter}, ${card.keyVersion}, ${card.createdAt}, ${card.lastActivityAt}, ${card.expiresAt}, ${card.notes}, ${now})
-        `);
-        cardsAccepted++;
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
-        cardsAccepted++;
-      } else {
-        logger.error("push-entities: card insert failed", {
-          cardId: card.cardId,
-          error: msg,
-          tenantId,
-        });
-        cardsRejected.push({ cardId: card.cardId, reason: `internal_error: ${msg}` });
-      }
+    const result = await processCard(db, tenantId, card, now);
+    if (result.accepted) {
+      cardsAccepted++;
+    } else if (result.rejection) {
+      cardsRejected.push(result.rejection);
     }
   }
 

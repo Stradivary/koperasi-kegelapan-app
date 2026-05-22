@@ -100,7 +100,7 @@ function base64ToBytes(b64: string): Uint8Array {
   const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
   const bin = atob(padded);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i) ?? 0;
   return bytes;
 }
 
@@ -205,6 +205,82 @@ async function tryLocalGrant(
   }
 }
 
+/** Handles the online branch of the refresh logic. */
+async function handleOnlineRefresh(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+  role: string | undefined,
+  cachedGrant: SessionGrant | null,
+  setGrant: (g: SessionGrant) => void,
+  scheduleRefreshFn: (g: SessionGrant) => void,
+  setError: (e: string) => void,
+): Promise<void> {
+  try {
+    const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
+    setGrant(newGrant);
+    scheduleRefreshFn(newGrant);
+    // Write-through: cache the fresh grant for future offline use
+    writeGrantToCache(newGrant);
+  } catch (e) {
+    // Network fetch failed even though online — use cached grant if available
+    if (cachedGrant) {
+      setGrant(cachedGrant);
+      scheduleRefreshFn(cachedGrant);
+    } else {
+      // Last resort: issue a local session grant (for local-only tenants or network issues)
+      try {
+        const localGrant = await issueAndCacheLocalSessionGrant(
+          tenantId,
+          accountId,
+          deviceId,
+          role ?? "terminal",
+        );
+        setGrant(localGrant);
+        scheduleRefreshFn(localGrant);
+      } catch {
+        setError(String(e));
+      }
+    }
+  }
+}
+
+/** Handles the offline branch of the refresh logic. */
+async function handleOfflineRefresh(
+  tenantId: string,
+  accountId: string,
+  deviceId: string,
+  role: string | undefined,
+  cachedGrant: SessionGrant | null,
+  setGrant: (g: SessionGrant) => void,
+  setError: (e: string) => void,
+): Promise<void> {
+  if (cachedGrant) {
+    setGrant(cachedGrant);
+    // Don't schedule refresh when offline — it would just loop since we can't fetch
+  } else {
+    // No cached grant while offline — issue locally so NFC operations can proceed
+    try {
+      const localGrant = await issueAndCacheLocalSessionGrant(
+        tenantId,
+        accountId,
+        deviceId,
+        role ?? "terminal",
+      );
+      setGrant(localGrant);
+    } catch {
+      // Offline with no cache — generate locally for local-only tenants
+      const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
+      if (localGrant) {
+        setGrant(localGrant);
+        writeGrantToCache(localGrant);
+      } else {
+        setError("Offline dan tidak ada sesi tersimpan");
+      }
+    }
+  }
+}
+
 export function useSessionGrant(
   tenantId: string,
   accountId: string,
@@ -226,60 +302,18 @@ export function useSessionGrant(
     const cachedGrant = await readGrantFromCache(tenantId, accountId, deviceId);
 
     if (isOnline) {
-      // Online: attempt network fetch (write-through on success)
-      try {
-        const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
-        setGrant(newGrant);
-        scheduleRefresh(refreshTimerRef, newGrant, refresh);
-        // Write-through: cache the fresh grant for future offline use
-        writeGrantToCache(newGrant);
-      } catch (e) {
-        // Network fetch failed even though online — use cached grant if available
-        if (cachedGrant) {
-          setGrant(cachedGrant);
-          scheduleRefresh(refreshTimerRef, cachedGrant, refresh);
-        } else {
-          // Last resort: issue a local session grant (for local-only tenants or network issues)
-          try {
-            const localGrant = await issueAndCacheLocalSessionGrant(
-              tenantId,
-              accountId,
-              deviceId,
-              role ?? "terminal",
-            );
-            setGrant(localGrant);
-            scheduleRefresh(refreshTimerRef, localGrant, refresh);
-          } catch {
-            setError(String(e));
-          }
-        }
-      }
+      await handleOnlineRefresh(
+        tenantId,
+        accountId,
+        deviceId,
+        role,
+        cachedGrant,
+        setGrant,
+        (g) => scheduleRefresh(refreshTimerRef, g, refresh),
+        setError,
+      );
     } else {
-      // Offline: return cached grant if available (including grace period), otherwise issue locally
-      if (cachedGrant) {
-        setGrant(cachedGrant);
-        // Don't schedule refresh when offline — it would just loop since we can't fetch
-      } else {
-        // No cached grant while offline — issue locally so NFC operations can proceed
-        try {
-          const localGrant = await issueAndCacheLocalSessionGrant(
-            tenantId,
-            accountId,
-            deviceId,
-            role ?? "terminal",
-          );
-          setGrant(localGrant);
-        } catch {
-          // Offline with no cache — generate locally for local-only tenants
-          const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
-          if (localGrant) {
-            setGrant(localGrant);
-            writeGrantToCache(localGrant);
-          } else {
-            setError("Offline dan tidak ada sesi tersimpan");
-          }
-        }
-      }
+      await handleOfflineRefresh(tenantId, accountId, deviceId, role, cachedGrant, setGrant, setError);
     }
 
     setLoading(false);

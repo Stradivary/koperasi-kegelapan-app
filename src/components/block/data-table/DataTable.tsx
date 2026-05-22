@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { flexRender } from "@tanstack/react-table";
+import type { Row, Header } from "@tanstack/react-table";
 
 import { cn } from "#/lib/utils.ts";
 import { useIsMobile } from "#/hooks/use-mobile.ts";
@@ -18,6 +19,93 @@ import type { DataTableProps } from "./types";
 import { useDataTable } from "./useDataTable";
 import { DataTablePagination } from "./DataTablePagination";
 import { DataTableSkeleton } from "./DataTableSkeleton";
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface MobileRowProps<TData> {
+  row: Row<TData>;
+  index: number;
+  onRowClick?: (row: TData) => void;
+  renderMobileItem: (row: Row<TData>, index: number) => React.ReactNode;
+}
+
+function MobileRow<TData>({ row, index, onRowClick, renderMobileItem }: MobileRowProps<TData>) {
+  return (
+    <div
+      className={cn(
+        "transition-colors hover:bg-muted/30",
+        onRowClick && "cursor-pointer",
+      )}
+      onClick={() => onRowClick?.(row.original)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onRowClick?.(row.original);
+        }
+      }}
+      role={onRowClick ? "button" : undefined}
+      tabIndex={onRowClick ? 0 : undefined}
+    >
+      {renderMobileItem(row, index)}
+    </div>
+  );
+}
+
+interface SortableHeaderProps<TData> {
+  headerCell: Header<TData, unknown>;
+}
+
+function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
+  const canSort = headerCell.column.getCanSort();
+  const sorted = headerCell.column.getIsSorted();
+  const toggleSort = canSort ? headerCell.column.getToggleSortingHandler() : undefined;
+
+  return (
+    <TableHead
+      key={headerCell.id}
+      className={cn(canSort && "cursor-pointer select-none")}
+      onClick={toggleSort}
+      onKeyDown={
+        canSort
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleSort?.(e);
+              }
+            }
+          : undefined
+      }
+      role={canSort ? "button" : undefined}
+      tabIndex={canSort ? 0 : undefined}
+      aria-sort={
+        sorted === "asc"
+          ? "ascending"
+          : sorted === "desc"
+            ? "descending"
+            : canSort
+              ? "none"
+              : undefined
+      }
+    >
+      <div className="flex items-center gap-1">
+        {headerCell.isPlaceholder
+          ? null
+          : flexRender(headerCell.column.columnDef.header, headerCell.getContext())}
+        {canSort && (
+          <span className="text-muted-foreground/60">
+            {sorted === "asc" ? (
+              <ArrowUp className="size-3.5" />
+            ) : sorted === "desc" ? (
+              <ArrowDown className="size-3.5" />
+            ) : (
+              <ArrowUpDown className="size-3.5" />
+            )}
+          </span>
+        )}
+      </div>
+    </TableHead>
+  );
+}
 
 /**
  * Shared DataTable / DataList component.
@@ -154,24 +242,13 @@ export function DataTable<TData>({
             /* ─── Mobile: Card List ─── */
             <div className="rounded-2xl border divide-y overflow-hidden">
               {rows.map((row, index) => (
-                <div
+                <MobileRow
                   key={row.id}
-                  className={cn(
-                    "transition-colors hover:bg-muted/30",
-                    onRowClick && "cursor-pointer",
-                  )}
-                  onClick={() => onRowClick?.(row.original)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onRowClick?.(row.original);
-                    }
-                  }}
-                  role={onRowClick ? "button" : undefined}
-                  tabIndex={onRowClick ? 0 : undefined}
-                >
-                  {renderMobileItem(row, index)}
-                </div>
+                  row={row}
+                  index={index}
+                  onRowClick={onRowClick}
+                  renderMobileItem={renderMobileItem}
+                />
               ))}
             </div>
           ) : (
@@ -181,60 +258,9 @@ export function DataTable<TData>({
                 <TableHeader>
                   <TableRow>
                     {table.getHeaderGroups().map((headerGroup) =>
-                      headerGroup.headers.map((headerCell) => {
-                        const canSort = headerCell.column.getCanSort();
-                        const sorted = headerCell.column.getIsSorted();
-                        const toggleSort = canSort
-                          ? headerCell.column.getToggleSortingHandler()
-                          : undefined;
-                        return (
-                          <TableHead
-                            key={headerCell.id}
-                            className={cn(canSort && "cursor-pointer select-none")}
-                            onClick={toggleSort}
-                            onKeyDown={
-                              canSort
-                                ? (e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      toggleSort?.(e);
-                                    }
-                                  }
-                                : undefined
-                            }
-                            tabIndex={canSort ? 0 : undefined}
-                            aria-sort={
-                              sorted === "asc"
-                                ? "ascending"
-                                : sorted === "desc"
-                                  ? "descending"
-                                  : canSort
-                                    ? "none"
-                                    : undefined
-                            }
-                          >
-                            <div className="flex items-center gap-1">
-                              {headerCell.isPlaceholder
-                                ? null
-                                : flexRender(
-                                    headerCell.column.columnDef.header,
-                                    headerCell.getContext(),
-                                  )}
-                              {canSort && (
-                                <span className="text-muted-foreground/60">
-                                  {sorted === "asc" ? (
-                                    <ArrowUp className="size-3.5" />
-                                  ) : sorted === "desc" ? (
-                                    <ArrowDown className="size-3.5" />
-                                  ) : (
-                                    <ArrowUpDown className="size-3.5" />
-                                  )}
-                                </span>
-                              )}
-                            </div>
-                          </TableHead>
-                        );
-                      }),
+                      headerGroup.headers.map((headerCell) => (
+                        <SortableHeader key={headerCell.id} headerCell={headerCell} />
+                      )),
                     )}
                   </TableRow>
                 </TableHeader>

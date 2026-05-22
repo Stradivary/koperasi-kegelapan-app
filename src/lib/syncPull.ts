@@ -343,6 +343,83 @@ async function pullWithRetry(
   throw new SyncPullError(`Sync pull failed after ${MAX_PULL_RETRY_ATTEMPTS} attempts`, lastError);
 }
 
+/**
+ * Merge a single pull response page into IndexedDB.
+ * Performs an atomic Dexie transaction for members, cards, and transactions.
+ * Returns the counts of records merged.
+ */
+async function mergePullResponse(
+  tenantId: string,
+  response: SyncPullResponse,
+  pendingKeys: Set<string>,
+): Promise<{ membersMerged: number; cardsMerged: number; txMerged: number }> {
+  let membersMerged = 0;
+  let cardsMerged = 0;
+  let txMerged = 0;
+
+  await localDb.transaction(
+    "rw",
+    [localDb.users, localDb.cards, localDb.transactionLog],
+    async () => {
+      // Merge members → users table (skip locally pending members)
+      if (response.members.data.length > 0) {
+        const mappedUsers = response.members.data.map(mapMemberToUser);
+        const pendingMemberKeys = new Set<string>();
+        const pendingMembers = await localDb.users
+          .where("[tenantId+syncStatus]")
+          .equals([tenantId, "pending"])
+          .toArray();
+        for (const m of pendingMembers) {
+          pendingMemberKeys.add(`${m.tenantId}:${m.userId}`);
+        }
+        const usersToMerge = mappedUsers.filter(
+          (u) => !pendingMemberKeys.has(`${u.tenantId}:${u.userId}`),
+        );
+        if (usersToMerge.length > 0) {
+          await localDb.users.bulkPut(usersToMerge);
+        }
+        membersMerged = usersToMerge.length;
+      }
+
+      // Merge cards → cards table (skip locally pending cards)
+      if (response.cards.data.length > 0) {
+        const mappedCards = response.cards.data.map(mapCardToLocal);
+        const pendingCardKeys = new Set<string>();
+        const pendingCards = await localDb.cards
+          .where("[tenantId+syncStatus]")
+          .equals([tenantId, "pending"])
+          .toArray();
+        for (const c of pendingCards) {
+          pendingCardKeys.add(`${c.tenantId}:${c.cardId}`);
+        }
+        const cardsToMerge = mappedCards.filter(
+          (c) => !pendingCardKeys.has(`${c.tenantId}:${c.cardId}`),
+        );
+        if (cardsToMerge.length > 0) {
+          await localDb.cards.bulkPut(cardsToMerge);
+        }
+        cardsMerged = cardsToMerge.length;
+      }
+
+      // Merge transactions → transactionLog table (skip pending outbox entries)
+      if (response.transactions.data.length > 0) {
+        const transactions: TransactionLog[] = [];
+        for (const tx of response.transactions.data) {
+          const key = `${tx.cardId}:${tx.counter}`;
+          if (pendingKeys.has(key)) continue;
+          transactions.push(mapTransactionToLocal(tx));
+        }
+        if (transactions.length > 0) {
+          await localDb.transactionLog.bulkPut(transactions);
+          txMerged = transactions.length;
+        }
+      }
+    },
+  );
+
+  return { membersMerged, cardsMerged, txMerged };
+}
+
 // ── Main Pull Logic ────────────────────────────────────────────────────
 
 /**
@@ -403,72 +480,14 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
     // Get pending outbox keys to skip during merge
     const pendingKeys = await getPendingOutboxKeys(tenantId);
 
-    // Perform atomic upsert in a single Dexie transaction
-    await localDb.transaction(
-      "rw",
-      [localDb.users, localDb.cards, localDb.transactionLog],
-      async () => {
-        // Merge members → users table (skip locally pending members)
-        if (response.members.data.length > 0) {
-          const mappedUsers = response.members.data.map(mapMemberToUser);
-          // Check which members have pending local changes
-          const pendingMemberKeys = new Set<string>();
-          const pendingMembers = await localDb.users
-            .where("[tenantId+syncStatus]")
-            .equals([tenantId, "pending"])
-            .toArray();
-          for (const m of pendingMembers) {
-            pendingMemberKeys.add(`${m.tenantId}:${m.userId}`);
-          }
-          const usersToMerge = mappedUsers.filter(
-            (u) => !pendingMemberKeys.has(`${u.tenantId}:${u.userId}`),
-          );
-          if (usersToMerge.length > 0) {
-            await localDb.users.bulkPut(usersToMerge);
-          }
-          totalMembersPulled += usersToMerge.length;
-        }
-
-        // Merge cards → cards table (skip locally pending cards)
-        if (response.cards.data.length > 0) {
-          const mappedCards = response.cards.data.map(mapCardToLocal);
-          const pendingCardKeys = new Set<string>();
-          const pendingCards = await localDb.cards
-            .where("[tenantId+syncStatus]")
-            .equals([tenantId, "pending"])
-            .toArray();
-          for (const c of pendingCards) {
-            pendingCardKeys.add(`${c.tenantId}:${c.cardId}`);
-          }
-          const cardsToMerge = mappedCards.filter(
-            (c) => !pendingCardKeys.has(`${c.tenantId}:${c.cardId}`),
-          );
-          if (cardsToMerge.length > 0) {
-            await localDb.cards.bulkPut(cardsToMerge);
-          }
-          totalCardsPulled += cardsToMerge.length;
-        }
-
-        // Merge transactions → transactionLog table (skip pending outbox entries)
-        if (response.transactions.data.length > 0) {
-          const transactions: TransactionLog[] = [];
-
-          for (const tx of response.transactions.data) {
-            const key = `${tx.cardId}:${tx.counter}`;
-            // Skip if there's a pending outbox entry for this record
-            if (pendingKeys.has(key)) {
-              continue;
-            }
-            transactions.push(mapTransactionToLocal(tx));
-          }
-
-          if (transactions.length > 0) {
-            await localDb.transactionLog.bulkPut(transactions);
-            totalTransactionsPulled += transactions.length;
-          }
-        }
-      },
+    const { membersMerged, cardsMerged, txMerged } = await mergePullResponse(
+      tenantId,
+      response,
+      pendingKeys,
     );
+    totalMembersPulled += membersMerged;
+    totalCardsPulled += cardsMerged;
+    totalTransactionsPulled += txMerged;
 
     // Update running cursors from response
     runningCursors.members = response.members.cursor;

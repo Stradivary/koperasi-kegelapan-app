@@ -97,7 +97,7 @@ describe("UI Components", () => {
         </Select>,
       );
       const trigger = container.querySelector('[data-slot="select-trigger"]');
-      expect(trigger?.getAttribute("data-size")).toBe("sm");
+      expect(trigger?.dataset.size).toBe("sm");
     });
   });
 

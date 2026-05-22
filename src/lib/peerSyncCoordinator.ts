@@ -164,12 +164,13 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
  * Force push pending transactions for a card before a cross-device read.
  * Attempts to push with a 3s maximum wait time.
  *
- * ALWAYS returns true (allow proceed) — NFC card state is authoritative.
- * The return value indicates whether the push actually succeeded, but
- * operations should proceed regardless.
+ * Returns whether the push actually succeeded. Callers should never block
+ * operations on this result — NFC card state is authoritative regardless.
+ * A `false` return means the push failed or timed out and will be retried
+ * by the standard backoff mechanism.
  *
  * @param cardId - The card to push pending transactions for
- * @returns true always (operations always proceed based on NFC card state)
+ * @returns true if push succeeded or there was nothing to push; false if push failed or timed out
  *
  * @see Requirement 9.5: Push pending transactions with 3s max wait
  * @see Requirement 9.6: On failure, allow operations to continue, queue for retry
@@ -177,11 +178,11 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
  */
 export async function forcePushBeforeRead(cardId: string): Promise<boolean> {
   if (!activeTenantId) {
-    return true; // No tenant — allow proceed
+    return true; // No tenant — nothing to push
   }
 
   if (!navigator.onLine) {
-    return true; // Offline — NFC card state is authoritative
+    return false; // Offline — push not possible, retry via backoff
   }
 
   try {
@@ -206,9 +207,8 @@ export async function forcePushBeforeRead(cardId: string): Promise<boolean> {
 
     return true; // Push succeeded
   } catch {
-    // Push failed or timed out — NFC card state is authoritative
-    // Standard backoff mechanism will handle retry
-    return true;
+    // Push failed or timed out — standard backoff mechanism will handle retry
+    return false;
   }
 }
 

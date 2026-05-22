@@ -49,6 +49,25 @@ function extractTenantId(event: ReconcileEvent): string | null {
   return parts && parts.length >= 3 ? parts[0] : null;
 }
 
+/**
+ * Validate required fields on a reconcile event.
+ * Returns { valid: true } if all fields are present, or { valid: false, reason } otherwise.
+ */
+function validateReconcileEvent(event: ReconcileEvent): { valid: boolean; reason?: string } {
+  if (
+    !event.cardId ||
+    event.counter == null ||
+    !event.type ||
+    event.amount == null ||
+    event.balanceAfter == null ||
+    event.timestamp == null ||
+    !event.hash
+  ) {
+    return { valid: false, reason: "malformed_event" };
+  }
+  return { valid: true };
+}
+
 export async function processReconciliation(body: ReconcileRequest): Promise<ReconcileResult> {
   const { terminalId, events } = body;
 
@@ -64,20 +83,13 @@ export async function processReconciliation(body: ReconcileRequest): Promise<Rec
   for (const event of events) {
     try {
       // Validate required fields
-      if (
-        !event.cardId ||
-        event.counter == null ||
-        !event.type ||
-        event.amount == null ||
-        event.balanceAfter == null ||
-        event.timestamp == null ||
-        !event.hash
-      ) {
+      const validation = validateReconcileEvent(event);
+      if (!validation.valid) {
         rejected++;
         flags.push({
           cardId: event.cardId ?? "unknown",
           counter: event.counter ?? 0,
-          reason: "malformed_event",
+          reason: validation.reason ?? "malformed_event",
         });
         continue;
       }

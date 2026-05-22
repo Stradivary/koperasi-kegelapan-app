@@ -186,6 +186,53 @@ export function partitionEntries(entries: TransactionLog[]): {
   return { valid, corrupt };
 }
 
+/**
+ * Process a server response for a single batch: update sync statuses for each
+ * entry and return aggregate counts.
+ */
+async function processBatchResponse(
+  batch: TransactionLog[],
+  response: SyncPushResponse,
+): Promise<{
+  accepted: number;
+  rejected: number;
+  pullNeeded: boolean;
+  conflictCount: number;
+  failedCount: number;
+}> {
+  const accepted = response.accepted;
+  const rejected = response.rejected.length;
+  let pullNeeded = false;
+  let conflictCount = 0;
+  let failedCount = 0;
+
+  // Build a map of idempotency_key → rejection reason for quick lookup
+  const rejectionMap = new Map<string, string>();
+  for (const rejection of response.rejected) {
+    rejectionMap.set(rejection.key, rejection.reason);
+  }
+
+  for (const entry of batch) {
+    const key = generateIdempotencyKey(entry);
+    const rejection = rejectionMap.get(key);
+
+    if (!entry.id) continue; // Safety: skip entries without an ID
+
+    if (rejection === "stale_counter") {
+      await updateSyncStatus(entry.id, "conflict");
+      pullNeeded = true;
+      conflictCount++;
+    } else if (rejection) {
+      await updateSyncStatus(entry.id, "failed");
+      failedCount++;
+    } else {
+      await updateSyncStatus(entry.id, "synced");
+    }
+  }
+
+  return { accepted, rejected, pullNeeded, conflictCount, failedCount };
+}
+
 // ── Main Push Logic ────────────────────────────────────────────────────
 
 /**
@@ -372,36 +419,12 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       throw error;
     }
 
-    totalAccepted += response.accepted;
-    totalRejected += response.rejected.length;
-
-    // Build a map of idempotency_key → rejection reason for quick lookup
-    const rejectionMap = new Map<string, string>();
-    for (const rejection of response.rejected) {
-      rejectionMap.set(rejection.key, rejection.reason);
-    }
-
-    // Step 5 & 6: Update sync status for each entry in the batch
-    for (const entry of batch) {
-      const key = generateIdempotencyKey(entry);
-      const rejection = rejectionMap.get(key);
-
-      if (!entry.id) continue; // Safety: skip entries without an ID
-
-      if (rejection === "stale_counter") {
-        // Step 6: Mark as conflict and flag pull needed
-        await updateSyncStatus(entry.id, "conflict");
-        pullNeeded = true;
-        conflictCount++;
-      } else if (rejection) {
-        // Other server rejections: mark as "failed" (non-retryable)
-        await updateSyncStatus(entry.id, "failed");
-        failedCount++;
-      } else {
-        // Step 5: Accepted — mark as synced
-        await updateSyncStatus(entry.id, "synced");
-      }
-    }
+    const batchResult = await processBatchResponse(batch, response);
+    totalAccepted += batchResult.accepted;
+    totalRejected += batchResult.rejected;
+    if (batchResult.pullNeeded) pullNeeded = true;
+    conflictCount += batchResult.conflictCount;
+    failedCount += batchResult.failedCount;
   }
 
   return {

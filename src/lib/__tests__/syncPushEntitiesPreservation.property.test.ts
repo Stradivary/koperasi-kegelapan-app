@@ -80,6 +80,35 @@ class DeviceBlockedError extends Error {
 }
 
 /**
+ * Computes the array of batch calls for the member loop.
+ * Cards up to MAX_BATCH_SIZE are included in the first member batch.
+ */
+function computeMemberBatches(pendingMembers: SimUser[], pendingCards: SimCard[]): BatchCall[] {
+  const batchCalls: BatchCall[] = [];
+  for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE) {
+    const memberBatch = pendingMembers.slice(i, i + MAX_BATCH_SIZE);
+    const cardBatch = i === 0 ? pendingCards.slice(0, MAX_BATCH_SIZE) : [];
+    batchCalls.push({ members: memberBatch, cards: cardBatch });
+  }
+  return batchCalls;
+}
+
+/**
+ * Computes overflow card batches (cards beyond MAX_BATCH_SIZE that weren't
+ * included in the first member batch).
+ */
+function computeCardOverflowBatches(pendingCards: SimCard[]): BatchCall[] {
+  const batchCalls: BatchCall[] = [];
+  if (pendingCards.length > MAX_BATCH_SIZE) {
+    for (let i = MAX_BATCH_SIZE; i < pendingCards.length; i += MAX_BATCH_SIZE) {
+      const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
+      batchCalls.push({ members: [], cards: cardBatch });
+    }
+  }
+  return batchCalls;
+}
+
+/**
  * Simulates the syncPushEntities function's control flow.
  * Returns the result and tracks which batch calls would be made.
  */
@@ -131,56 +160,18 @@ function simulateSyncPushEntities(params: {
   }
 
   // Step 4: Batch and push (simulates _pushEntitiesInternal)
-  const batchCalls: BatchCall[] = [];
+  let batchCalls: BatchCall[] = [];
 
-  // Member batches (cards are included in the first member batch)
-  for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE) {
-    const memberBatch = pendingMembers.slice(i, i + MAX_BATCH_SIZE);
-    const cardBatch = i === 0 ? pendingCards.slice(0, MAX_BATCH_SIZE) : [];
-    batchCalls.push({ members: memberBatch, cards: cardBatch });
-  }
-
-  // Remaining card batches if cards exceed MAX_BATCH_SIZE
-  if (pendingCards.length > MAX_BATCH_SIZE) {
-    for (let i = MAX_BATCH_SIZE; i < pendingCards.length; i += MAX_BATCH_SIZE) {
-      const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
-      batchCalls.push({ members: [], cards: cardBatch });
-    }
-  }
-
-  // If no members but has cards, the member loop doesn't execute,
-  // so we need to handle the case where pendingMembers is empty but pendingCards is not
   if (pendingMembers.length === 0 && pendingCards.length > 0) {
-    // The member loop doesn't execute at all, so cards in the first batch aren't sent
-    // Looking at the code: the for loop `for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE)`
-    // won't execute if pendingMembers.length === 0
-    // Then the remaining cards section only handles cards AFTER MAX_BATCH_SIZE
-    // This means if there are only cards and no members, nothing gets pushed in the current code!
-    // Wait - let me re-read the code more carefully...
-    // Actually the code has: `for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE)`
-    // If pendingMembers.length === 0, this loop doesn't execute
-    // Then: `if (pendingCards.length > MAX_BATCH_SIZE)` - only handles overflow cards
-    // So if there are 0 members and some cards, the cards never get pushed!
-    // But wait - this is the CURRENT behavior we're preserving. Let me verify...
-    // Actually looking more carefully at the code flow:
-    // The first loop iterates over members in batches. In the FIRST iteration (i===0),
-    // it includes cards up to MAX_BATCH_SIZE. If there are 0 members, the loop never runs.
-    // The second section only handles cards BEYOND MAX_BATCH_SIZE.
-    // So with 0 members and N cards (N <= 200), nothing gets pushed.
-    // With 0 members and N cards (N > 200), only cards[200:] get pushed.
-    // This is actually a quirk of the current code, but we're preserving it.
-    // Let me re-clear the batchCalls for this case:
-    batchCalls.length = 0;
-    // Only overflow cards get pushed
-    if (pendingCards.length > MAX_BATCH_SIZE) {
-      for (let i = MAX_BATCH_SIZE; i < pendingCards.length; i += MAX_BATCH_SIZE) {
-        const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
-        batchCalls.push({ members: [], cards: cardBatch });
-      }
-    }
+    // No members: member loop doesn't execute, only overflow cards get pushed
+    batchCalls = computeCardOverflowBatches(pendingCards);
+  } else {
+    batchCalls = [
+      ...computeMemberBatches(pendingMembers, pendingCards),
+      ...computeCardOverflowBatches(pendingCards),
+    ];
   }
 
-  // Calculate result based on batch calls (assuming all succeed)
   const totalMembers = batchCalls.reduce((sum, b) => sum + b.members.length, 0);
   const totalCards = batchCalls.reduce((sum, b) => sum + b.cards.length, 0);
 

@@ -152,15 +152,13 @@ describe("superadmin routes", () => {
       expect(res.status).toBe(200);
     });
 
-    it("accepts all valid statuses", async () => {
-      for (const status of ["active", "suspended", "archived"]) {
-        const res = await app.request("/api/superadmin/tenants/t1/status", {
-          method: "PATCH",
-          body: JSON.stringify({ status }),
-          headers: { "Content-Type": "application/json" },
-        });
-        expect(res.status).toBe(200);
-      }
+    it.each(["active", "suspended", "archived"])("accepts status %s", async (status) => {
+      const res = await app.request("/api/superadmin/tenants/t1/status", {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+        headers: { "Content-Type": "application/json" },
+      });
+      expect(res.status).toBe(200);
     });
   });
 

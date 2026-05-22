@@ -91,6 +91,59 @@ const INITIAL_RETRY_BACKOFF_MS = 1000;
 /** Maximum retry backoff in milliseconds */
 const MAX_RETRY_BACKOFF_MS = 60_000;
 
+// ── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Handle the catch block of executeSyncCycle: log the error, update status,
+ * and schedule a retry with exponential backoff if under the retry limit.
+ */
+function handleSyncError(
+  err: unknown,
+  pushSucceeded: boolean,
+  tid: string,
+  mountedRef: { current: boolean },
+  setSyncStatus: (s: SyncEngineStatus) => void,
+  setLastPushSucceeded: (v: boolean) => void,
+  errorRetryCountRef: { current: number },
+  retryTimerRef: { current: ReturnType<typeof setTimeout> | null },
+  enabledRef: { current: boolean },
+  executeSyncCycle: () => Promise<void>,
+): void {
+  if (!mountedRef.current) return;
+
+  const errorDetail = extractErrorDetail(err);
+  if (!pushSucceeded) {
+    setLastPushSucceeded(false);
+    addSyncLog("error", "Push sync gagal", `tenantId=${tid} | ${errorDetail}`);
+  } else {
+    addSyncLog(
+      "error",
+      "Pull sync gagal (push berhasil)",
+      `tenantId=${tid} | ${errorDetail}`,
+    );
+  }
+  setSyncStatus("error");
+  errorRetryCountRef.current += 1;
+
+  if (errorRetryCountRef.current < MAX_ERROR_RETRIES) {
+    const backoff = Math.min(
+      INITIAL_RETRY_BACKOFF_MS * Math.pow(2, errorRetryCountRef.current - 1),
+      MAX_RETRY_BACKOFF_MS,
+    );
+    retryTimerRef.current = setTimeout(() => {
+      if (mountedRef.current && enabledRef.current) {
+        executeSyncCycle();
+      }
+    }, backoff);
+  } else {
+    addSyncLog(
+      "error",
+      "Sync gagal setelah semua retry habis",
+      `${MAX_ERROR_RETRIES} percobaan gagal berturut-turut`,
+    );
+  }
+}
+
 // ── Hook ───────────────────────────────────────────────────────────────
 
 /**
@@ -205,42 +258,18 @@ export function useSyncEngine(
       }
     } catch (err) {
       if (mountedRef.current) {
-        // If push succeeded but pull failed, entries already marked "synced"
-        // remain synced — do NOT reset them. Set status to "error" to reflect
-        // that the full sync cycle did not complete (Req 2.6).
-        const errorDetail = extractErrorDetail(err);
-        if (!pushSucceeded) {
-          setLastPushSucceeded(false);
-          addSyncLog("error", "Push sync gagal", `tenantId=${tid} | ${errorDetail}`);
-        } else {
-          addSyncLog(
-            "error",
-            "Pull sync gagal (push berhasil)",
-            `tenantId=${tid} | ${errorDetail}`,
-          );
-        }
-        setSyncStatus("error");
-        errorRetryCountRef.current += 1;
-
-        // Schedule retry with exponential backoff if under max retries
-        if (errorRetryCountRef.current < MAX_ERROR_RETRIES) {
-          const backoff = Math.min(
-            INITIAL_RETRY_BACKOFF_MS * Math.pow(2, errorRetryCountRef.current - 1),
-            MAX_RETRY_BACKOFF_MS,
-          );
-          retryTimerRef.current = setTimeout(() => {
-            if (mountedRef.current && enabledRef.current) {
-              executeSyncCycle();
-            }
-          }, backoff);
-        } else {
-          addSyncLog(
-            "error",
-            "Sync gagal setelah semua retry habis",
-            `${MAX_ERROR_RETRIES} percobaan gagal berturut-turut`,
-          );
-        }
-        // If max retries exhausted, remain in "error" status (Req 11.6)
+        handleSyncError(
+          err,
+          pushSucceeded,
+          tid,
+          mountedRef,
+          setSyncStatus,
+          setLastPushSucceeded,
+          errorRetryCountRef,
+          retryTimerRef,
+          enabledRef,
+          executeSyncCycle,
+        );
       }
     } finally {
       isSyncingRef.current = false;

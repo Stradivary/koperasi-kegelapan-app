@@ -44,6 +44,226 @@ function formatRupiah(amount: number): string {
   }).format(amount);
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface DrawerBodyContentProps {
+  phase: NfcCardPhase;
+  payload: CardPayload | null;
+  isCheckedIn: boolean;
+  error: string | null;
+  tamperDetected: boolean;
+  onCheckin: () => void;
+  onCheckout: () => void;
+  onFixCard?: () => void;
+  syncMode: boolean;
+  syncSuccess: boolean;
+  nfcPhase: NfcPhase;
+  isScanning: boolean;
+  hasCard: boolean;
+  isWriting: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  isBlocked: boolean;
+}
+
+function DrawerBodyContent({
+  payload,
+  isCheckedIn,
+  error,
+  tamperDetected,
+  onCheckin,
+  onCheckout,
+  onFixCard,
+  syncMode,
+  syncSuccess,
+  nfcPhase,
+  isScanning,
+  hasCard,
+  isWriting,
+  isSuccess,
+  isError,
+  isBlocked,
+}: DrawerBodyContentProps) {
+  return (
+    <div className="px-4">
+      {/* Scanning / Validating / Writing — uses shared NfcTapArea */}
+      {(isScanning || isWriting) && (
+        <div className="flex flex-col items-center justify-center py-8 gap-6">
+          <NfcTapArea phase={nfcPhase} />
+        </div>
+      )}
+
+      {/* Card ready */}
+      {hasCard && payload && (
+        <div className="space-y-4 py-4">
+          <div className="rounded-2xl bg-brand/5 border border-brand/20 p-4 text-center">
+            <p className="text-sm text-muted-foreground">Saldo</p>
+            <p className="text-2xl font-bold text-brand">
+              {formatRupiah(payload.wallet.balance)}
+            </p>
+          </div>
+          {syncMode ? (
+            <div className="space-y-3">
+              <div className="rounded-xl bg-signal-bg-valid border border-signal-valid/30 p-3 text-center">
+                <CheckCircle2 size={24} className="text-signal-valid mx-auto mb-1" />
+                <p className="text-sm font-medium text-signal-valid">
+                  {syncSuccess ? "Data kartu disinkronkan" : "Menyinkronkan..."}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Nama</p>
+                  <p className="font-medium truncate">{payload.identity.name}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-2 text-center">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="font-medium">
+                    {payload.wallet.state === 1
+                      ? "Checked-in"
+                      : payload.wallet.state === 0
+                        ? "Idle"
+                        : "Lainnya"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={onCheckin}
+                disabled={isCheckedIn || isBlocked}
+                className="h-14 flex-col gap-1 bg-brand-dark hover:bg-brand-dark/90 text-white"
+              >
+                <LogIn size={20} />
+                <span className="text-xs font-bold">Masuk</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onCheckout}
+                disabled={!isCheckedIn || isBlocked}
+                className="h-14 flex-col gap-1 border-2"
+              >
+                <LogOut size={20} />
+                <span className="text-xs font-bold">Keluar</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Success */}
+      {isSuccess && (
+        <div className="flex flex-col items-center py-6 gap-4">
+          <img
+            src={successPhoneImg}
+            alt="Berhasil"
+            className="w-44 h-44 object-contain drop-shadow-md"
+          />
+          <div className="text-center">
+            <p className="text-lg font-bold text-signal-valid">
+              {isCheckedIn ? "Check-in Berhasil" : "Check-out Berhasil"}
+            </p>
+            {payload && (
+              <p className="text-sm text-muted-foreground mt-1">{payload.identity.name}</p>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">Menutup otomatis...</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {isError && (
+        <div className="flex flex-col items-center py-6 gap-4">
+          <img
+            src={tamperDetected ? tamperImg : failedImg}
+            alt={tamperDetected ? "Kartu rusak" : "Gagal"}
+            className="w-44 h-44 object-contain drop-shadow-md"
+          />
+          <div className="text-center">
+            <p className="font-bold text-signal-error">
+              {tamperDetected ? "⚠ Kartu Terdeteksi Rusak" : "Gagal"}
+            </p>
+            {tamperDetected ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                {onFixCard ? "Kartu perlu diperbaiki" : "Hubungi petugas"}
+              </p>
+            ) : (
+              error && <p className="text-sm text-muted-foreground mt-1">{error}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface DrawerFooterContentProps {
+  isScanning: boolean;
+  hasCard: boolean;
+  isWriting: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  tamperDetected: boolean;
+  onClose: () => void;
+  onRetry: () => void;
+  onFixCard?: () => void;
+}
+
+function DrawerFooterContent({
+  isScanning,
+  hasCard,
+  isWriting,
+  isSuccess,
+  isError,
+  tamperDetected,
+  onClose,
+  onRetry,
+  onFixCard,
+}: DrawerFooterContentProps) {
+  return (
+    <DrawerFooter>
+      {(isScanning || hasCard) && (
+        <Button variant="outline" onClick={onClose} className="w-full">
+          Batalkan
+        </Button>
+      )}
+      {isWriting && (
+        <Button variant="outline" onClick={onClose} className="w-full">
+          Batalkan
+        </Button>
+      )}
+      {isSuccess && (
+        <Button variant="outline" onClick={onClose} className="w-full">
+          Tutup
+        </Button>
+      )}
+      {isError && (
+        <>
+          {!tamperDetected && (
+            <Button
+              onClick={onRetry}
+              className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
+            >
+              Coba Lagi
+            </Button>
+          )}
+          {tamperDetected && onFixCard && (
+            <Button
+              onClick={onFixCard}
+              className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
+            >
+              Perbaiki Kartu
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClose} className="w-full">
+            Tutup
+          </Button>
+        </>
+      )}
+    </DrawerFooter>
+  );
+}
+
 export function NfcScanDrawer({
   open,
   onOpenChange,
@@ -110,156 +330,37 @@ export function NfcScanDrawer({
           <StepIndicator phase={nfcPhase} />
         </div>
 
-        <div className="px-4">
-          {/* Scanning / Validating / Writing — uses shared NfcTapArea */}
-          {(isScanning || isWriting) && (
-            <div className="flex flex-col items-center justify-center py-8 gap-6">
-              <NfcTapArea phase={nfcPhase} />
-            </div>
-          )}
+        <DrawerBodyContent
+          phase={phase}
+          payload={payload}
+          isCheckedIn={isCheckedIn}
+          error={error}
+          tamperDetected={tamperDetected}
+          onCheckin={onCheckin}
+          onCheckout={onCheckout}
+          onFixCard={onFixCard}
+          syncMode={syncMode}
+          syncSuccess={syncSuccess}
+          nfcPhase={nfcPhase}
+          isScanning={isScanning}
+          hasCard={hasCard}
+          isWriting={isWriting}
+          isSuccess={isSuccess}
+          isError={isError}
+          isBlocked={isBlocked}
+        />
 
-          {/* Card ready */}
-          {hasCard && payload && (
-            <div className="space-y-4 py-4">
-              <div className="rounded-2xl bg-brand/5 border border-brand/20 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Saldo</p>
-                <p className="text-2xl font-bold text-brand">
-                  {formatRupiah(payload.wallet.balance)}
-                </p>
-              </div>
-              {syncMode ? (
-                <div className="space-y-3">
-                  <div className="rounded-xl bg-signal-bg-valid border border-signal-valid/30 p-3 text-center">
-                    <CheckCircle2 size={24} className="text-signal-valid mx-auto mb-1" />
-                    <p className="text-sm font-medium text-signal-valid">
-                      {syncSuccess ? "Data kartu disinkronkan" : "Menyinkronkan..."}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-lg bg-muted/50 p-2 text-center">
-                      <p className="text-xs text-muted-foreground">Nama</p>
-                      <p className="font-medium truncate">{payload.identity.name}</p>
-                    </div>
-                    <div className="rounded-lg bg-muted/50 p-2 text-center">
-                      <p className="text-xs text-muted-foreground">Status</p>
-                      <p className="font-medium">
-                        {payload.wallet.state === 1
-                          ? "Checked-in"
-                          : payload.wallet.state === 0
-                            ? "Idle"
-                            : "Lainnya"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={onCheckin}
-                    disabled={isCheckedIn || isBlocked}
-                    className="h-14 flex-col gap-1 bg-brand-dark hover:bg-brand-dark/90 text-white"
-                  >
-                    <LogIn size={20} />
-                    <span className="text-xs font-bold">Masuk</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={onCheckout}
-                    disabled={!isCheckedIn || isBlocked}
-                    className="h-14 flex-col gap-1 border-2"
-                  >
-                    <LogOut size={20} />
-                    <span className="text-xs font-bold">Keluar</span>
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Success */}
-          {isSuccess && (
-            <div className="flex flex-col items-center py-6 gap-4">
-              <img
-                src={successPhoneImg}
-                alt="Berhasil"
-                className="w-44 h-44 object-contain drop-shadow-md"
-              />
-              <div className="text-center">
-                <p className="text-lg font-bold text-signal-valid">
-                  {isCheckedIn ? "Check-in Berhasil" : "Check-out Berhasil"}
-                </p>
-                {payload && (
-                  <p className="text-sm text-muted-foreground mt-1">{payload.identity.name}</p>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">Menutup otomatis...</p>
-            </div>
-          )}
-
-          {/* Error */}
-          {isError && (
-            <div className="flex flex-col items-center py-6 gap-4">
-              <img
-                src={tamperDetected ? tamperImg : failedImg}
-                alt={tamperDetected ? "Kartu rusak" : "Gagal"}
-                className="w-44 h-44 object-contain drop-shadow-md"
-              />
-              <div className="text-center">
-                <p className="font-bold text-signal-error">
-                  {tamperDetected ? "⚠ Kartu Terdeteksi Rusak" : "Gagal"}
-                </p>
-                {tamperDetected ? (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {onFixCard ? "Kartu perlu diperbaiki" : "Hubungi petugas"}
-                  </p>
-                ) : (
-                  error && <p className="text-sm text-muted-foreground mt-1">{error}</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <DrawerFooter>
-          {(isScanning || hasCard) && (
-            <Button variant="outline" onClick={onClose} className="w-full">
-              Batalkan
-            </Button>
-          )}
-          {isWriting && (
-            <Button variant="outline" onClick={onClose} className="w-full">
-              Batalkan
-            </Button>
-          )}
-          {isSuccess && (
-            <Button variant="outline" onClick={onClose} className="w-full">
-              Tutup
-            </Button>
-          )}
-          {isError && (
-            <>
-              {!tamperDetected && (
-                <Button
-                  onClick={onRetry}
-                  className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
-                >
-                  Coba Lagi
-                </Button>
-              )}
-              {tamperDetected && onFixCard && (
-                <Button
-                  onClick={onFixCard}
-                  className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
-                >
-                  Perbaiki Kartu
-                </Button>
-              )}
-              <Button variant="outline" onClick={onClose} className="w-full">
-                Tutup
-              </Button>
-            </>
-          )}
-        </DrawerFooter>
+        <DrawerFooterContent
+          isScanning={isScanning}
+          hasCard={hasCard}
+          isWriting={isWriting}
+          isSuccess={isSuccess}
+          isError={isError}
+          tamperDetected={tamperDetected}
+          onClose={onClose}
+          onRetry={onRetry}
+          onFixCard={onFixCard}
+        />
       </DrawerContent>
     </Drawer>
   );

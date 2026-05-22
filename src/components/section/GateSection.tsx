@@ -13,12 +13,37 @@ import { Input } from "../ui/input";
 import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
+import type { CardPayload } from "../../core/payload/types";
+import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
 
 interface GateSectionProps {
   tenantId: string;
   accountId: string;
   deviceId: string;
   terminalId: number;
+}
+
+/**
+ * Returns a rejection reason string if the card should be rejected,
+ * or null if the card passes the on-card status and blocked checks.
+ */
+function getCardRejectionReason(
+  payload: CardPayload,
+  blockedCheck: BlockedCheckResult,
+): string | null {
+  if (payload.identity.status !== CardStatus.ACTIVE) {
+    const statusNames: Record<number, string> = {
+      [CardStatus.BLOCKED_TAMPER]: "Kartu diblokir: terdeteksi manipulasi",
+      [CardStatus.BLOCKED_FRAUD]: "Kartu diblokir: terdeteksi penipuan",
+      [CardStatus.BLOCKED_EXPIRED]: "Kartu diblokir: kadaluarsa",
+      [CardStatus.BLOCKED_ADMIN]: "Kartu diblokir oleh admin",
+    };
+    return statusNames[payload.identity.status] ?? "Kartu tidak aktif";
+  }
+  if (blockedCheck.isBlocked) {
+    return blockedCheck.blockedReason ?? null;
+  }
+  return null;
 }
 
 export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateSectionProps) {
@@ -87,16 +112,10 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
 
     const payload = state.payload;
 
-    // Step 1: Check on-card status (immediate, no async needed)
+    // Step 1: Check on-card status and blocked check (immediate, no async needed)
     if (payload.identity.status !== CardStatus.ACTIVE) {
       autoCheckinTriggered.current = true;
-      const statusNames: Record<number, string> = {
-        [CardStatus.BLOCKED_TAMPER]: "Kartu diblokir: terdeteksi manipulasi",
-        [CardStatus.BLOCKED_FRAUD]: "Kartu diblokir: terdeteksi penipuan",
-        [CardStatus.BLOCKED_EXPIRED]: "Kartu diblokir: kadaluarsa",
-        [CardStatus.BLOCKED_ADMIN]: "Kartu diblokir oleh admin",
-      };
-      setCardRejectionReason(statusNames[payload.identity.status] ?? "Kartu tidak aktif");
+      setCardRejectionReason(getCardRejectionReason(payload, blockedCheck));
       return;
     }
 

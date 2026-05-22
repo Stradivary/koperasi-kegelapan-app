@@ -190,7 +190,9 @@ describe("readCard", () => {
 
   it("resolves ok=false when scan() rejects", async () => {
     class MockNDEFReader {
-      addEventListener() {}
+      addEventListener(_type: string, _handler: Function) {
+        // No-op mock — tests that don't need reading events use this
+      }
       scan() {
         return Promise.reject(new Error("Permission denied"));
       }

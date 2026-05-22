@@ -65,6 +65,60 @@ export interface UseUnifiedNfcReturn {
 }
 
 // ============================================================================
+// Helper: handlePayloadScan
+// ============================================================================
+
+/**
+ * Handles the valid_payload + payload-mode branch of the scan callback.
+ * Validates the session, runs the pipeline, and dispatches the result.
+ */
+async function handlePayloadScan(
+  signal: AbortSignal,
+  rawResult: RawNfcResult,
+  sessionGrantRef: { current: SessionGrant | null },
+  tenantIdRef: { current: string },
+  dispatch: (action: { type: string; [key: string]: unknown }) => void,
+  onCardReadRef: { current: ((payload: CardPayload, result: RawNfcResult) => void) | undefined },
+  onErrorRef: { current: ((error: import("../core/nfc/adapters/types").NfcError | import("../core/nfc/payloadTypes").PayloadError) => void) | undefined },
+): Promise<void> {
+  // Validate session before payload operations
+  const sessionValidation = validateSession(sessionGrantRef.current, tenantIdRef.current);
+
+  if (!sessionValidation.valid) {
+    const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+      code: sessionValidation.errorCode ?? "NO_SESSION",
+      message: sessionValidation.error ?? "Sesi tidak aktif",
+      tamperDetected: false,
+      recoverable: sessionValidation.errorCode === "SESSION_EXPIRED",
+    };
+    dispatch({ type: "ERROR", error: payloadError });
+    onErrorRef.current?.(payloadError);
+    return;
+  }
+
+  // Use pipelineEngine to read and validate the card
+  const pipelineResult = await readAndValidateCard(signal, sessionGrantRef.current!);
+
+  if (signal.aborted) return;
+
+  if (!pipelineResult.ok) {
+    const payloadError: import("../core/nfc/payloadTypes").PayloadError = {
+      code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
+      message: pipelineResult.error,
+      tamperDetected: pipelineResult.tamper ?? false,
+      recoverable: false,
+    };
+    dispatch({ type: "ERROR", error: payloadError });
+    onErrorRef.current?.(payloadError);
+    return;
+  }
+
+  // Dispatch VALIDATION_COMPLETE with the decoded payload
+  dispatch({ type: "VALIDATION_COMPLETE", payload: pipelineResult.payload });
+  onCardReadRef.current?.(pipelineResult.payload, rawResult);
+}
+
+// ============================================================================
 // Hook Implementation
 // ============================================================================
 
@@ -179,41 +233,16 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
 
       // If valid_payload and scanMode is "payload", validate/decrypt
       if (classification === "valid_payload" && scanModeRef.current === "payload") {
-        // Validate session before payload operations
-        const sessionValidation = validateSession(sessionGrantRef.current, tenantIdRef.current);
-
-        if (!sessionValidation.valid) {
-          const payloadError: PayloadError = {
-            code: sessionValidation.errorCode ?? "NO_SESSION",
-            message: sessionValidation.error ?? "Sesi tidak aktif",
-            tamperDetected: false,
-            recoverable: sessionValidation.errorCode === "SESSION_EXPIRED",
-          };
-          dispatch({ type: "ERROR", error: payloadError });
-          onErrorRef.current?.(payloadError);
-          return;
-        }
-
-        // Use pipelineEngine to read and validate the card
-        const pipelineResult = await readAndValidateCard(signal, sessionGrantRef.current!);
-
+        await handlePayloadScan(
+          signal,
+          result,
+          sessionGrantRef,
+          tenantIdRef,
+          dispatch,
+          onCardReadRef,
+          onErrorRef,
+        );
         if (signal.aborted) return;
-
-        if (!pipelineResult.ok) {
-          const payloadError: PayloadError = {
-            code: pipelineResult.tamper ? "VALIDATION_FAILED" : "DECRYPTION_FAILED",
-            message: pipelineResult.error,
-            tamperDetected: pipelineResult.tamper ?? false,
-            recoverable: false,
-          };
-          dispatch({ type: "ERROR", error: payloadError });
-          onErrorRef.current?.(payloadError);
-          return;
-        }
-
-        // Dispatch VALIDATION_COMPLETE with the decoded payload
-        dispatch({ type: "VALIDATION_COMPLETE", payload: pipelineResult.payload });
-        onCardReadRef.current?.(pipelineResult.payload, result);
       }
       // For non-payload classifications or raw mode, the state machine
       // already transitioned to "ready" via CLASSIFICATION_COMPLETE

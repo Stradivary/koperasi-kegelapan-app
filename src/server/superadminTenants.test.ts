@@ -13,14 +13,17 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("#/db", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
+      from: vi.fn(() => {
+        const whereChain = {
           get: vi.fn(() => undefined),
           all: vi.fn(() => []),
-        })),
-        get: vi.fn(() => undefined),
-        all: vi.fn(() => []),
-      })),
+        };
+        return {
+          where: vi.fn(() => whereChain),
+          get: vi.fn(() => undefined),
+          all: vi.fn(() => []),
+        };
+      }),
     })),
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => {
       const tx = {

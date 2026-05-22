@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import React from "react";
 
 export function getContext() {
   const queryClient = new QueryClient({
@@ -27,4 +28,7 @@ export function getContext() {
     queryClient,
   };
 }
-export default function TanstackQueryProvider() {}
+export default function TanstackQueryProvider({ children }: { children?: React.ReactNode }) {
+  // Provider wrapper — context is supplied via getContext()
+  return children ?? null;
+}

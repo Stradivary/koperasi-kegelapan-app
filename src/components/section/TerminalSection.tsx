@@ -16,12 +16,50 @@ import { FeedbackCard } from "../block/FeedbackCard";
 import { LoadingState } from "../block/LoadingState";
 import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
 import { Button } from "../ui/button";
+import type { CardPayload } from "../../core/payload/types";
+import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
 
 interface TerminalSectionProps {
   tenantId: string;
   accountId: string;
   deviceId: string;
   terminalId: number;
+}
+
+/**
+ * Returns a block reason string if the card should be blocked from checkout,
+ * or null if the card passes all checks.
+ */
+function getCheckoutBlockReason(
+  payload: CardPayload,
+  blockedCheck: BlockedCheckResult,
+  insufficientBalance: { fee: number; deficit: number; currentBalance: number } | null,
+): string | null {
+  if (blockedCheck.isBlocked) {
+    return blockedCheck.blockedReason ?? "Kartu diblokir";
+  }
+  if (insufficientBalance) {
+    return `Saldo tidak cukup. Perlu top-up Rp ${insufficientBalance.deficit.toLocaleString("id-ID")}`;
+  }
+  return null;
+}
+
+/**
+ * Returns true if the card is eligible for auto-checkout.
+ */
+function shouldAutoCheckout(
+  payload: CardPayload,
+  blockedCheck: BlockedCheckResult,
+  nowSeconds: number,
+): boolean {
+  if (!blockedCheck.isReady) return false;
+  const cardState = payload.wallet.state;
+  if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
+    return false;
+  }
+  const trigger = cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
+  const result = validateTransition(payload, trigger, nowSeconds);
+  return result.valid;
 }
 
 export function TerminalSection({
@@ -101,9 +139,7 @@ export function TerminalSection({
       return;
     }
 
-    const trigger = cardState === CardState.STATION_OPERATION ? "force_checkout" : "gate_checkout";
-    const result = validateTransition(payload, trigger, nowSeconds);
-    if (!result.valid) {
+    if (!shouldAutoCheckout(payload, blockedCheck, nowSeconds)) {
       autoCheckoutTriggered.current = true;
       return;
     }

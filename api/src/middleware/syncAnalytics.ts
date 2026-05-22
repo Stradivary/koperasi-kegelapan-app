@@ -73,6 +73,53 @@ function getEndpointLabel(pathname: string): string {
 }
 
 /**
+ * Parse the response body for push endpoints and extract accepted/rejected counts.
+ * Returns { acceptedCount, rejectedCount, responseSize, errorReason }.
+ */
+async function extractPushCounts(
+  endpoint: string,
+  response: Response,
+): Promise<{ acceptedCount: number; rejectedCount: number; responseSize: number; errorReason: string }> {
+  try {
+    const cloned = response.clone();
+    const body = await cloned.text();
+    const responseSize = body.length;
+    const parsed = JSON.parse(body);
+
+    let acceptedCount = 0;
+    let rejectedCount = 0;
+
+    if (endpoint === "sync/push") {
+      acceptedCount = parsed.accepted ?? 0;
+      rejectedCount = Array.isArray(parsed.rejected) ? parsed.rejected.length : 0;
+    } else if (endpoint === "sync/push-entities") {
+      acceptedCount = (parsed.membersAccepted ?? 0) + (parsed.cardsAccepted ?? 0);
+      rejectedCount =
+        (Array.isArray(parsed.membersRejected) ? parsed.membersRejected.length : 0) +
+        (Array.isArray(parsed.cardsRejected) ? parsed.cardsRejected.length : 0);
+    }
+
+    const errorReason = parsed.error ? String(parsed.error).slice(0, 100) : "";
+
+    return { acceptedCount, rejectedCount, responseSize, errorReason };
+  } catch {
+    // Non-critical — skip body parsing
+    return { acceptedCount: 0, rejectedCount: 0, responseSize: 0, errorReason: "" };
+  }
+}
+
+/**
+ * Return the final error reason string, falling back to an HTTP status label
+ * when no application-level error was captured.
+ */
+function buildErrorReason(status: number, errorReason: string): string {
+  if (status >= 400 && !errorReason) {
+    return `http_${status}`;
+  }
+  return errorReason;
+}
+
+/**
  * Analytics middleware for sync endpoints.
  *
  * Writes a data point to Cloudflare Analytics Engine after each request completes.
@@ -102,43 +149,17 @@ export const syncAnalytics = createMiddleware<{ Bindings: Env }>(async (c, next)
   const latencyMs = Date.now() - startTime;
   const status = c.res.status;
 
-  // Try to extract accepted/rejected counts from response body for push endpoints
-  let acceptedCount = 0;
-  let rejectedCount = 0;
-  let errorReason = "";
-  let responseSize = 0;
-
   // Clone response to read body without consuming it
   // Only attempt for JSON responses on push endpoints
-  if (endpoint.includes("push") && c.res.headers.get("content-type")?.includes("json")) {
-    try {
-      const cloned = c.res.clone();
-      const body = await cloned.text();
-      responseSize = body.length;
-      const parsed = JSON.parse(body);
+  const isPushJson =
+    endpoint.includes("push") && c.res.headers.get("content-type")?.includes("json");
 
-      if (endpoint === "sync/push") {
-        acceptedCount = parsed.accepted ?? 0;
-        rejectedCount = Array.isArray(parsed.rejected) ? parsed.rejected.length : 0;
-      } else if (endpoint === "sync/push-entities") {
-        acceptedCount = (parsed.membersAccepted ?? 0) + (parsed.cardsAccepted ?? 0);
-        rejectedCount =
-          (Array.isArray(parsed.membersRejected) ? parsed.membersRejected.length : 0) +
-          (Array.isArray(parsed.cardsRejected) ? parsed.cardsRejected.length : 0);
-      }
+  const { acceptedCount, rejectedCount, responseSize, errorReason: parsedErrorReason } =
+    isPushJson
+      ? await extractPushCounts(endpoint, c.res)
+      : { acceptedCount: 0, rejectedCount: 0, responseSize: 0, errorReason: "" };
 
-      if (parsed.error) {
-        errorReason = String(parsed.error).slice(0, 100);
-      }
-    } catch {
-      // Non-critical — skip body parsing
-    }
-  }
-
-  // For error responses without parsed body
-  if (status >= 400 && !errorReason) {
-    errorReason = `http_${status}`;
-  }
+  const errorReason = buildErrorReason(status, parsedErrorReason);
 
   // Write the analytics data point
   try {

@@ -302,17 +302,18 @@ function createMockDb() {
   const insertedValues: any[] = [];
   let updatedSets: any[] = [];
 
+  // Extracted chain builder for the where → orderBy/get/all chain
+  const makeWhereChain = () => ({
+    orderBy: vi.fn(() => ({ all: vi.fn(() => activeSessions) })),
+    get: vi.fn(() => sessionLookup),
+    all: vi.fn(() => activeSessions),
+  });
+
   // Build a chainable mock that mimics Drizzle's query builder pattern
   const db = {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          orderBy: vi.fn(() => ({
-            all: vi.fn(() => activeSessions),
-          })),
-          get: vi.fn(() => sessionLookup),
-          all: vi.fn(() => activeSessions),
-        })),
+        where: vi.fn(() => makeWhereChain()),
       })),
     })),
     insert: vi.fn(() => ({

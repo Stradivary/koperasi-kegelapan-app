@@ -250,6 +250,95 @@ async function pushEntitiesWithRetry(
   throw new Error(`Entity push failed after ${MAX_RETRY_ATTEMPTS} attempts: ${errorMsg}`);
 }
 
+// ── Batch push helpers ─────────────────────────────────────────────────
+
+/**
+ * Push one member batch (plus an optional card batch) to the server,
+ * mark accepted entries as synced, and return partial result counts.
+ */
+async function pushMemberBatch(
+  tenantId: string,
+  memberBatch: User[],
+  cardBatch: Card[],
+): Promise<{ membersAccepted: number; membersRejected: number; cardsAccepted: number; cardsRejected: number }> {
+  const payload: EntityPushPayload = {
+    tenantId,
+    members: memberBatch.map((m) => ({
+      userId: m.userId,
+      name: m.name,
+      status: m.status,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    })),
+    cards: cardBatch.map((c) => ({
+      cardId: c.cardId,
+      userId: c.userId,
+      status: c.status,
+      balance: c.balance,
+      counter: c.counter,
+      keyVersion: c.keyVersion,
+      createdAt: c.createdAt,
+      lastActivityAt: c.lastActivityAt,
+      expiresAt: c.expiresAt,
+      notes: c.notes,
+    })),
+  };
+
+  const response = await pushEntitiesWithRetry(payload, tenantId);
+
+  const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
+  const acceptedMemberIds = memberBatch.map((m) => m.userId).filter((id) => !rejectedMemberIds.has(id));
+  await markMembersSynced(tenantId, acceptedMemberIds);
+
+  const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
+  const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
+  await markCardsSynced(tenantId, acceptedCardIds);
+
+  return {
+    membersAccepted: response.membersAccepted,
+    membersRejected: response.membersRejected.length,
+    cardsAccepted: response.cardsAccepted,
+    cardsRejected: response.cardsRejected.length,
+  };
+}
+
+/**
+ * Push one card-only batch to the server, mark accepted cards as synced,
+ * and return partial result counts.
+ */
+async function pushCardBatch(
+  tenantId: string,
+  cardBatch: Card[],
+): Promise<{ cardsAccepted: number; cardsRejected: number }> {
+  const payload: EntityPushPayload = {
+    tenantId,
+    members: [],
+    cards: cardBatch.map((c) => ({
+      cardId: c.cardId,
+      userId: c.userId,
+      status: c.status,
+      balance: c.balance,
+      counter: c.counter,
+      keyVersion: c.keyVersion,
+      createdAt: c.createdAt,
+      lastActivityAt: c.lastActivityAt,
+      expiresAt: c.expiresAt,
+      notes: c.notes,
+    })),
+  };
+
+  const response = await pushEntitiesWithRetry(payload, tenantId);
+
+  const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
+  const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
+  await markCardsSynced(tenantId, acceptedCardIds);
+
+  return {
+    cardsAccepted: response.cardsAccepted,
+    cardsRejected: response.cardsRejected.length,
+  };
+}
+
 // ── Main Push Logic ────────────────────────────────────────────────────
 
 /**
@@ -337,85 +426,21 @@ async function _pushEntitiesInternal(
     const cardBatch = i === 0 ? pendingCards.slice(0, MAX_BATCH_SIZE) : [];
     if (i === 0) cardsSentWithMembers = cardBatch.length;
 
-    const payload: EntityPushPayload = {
-      tenantId,
-      members: memberBatch.map((m) => ({
-        userId: m.userId,
-        name: m.name,
-        status: m.status,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-      })),
-      cards: cardBatch.map((c) => ({
-        cardId: c.cardId,
-        userId: c.userId,
-        status: c.status,
-        balance: c.balance,
-        counter: c.counter,
-        keyVersion: c.keyVersion,
-        createdAt: c.createdAt,
-        lastActivityAt: c.lastActivityAt,
-        expiresAt: c.expiresAt,
-        notes: c.notes,
-      })),
-    };
-
-    const response = await pushEntitiesWithRetry(payload, tenantId);
-
-    result.membersAccepted += response.membersAccepted;
-    result.membersRejected += response.membersRejected.length;
-    result.cardsAccepted += response.cardsAccepted;
-    result.cardsRejected += response.cardsRejected.length;
-
-    // Mark accepted members as synced
-    const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
-    const acceptedMemberIds = memberBatch
-      .map((m) => m.userId)
-      .filter((id) => !rejectedMemberIds.has(id));
-    await markMembersSynced(tenantId, acceptedMemberIds);
-
-    // Mark accepted cards as synced
-    const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-    const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
-    await markCardsSynced(tenantId, acceptedCardIds);
+    const partial = await pushMemberBatch(tenantId, memberBatch, cardBatch);
+    result.membersAccepted += partial.membersAccepted;
+    result.membersRejected += partial.membersRejected;
+    result.cardsAccepted += partial.cardsAccepted;
+    result.cardsRejected += partial.cardsRejected;
   }
 
   // Push remaining cards that weren't included in member batches.
-  // This handles two cases:
-  // 1. pendingMembers is empty → cardsSentWithMembers is 0, so ALL cards need pushing
-  // 2. pendingCards > MAX_BATCH_SIZE → overflow cards beyond the first batch need pushing
   const remainingCardsStart = cardsSentWithMembers;
   if (remainingCardsStart < pendingCards.length) {
     for (let i = remainingCardsStart; i < pendingCards.length; i += MAX_BATCH_SIZE) {
       const cardBatch = pendingCards.slice(i, i + MAX_BATCH_SIZE);
-
-      const payload: EntityPushPayload = {
-        tenantId,
-        members: [],
-        cards: cardBatch.map((c) => ({
-          cardId: c.cardId,
-          userId: c.userId,
-          status: c.status,
-          balance: c.balance,
-          counter: c.counter,
-          keyVersion: c.keyVersion,
-          createdAt: c.createdAt,
-          lastActivityAt: c.lastActivityAt,
-          expiresAt: c.expiresAt,
-          notes: c.notes,
-        })),
-      };
-
-      const response = await pushEntitiesWithRetry(payload, tenantId);
-
-      result.cardsAccepted += response.cardsAccepted;
-      result.cardsRejected += response.cardsRejected.length;
-
-      const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-      const acceptedCardIds = cardBatch
-        .map((c) => c.cardId)
-        .filter((id) => !rejectedCardIds.has(id));
-      await markCardsSynced(tenantId, acceptedCardIds);
+      const partial = await pushCardBatch(tenantId, cardBatch);
+      result.cardsAccepted += partial.cardsAccepted;
+      result.cardsRejected += partial.cardsRejected;
     }
   }
 

@@ -28,7 +28,7 @@ function KioskLayoutRoute() {
 
   useEffect(() => {
     if (!tenantContext) return;
-    void checkPending();
+    checkPending();
   }, [checkPending, tenantContext]);
 
   if (loading || !tenantContext) return <TenantRoutePending />;

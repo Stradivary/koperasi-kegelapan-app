@@ -35,6 +35,45 @@ interface SettingsSectionProps {
   tenantId: string;
 }
 
+// ── Custom hooks ──────────────────────────────────────────────────────────────
+
+/**
+ * Polls devices every 30s when the devices panel is open.
+ */
+function useDevicePolling(devicesOpen: boolean, loadDevices: () => Promise<void>) {
+  const devicesIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (devicesOpen) {
+      devicesIntervalRef.current = setInterval(loadDevices, 30_000);
+    }
+    return () => {
+      if (devicesIntervalRef.current) {
+        clearInterval(devicesIntervalRef.current);
+        devicesIntervalRef.current = null;
+      }
+    };
+  }, [devicesOpen, loadDevices]);
+}
+
+/**
+ * Refreshes tenant profile, sync stats, and devices after a server sync completes.
+ */
+function usePostSyncRefresh(
+  isSyncingToServer: boolean,
+  loadTenantProfile: () => Promise<void>,
+  refreshSyncStats: () => Promise<void>,
+  loadDevices: () => Promise<void>,
+) {
+  useEffect(() => {
+    if (!isSyncingToServer) {
+      loadTenantProfile();
+      refreshSyncStats();
+      loadDevices();
+    }
+  }, [isSyncingToServer, loadDevices, loadTenantProfile, refreshSyncStats]);
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString("id-ID", {
     day: "2-digit",
@@ -137,7 +176,6 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [syncStats, setSyncStats] = useState<LocalSyncStats | null>(null);
   const [serverSyncCounts, setServerSyncCounts] = useState<ServerSyncCounts | null>(null);
-  const devicesIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentDeviceId = tenantContext?.deviceId ?? null;
   const displayedLastSyncedAt = syncEngine?.lastSyncedAt ?? tenantConfig?.syncedAt ?? null;
 
@@ -223,26 +261,10 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
   }, [tenantId, loadTenantProfile, refreshSyncStats, loadDevices]);
 
   // Poll devices every 30s for near-realtime updates
-  useEffect(() => {
-    if (devicesOpen) {
-      devicesIntervalRef.current = setInterval(loadDevices, 30_000);
-    }
-    return () => {
-      if (devicesIntervalRef.current) {
-        clearInterval(devicesIntervalRef.current);
-        devicesIntervalRef.current = null;
-      }
-    };
-  }, [devicesOpen, loadDevices]);
+  useDevicePolling(devicesOpen, loadDevices);
 
   // Refresh config after sync completes
-  useEffect(() => {
-    if (!isSyncingToServer) {
-      loadTenantProfile();
-      refreshSyncStats();
-      loadDevices();
-    }
-  }, [isSyncingToServer, loadDevices, loadTenantProfile, refreshSyncStats]);
+  usePostSyncRefresh(isSyncingToServer, loadTenantProfile, refreshSyncStats, loadDevices);
 
   useEffect(() => {
     if (!syncEngine?.lastSyncedAt) return;
