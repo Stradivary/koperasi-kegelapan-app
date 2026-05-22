@@ -112,7 +112,7 @@ export function LoginFormPanel({
             id="password"
             ref={passwordRef}
             value={password}
-            placeholder="••••••••"
+            placeholder="masukkan password"
             onChange={(event) => onPasswordChange(event.target.value)}
             autoComplete="current-password"
             required

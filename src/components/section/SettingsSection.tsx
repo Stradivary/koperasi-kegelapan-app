@@ -25,6 +25,7 @@ import {
   type LocalTenantConfig,
   type TenantContext,
 } from "../../lib/indexeddb";
+import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -125,7 +126,7 @@ function isCurrentServerDevice(
 }
 
 export function SettingsSection({ tenantId }: SettingsSectionProps) {
-  const { onSyncToServer, isSyncingToServer, syncStep, syncError } = useAdminTenantSync(tenantId);
+  const { onSyncToServer, isSyncingToServer, syncStep, syncError, syncConflict, retryWithChanges, resetSync } = useAdminTenantSync(tenantId);
   const syncEngine = useSyncEngineContext();
   const [tenantConfig, setTenantConfig] = useState<LocalTenantConfig | null>(null);
   const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
@@ -611,6 +612,19 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* ─── Sync Conflict Dialog ──────────────────────────────────────── */}
+      {syncConflict && (
+        <SyncConflictDialog
+          open={!!syncConflict}
+          conflict={syncConflict}
+          onDismiss={resetSync}
+          onRetryWithChanges={(newSlug: string, newAdminUsername: string) => {
+            retryWithChanges(newSlug, newAdminUsername);
+          }}
+          isRetrying={isSyncingToServer}
+        />
+      )}
     </div>
   );
 }

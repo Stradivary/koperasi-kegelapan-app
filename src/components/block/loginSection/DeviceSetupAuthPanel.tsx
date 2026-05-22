@@ -63,7 +63,7 @@ export function DeviceSetupAuthPanel({
             onChange={(event) => onPasswordChange(event.target.value)}
             autoComplete="current-password"
             required
-            placeholder="••••••••"
+            placeholder="masukkan password"
             className="h-11"
           />
         </div>

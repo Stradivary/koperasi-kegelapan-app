@@ -18,7 +18,7 @@ import {
   localAccountStore,
   type LocalTenantConfig,
 } from "../lib/indexeddb";
-import { useTenantSync } from "./useTenantSync";
+import { useTenantSync, type SyncConflict } from "./useTenantSync";
 import { syncPushMembers, syncPushCards } from "../lib/syncPushEntities";
 import { syncPush } from "../lib/syncPush";
 import { toast } from "sonner";
@@ -39,13 +39,19 @@ export interface UseAdminTenantSyncReturn {
   syncStep: SyncStep | null;
   /** Error message if any step in the sequence failed */
   syncError: string | null;
+  /** Conflict data when server returns a 409 slug/admin conflict */
+  syncConflict: SyncConflict | null;
+  /** Retry the tenant sync with a new slug and/or admin username */
+  retryWithChanges: (newSlug: string, newAdminUsername: string) => Promise<void>;
+  /** Reset conflict/error state */
+  resetSync: () => void;
 }
 
 export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
   const [localConfig, setLocalConfig] = useState<LocalTenantConfig | null>(null);
   const [syncStep, setSyncStep] = useState<SyncStep | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const { status, syncToServer } = useTenantSync();
+  const { status, conflict, syncToServer, retryWithChanges, reset } = useTenantSync();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -133,5 +139,8 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
     isSyncingToServer: status === "syncing" || (syncStep !== null && syncStep !== "complete"),
     syncStep,
     syncError,
+    syncConflict: conflict,
+    retryWithChanges,
+    resetSync: reset,
   };
 }

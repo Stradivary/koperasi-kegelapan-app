@@ -358,7 +358,7 @@ export function TenantCreateDialog({
             <Input
               id="admin-password"
               type="password"
-              placeholder="••••••••"
+              placeholder="masukkan password"
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
               onBlur={() => handleBlur("adminPassword")}
