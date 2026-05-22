@@ -216,6 +216,7 @@ export function LoginSection() {
             scout: `/tenant/${activeCtx.tenantId}/scout`,
             station: `/tenant/${activeCtx.tenantId}/station`,
             admin: `/tenant/${activeCtx.tenantId}/admin`,
+            superadmin: `/superadmin`,
           };
           navigate({ to: roleRoutes[activeCtx.role] ?? "/", replace: true });
           return;
@@ -235,6 +236,7 @@ export function LoginSection() {
       scout: `/tenant/${tenantId}/scout`,
       station: `/tenant/${tenantId}/station`,
       admin: `/tenant/${tenantId}/admin`,
+      superadmin: `/superadmin`,
     };
     navigate({ to: roleRoutes[role] ?? "/" });
   }
