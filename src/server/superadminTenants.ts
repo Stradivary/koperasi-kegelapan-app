@@ -6,6 +6,7 @@ import {
   validateName,
   validateTimezone,
   validateAdminUsername,
+  buildConflictResult,
   type ValidationError,
 } from "./tenantSync";
 import { hashPassword } from "./auth";
@@ -187,39 +188,6 @@ export async function getTenantDetail(
 // ─── Create Tenant ───────────────────────────────────────────────────────────
 
 /**
- * Build the conflict data object for a 409 response.
- */
-function buildConflictResponse(
-  existingBySlug: { slug: string; name: string } | undefined,
-  existingByAdmin: { tenantId: string } | undefined,
-  conflictTenant?: { slug: string; name: string } | undefined,
-): CreateTenantConflict {
-  if (existingBySlug !== undefined && existingByAdmin !== undefined) {
-    return {
-      error: "conflict",
-      conflictType: "slug_and_admin",
-      existingTenantName: existingBySlug.name,
-      existingSlug: existingBySlug.slug,
-    };
-  }
-  if (existingBySlug !== undefined) {
-    return {
-      error: "conflict",
-      conflictType: "slug_only",
-      existingTenantName: existingBySlug.name,
-      existingSlug: existingBySlug.slug,
-    };
-  }
-  // admin_only
-  return {
-    error: "conflict",
-    conflictType: "admin_only",
-    existingTenantName: conflictTenant?.name ?? "Unknown",
-    existingSlug: conflictTenant?.slug ?? "",
-  };
-}
-
-/**
  * Re-check slug and admin username after a UNIQUE constraint violation.
  * Returns the conflict data object, or null if neither constraint can be confirmed.
  */
@@ -251,7 +219,7 @@ async function handleRaceConflict(
       .get();
   }
 
-  return buildConflictResponse(recheckSlug, recheckUsername, conflictTenant);
+  return buildConflictResult(recheckSlug, recheckUsername, conflictTenant);
 }
 
 /**
@@ -365,7 +333,7 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
     }
     return {
       status: 409,
-      data: buildConflictResponse(existingBySlug, existingByUsername, conflictTenant),
+      data: buildConflictResult(existingBySlug, existingByUsername, conflictTenant),
     };
   }
 

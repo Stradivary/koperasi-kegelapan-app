@@ -3,7 +3,6 @@
  */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import React from "react";
 
 // Import components to get coverage
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "../collapsible";
@@ -96,7 +95,7 @@ describe("UI Components", () => {
           </SelectTrigger>
         </Select>,
       );
-      const trigger = container.querySelector('[data-slot="select-trigger"]');
+      const trigger = container.querySelector('[data-slot="select-trigger"]') as any;
       expect(trigger?.dataset.size).toBe("sm");
     });
   });

@@ -27,24 +27,6 @@ interface TerminalSectionProps {
 }
 
 /**
- * Returns a block reason string if the card should be blocked from checkout,
- * or null if the card passes all checks.
- */
-function getCheckoutBlockReason(
-  payload: CardPayload,
-  blockedCheck: BlockedCheckResult,
-  insufficientBalance: { fee: number; deficit: number; currentBalance: number } | null,
-): string | null {
-  if (blockedCheck.isBlocked) {
-    return blockedCheck.blockedReason ?? "Kartu diblokir";
-  }
-  if (insufficientBalance) {
-    return `Saldo tidak cukup. Perlu top-up Rp ${insufficientBalance.deficit.toLocaleString("id-ID")}`;
-  }
-  return null;
-}
-
-/**
  * Returns true if the card is eligible for auto-checkout.
  */
 function shouldAutoCheckout(

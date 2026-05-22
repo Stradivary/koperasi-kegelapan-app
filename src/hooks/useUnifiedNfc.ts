@@ -19,7 +19,12 @@ import { GenericNfcLayer } from "../core/nfc/genericNfcLayer";
 import type { PayloadError } from "../core/nfc/payloadTypes";
 import { prepareWrite, commitWrite, readAndValidateCard } from "../core/nfc/pipelineEngine";
 import { validateSession } from "../core/nfc/sessionValidator";
-import { nfcReducer, initialNfcState, type NfcState } from "../core/nfc/stateMachine";
+import {
+  nfcReducer,
+  initialNfcState,
+  type NfcAction,
+  type NfcState,
+} from "../core/nfc/stateMachine";
 import type { RawNfcResult } from "../core/nfc/types";
 import type { CardPayload, SessionGrant } from "../core/payload/types";
 
@@ -77,7 +82,7 @@ async function handlePayloadScan(
   rawResult: RawNfcResult,
   sessionGrantRef: { current: SessionGrant | null },
   tenantIdRef: { current: string },
-  dispatch: (action: { type: string; [key: string]: unknown }) => void,
+  dispatch: (action: NfcAction) => void,
   onCardReadRef: { current: ((payload: CardPayload, result: RawNfcResult) => void) | undefined },
   onErrorRef: { current: ((error: NfcError | PayloadError) => void) | undefined },
 ): Promise<void> {

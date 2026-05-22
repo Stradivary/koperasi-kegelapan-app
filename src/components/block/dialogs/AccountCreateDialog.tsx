@@ -62,7 +62,6 @@ const VALID_ROLES = [
   { value: "terminal", label: "Terminal" },
   { value: "scout", label: "Scout" },
   { value: "superadmin", label: "Superadmin" },
-  { value: "kiosk", label: "Kiosk" },
 ];
 
 function validateUsername(username: string): string | null {

@@ -30,30 +30,34 @@ function arraysEqual(left: Uint8Array, right: Uint8Array): boolean {
   return true;
 }
 
+/**
+ * Decrypt and reassemble a raw NFC card buffer if version >= 2.
+ * Returns the decodable (plaintext) buffer.
+ */
+async function decryptRawCard(raw: Uint8Array, grant: SessionGrant): Promise<Uint8Array> {
+  const version = raw[4];
+  if (version < 2) return raw;
+
+  const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
+  const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
+  const cardId = raw.slice(6, 12);
+  const decryptedBuf = await decryptCardBody(
+    raw.slice(0, BUFFER_SIZE),
+    grant.sessionKey,
+    cardId,
+    BigInt(counterBind),
+  );
+  const full = new Uint8Array(WIRE_SIZE);
+  full.set(decryptedBuf, 0);
+  full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
+  return full;
+}
+
 async function decodeCardPayloadForVerification(
   raw: Uint8Array,
   grant: SessionGrant,
 ): Promise<CardPayload> {
-  const version = raw[4];
-  let decodableRaw = raw;
-
-  if (version >= 2) {
-    const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
-    const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
-    const cardId = raw.slice(6, 12);
-    const decryptedBuf = await decryptCardBody(
-      raw.slice(0, BUFFER_SIZE),
-      grant.sessionKey,
-      cardId,
-      BigInt(counterBind),
-    );
-    const full = new Uint8Array(WIRE_SIZE);
-    full.set(decryptedBuf, 0);
-    full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
-    decodableRaw = full;
-  }
-
-  return decodePayload(decodableRaw);
+  return decodePayload(await decryptRawCard(raw, grant));
 }
 
 async function verifyWrittenPayload(
@@ -139,24 +143,7 @@ async function decodeAndValidateCard(
   lenient: boolean,
   signal: AbortSignal,
 ): Promise<CardValidationResult> {
-  const version = raw[4];
-  let decodableRaw = raw;
-  if (version >= 2) {
-    const trailerView = new DataView(raw.buffer, raw.byteOffset + BUFFER_SIZE);
-    const counterBind = trailerView.getUint32(TRAILER_COUNTER_BIND, true);
-    const cardId = raw.slice(6, 12);
-    const decryptedBuf = await decryptCardBody(
-      raw.slice(0, BUFFER_SIZE),
-      grant.sessionKey,
-      cardId,
-      BigInt(counterBind),
-    );
-    const full = new Uint8Array(WIRE_SIZE);
-    full.set(decryptedBuf, 0);
-    full.set(raw.slice(BUFFER_SIZE), BUFFER_SIZE);
-    decodableRaw = full;
-  }
-
+  const decodableRaw = await decryptRawCard(raw, grant);
   const payload = decodePayload(decodableRaw);
   const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
 
@@ -213,6 +200,65 @@ async function decodeAndValidateCard(
   }
 
   return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+}
+
+interface RecordCardWriteParams {
+  tenantId: string;
+  terminalId: number;
+  operationType: string;
+  currentPayload: CardPayload;
+  updatedPayload: CardPayload;
+}
+
+/**
+ * Record a completed card write to the reconciliation outbox and transaction log.
+ * The transaction log write is non-critical — failures are silently swallowed.
+ */
+async function recordCardWrite({
+  tenantId,
+  terminalId,
+  operationType,
+  currentPayload,
+  updatedPayload,
+}: RecordCardWriteParams): Promise<void> {
+  const cardIdHex = Array.from(updatedPayload.header.cardId)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const lastHash = Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const amount = currentPayload.wallet.balance - updatedPayload.wallet.balance;
+
+  await reconciliationOutbox.add({
+    tenantId,
+    terminalId,
+    cardId: cardIdHex,
+    counter: Number(updatedPayload.wallet.counter),
+    type: operationType,
+    amount,
+    balanceAfter: updatedPayload.wallet.balance,
+    timestamp: updatedPayload.wallet.lastTimestamp,
+    hash: lastHash,
+    idempotencyKey: makeIdempotencyKey(tenantId, cardIdHex, Number(updatedPayload.wallet.counter)),
+  });
+
+  try {
+    await recordTransaction({
+      tenantId,
+      cardId: cardIdHex,
+      userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
+      counter: Number(updatedPayload.wallet.counter),
+      type: operationType as TransactionOperationType,
+      amount: Math.abs(amount),
+      balanceAfter: updatedPayload.wallet.balance,
+      timestamp: updatedPayload.wallet.lastTimestamp,
+      hash: lastHash,
+      terminalId,
+      deviceId: null,
+    });
+  } catch {
+    /* Non-critical */
+  }
 }
 
 export interface NfcCardState {
@@ -359,6 +405,35 @@ export function useNfcCard(
     const reader = new NDEFReader();
     readerRef.current = reader;
 
+    // ── Local helper: handle post-write transient read errors ───────────────
+    // Shows an error and auto-resets to idle after 3s (Req 9.2).
+    function handlePostWriteReadError(isPostWriteReadError: boolean): void {
+      phaseRef.current = "error";
+      setState((s) => ({
+        ...s,
+        phase: "error",
+        payload: null,
+        error: isPostWriteReadError
+          ? "Lepas kartu sebentar lalu tap ulang"
+          : UNREGISTERED_CARD_MESSAGE,
+        tamperDetected: false,
+      }));
+      if (isPostWriteReadError) {
+        clearPostWriteAutoReset();
+        postWriteAutoResetRef.current = setTimeout(() => {
+          phaseRef.current = "idle";
+          setState({
+            phase: "idle",
+            payload: null,
+            serialNumber: null,
+            error: null,
+            tamperDetected: false,
+            warning: null,
+          });
+        }, 3000);
+      }
+    }
+
     reader.addEventListener("reading", async (event: NDEFReadingEvent) => {
       const phase = phaseRef.current;
 
@@ -418,55 +493,13 @@ export function useNfcCard(
                 },
                 { signal, overwrite: true },
               );
-              const cardIdHex = Array.from(pending.updatedPayload.header.cardId)
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join("");
-              await reconciliationOutbox.add({
+              await recordCardWrite({
                 tenantId,
                 terminalId,
-                cardId: cardIdHex,
-                counter: Number(pending.updatedPayload.wallet.counter),
-                type: pending.operationType,
-                amount:
-                  pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
-                balanceAfter: pending.updatedPayload.wallet.balance,
-                timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                hash: Array.from(
-                  pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
-                )
-                  .map((b) => b.toString(16).padStart(2, "0"))
-                  .join(""),
-                idempotencyKey: makeIdempotencyKey(
-                  tenantId,
-                  cardIdHex,
-                  Number(pending.updatedPayload.wallet.counter),
-                ),
+                operationType: pending.operationType,
+                currentPayload: pending.currentPayload,
+                updatedPayload: pending.updatedPayload,
               });
-              try {
-                await recordTransaction({
-                  tenantId,
-                  cardId: cardIdHex,
-                  userId: pending.updatedPayload.identity.userId
-                    ? pending.updatedPayload.identity.userId
-                    : null,
-                  counter: Number(pending.updatedPayload.wallet.counter),
-                  type: pending.operationType as TransactionOperationType,
-                  amount: Math.abs(
-                    pending.currentPayload.wallet.balance - pending.updatedPayload.wallet.balance,
-                  ),
-                  balanceAfter: pending.updatedPayload.wallet.balance,
-                  timestamp: pending.updatedPayload.wallet.lastTimestamp,
-                  hash: Array.from(
-                    pending.updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6),
-                  )
-                    .map((b) => b.toString(16).padStart(2, "0"))
-                    .join(""),
-                  terminalId,
-                  deviceId: null,
-                });
-              } catch {
-                /* Non-critical */
-              }
               await verifyWrittenPayload(pending.payload, grant!);
               phaseRef.current = "success";
               setState({
@@ -505,30 +538,7 @@ export function useNfcCard(
       if (!raw) {
         const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
         const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
-        phaseRef.current = "error";
-        setState((s) => ({
-          ...s,
-          phase: "error",
-          payload: null,
-          error: isPostWriteReadError
-            ? "Lepas kartu sebentar lalu tap ulang"
-            : UNREGISTERED_CARD_MESSAGE,
-          tamperDetected: false,
-        }));
-        if (isPostWriteReadError) {
-          clearPostWriteAutoReset();
-          postWriteAutoResetRef.current = setTimeout(() => {
-            phaseRef.current = "idle";
-            setState({
-              phase: "idle",
-              payload: null,
-              serialNumber: null,
-              error: null,
-              tamperDetected: false,
-              warning: null,
-            });
-          }, 3000);
-        }
+        handlePostWriteReadError(isPostWriteReadError);
         return;
       }
 
@@ -566,30 +576,7 @@ export function useNfcCard(
         if (signal.aborted) return;
         const timeSinceWrite = Date.now() - lastWriteTimestamp.current;
         const isPostWriteReadError = timeSinceWrite < 10_000 && lastWriteTimestamp.current > 0;
-        phaseRef.current = "error";
-        setState((s) => ({
-          ...s,
-          phase: "error",
-          payload: null,
-          error: isPostWriteReadError
-            ? "Lepas kartu sebentar lalu tap ulang"
-            : UNREGISTERED_CARD_MESSAGE,
-          tamperDetected: false,
-        }));
-        if (isPostWriteReadError) {
-          clearPostWriteAutoReset();
-          postWriteAutoResetRef.current = setTimeout(() => {
-            phaseRef.current = "idle";
-            setState({
-              phase: "idle",
-              payload: null,
-              serialNumber: null,
-              error: null,
-              tamperDetected: false,
-              warning: null,
-            });
-          }, 3000);
-        }
+        handlePostWriteReadError(isPostWriteReadError);
       }
     }
 
@@ -615,46 +602,13 @@ export function useNfcCard(
           },
           { signal, overwrite: true },
         );
-        const cardIdHex = Array.from(updatedPayload.header.cardId)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-        await reconciliationOutbox.add({
+        await recordCardWrite({
           tenantId,
           terminalId,
-          cardId: cardIdHex,
-          counter: Number(updatedPayload.wallet.counter),
-          type: pending.operationType,
-          amount: currentPayload.wallet.balance - updatedPayload.wallet.balance,
-          balanceAfter: updatedPayload.wallet.balance,
-          timestamp: updatedPayload.wallet.lastTimestamp,
-          hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join(""),
-          idempotencyKey: makeIdempotencyKey(
-            tenantId,
-            cardIdHex,
-            Number(updatedPayload.wallet.counter),
-          ),
+          operationType: pending.operationType,
+          currentPayload,
+          updatedPayload,
         });
-        try {
-          await recordTransaction({
-            tenantId,
-            cardId: cardIdHex,
-            userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
-            counter: Number(updatedPayload.wallet.counter),
-            type: pending.operationType as TransactionOperationType,
-            amount: Math.abs(currentPayload.wallet.balance - updatedPayload.wallet.balance),
-            balanceAfter: updatedPayload.wallet.balance,
-            timestamp: updatedPayload.wallet.lastTimestamp,
-            hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join(""),
-            terminalId,
-            deviceId: null,
-          });
-        } catch {
-          /* Non-critical */
-        }
         phaseRef.current = "success";
         setState({
           phase: "success",
@@ -731,55 +685,13 @@ export function useNfcCard(
             );
 
             // Write succeeded immediately — record to outbox and finish
-            const cardIdHex = Array.from(updatedPayload.header.cardId)
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("");
-
-            await reconciliationOutbox.add({
+            await recordCardWrite({
               tenantId,
               terminalId,
-              cardId: cardIdHex,
-              counter: Number(updatedPayload.wallet.counter),
-              type: operationType,
-              amount: currentPayload.wallet.balance - updatedPayload.wallet.balance,
-              balanceAfter: updatedPayload.wallet.balance,
-              timestamp: updatedPayload.wallet.lastTimestamp,
-              hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
-                .map((b) => b.toString(16).padStart(2, "0"))
-                .join(""),
-              idempotencyKey: makeIdempotencyKey(
-                tenantId,
-                cardIdHex,
-                Number(updatedPayload.wallet.counter),
-              ),
+              operationType,
+              currentPayload,
+              updatedPayload,
             });
-
-            // Also record to Dexie transactionLog for sync push
-            try {
-              await recordTransaction({
-                tenantId,
-                cardId: cardIdHex,
-                userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
-                counter: Number(updatedPayload.wallet.counter),
-                type: operationType as
-                  | "debit"
-                  | "credit"
-                  | "checkin"
-                  | "checkout"
-                  | "topup"
-                  | "admin",
-                amount: Math.abs(currentPayload.wallet.balance - updatedPayload.wallet.balance),
-                balanceAfter: updatedPayload.wallet.balance,
-                timestamp: updatedPayload.wallet.lastTimestamp,
-                hash: Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
-                  .map((b) => b.toString(16).padStart(2, "0"))
-                  .join(""),
-                terminalId,
-                deviceId: null,
-              });
-            } catch {
-              // Duplicate or write error — non-critical, reconciliation outbox is the primary
-            }
 
             await verifyWrittenPayload(payload, grant);
 

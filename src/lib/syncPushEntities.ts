@@ -82,6 +82,39 @@ function calculateBackoff(attempt: number): number {
   return Math.min(delay, MAX_BACKOFF_MS);
 }
 
+function toWireMember(m: User): PushMemberEntry {
+  return {
+    userId: m.userId,
+    name: m.name,
+    status: m.status,
+    createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
+  };
+}
+
+function toWireCard(c: Card): PushCardEntry {
+  return {
+    cardId: c.cardId,
+    userId: c.userId,
+    status: c.status,
+    balance: c.balance,
+    counter: c.counter,
+    keyVersion: c.keyVersion,
+    createdAt: c.createdAt,
+    lastActivityAt: c.lastActivityAt,
+    expiresAt: c.expiresAt,
+    notes: c.notes,
+  };
+}
+
+function filterAccepted<T>(
+  batch: T[],
+  getId: (item: T) => string,
+  rejectedIds: Set<string>,
+): string[] {
+  return batch.map(getId).filter((id) => !rejectedIds.has(id));
+}
+
 // ── Query pending entities ─────────────────────────────────────────────
 
 /**
@@ -268,38 +301,23 @@ async function pushMemberBatch(
 }> {
   const payload: EntityPushPayload = {
     tenantId,
-    members: memberBatch.map((m) => ({
-      userId: m.userId,
-      name: m.name,
-      status: m.status,
-      createdAt: m.createdAt,
-      updatedAt: m.updatedAt,
-    })),
-    cards: cardBatch.map((c) => ({
-      cardId: c.cardId,
-      userId: c.userId,
-      status: c.status,
-      balance: c.balance,
-      counter: c.counter,
-      keyVersion: c.keyVersion,
-      createdAt: c.createdAt,
-      lastActivityAt: c.lastActivityAt,
-      expiresAt: c.expiresAt,
-      notes: c.notes,
-    })),
+    members: memberBatch.map(toWireMember),
+    cards: cardBatch.map(toWireCard),
   };
 
   const response = await pushEntitiesWithRetry(payload, tenantId);
 
   const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
-  const acceptedMemberIds = memberBatch
-    .map((m) => m.userId)
-    .filter((id) => !rejectedMemberIds.has(id));
-  await markMembersSynced(tenantId, acceptedMemberIds);
+  await markMembersSynced(
+    tenantId,
+    filterAccepted(memberBatch, (m) => m.userId, rejectedMemberIds),
+  );
 
   const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-  const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
-  await markCardsSynced(tenantId, acceptedCardIds);
+  await markCardsSynced(
+    tenantId,
+    filterAccepted(cardBatch, (c) => c.cardId, rejectedCardIds),
+  );
 
   return {
     membersAccepted: response.membersAccepted,
@@ -320,25 +338,16 @@ async function pushCardBatch(
   const payload: EntityPushPayload = {
     tenantId,
     members: [],
-    cards: cardBatch.map((c) => ({
-      cardId: c.cardId,
-      userId: c.userId,
-      status: c.status,
-      balance: c.balance,
-      counter: c.counter,
-      keyVersion: c.keyVersion,
-      createdAt: c.createdAt,
-      lastActivityAt: c.lastActivityAt,
-      expiresAt: c.expiresAt,
-      notes: c.notes,
-    })),
+    cards: cardBatch.map(toWireCard),
   };
 
   const response = await pushEntitiesWithRetry(payload, tenantId);
 
   const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-  const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
-  await markCardsSynced(tenantId, acceptedCardIds);
+  await markCardsSynced(
+    tenantId,
+    filterAccepted(cardBatch, (c) => c.cardId, rejectedCardIds),
+  );
 
   return {
     cardsAccepted: response.cardsAccepted,
@@ -544,13 +553,7 @@ async function _pushMembersInternal(
 
     const payload: EntityPushPayload = {
       tenantId,
-      members: memberBatch.map((m) => ({
-        userId: m.userId,
-        name: m.name,
-        status: m.status,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-      })),
+      members: memberBatch.map(toWireMember),
       cards: [],
     };
 
@@ -561,10 +564,10 @@ async function _pushMembersInternal(
 
     // Mark accepted members as synced
     const rejectedMemberIds = new Set(response.membersRejected.map((r) => r.userId));
-    const acceptedMemberIds = memberBatch
-      .map((m) => m.userId)
-      .filter((id) => !rejectedMemberIds.has(id));
-    await markMembersSynced(tenantId, acceptedMemberIds);
+    await markMembersSynced(
+      tenantId,
+      filterAccepted(memberBatch, (m) => m.userId, rejectedMemberIds),
+    );
   }
 
   return result;
@@ -582,18 +585,7 @@ async function _pushCardsInternal(tenantId: string, pendingCards: Card[]): Promi
     const payload: EntityPushPayload = {
       tenantId,
       members: [],
-      cards: cardBatch.map((c) => ({
-        cardId: c.cardId,
-        userId: c.userId,
-        status: c.status,
-        balance: c.balance,
-        counter: c.counter,
-        keyVersion: c.keyVersion,
-        createdAt: c.createdAt,
-        lastActivityAt: c.lastActivityAt,
-        expiresAt: c.expiresAt,
-        notes: c.notes,
-      })),
+      cards: cardBatch.map(toWireCard),
     };
 
     const response = await pushEntitiesWithRetry(payload, tenantId);
@@ -603,8 +595,10 @@ async function _pushCardsInternal(tenantId: string, pendingCards: Card[]): Promi
 
     // Mark accepted cards as synced
     const rejectedCardIds = new Set(response.cardsRejected.map((r) => r.cardId));
-    const acceptedCardIds = cardBatch.map((c) => c.cardId).filter((id) => !rejectedCardIds.has(id));
-    await markCardsSynced(tenantId, acceptedCardIds);
+    await markCardsSynced(
+      tenantId,
+      filterAccepted(cardBatch, (c) => c.cardId, rejectedCardIds),
+    );
   }
 
   return result;

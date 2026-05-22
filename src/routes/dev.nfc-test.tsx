@@ -164,7 +164,8 @@ function NfcTestPage() {
     }
     let raw: Uint8Array | undefined;
     try {
-      const expiresAt = Math.floor(Date.now() / 1000) + Number.parseInt(payloadExpiresOffset, 10) * 86400;
+      const expiresAt =
+        Math.floor(Date.now() / 1000) + Number.parseInt(payloadExpiresOffset, 10) * 86400;
       const payload = makeFreshCard({
         name: payloadName,
         userId: payloadUserId,
@@ -188,7 +189,7 @@ function NfcTestPage() {
             const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
             const bin = atob(padded);
             const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i)!;
             return bytes;
           };
           const grant: SessionGrant = {

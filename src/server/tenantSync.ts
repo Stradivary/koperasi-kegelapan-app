@@ -218,9 +218,10 @@ export function validateSyncRequest(body: unknown): ValidationError[] {
 }
 
 /**
- * Build a SyncConflictResponse from pre-fetched conflict data.
+ * Build a conflict response from pre-fetched conflict data.
+ * Shared by both tenant sync and superadmin tenant creation flows.
  */
-function buildConflictResult(
+export function buildConflictResult(
   existingBySlug: { slug: string; name: string } | undefined,
   existingByAdmin: { tenantId: string } | undefined,
   conflictTenant?: { slug: string; name: string } | undefined,

@@ -276,6 +276,8 @@ describe("enforceBlockOnCheckin", () => {
 
   it("returns allowed=true when card is not blocked", async () => {
     const { checkBlocked } = await import("../../validation/blockEnforcer");
+
+    // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: false, errorCode: "ACTIVE" });
 
     const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload());
@@ -287,6 +289,7 @@ describe("enforceBlockOnCheckin", () => {
     vi.mocked(checkBlocked).mockResolvedValue({
       blocked: true,
       message: "Kartu diblokir karena tamper",
+      // @ts-expect-error expected for test purposes
       errorCode: "BLOCKED_TAMPER",
     });
 
@@ -300,6 +303,7 @@ describe("enforceBlockOnCheckin", () => {
 
   it("uses default error message when blocked but no message provided", async () => {
     const { checkBlocked } = await import("../../validation/blockEnforcer");
+    // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: true, errorCode: "BLOCKED_ADMIN" });
 
     const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(4));
@@ -316,6 +320,7 @@ describe("enforceBlockOnCheckout", () => {
 
   it("returns allowed=true when card is not blocked", async () => {
     const { checkBlocked } = await import("../../validation/blockEnforcer");
+    // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: false, errorCode: "ACTIVE" });
 
     const result = await enforceBlockOnCheckout("tenant-1", "card-1", makePayload());
@@ -327,6 +332,7 @@ describe("enforceBlockOnCheckout", () => {
     vi.mocked(checkBlocked).mockResolvedValue({
       blocked: true,
       message: "Kartu diblokir",
+      // @ts-expect-error expected for test purposes
       errorCode: "BLOCKED_FRAUD",
     });
 
@@ -343,6 +349,7 @@ describe("enforceBlockSync", () => {
 
   it("returns allowed=true when card is not blocked", async () => {
     const { checkBlockedSync } = await import("../../validation/blockEnforcer");
+    // @ts-expect-error expected for test purposes
     vi.mocked(checkBlockedSync).mockReturnValue({ blocked: false, errorCode: "ACTIVE" });
 
     const result = enforceBlockSync(makePayload());
@@ -354,6 +361,7 @@ describe("enforceBlockSync", () => {
     vi.mocked(checkBlockedSync).mockReturnValue({
       blocked: true,
       message: "Kartu expired",
+      // @ts-expect-error expected for test purposes
       errorCode: "BLOCKED_EXPIRED",
     });
 
@@ -367,6 +375,7 @@ describe("enforceBlockSync", () => {
 
   it("uses default error message when blocked but no message provided", async () => {
     const { checkBlockedSync } = await import("../../validation/blockEnforcer");
+    // @ts-expect-error expected for test purposes
     vi.mocked(checkBlockedSync).mockReturnValue({ blocked: true, errorCode: "BLOCKED_ADMIN" });
 
     const result = enforceBlockSync(makePayload(4));

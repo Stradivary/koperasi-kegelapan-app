@@ -231,6 +231,8 @@ describe("api module", () => {
 
     it("returns false when no token available", async () => {
       setAccessToken(null);
+
+      // @ts-expect-error Null is expected for test purposes
       vi.mocked(authTokenCacheStore.get).mockResolvedValue(null);
       const result = await restoreAuthState("dev1");
       expect(result).toBe(false);

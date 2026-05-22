@@ -88,7 +88,7 @@ async function fetchDevGrant(tenantId: string): Promise<SessionGrant> {
     const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
     const bin = atob(padded);
     const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i)!;
     return bytes;
   };
   return {

@@ -63,7 +63,7 @@ superadminRoutes.post("/tenants", async (c) => {
 
   try {
     const result = await createTenant(body);
-    return c.json(result.data, result.status as 201 | 400 | 409);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[POST /api/superadmin/tenants] createTenant failed:", msg);
@@ -85,7 +85,7 @@ superadminRoutes.get("/tenants/:tenantId", async (c) => {
 
   try {
     const result = await getTenantDetail(tenantId);
-    return c.json(result.data, result.status as 200 | 404);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[GET /api/superadmin/tenants/${tenantId}] getTenantDetail failed:`, msg);
@@ -116,7 +116,7 @@ superadminRoutes.patch("/tenants/:tenantId/status", async (c) => {
 
   try {
     const result = await updateTenantStatus(tenantId, targetStatus as TenantStatus);
-    return c.json(result.data, result.status as 200 | 404 | 422);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return c.json({ error: `Internal server error: ${msg}` }, 500);
@@ -279,7 +279,7 @@ superadminRoutes.post("/accounts", async (c) => {
 
   try {
     const result = await createAccount(body);
-    return c.json(result.data, result.status as 201 | 400 | 409);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[POST /api/superadmin/accounts] createAccount failed:", msg);
@@ -302,7 +302,7 @@ superadminRoutes.patch("/accounts/:accountId/status", async (c) => {
 
   try {
     const result = await updateAccountStatus({ accountId, status: body.status });
-    return c.json(result.data, result.status as 200 | 400 | 404);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[PATCH /api/superadmin/accounts/${accountId}/status] failed:`, msg);
@@ -325,7 +325,7 @@ superadminRoutes.post("/accounts/:accountId/change-password", async (c) => {
 
   try {
     const result = await changeAccountPassword({ accountId, newPassword: body.newPassword });
-    return c.json(result.data, result.status as 200 | 400 | 404);
+    return c.json(result.data, result.status);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`[POST /api/superadmin/accounts/${accountId}/change-password] failed:`, msg);

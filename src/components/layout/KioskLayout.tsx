@@ -22,6 +22,7 @@ interface KioskLayoutProps {
 const HOLD_MS = 500;
 
 const MODE_OPTIONS = [
+  { key: "gate", label: "Gate", icon: DoorOpen, description: "Gerbang masuk & check-in" },
   {
     key: "terminal",
     label: "Terminal",
@@ -29,7 +30,6 @@ const MODE_OPTIONS = [
     description: "Checkout parkir & hitung durasi",
   },
   { key: "scout", label: "Scout", icon: Search, description: "Cek saldo & riwayat kartu" },
-  { key: "gate", label: "Gate", icon: DoorOpen, description: "Gerbang masuk & check-in" },
   {
     key: "admin",
     label: "Station",

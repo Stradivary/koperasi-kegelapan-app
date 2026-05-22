@@ -190,16 +190,7 @@ describe("refreshSession", () => {
   });
 
   it("throws SESSION_REVOKED and revokes device sessions for revoked session", async () => {
-    mockDb.setSessionLookup({
-      sessionId: "session-1",
-      tenantId: "tenant-1",
-      accountId: "account-1",
-      deviceId: "device-1",
-      refreshTokenHash: "hash",
-      expiresAt: Math.floor(Date.now() / 1000) + 86400,
-      revokedAt: Math.floor(Date.now() / 1000) - 100,
-      createdAt: Math.floor(Date.now() / 1000) - 1000,
-    });
+    mockDb.setSessionLookup(makeSession({ revokedAt: Math.floor(Date.now() / 1000) - 100 }));
 
     await expect(refreshSession(mockDb.db as any, "session-1", "some-token")).rejects.toThrow(
       AuthSessionError,
@@ -213,16 +204,7 @@ describe("refreshSession", () => {
   });
 
   it("throws SESSION_EXPIRED for expired session", async () => {
-    mockDb.setSessionLookup({
-      sessionId: "session-1",
-      tenantId: "tenant-1",
-      accountId: "account-1",
-      deviceId: "device-1",
-      refreshTokenHash: "hash",
-      expiresAt: Math.floor(Date.now() / 1000) - 100, // expired
-      revokedAt: null,
-      createdAt: Math.floor(Date.now() / 1000) - 1000,
-    });
+    mockDb.setSessionLookup(makeSession({ expiresAt: Math.floor(Date.now() / 1000) - 100 }));
 
     await expect(refreshSession(mockDb.db as any, "session-1", "some-token")).rejects.toThrow(
       AuthSessionError,
@@ -239,16 +221,7 @@ describe("refreshSession", () => {
     const correctToken = "correct-token";
     const correctHash = await hashRefreshToken(correctToken);
 
-    mockDb.setSessionLookup({
-      sessionId: "session-1",
-      tenantId: "tenant-1",
-      accountId: "account-1",
-      deviceId: "device-1",
-      refreshTokenHash: correctHash,
-      expiresAt: Math.floor(Date.now() / 1000) + 86400,
-      revokedAt: null,
-      createdAt: Math.floor(Date.now() / 1000) - 1000,
-    });
+    mockDb.setSessionLookup(makeSession({ refreshTokenHash: correctHash }));
 
     await expect(refreshSession(mockDb.db as any, "session-1", "wrong-token")).rejects.toThrow(
       AuthSessionError,
@@ -265,16 +238,7 @@ describe("refreshSession", () => {
     const originalToken = "original-token";
     const originalHash = await hashRefreshToken(originalToken);
 
-    mockDb.setSessionLookup({
-      sessionId: "session-1",
-      tenantId: "tenant-1",
-      accountId: "account-1",
-      deviceId: "device-1",
-      refreshTokenHash: originalHash,
-      expiresAt: Math.floor(Date.now() / 1000) + 86400,
-      revokedAt: null,
-      createdAt: Math.floor(Date.now() / 1000) - 1000,
-    });
+    mockDb.setSessionLookup(makeSession({ refreshTokenHash: originalHash }));
 
     const result = await refreshSession(mockDb.db as any, "session-1", originalToken);
     expect(result.sessionId).toBe("session-1");
@@ -294,6 +258,35 @@ describe("AuthSessionError", () => {
 });
 
 // --- Mock DB helper ---
+
+/**
+ * Build a session object for use in tests.
+ * All fields have sensible defaults; pass overrides to customise.
+ */
+function makeSession(
+  overrides: Partial<{
+    sessionId: string;
+    tenantId: string;
+    accountId: string;
+    deviceId: string;
+    refreshTokenHash: string;
+    expiresAt: number;
+    revokedAt: number | null;
+    createdAt: number;
+  }> = {},
+) {
+  return {
+    sessionId: "session-1",
+    tenantId: "tenant-1",
+    accountId: "account-1",
+    deviceId: "device-1",
+    refreshTokenHash: "hash",
+    expiresAt: Math.floor(Date.now() / 1000) + 86400,
+    revokedAt: null,
+    createdAt: Math.floor(Date.now() / 1000) - 1000,
+    ...overrides,
+  };
+}
 
 function createMockDb() {
   let activeSessions: any[] = [];
