@@ -9,13 +9,12 @@ import {
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
 import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
-import { useNfcCard } from "../../hooks/useNfcCard";
+import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { formatDuration } from "../../lib/formatters";
 import { FeedbackCard } from "../block/FeedbackCard";
 import { LoadingState } from "../block/LoadingState";
 import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
-import { Button } from "../ui/button";
 import type { CardPayload } from "../../core/payload/types";
 import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
 
@@ -84,6 +83,7 @@ export function TerminalSection({
     phase: state.phase,
     scan,
     resetDelay: 3000,
+    autoStart: true,
   });
 
   const [lastTx, setLastTx] = useState<{
@@ -197,17 +197,6 @@ export function TerminalSection({
             disabled={!grant || grantLoading}
             label="Tap untuk Checkout"
           />
-          <Button
-            onClick={handleScan}
-            disabled={!grant || grantLoading}
-            className="w-full max-w-xs h-12 bg-brand hover:bg-brand/90 text-white type-title-bold"
-          >
-            {grantLoading ? (
-              <LoadingState variant="button" text="Memuat sesi..." />
-            ) : (
-              "Tap Kartu untuk Checkout"
-            )}
-          </Button>
         </div>
       )}
 

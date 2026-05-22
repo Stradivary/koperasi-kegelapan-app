@@ -14,6 +14,8 @@ interface KioskLayoutProps {
   tenantId: string;
   currentMode: "terminal" | "kiosk" | "scout" | "gate" | "station";
   canAccessStation?: boolean;
+  /** The stored device role — used to restrict mode switching for dedicated devices */
+  deviceRole?: string;
   trailing?: React.ReactNode;
   /** @deprecated Use mode switching instead. Kept for backward compat. */
   onLogoLongPress?: () => void;
@@ -46,15 +48,23 @@ export function KioskLayout({
   tenantId,
   currentMode,
   canAccessStation = false,
+  deviceRole,
   trailing,
 }: KioskLayoutProps) {
   const navigate = useNavigate();
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
   const [showModePicker, setShowModePicker] = useState(false);
+
+  // Determine which mode options to show based on role:
+  // - admin/station: all 4 (terminal, scout, gate, admin)
+  // - scout: only scout (no switching to gate/terminal)
+  // - gate/terminal/kiosk (non-admin): terminal, scout, gate (3 options)
   const modeOptions = canAccessStation
     ? MODE_OPTIONS
-    : MODE_OPTIONS.filter((option) => option.key !== "admin");
+    : deviceRole === "scout"
+      ? MODE_OPTIONS.filter((option) => option.key === "scout")
+      : MODE_OPTIONS.filter((option) => option.key !== "admin");
 
   function startHold() {
     setHolding(true);

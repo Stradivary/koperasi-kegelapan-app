@@ -1,5 +1,5 @@
 import type { FormEvent, RefObject } from "react";
-import { Layers, Plus, Search, Settings } from "lucide-react";
+import { BookOpen, Layers, Plus, Search, Settings } from "lucide-react";
 import type { TenantSearchResult } from "../../../hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
@@ -26,6 +26,7 @@ interface LoginFormPanelProps {
   onStartSetup: () => void;
   onStartDeviceSetup: () => void;
   onViewRegisteredTenants: () => void;
+  onOpenScoutBrowse: () => void;
 }
 
 export function LoginFormPanel({
@@ -46,6 +47,7 @@ export function LoginFormPanel({
   onStartSetup,
   onStartDeviceSetup,
   onViewRegisteredTenants,
+  onOpenScoutBrowse,
 }: LoginFormPanelProps) {
   return (
     <AuthLayout variant="brand-dark">
@@ -135,7 +137,7 @@ export function LoginFormPanel({
         </Button>
       </form>
 
-      <div className="pt-1 border-t space-y-2">
+      <div className="space-y-2">
         <Button type="button" onClick={onStartSetup} variant="outline" className="w-full">
           <Plus size={15} />
           Daftarkan koperasi baru
@@ -149,6 +151,16 @@ export function LoginFormPanel({
         >
           <Settings size={15} />
           Pasang Perangkat
+        </Button>
+
+        <Button
+          type="button"
+          onClick={onOpenScoutBrowse}
+          variant="outline"
+          className="w-full text-muted-foreground gap-2"
+        >
+          <BookOpen size={15} />
+          Buka Scout
         </Button>
       </div>
 

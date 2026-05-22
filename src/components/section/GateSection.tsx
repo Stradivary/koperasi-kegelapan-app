@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock } from "lucide-react";
-import { useNfcCard } from "../../hooks/useNfcCard";
+import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
 import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
@@ -8,9 +8,7 @@ import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
 import { CardState, CardStatus } from "../../core/payload/types";
 import { notifyCheckin } from "../../lib/peerSyncCoordinator";
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
 import type { CardPayload } from "../../core/payload/types";
@@ -87,6 +85,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     loading,
     phase: state.phase,
     scan,
+    autoStart: true,
   });
 
   // Track whether we already triggered auto-checkin for this scan cycle (duplicate-write prevention)
@@ -142,17 +141,15 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     const result = validateTransition(payload, "gate_checkin", validationNow);
     if (!result.valid) {
       autoCheckinTriggered.current = true;
+      if (result.reason?.includes("Insufficient balance")) {
+        setCardRejectionReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
+      } else {
+        setCardRejectionReason(result.reason ?? "Tidak dapat check-in");
+      }
       return;
     }
 
-    // Step 4: Minimum balance check
-    if (payload.wallet.balance < 10_000) {
-      autoCheckinTriggered.current = true;
-      setCardRejectionReason("Saldo anda dibawah 10rb, harap isi topup dahulu di station");
-      return;
-    }
-
-    // Step 5: All checks passed — perform check-in write
+    // Step 4: All checks passed — perform check-in write
     autoCheckinTriggered.current = true;
     setCardRejectionReason(null);
     write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
@@ -245,17 +242,6 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
               disabled={!grant || loading}
               label="Tap untuk Masuk"
             />
-            <Button
-              onClick={handleScan}
-              disabled={!grant || loading}
-              className="w-full max-w-xs h-12 bg-brand-dark hover:bg-brand-dark/90 text-white type-title-bold"
-            >
-              {loading ? (
-                <LoadingState variant="button" text="Memuat sesi..." />
-              ) : (
-                "Tap Kartu untuk Check-in"
-              )}
-            </Button>
           </div>
         )}
 

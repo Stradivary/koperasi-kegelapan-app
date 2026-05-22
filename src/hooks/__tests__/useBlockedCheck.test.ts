@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useBlockedCheck } from "../useBlockedCheck";
-import type { NfcCardPhase } from "../useNfcCard";
+import type { NfcCardPhase } from "../nfc/useNfcCard";
 
 // Mock checkLocalBlockedStatus
 vi.mock("../../core/nfc/localStatusCheck", () => ({
@@ -171,7 +171,11 @@ describe("useBlockedCheck", () => {
 
   it("discards stale results if phase changes during in-flight check", async () => {
     // Create a delayed promise that we can control
-    let resolveCheck: (value: { blocked: boolean; reason: string | null; notInLocalDb: boolean }) => void;
+    let resolveCheck: (value: {
+      blocked: boolean;
+      reason: string | null;
+      notInLocalDb: boolean;
+    }) => void;
     mockCheckStatus.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -187,7 +191,9 @@ describe("useBlockedCheck", () => {
           phase: props.phase,
           payload: null,
         }),
-      { initialProps: { phase: "ready" as NfcCardPhase, serialNumber: "AA:BB:CC" as string | null } },
+      {
+        initialProps: { phase: "ready" as NfcCardPhase, serialNumber: "AA:BB:CC" as string | null },
+      },
     );
 
     expect(result.current.isChecking).toBe(true);
@@ -245,7 +251,9 @@ describe("useBlockedCheck", () => {
   });
 
   it("discards stale results if serialNumber changes during in-flight check", async () => {
-    const resolvers: Array<(value: { blocked: boolean; reason: string | null; notInLocalDb: boolean }) => void> = [];
+    const resolvers: Array<
+      (value: { blocked: boolean; reason: string | null; notInLocalDb: boolean }) => void
+    > = [];
     mockCheckStatus.mockImplementation(
       () =>
         new Promise((resolve) => {

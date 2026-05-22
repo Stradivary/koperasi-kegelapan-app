@@ -60,6 +60,13 @@ export function validateTransition(
     return { valid: false, reason: "Session expired" };
   }
 
+  if (trigger === "gate_checkin" && payload.wallet.balance < MIN_BALANCE_BEFORE_CHECKIN) {
+    return {
+      valid: false,
+      reason: `Insufficient balance for check-in: ${payload.wallet.balance} < ${MIN_BALANCE_BEFORE_CHECKIN}`,
+    };
+  }
+
   const nextState = VALID_TRANSITIONS[state as CardState]?.[trigger];
   if (nextState === undefined) {
     return {
@@ -103,7 +110,8 @@ export function isWriteEligible(
 }
 
 export const PARKING_RATE_PER_HOUR = 2_000;
-export const MIN_BALANCE_AFTER_CHECKOUT = 10_000;
+export const MIN_BALANCE_AFTER_CHECKOUT = 0;
+export const MIN_BALANCE_BEFORE_CHECKIN = 10_000;
 
 /**
  * Calculate the checkout fee for a given payload and timestamp.

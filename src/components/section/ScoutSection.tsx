@@ -1,11 +1,11 @@
-import { useNfcCard } from "../../hooks/useNfcCard";
+import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
+import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { FeedbackCard } from "../block/FeedbackCard";
 import { Button } from "../ui/button";
-import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 
 interface ScoutSectionProps {
@@ -26,6 +26,16 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
     payload: state.payload,
   });
 
+  // Auto-scan on mount and after each cycle completes
+  useKioskAutoScan({
+    enabled: true,
+    grant,
+    loading,
+    phase: state.phase,
+    scan,
+    autoStart: true,
+  });
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
       {!grant && !loading && (
@@ -38,13 +48,6 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
       {state.phase === "idle" && (
         <div className="flex flex-col items-center gap-6">
           <NfcTapArea phase="idle" onClick={scan} disabled={!grant || loading} label="Cek Saldo" />
-          <Button
-            onClick={scan}
-            disabled={!grant || loading}
-            className="w-full max-w-xs h-12 bg-signal-info hover:bg-signal-info/90 text-white type-title-bold"
-          >
-            {loading ? <LoadingState variant="button" text="Memuat sesi..." /> : "Tempelkan Kartu"}
-          </Button>
         </div>
       )}
 

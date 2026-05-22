@@ -1,4 +1,4 @@
-import { useNfcCard } from "../../hooks/useNfcCard";
+import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { CardStatusBadge } from "../block/CardStatusBadge";
@@ -82,7 +82,9 @@ export function KioskSection({ tenantId, accountId, deviceId, terminalId }: Kios
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const balance = registerBalance ? Number.parseInt(registerBalance, 10) : state.payload.wallet.balance;
+    const balance = registerBalance
+      ? Number.parseInt(registerBalance, 10)
+      : state.payload.wallet.balance;
 
     const now = Math.floor(Date.now() / 1000);
     try {

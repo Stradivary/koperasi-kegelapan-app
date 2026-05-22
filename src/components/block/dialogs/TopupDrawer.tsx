@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import successHandImg from "../../../assets/images/success_hand.svg";
 import failedImg from "../../../assets/images/nfc/failed.svg";
-import type { NfcCardPhase } from "../../../hooks/useNfcCard";
+import type { NfcCardPhase } from "../../../hooks/nfc/useNfcCard";
 import type { CardPayload } from "../../../core/payload/types";
 import type { NfcPhase } from "../../../core/nfc/stateMachine";
 import {

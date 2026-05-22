@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 import { localDb, type Card } from "../../db/local-db";
 import { syncPull } from "../../lib/syncPull";
-import { useNfcCard } from "../../hooks/useNfcCard";
+import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
@@ -25,6 +25,8 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
+import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
+import { AlertTriangle } from "lucide-react";
 import { applyTopup, applyResetState } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
@@ -672,6 +674,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);
+  const [topupMismatchOpen, setTopupMismatchOpen] = useState(false);
+  const [topupMismatchSerial, setTopupMismatchSerial] = useState<string | null>(null);
   const [recoveryDrawerOpen, setRecoveryDrawerOpen] = useState(false);
   const [recoveryPhase, setRecoveryPhase] = useState<
     "idle" | "scanning" | "writing" | "done" | "error"
@@ -767,6 +771,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         setIsDrawerOpen(false);
         setTopupDrawerOpen(false);
         setTopupTargetCardId(null);
+        setTopupMismatchOpen(false);
+        setTopupMismatchSerial(null);
         setResetCardPending(false);
       }, 2500);
       return () => clearTimeout(timer);
@@ -827,6 +833,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     setIsDrawerOpen(false);
     setTopupDrawerOpen(false);
     setTopupTargetCardId(null);
+    setTopupMismatchOpen(false);
+    setTopupMismatchSerial(null);
     setResetCardPending(false);
   }, [state.phase, cancel, reset]);
 
@@ -1161,8 +1169,8 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
 
     // Validate scanned card matches the selected card
     if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
-      toast.error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
-      handleDrawerClose();
+      setTopupMismatchSerial(scannedId);
+      setTopupMismatchOpen(true);
       return;
     }
 
@@ -1287,6 +1295,49 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         onClose={handleDrawerClose}
         onRetry={scan}
       />
+
+      <ConfirmationDialogDrawer
+        open={topupMismatchOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setTopupMismatchOpen(false);
+            handleDrawerClose();
+          }
+        }}
+        title="Kartu Tidak Sesuai"
+        description={<p>Kartu yang di-scan tidak sesuai dengan kartu yang dipilih untuk top-up.</p>}
+        icon={
+          <div className="flex items-center justify-center size-12 rounded-full bg-amber-100">
+            <AlertTriangle size={24} className="text-amber-600" />
+          </div>
+        }
+        confirmLabel="Scan Ulang"
+        cancelLabel="Batal"
+        confirmVariant="default"
+        onConfirm={() => {
+          setTopupMismatchOpen(false);
+          setTopupMismatchSerial(null);
+          scan();
+        }}
+        onCancel={() => {
+          setTopupMismatchOpen(false);
+          handleDrawerClose();
+        }}
+      >
+        <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+          <p>
+            <span className="text-muted-foreground">Kartu dipilih:</span>{" "}
+            <span className="font-mono">{topupTargetCardId ?? "-"}</span>
+          </p>
+          <p>
+            <span className="text-muted-foreground">Kartu di-scan:</span>{" "}
+            <span className="font-mono">{topupMismatchSerial ?? "-"}</span>
+          </p>
+        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          Pastikan kartu yang di-tap adalah kartu yang benar.
+        </p>
+      </ConfirmationDialogDrawer>
 
       <IssueCardDrawer
         open={issueCardDrawerOpen}

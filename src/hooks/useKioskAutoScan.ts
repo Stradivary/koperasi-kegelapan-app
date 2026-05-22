@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { NfcCardPhase } from "./useNfcCard";
+import type { NfcCardPhase } from "./nfc/useNfcCard";
 import type { SessionGrant } from "../core/payload/types";
 
 export interface UseKioskAutoScanOptions {
@@ -9,6 +9,12 @@ export interface UseKioskAutoScanOptions {
   phase: NfcCardPhase;
   scan: () => void;
   resetDelay?: number;
+  /**
+   * When true, automatically triggers the first scan on mount
+   * (as soon as grant is available and phase is idle).
+   * This removes the need for a manual "Tempelkan Kartu" button.
+   */
+  autoStart?: boolean;
 }
 
 /**
@@ -19,14 +25,15 @@ export interface UseKioskAutoScanOptions {
  * back to "idle" — provided `enabled` is true, `grant` is non-null, and
  * the grant is not still loading.
  *
- * Does NOT trigger on initial mount to avoid scanning before the operator
- * has initiated the first interaction.
+ * When `autoStart` is true, the hook will also trigger the first scan
+ * automatically on mount (as soon as grant is available and phase is idle),
+ * removing the need for a manual button tap.
  */
 export function useKioskAutoScan(options: UseKioskAutoScanOptions): {
   hasCompletedCycle: boolean;
   isAutoScanning: boolean;
 } {
-  const { enabled, grant, loading, phase, scan, resetDelay } = options;
+  const { enabled, grant, loading, phase, scan, resetDelay, autoStart = false } = options;
 
   // Track whether at least one cycle has completed (success or error observed)
   const [hasCompletedCycle, setHasCompletedCycle] = useState(false);
@@ -40,6 +47,9 @@ export function useKioskAutoScan(options: UseKioskAutoScanOptions): {
   // Use a ref for hasCompletedCycle to avoid stale closures in the idle effect
   const hasCompletedCycleRef = useRef(false);
 
+  // Track whether the initial auto-start scan has been triggered
+  const autoStartTriggeredRef = useRef(false);
+
   // Mark cycle as completed when phase reaches "success" or "error"
   useEffect(() => {
     if (phase === "success" || phase === "error") {
@@ -49,6 +59,16 @@ export function useKioskAutoScan(options: UseKioskAutoScanOptions): {
       }
     }
   }, [phase]);
+
+  // Auto-start: trigger the first scan on mount when grant becomes available
+  useEffect(() => {
+    if (!autoStart || autoStartTriggeredRef.current) return;
+    if (!enabled || !grant || loading) return;
+    if (phase !== "idle") return;
+
+    autoStartTriggeredRef.current = true;
+    scan();
+  }, [autoStart, enabled, grant, loading, phase, scan]);
 
   // Auto-invoke scan() when phase transitions to "idle" after a completed cycle
   useEffect(() => {

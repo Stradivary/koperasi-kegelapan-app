@@ -1,6 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
+import {
+  tenantContextStore,
+  localTenantConfigStore,
+  type LocalTenantConfig,
+} from "../../lib/indexeddb";
 import { localLoginWithReason, cacheServerCredentials } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { localDb } from "../../db/local-db";
@@ -18,12 +22,19 @@ import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelect
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
 import { ServerBrowsePanel } from "../block/loginSection/ServerBrowsePanel";
+import { ScoutBrowsePanel } from "../block/loginSection/ScoutBrowsePanel";
 import { LocalSetupSection } from "./LocalSetupSection";
 import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
 import { LoadingState } from "../block/LoadingState";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 
-type LoginMode = "detecting" | "login" | "setup" | "device-setup" | "server-browse";
+type LoginMode =
+  | "detecting"
+  | "login"
+  | "setup"
+  | "device-setup"
+  | "server-browse"
+  | "scout-browse";
 type DeviceSetupStep = "auth" | "pick-role";
 
 const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
@@ -160,6 +171,16 @@ export function LoginSection() {
   } = useServerTenantSearch();
   const { isOnline } = useOnlineStatus();
 
+  // Scout browse state
+  const {
+    query: scoutTenantQuery,
+    setQuery: setScoutTenantQuery,
+    results: scoutTenantResults,
+    loading: scoutTenantLoading,
+    error: scoutTenantError,
+  } = useServerTenantSearch();
+  const [localTenants, setLocalTenants] = useState<LocalTenantConfig[]>([]);
+
   useEffect(() => {
     async function detectMode() {
       const launchContext = consumeDeviceSetupLaunchContext();
@@ -243,6 +264,43 @@ export function LoginSection() {
     }
 
     setMode("login");
+  }
+
+  async function enterScoutBrowse() {
+    setError(null);
+    setScoutTenantQuery("");
+    setMode("scout-browse");
+    // Load local tenants for the list
+    try {
+      const configs = await localTenantConfigStore.getAll();
+      setLocalTenants(configs);
+    } catch {
+      setLocalTenants([]);
+    }
+  }
+
+  async function handleScoutSelectTenant(tenantId: string, tenantSlug: string, tenantName: string) {
+    const fingerprintId = await getDeviceFingerprint();
+    await tenantContextStore.put({
+      tenantId,
+      tenantSlug,
+      tenantName,
+      deviceId: fingerprintId,
+      accountId: "scout-anonymous",
+      role: "scout",
+      terminalId: 0,
+      updatedAt: Date.now(),
+    });
+    setCurrentDeviceId(fingerprintId);
+
+    // Issue a local session grant for scout role (no password needed)
+    issueAndCacheLocalSessionGrant(tenantId, "scout-anonymous", fingerprintId, "scout").catch(
+      () => {
+        // Non-critical — useSessionGrant will handle fallback
+      },
+    );
+
+    navigate({ to: `/tenant/${tenantId}/scout` });
   }
 
   /**
@@ -584,6 +642,35 @@ export function LoginSection() {
     );
   }
 
+  if (mode === "scout-browse") {
+    return (
+      <ScoutBrowsePanel
+        query={scoutTenantQuery}
+        results={scoutTenantResults}
+        loading={scoutTenantLoading}
+        error={scoutTenantError}
+        isOnline={isOnline}
+        localTenants={localTenants}
+        onQueryChange={setScoutTenantQuery}
+        onSelectServer={(tenant) => {
+          handleScoutSelectTenant(tenant.tenantId, tenant.slug, tenant.name);
+        }}
+        onSelectLocal={(tenant) => {
+          handleScoutSelectTenant(tenant.tenantId, tenant.slug, tenant.name);
+        }}
+        onEnterSlug={(slug) => {
+          // Use slug as temporary tenantId — the session grant and scout page
+          // will work with this since local grants are derived from tenantId
+          handleScoutSelectTenant(slug, slug, slug);
+        }}
+        onBack={() => {
+          setMode("login");
+          setError(null);
+        }}
+      />
+    );
+  }
+
   if (mode === "device-setup") {
     if (setupStep === "pick-role") {
       return (
@@ -646,6 +733,7 @@ export function LoginSection() {
       }}
       onStartDeviceSetup={enterDeviceSetup}
       onViewRegisteredTenants={() => navigate({ to: "/devices" })}
+      onOpenScoutBrowse={enterScoutBrowse}
     />
   );
 }

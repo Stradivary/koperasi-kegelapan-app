@@ -51,6 +51,7 @@ function KioskLayoutRoute() {
         tenantContext.canAccessStation ??
         (tenantContext.role === "admin" || tenantContext.role === "station")
       }
+      deviceRole={tenantContext.role}
       trailing={trailing}
     >
       <Outlet />
