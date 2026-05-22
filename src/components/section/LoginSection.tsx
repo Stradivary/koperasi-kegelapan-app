@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { tenantContextStore, localTenantConfigStore } from "../../lib/indexeddb";
-import { localLogin, cacheServerCredentials } from "../../lib/localTenant";
+import { localLoginWithReason, cacheServerCredentials } from "../../lib/localTenant";
 import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
 import { localDb } from "../../db/local-db";
 import { BRAND } from "../../lib/brand";
@@ -158,7 +158,16 @@ export function LoginSection() {
     try {
       // 1. Try local login first (works offline)
       const effectiveSlug = selectedServerTenant?.slug ?? (tenantSlug || undefined);
-      const localResult = await localLogin(username, password, effectiveSlug);
+      const localOutcome = await localLoginWithReason(username, password, effectiveSlug);
+
+      // If local login failed due to wrong tenant, surface immediately — no need to
+      // hit the server because the user clearly picked the wrong koperasi.
+      if (!localOutcome.success && localOutcome.reason === "wrong_tenant") {
+        setError("Akun ini tidak terdaftar di koperasi yang dipilih");
+        return;
+      }
+
+      const localResult = localOutcome.success ? localOutcome : null;
       if (localResult) {
         const fingerprintId = await getDeviceFingerprint();
         await tenantContextStore.put({

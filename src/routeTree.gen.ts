@@ -133,7 +133,7 @@ export interface FileRoutesByFullPath {
   '/superadmin': typeof SuperadminRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
-  '/tenant/$tenantId': typeof TenantTenantIdKioskLayoutRouteWithChildren
+  '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev/': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/cards': typeof TenantTenantIdAdminLayoutCardsRoute
@@ -151,7 +151,7 @@ export interface FileRoutesByTo {
   '/superadmin': typeof SuperadminRoute
   '/dev/issuance-test': typeof DevIssuanceTestRoute
   '/dev/nfc-test': typeof DevNfcTestRoute
-  '/tenant/$tenantId': typeof TenantTenantIdKioskLayoutRouteWithChildren
+  '/tenant/$tenantId': typeof TenantTenantIdRouteWithChildren
   '/dev': typeof DevIndexRoute
   '/tenant/$tenantId/admin': typeof TenantTenantIdAdminRoute
   '/tenant/$tenantId/cards': typeof TenantTenantIdAdminLayoutCardsRoute

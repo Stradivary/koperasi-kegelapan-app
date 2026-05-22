@@ -97,11 +97,22 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Run tests with coverage
+      # Try to download coverage produced by the CI test job (same run on push/PR).
+      # Falls back gracefully — if the artifact isn't there we generate it below.
+      - name: Download coverage artifact
+        id: download-coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+        continue-on-error: true
+
+      - name: Run tests with coverage (fallback)
+        if: steps.download-coverage.outcome == 'failure'
         run: pnpm test:coverage
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

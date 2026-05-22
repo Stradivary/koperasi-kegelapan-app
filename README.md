@@ -1,5 +1,7 @@
 # Koperasi Kegelapan — Offline NFC Wallet
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Stradivary_koperasi-kegelapan-app&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Stradivary_koperasi-kegelapan-app)
+
 A tap-based payment system that operates without real-time backend connectivity. Wallet state (balance, session, tamper-evident log) is stored encrypted on NTAG215 NFC cards, allowing terminals to authorise transactions offline using cryptographic proofs.
 
 ## Architecture

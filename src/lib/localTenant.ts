@@ -172,26 +172,75 @@ export interface LocalLoginResult {
   role: string;
 }
 
+export type LocalLoginFailReason = "wrong_credentials" | "wrong_tenant" | "inactive";
+
+export interface LocalLoginFailure {
+  success: false;
+  reason: LocalLoginFailReason;
+}
+
+export interface LocalLoginSuccess {
+  success: true;
+  tenantId: string;
+  tenantSlug: string;
+  tenantName: string;
+  accountId: string;
+  role: string;
+}
+
+export type LocalLoginOutcome = LocalLoginSuccess | LocalLoginFailure;
+
 export async function localLogin(
   username: string,
   password: string,
   tenantSlug?: string,
 ): Promise<LocalLoginResult | null> {
-  const account = await localAccountStore.getByUsername(username);
-  if (!account || account.status !== "active") return null;
+  const outcome = await localLoginWithReason(username, password, tenantSlug);
+  if (outcome.success) {
+    const { tenantId, tenantSlug: slug, tenantName, accountId, role } = outcome;
+    return { tenantId, tenantSlug: slug, tenantName, accountId, role };
+  }
+  return null;
+}
 
-  const valid = await pbkdf2Verify(password, account.passwordHash);
-  if (!valid) return null;
+/**
+ * Like localLogin but returns a typed failure reason so callers can show
+ * more specific error messages (e.g. "wrong tenant" vs "wrong password").
+ */
+export async function localLoginWithReason(
+  username: string,
+  password: string,
+  tenantSlug?: string,
+): Promise<LocalLoginOutcome> {
+  const account = await localAccountStore.getByUsername(username);
+
+  if (!account) {
+    // Username not found locally at all
+    return { success: false, reason: "wrong_credentials" };
+  }
+
+  if (account.status !== "active") {
+    return { success: false, reason: "inactive" };
+  }
 
   const cfg = await localTenantConfigStore.get(account.tenantId);
-  if (!cfg) return null;
+  if (!cfg) {
+    return { success: false, reason: "wrong_credentials" };
+  }
 
   // If a tenant slug was specified, verify the account belongs to that tenant
+  // BEFORE checking the password — so we can give a specific error.
   if (tenantSlug && cfg.slug !== tenantSlug) {
-    return null;
+    return { success: false, reason: "wrong_tenant" };
+  }
+
+  const valid = await pbkdf2Verify(password, account.passwordHash);
+  if (!valid) {
+    return { success: false, reason: "wrong_credentials" };
   }
 
   return {
+    success: true,
     tenantId: cfg.tenantId,
     tenantSlug: cfg.slug,
     tenantName: cfg.name,
