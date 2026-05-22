@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
@@ -36,6 +37,16 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
     autoStart: true,
   });
 
+  // Auto-reset after displaying card info so the scan loop continues
+  useEffect(() => {
+    if (state.phase === "ready" && state.payload && !blockedCheck.isChecking) {
+      const timer = setTimeout(() => {
+        reset();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.phase, state.payload, blockedCheck.isChecking, reset]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
       {!grant && !loading && (
@@ -44,10 +55,11 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
         </div>
       )}
 
-      {/* Idle */}
+      {/* Idle — waiting for auto-scan */}
       {state.phase === "idle" && (
-        <div className="flex flex-col items-center gap-6">
-          <NfcTapArea phase="idle" onClick={scan} disabled={!grant || loading} label="Cek Saldo" />
+        <div className="flex flex-col items-center gap-4">
+          <NfcTapArea phase="scanning" />
+          <NfcStatusLabel phase="scanning" />
         </div>
       )}
 

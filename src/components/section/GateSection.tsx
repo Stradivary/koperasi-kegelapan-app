@@ -230,6 +230,20 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
   // blockedCheckDone equivalent: the check is no longer in progress
   const blockedCheckDone = !blockedCheck.isChecking && state.phase === "ready";
 
+  // Auto-reset when card is already checked in (no write needed) so auto-scan loop continues
+  const showAlreadyCheckedIn = isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone;
+  const showBlocked =
+    !!effectiveBlockedReason && state.phase === "ready" && !blockedCheck.isChecking;
+
+  useEffect(() => {
+    if (showAlreadyCheckedIn || showBlocked) {
+      const timer = setTimeout(() => {
+        reset();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlreadyCheckedIn, showBlocked, reset]);
+
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
@@ -270,7 +284,6 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
                 variant="blocked"
                 title="Akses Ditolak"
                 subtitle={state.payload.identity.name}
-                details={[{ label: "Alasan", value: effectiveBlockedReason }]}
                 actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
               />
             ) : isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone ? (

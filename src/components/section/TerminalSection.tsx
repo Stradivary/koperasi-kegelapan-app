@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CardState } from "../../core/payload/types";
 import {
   applyCheckout,
@@ -174,6 +174,29 @@ export function TerminalSection({
   }
 
   const cardState = state.payload?.wallet.state;
+
+  // Auto-reset when card is in a state that doesn't need checkout (no write needed) so auto-scan loop continues
+  const showNotCheckedIn =
+    cardState === CardState.IDLE && state.phase === "ready" && blockedCheck.isReady;
+  const showAlreadyCheckedOut =
+    cardState === CardState.CHECKED_OUT && state.phase === "ready" && blockedCheck.isReady;
+  const showBlocked = blockedCheck.isBlocked && state.phase === "ready" && !blockedCheck.isChecking;
+  const showInsufficientBalance = !!insufficientBalance && state.phase === "ready";
+
+  // Memoize the "should auto-reset" condition
+  const shouldAutoReset = useMemo(
+    () => showNotCheckedIn || showAlreadyCheckedOut || showBlocked || showInsufficientBalance,
+    [showNotCheckedIn, showAlreadyCheckedOut, showBlocked, showInsufficientBalance],
+  );
+
+  useEffect(() => {
+    if (shouldAutoReset) {
+      const timer = setTimeout(() => {
+        reset();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoReset, reset]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">

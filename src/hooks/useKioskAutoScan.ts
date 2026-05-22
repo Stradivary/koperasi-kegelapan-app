@@ -50,9 +50,11 @@ export function useKioskAutoScan(options: UseKioskAutoScanOptions): {
   // Track whether the initial auto-start scan has been triggered
   const autoStartTriggeredRef = useRef(false);
 
-  // Mark cycle as completed when phase reaches "success" or "error"
+  // Mark cycle as completed when phase reaches "success", "error", or "ready"
+  // "ready" is included because it's a terminal state for read-only operations
+  // (e.g., Scout showing card info) or when no write is needed (double check-in/out).
   useEffect(() => {
-    if (phase === "success" || phase === "error") {
+    if (phase === "success" || phase === "error" || phase === "ready") {
       if (!hasCompletedCycleRef.current) {
         hasCompletedCycleRef.current = true;
         setHasCompletedCycle(true);
