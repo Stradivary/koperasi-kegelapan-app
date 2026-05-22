@@ -8,7 +8,6 @@
   "ignorePatterns": ["dist", "node_modules", ".wrangler", "src/routeTree.gen.ts", "coverage"],
   "rules": {
     "no-unused-vars": "error",
-    "no-console": "warn",
     "typescript/no-explicit-any": "warn",
     "typescript/consistent-type-imports": "error",
     "react/rules-of-hooks": "error",
