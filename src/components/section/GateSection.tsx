@@ -253,15 +253,11 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
           </div>
         )}
 
-        {/* Idle — tap to scan */}
+        {/* Idle — waiting for auto-scan */}
         {state.phase === "idle" && (
-          <div className="flex flex-col items-center gap-6">
-            <NfcTapArea
-              phase="idle"
-              onClick={handleScan}
-              disabled={!grant || loading}
-              label="Tap untuk Masuk"
-            />
+          <div className="flex flex-col items-center gap-4">
+            <NfcTapArea phase="scanning" />
+            <NfcStatusLabel phase="scanning" />
           </div>
         )}
 

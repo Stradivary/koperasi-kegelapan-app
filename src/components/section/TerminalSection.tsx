@@ -211,15 +211,11 @@ export function TerminalSection({
         </div>
       )}
 
-      {/* Idle — tap to scan */}
+      {/* Idle — waiting for auto-scan */}
       {state.phase === "idle" && (
-        <div className="flex flex-col items-center gap-6">
-          <NfcTapArea
-            phase="idle"
-            onClick={handleScan}
-            disabled={!grant || grantLoading}
-            label="Tap untuk Checkout"
-          />
+        <div className="flex flex-col items-center gap-4">
+          <NfcTapArea phase="scanning" />
+          <NfcStatusLabel phase="scanning" />
         </div>
       )}
 
