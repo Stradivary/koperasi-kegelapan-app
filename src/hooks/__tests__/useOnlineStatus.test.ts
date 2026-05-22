@@ -31,7 +31,7 @@ describe("useOnlineStatus", () => {
     expect(result.current.isOnline).toBe(true);
 
     act(() => {
-      window.dispatchEvent(new Event("offline"));
+      globalThis.dispatchEvent(new Event("offline"));
     });
 
     expect(result.current.isOnline).toBe(false);
@@ -47,7 +47,7 @@ describe("useOnlineStatus", () => {
     expect(result.current.isOnline).toBe(false);
 
     act(() => {
-      window.dispatchEvent(new Event("online"));
+      globalThis.dispatchEvent(new Event("online"));
     });
 
     expect(result.current.isOnline).toBe(true);
@@ -61,8 +61,8 @@ describe("useOnlineStatus", () => {
 
     // After unmount, dispatching events should not cause errors
     expect(() => {
-      window.dispatchEvent(new Event("online"));
-      window.dispatchEvent(new Event("offline"));
+      globalThis.dispatchEvent(new Event("online"));
+      globalThis.dispatchEvent(new Event("offline"));
     }).not.toThrow();
   });
 });

@@ -408,8 +408,8 @@ export function useSyncEngine(
       }
     }
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    globalThis.addEventListener("online", handleOnline);
+    globalThis.addEventListener("offline", handleOffline);
 
     // Set initial offline status if not online
     if (!navigator.onLine) {
@@ -417,8 +417,8 @@ export function useSyncEngine(
     }
 
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      globalThis.removeEventListener("online", handleOnline);
+      globalThis.removeEventListener("offline", handleOffline);
     };
   }, [enabled, tenantId, requestSync]);
 

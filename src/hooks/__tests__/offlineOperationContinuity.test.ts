@@ -249,7 +249,7 @@ describe("Offline Operation Continuity", () => {
           writable: true,
           configurable: true,
         });
-        window.dispatchEvent(new Event("offline"));
+        globalThis.dispatchEvent(new Event("offline"));
       });
 
       expect(result.current.isOnline).toBe(false);
@@ -274,7 +274,7 @@ describe("Offline Operation Continuity", () => {
           writable: true,
           configurable: true,
         });
-        window.dispatchEvent(new Event("online"));
+        globalThis.dispatchEvent(new Event("online"));
       });
 
       expect(result.current.isOnline).toBe(true);
@@ -315,7 +315,7 @@ describe("Offline Operation Continuity", () => {
       });
 
       await act(async () => {
-        window.dispatchEvent(new Event("online"));
+        globalThis.dispatchEvent(new Event("online"));
       });
 
       // Sync should have been triggered

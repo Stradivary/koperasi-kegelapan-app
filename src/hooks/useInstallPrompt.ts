@@ -37,7 +37,7 @@ function persistDismissal(): void {
 let earlyPromptEvent: BeforeInstallPromptEvent | null = null;
 
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (e: Event) => {
+  globalThis.addEventListener("beforeinstallprompt", (e: Event) => {
     e.preventDefault();
     earlyPromptEvent = e as BeforeInstallPromptEvent;
   });
@@ -59,7 +59,7 @@ export function useInstallPrompt() {
   useEffect(() => {
     // Check if already installed via display-mode media queries
     // Include standalone, fullscreen, and minimal-ui for broader browser support
-    const mq = window.matchMedia(
+    const mq = globalThis.matchMedia(
       "(display-mode: fullscreen), (display-mode: standalone), (display-mode: minimal-ui)",
     );
     if (mq.matches) {
@@ -89,8 +89,8 @@ export function useInstallPrompt() {
       earlyPromptEvent = null;
     };
 
-    window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", installedHandler);
+    globalThis.addEventListener("beforeinstallprompt", handler);
+    globalThis.addEventListener("appinstalled", installedHandler);
 
     // If the early event was captured before mount, use it
     if (earlyPromptEvent && !promptCaptured.current) {
@@ -99,8 +99,8 @@ export function useInstallPrompt() {
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      window.removeEventListener("appinstalled", installedHandler);
+      globalThis.removeEventListener("beforeinstallprompt", handler);
+      globalThis.removeEventListener("appinstalled", installedHandler);
       mq.removeEventListener("change", mqHandler);
     };
   }, []);
