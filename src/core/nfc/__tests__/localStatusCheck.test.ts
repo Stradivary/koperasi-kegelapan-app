@@ -25,40 +25,7 @@ vi.mock("../../../db/local-db", () => ({
 
 import { checkLocalBlockedStatus } from "../localStatusCheck";
 import { localDb } from "../../../db/local-db";
-import type { Card, User } from "../../../db/local-db";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeCard(overrides: Partial<Card> = {}): Card {
-  return {
-    tenantId: "tenant-1",
-    cardId: "04a2b3c4d5e6f7",
-    userId: null,
-    status: "active",
-    balance: 50000,
-    counter: 5,
-    keyVersion: 1,
-    createdAt: 1700000000,
-    lastActivityAt: 1700001000,
-    expiresAt: null,
-    notes: null,
-    ...overrides,
-  };
-}
-
-function makeUser(overrides: Partial<User> = {}): User {
-  return {
-    tenantId: "tenant-1",
-    userId: "user-abc",
-    name: "Test User",
-    status: "active",
-    createdAt: 1700000000,
-    updatedAt: 1700000000,
-    ...overrides,
-  };
-}
+import { makeCard, makeUser, BLOCKED_CARD_STATUSES } from "./fixtures";
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -98,12 +65,7 @@ describe("checkLocalBlockedStatus", () => {
   // -------------------------------------------------------------------------
 
   describe("blocked card statuses", () => {
-    const blockedStatuses: Card["status"][] = [
-      "blocked_tamper",
-      "blocked_fraud",
-      "blocked_expired",
-      "blocked_admin",
-    ];
+    const blockedStatuses = BLOCKED_CARD_STATUSES;
 
     for (const status of blockedStatuses) {
       it(`returns blocked=true for status '${status}'`, async () => {

@@ -122,14 +122,16 @@ export function SyncStatusIndicator({
 
       {/* Pending count */}
       {pendingCount > 0 && (
-        <span
+        <button
+          type="button"
           className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium cursor-default"
           title={`${pendingCount} entries awaiting sync`}
           onClick={onSync}
+          aria-label={`${pendingCount} entries awaiting sync. Click to sync.`}
         >
           <RefreshCw size={10} aria-hidden="true" />
           {pendingCount} pending
-        </span>
+        </button>
       )}
 
       {/* Last synced timestamp */}

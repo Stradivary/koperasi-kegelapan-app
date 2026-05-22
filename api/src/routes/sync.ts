@@ -6,7 +6,6 @@ import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
 import { extractTokenPayload } from "../lib/tokenExtract";
-import type { TokenPayload } from "../lib/tokenExtract";
 
 type Env = {
   DB: D1Database;

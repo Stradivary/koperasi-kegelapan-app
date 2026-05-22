@@ -96,6 +96,12 @@ function getIndexedDbFactory(): IDBFactory | null {
   return "indexedDB" in globalThis ? globalThis.indexedDB : null;
 }
 
+/** Converts an IDBRequest error (DOMException | null) to a proper Error instance. */
+function idbError(err: DOMException | null | undefined, fallback: string): Error {
+  if (!err) return new Error(fallback);
+  return new Error(err.message || fallback);
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const idb = getIndexedDbFactory();
@@ -142,7 +148,7 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject(idbError(req.error, "Failed to open IndexedDB"));
   });
 }
 
@@ -157,7 +163,7 @@ async function tx<T>(
     const store = transaction.objectStore(storeName);
     const req = fn(store);
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => reject(idbError(req.error, `IndexedDB tx failed on ${storeName}`));
   });
 }
 
@@ -175,7 +181,7 @@ export const tenantContextStore = {
       const t = db.transaction("tenantContext", "readonly");
       const req = t.objectStore("tenantContext").getAll();
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to getAll tenantContext"));
     });
   },
   put: (ctx: TenantContext) => tx<IDBValidKey>("tenantContext", "readwrite", (s) => s.put(ctx)),
@@ -231,7 +237,7 @@ export const reconciliationOutbox = {
       const req = index.getAll(tenantId);
       req.onsuccess = () =>
         resolve((req.result as OutboxEntry[]).filter((e) => e.status === "pending"));
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to getPending outbox"));
     });
   },
 
@@ -249,9 +255,9 @@ export const reconciliationOutbox = {
         }
         const putReq = store.put({ ...entry, status: "synced" });
         putReq.onsuccess = () => resolve();
-        putReq.onerror = () => reject(putReq.error);
+        putReq.onerror = () => reject(idbError(putReq.error, "Failed to markSynced outbox entry"));
       };
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to get outbox entry for markSynced"));
     });
   },
 
@@ -269,7 +275,7 @@ export const reconciliationOutbox = {
           cursor.continue();
         } else resolve();
       };
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to clearTenant outbox"));
     });
   },
 };
@@ -285,7 +291,7 @@ export const localTenantConfigStore = {
       const t = db.transaction("localTenantConfig", "readonly");
       const req = t.objectStore("localTenantConfig").getAll();
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to getAll localTenantConfig"));
     });
   },
   put: (cfg: LocalTenantConfig) =>
@@ -302,7 +308,7 @@ export const localAccountStore = {
       const idx = t.objectStore("localAccounts").index("byUsername");
       const req = idx.get(username);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to getByUsername localAccounts"));
     });
   },
   getByTenant: async (tenantId: string): Promise<LocalAccount[]> => {
@@ -312,7 +318,7 @@ export const localAccountStore = {
       const idx = t.objectStore("localAccounts").index("byTenantId");
       const req = idx.getAll(tenantId);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to getByTenant localAccounts"));
     });
   },
   put: (acct: LocalAccount) => tx<IDBValidKey>("localAccounts", "readwrite", (s) => s.put(acct)),
@@ -374,7 +380,7 @@ export const authTokenCacheStore = {
       const transaction = db.transaction("authTokenCache", "readwrite");
       const req = transaction.objectStore("authTokenCache").clear();
       req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(idbError(req.error, "Failed to clear authTokenCache"));
     });
   },
 };

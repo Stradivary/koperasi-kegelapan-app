@@ -184,12 +184,33 @@ export function DataTable<TData>({
                       headerGroup.headers.map((headerCell) => {
                         const canSort = headerCell.column.getCanSort();
                         const sorted = headerCell.column.getIsSorted();
+                        const toggleSort = canSort
+                          ? headerCell.column.getToggleSortingHandler()
+                          : undefined;
                         return (
                           <TableHead
                             key={headerCell.id}
                             className={cn(canSort && "cursor-pointer select-none")}
-                            onClick={
-                              canSort ? headerCell.column.getToggleSortingHandler() : undefined
+                            onClick={toggleSort}
+                            onKeyDown={
+                              canSort
+                                ? (e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      toggleSort?.(e);
+                                    }
+                                  }
+                                : undefined
+                            }
+                            tabIndex={canSort ? 0 : undefined}
+                            aria-sort={
+                              sorted === "asc"
+                                ? "ascending"
+                                : sorted === "desc"
+                                  ? "descending"
+                                  : canSort
+                                    ? "none"
+                                    : undefined
                             }
                           >
                             <div className="flex items-center gap-1">
@@ -223,6 +244,18 @@ export function DataTable<TData>({
                       key={row.id}
                       className={cn(onRowClick && "cursor-pointer")}
                       onClick={() => onRowClick?.(row.original)}
+                      onKeyDown={
+                        onRowClick
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onRowClick(row.original);
+                              }
+                            }
+                          : undefined
+                      }
+                      tabIndex={onRowClick ? 0 : undefined}
+                      role={onRowClick ? "button" : undefined}
                       data-state={row.getIsSelected() ? "selected" : undefined}
                     >
                       {row.getVisibleCells().map((cell) => (

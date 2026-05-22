@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { pushEntitiesRoute } from "../push-entities";
-import { makeToken, createMockD1, createTestApp } from "./testHelpers";
+import { makeToken, createTestApp } from "./testHelpers";
 
 describe("POST /push-entities", () => {
   let app: ReturnType<typeof createTestApp>;

@@ -337,7 +337,18 @@ export function AdminLayout({
       {/* ── Mobile slide-in drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            role="button"
+            aria-label="Tutup menu"
+            tabIndex={0}
+            onClick={() => setMobileOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+                setMobileOpen(false);
+              }
+            }}
+          />
           <aside className="relative flex flex-col bg-brand-dark text-white w-72 h-full">
             <div className="flex items-center justify-between px-4 py-5 border-b border-white/10">
               <div>

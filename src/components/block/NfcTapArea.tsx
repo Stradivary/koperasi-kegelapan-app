@@ -135,7 +135,6 @@ export function NfcTapArea({
   if (phase === "idle") {
     return (
       <button
-        role="button"
         aria-label={getAriaLabel(phase, label)}
         onClick={onClick}
         disabled={disabled}

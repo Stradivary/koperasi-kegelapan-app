@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CardStatus } from "../../payload/types";
 import type { Card } from "../../../db/local-db";
+import { stubCard } from "../../nfc/__tests__/fixtures";
 
 // Mock the local-db module
 vi.mock("../../../db/local-db", () => ({
@@ -22,22 +23,6 @@ import {
 } from "../blockEnforcer";
 import { localDb } from "../../../db/local-db";
 
-/** Minimal Card stub — only status is needed for most block checks */
-function stubCard(status: Card["status"]): Card {
-  return {
-    tenantId: "t1",
-    cardId: "c1",
-    userId: null,
-    status,
-    balance: 0,
-    counter: 0,
-    keyVersion: 1,
-    createdAt: 0,
-    lastActivityAt: null,
-    expiresAt: null,
-    notes: null,
-  };
-}
 
 describe("blockEnforcer", () => {
   beforeEach(() => {

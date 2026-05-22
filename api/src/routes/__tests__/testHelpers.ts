@@ -68,11 +68,8 @@ export function createMockD1(options: MockD1Options = {}): D1Database {
  * Creates a Hono app with the given route mounted and DB/env injected.
  * The route is mounted at the provided path prefix.
  */
-export function createTestApp(
-  route: Hono,
-  mountPath: string,
-  db?: D1Database,
-): Hono<{ Bindings: Env }> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createTestApp(route: Hono<any>, mountPath: string, db?: D1Database) {
   const app = new Hono<{ Bindings: Env }>();
   app.use("*", async (c, next) => {
     c.env = { DB: db ?? createMockD1(), SESSION_MASTER_KEY: "test-key" };

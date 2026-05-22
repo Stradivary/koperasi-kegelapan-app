@@ -1,9 +1,5 @@
-/**
- * Coverage tests for superadminTenants.ts — listTenants, getTenantDetail,
- * updateTenantStatus, createTenant conflict paths, and race-condition handling.
- */
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildSelectChain } from "./__tests__/dbMocks";
 
 // ---------------------------------------------------------------------------
 // DB mock factory — returns a configurable mock per test
@@ -30,19 +26,6 @@ vi.mock("./auth", () => ({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function buildSelectChain(returnValue: unknown) {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    offset: vi.fn().mockReturnThis(),
-    get: vi.fn().mockResolvedValue(returnValue),
-    all: vi.fn().mockResolvedValue(returnValue),
-  };
-  return chain;
-}
 
 // ---------------------------------------------------------------------------
 // Tests
