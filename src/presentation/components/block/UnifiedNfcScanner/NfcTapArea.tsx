@@ -1,7 +1,7 @@
 ﻿import { Wifi } from "lucide-react";
 
 import { cn } from "#/presentation/lib/utils.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
+import type { NfcPhase } from "#/domain/nfc/stateMachine.ts";
 import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
 
 // ============================================================================

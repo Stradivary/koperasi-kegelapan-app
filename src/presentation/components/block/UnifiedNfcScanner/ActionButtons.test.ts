@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for ActionButtons component logic.
  *
  * Tests the button enable/disable logic and label defaults.
@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { CardStatus } from "#/core/payload/types.ts";
+import { CardStatus } from "#/domain/payload/types.ts";
 
 // ============================================================================
 // Test the button disable logic (same as component implementation)

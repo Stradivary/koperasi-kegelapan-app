@@ -1,15 +1,15 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useBlockedCheck } from "../useBlockedCheck";
 import type { NfcCardPhase } from "../nfc/useNfcCard";
 
 // Mock checkLocalBlockedStatus
-vi.mock("#/core/nfc/localStatusCheck", () => ({
+vi.mock("#/domain/nfc/localStatusCheck", () => ({
   checkLocalBlockedStatus: vi.fn(),
 }));
 
-import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+import { checkLocalBlockedStatus } from "#/domain/nfc/localStatusCheck";
 const mockCheckStatus = vi.mocked(checkLocalBlockedStatus);
 
 describe("useBlockedCheck", () => {

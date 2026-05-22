@@ -106,7 +106,7 @@ vi.mock("#/application/device/deviceRegistry.usecase", () => ({
 }));
 
 // Import after mocks
-import { superadminRoutes } from "../../../api/src/routes/superadmin";
+import { superadminRoutes } from "../../../../api/src/routes/superadmin";
 
 // Create a test app
 const app = new Hono();

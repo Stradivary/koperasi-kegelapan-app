@@ -5,8 +5,8 @@ import { CardStatusBadge } from "../block/CardStatusBadge";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { applyDebit, isWriteEligible } from "#/core/state-machine/engine";
-import { CardStatus } from "#/core/payload/types";
+import { applyDebit, isWriteEligible } from "#/domain/state-machine/engine";
+import { CardStatus } from "#/domain/payload/types";
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { useState } from "react";
 

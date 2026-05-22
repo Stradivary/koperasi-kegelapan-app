@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildSelectChain } from "./dbMocks";
+import { buildSelectChain } from "#/application/__tests__/dbMocks";
 
 // ---------------------------------------------------------------------------
 // DB mock factory — returns a configurable mock per test

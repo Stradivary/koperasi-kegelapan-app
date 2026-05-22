@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side session grant generation for local-first / offline scenarios.
  *
  * Mirrors the server's deterministic key derivation:
@@ -13,7 +13,7 @@
  * device can reach the server to get a "real" grant.
  */
 
-import type { SessionGrant } from "#/core/payload/types";
+import type { SessionGrant } from "#/domain/payload/types";
 import { sessionGrantCacheStore, type CachedSessionGrant } from "./indexeddb";
 import { roleToOps } from "#/domain/auth/roleOps";
 

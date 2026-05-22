@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useCallback } from "react";
-import { readCard, isNfcSupported } from "#/core/nfc/engine";
-import { decodePayload } from "#/core/payload/engine";
-import { prepareWrite, decryptCardBody } from "#/core/nfc/pipelineEngine";
+import { readCard, isNfcSupported } from "#/domain/nfc/engine";
+import { decodePayload } from "#/domain/payload/engine";
+import { prepareWrite, decryptCardBody } from "#/domain/nfc/pipelineEngine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -10,8 +10,8 @@ import {
   TRAILER_COUNTER_BIND,
   CardState,
   CardStatus,
-} from "#/core/payload/types";
-import type { CardPayload, SessionGrant } from "#/core/payload/types";
+} from "#/domain/payload/types";
+import type { CardPayload, SessionGrant } from "#/domain/payload/types";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

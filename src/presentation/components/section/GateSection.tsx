@@ -5,13 +5,13 @@ import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
 import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { validateTransition, applyCheckin } from "#/core/state-machine/engine";
-import { CardState, CardStatus } from "#/core/payload/types";
+import { validateTransition, applyCheckin } from "#/domain/state-machine/engine";
+import { CardState, CardStatus } from "#/domain/payload/types";
 import { notifyCheckin } from "#/infrastructure/sync/peerSyncCoordinator";
 import { Input } from "../ui/input";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
-import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/domain/payload/types";
 import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
 
 interface GateSectionProps {

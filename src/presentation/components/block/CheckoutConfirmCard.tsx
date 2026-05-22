@@ -1,4 +1,4 @@
-﻿import type { CardPayload } from "#/core/payload/types";
+﻿import type { CardPayload } from "#/domain/payload/types";
 import { CardStatusBadge } from "./CardStatusBadge";
 import { Button } from "../ui/button";
 import { formatTime, formatDuration } from "#/presentation/lib/formatters";

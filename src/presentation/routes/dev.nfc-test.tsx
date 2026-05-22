@@ -5,9 +5,9 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Separator } from "../components/ui/separator";
 import { makeFreshCard } from "../components/section/IssuanceTestSection";
-import { prepareWrite } from "#/core/nfc/pipelineEngine";
-import { encodePayloadWire } from "#/core/payload/engine";
-import type { SessionGrant } from "#/core/payload/types";
+import { prepareWrite } from "#/domain/nfc/pipelineEngine";
+import { encodePayloadWire } from "#/domain/payload/engine";
+import type { SessionGrant } from "#/domain/payload/types";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 
 export const Route = createFileRoute("/dev/nfc-test")({

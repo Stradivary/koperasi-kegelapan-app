@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unit tests for StepIndicator logic
  *
  * Tests the phase-to-step mapping logic used by the StepIndicator component.
@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
+import type { NfcPhase } from "#/domain/nfc/stateMachine.ts";
 
 // Re-implement the mapping logic for testing (mirrors the component's internal logic)
 function getActiveStepIndex(phase: NfcPhase): number {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Unified NFC Hook
  *
  * Integrates the GenericNfcLayer and pipelineEngine to provide a complete
@@ -14,19 +14,19 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 
-import type { NfcAdapter, NfcError } from "#/core/nfc/adapters/types";
-import { GenericNfcLayer } from "#/core/nfc/genericNfcLayer";
-import type { PayloadError } from "#/core/nfc/payloadTypes";
-import { prepareWrite, commitWrite, readAndValidateCard } from "#/core/nfc/pipelineEngine";
-import { validateSession } from "#/core/nfc/sessionValidator";
+import type { NfcAdapter, NfcError } from "#/domain/nfc/adapters/types";
+import { GenericNfcLayer } from "#/domain/nfc/genericNfcLayer";
+import type { PayloadError } from "#/domain/nfc/payloadTypes";
+import { prepareWrite, commitWrite, readAndValidateCard } from "#/domain/nfc/pipelineEngine";
+import { validateSession } from "#/domain/nfc/sessionValidator";
 import {
   nfcReducer,
   initialNfcState,
   type NfcAction,
   type NfcState,
-} from "#/core/nfc/stateMachine";
-import type { RawNfcResult } from "#/core/nfc/types";
-import type { CardPayload, SessionGrant } from "#/core/payload/types";
+} from "#/domain/nfc/stateMachine";
+import type { RawNfcResult } from "#/domain/nfc/types";
+import type { CardPayload, SessionGrant } from "#/domain/payload/types";
 
 // ============================================================================
 // Types

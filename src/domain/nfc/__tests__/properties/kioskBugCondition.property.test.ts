@@ -353,7 +353,9 @@ describe("Domain 3: Balance Guards & State Enforcement", () => {
             // This means registration works even when no amount is selected
             const registerBalance = ""; // empty = no amount pre-selected
             const cardBalance = 50_000;
-            const effectiveBalance = registerBalance ? Number.parseInt(registerBalance, 10) : cardBalance;
+            const effectiveBalance = registerBalance
+              ? Number.parseInt(registerBalance, 10)
+              : cardBalance;
             expect(effectiveBalance).toBe(cardBalance);
           },
         ),

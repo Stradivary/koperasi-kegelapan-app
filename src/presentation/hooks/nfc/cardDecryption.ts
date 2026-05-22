@@ -1,7 +1,7 @@
-import { decryptCardBody } from "#/core/nfc/pipelineEngine";
-import { decodePayload } from "#/core/payload/engine";
-import type { CardPayload, SessionGrant } from "#/core/payload/types";
-import { BUFFER_SIZE, WIRE_SIZE, TRAILER_COUNTER_BIND } from "#/core/payload/types";
+﻿import { decryptCardBody } from "#/domain/nfc/pipelineEngine";
+import { decodePayload } from "#/domain/payload/engine";
+import type { CardPayload, SessionGrant } from "#/domain/payload/types";
+import { BUFFER_SIZE, WIRE_SIZE, TRAILER_COUNTER_BIND } from "#/domain/payload/types";
 
 /**
  * Decrypt and reassemble a raw NFC card buffer if version >= 2.

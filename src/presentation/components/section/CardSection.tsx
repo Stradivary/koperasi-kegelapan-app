@@ -7,8 +7,8 @@ import { useNfcCard } from "../../hooks/nfc/useNfcCard";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { useTenantSync } from "../../hooks/useTenantSync";
 import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
-import { validateUID } from "#/core/validation/uidGlobalValidator";
+import { checkLocalBlockedStatus } from "#/domain/nfc/localStatusCheck";
+import { validateUID } from "#/domain/validation/uidGlobalValidator";
 import { trackError } from "#/infrastructure/error/errorTracker";
 import {
   StationCardsPanel,
@@ -27,9 +27,9 @@ import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import { AlertTriangle } from "lucide-react";
-import { applyTopup, applyResetState } from "#/core/state-machine/engine";
-import { prepareWrite } from "#/core/nfc/pipelineEngine";
-import { extractCardBytes, isNfcSupported } from "#/core/nfc/engine";
+import { applyTopup, applyResetState } from "#/domain/state-machine/engine";
+import { prepareWrite } from "#/domain/nfc/pipelineEngine";
+import { extractCardBytes, isNfcSupported } from "#/domain/nfc/engine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -37,8 +37,8 @@ import {
   CardStatus,
   type CardPayload,
   type SessionGrant,
-} from "#/core/payload/types";
-import { encodeTenantBind } from "#/core/payload/tenantBind";
+} from "#/domain/payload/types";
+import { encodeTenantBind } from "#/domain/payload/tenantBind";
 
 interface CardSectionProps {
   tenantId: string;

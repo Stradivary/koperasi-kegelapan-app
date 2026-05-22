@@ -1,6 +1,6 @@
-import { extractCardBytes } from "#/core/nfc/engine";
-import { encodePayloadWire } from "#/core/payload/engine";
-import type { CardPayload, SessionGrant } from "#/core/payload/types";
+﻿import { extractCardBytes } from "#/domain/nfc/engine";
+import { encodePayloadWire } from "#/domain/payload/engine";
+import type { CardPayload, SessionGrant } from "#/domain/payload/types";
 import { decodeCardPayloadForVerification } from "./cardDecryption";
 import {
   WRITE_VERIFICATION_FAILED_MESSAGE,

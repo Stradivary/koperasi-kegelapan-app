@@ -647,8 +647,10 @@ function Run-Phase5 {
         # ── Pass 2: Relative imports (../lib/api, ./syncPush, etc.) ──────────
 
         $fileDir = Split-Path $file.FullName -Parent
-        # Get this file's directory relative to src/ (forward slashes)
-        $fileDirRelToSrc = [System.IO.Path]::GetRelativePath($SrcRoot, $fileDir).Replace("\", "/")
+        # Get this file's directory relative to src/ (forward slashes) - PS 5.1 compatible
+        $srcRootUri = New-Object System.Uri("$SrcRoot\")
+        $fileDirUri = New-Object System.Uri("$fileDir\")
+        $fileDirRelToSrc = [System.Uri]::UnescapeDataString($srcRootUri.MakeRelativeUri($fileDirUri).ToString()).TrimEnd("/").Replace("\", "/")
 
         # Match all relative import specifiers: from './...' | from '../...' | import('./...') | import('../...')
         $relativePattern = "(?<=(?:from|import\(|require\()\s*[`"'])(\.\.?/[^`"']+)(?=[`"'])"

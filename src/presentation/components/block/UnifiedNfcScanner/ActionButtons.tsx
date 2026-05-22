@@ -2,10 +2,10 @@
 
 import { cn } from "#/presentation/lib/utils.ts";
 import { Button } from "#/presentation/components/ui/button.tsx";
-import { CardStatus } from "#/core/payload/types.ts";
-import type { CardPayload } from "#/core/payload/types.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
-import type { CardClassification } from "#/core/nfc/types.ts";
+import { CardStatus } from "#/domain/payload/types.ts";
+import type { CardPayload } from "#/domain/payload/types.ts";
+import type { NfcPhase } from "#/domain/nfc/stateMachine.ts";
+import type { CardClassification } from "#/domain/nfc/types.ts";
 
 // ============================================================================
 // Types

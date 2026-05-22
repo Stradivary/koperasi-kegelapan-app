@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from "react";
-import type { SessionGrant } from "#/core/payload/types";
+import type { SessionGrant } from "#/domain/payload/types";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 import {
   sessionGrantCacheStore,

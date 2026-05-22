@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+﻿import { useState, useEffect, useRef } from "react";
+import { checkLocalBlockedStatus } from "#/domain/nfc/localStatusCheck";
 import type { NfcCardPhase } from "./nfc/useNfcCard";
-import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/domain/payload/types";
 
 export interface UseBlockedCheckOptions {
   tenantId: string;

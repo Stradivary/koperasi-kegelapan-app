@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { syncRoutes } from "../../../api/src/routes/sync";
+import { syncRoutes } from "../../../../api/src/routes/sync";
 
 type Env = {
   DB: D1Database;

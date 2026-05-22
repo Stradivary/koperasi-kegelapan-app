@@ -334,7 +334,7 @@ describe("Offline Operation Continuity", () => {
       // checkLocalBlockedStatus uses localDb.cards.get([tenantId, normalizedSerial])
       // which is a direct primary key lookup (O(1) via B-tree index).
 
-      const { checkLocalBlockedStatus } = await import("#/core/nfc/localStatusCheck");
+      const { checkLocalBlockedStatus } = await import("#/domain/nfc/localStatusCheck");
 
       // The function signature accepts tenantId and serialNumber
       expect(typeof checkLocalBlockedStatus).toBe("function");

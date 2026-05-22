@@ -1,5 +1,5 @@
-import type { CardPayload } from "#/core/payload/types";
-import type { CardClassification } from "#/core/nfc/types";
+﻿import type { CardPayload } from "#/domain/payload/types";
+import type { CardClassification } from "#/domain/nfc/types";
 import { CardStatusBadge } from "../CardStatusBadge";
 
 /**
