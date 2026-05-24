@@ -32,7 +32,7 @@ This document addresses 6 independent bugs in the MBCS (Member Card Station) PWA
 
 2.2 WHEN a member card is used at the Station (any NFC operation that reads or writes card data) THEN the system SHALL sync the card's current payload data (balance, counter, status, timestamps) to the Station's local IndexedDB immediately after the operation completes successfully
 
-2.3 WHEN the Station UI is rendered THEN the system SHALL present a polished, stable UI with consistent Lucide iconography, proper spacing scale, clean component hierarchy, and visually cohesive layout using the existing Signal design tokens (type-body1, type-title-bold, signal-bg-*, brand-dark, etc.)
+2.3 WHEN the Station UI is rendered THEN the system SHALL present a polished, stable UI with consistent Lucide iconography, proper spacing scale, clean component hierarchy, and visually cohesive layout using the existing Signal design tokens (type-body1, type-title-bold, signal-bg-\*, brand-dark, etc.)
 
 2.4 WHEN the application loses network connectivity THEN the system SHALL continue to function on all pages using cached assets and local IndexedDB data, displaying an offline indicator without breaking page rendering or navigation
 
@@ -68,7 +68,7 @@ This document addresses 6 independent bugs in the MBCS (Member Card Station) PWA
 FUNCTION isBugCondition_SessionExpired(X)
   INPUT: X of type { payload: CardPayload, nowSeconds: number }
   OUTPUT: boolean
-  
+
   RETURN isSessionExpired(X.payload, X.nowSeconds) = true
     AND X.payload.wallet.state IN {CHECKED_IN, STATION_OPERATION}
 END FUNCTION
@@ -91,8 +91,8 @@ END FOR
 FUNCTION isBugCondition_CheckoutSimulation(X)
   INPUT: X of type { trigger: "checkout", source: string }
   OUTPUT: boolean
-  
-  RETURN X.trigger = "checkout" 
+
+  RETURN X.trigger = "checkout"
     AND X.source IN {"station_nfc_drawer", "terminal_nfc_drawer"}
 END FUNCTION
 ```

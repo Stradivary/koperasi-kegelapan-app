@@ -79,7 +79,12 @@ function getEndpointLabel(pathname: string): string {
 async function extractPushCounts(
   endpoint: string,
   response: Response,
-): Promise<{ acceptedCount: number; rejectedCount: number; responseSize: number; errorReason: string }> {
+): Promise<{
+  acceptedCount: number;
+  rejectedCount: number;
+  responseSize: number;
+  errorReason: string;
+}> {
   try {
     const cloned = response.clone();
     const body = await cloned.text();
@@ -154,10 +159,14 @@ export const syncAnalytics = createMiddleware<{ Bindings: Env }>(async (c, next)
   const isPushJson =
     endpoint.includes("push") && c.res.headers.get("content-type")?.includes("json");
 
-  const { acceptedCount, rejectedCount, responseSize, errorReason: parsedErrorReason } =
-    isPushJson
-      ? await extractPushCounts(endpoint, c.res)
-      : { acceptedCount: 0, rejectedCount: 0, responseSize: 0, errorReason: "" };
+  const {
+    acceptedCount,
+    rejectedCount,
+    responseSize,
+    errorReason: parsedErrorReason,
+  } = isPushJson
+    ? await extractPushCounts(endpoint, c.res)
+    : { acceptedCount: 0, rejectedCount: 0, responseSize: 0, errorReason: "" };
 
   const errorReason = buildErrorReason(status, parsedErrorReason);
 

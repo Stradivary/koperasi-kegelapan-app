@@ -120,7 +120,10 @@ async function processMember(
   member: PushMemberEntry,
 ): Promise<{ accepted: boolean; rejection?: MemberRejection }> {
   if (!member.name || !member.userId) {
-    return { accepted: false, rejection: { userId: member.userId ?? "", reason: "malformed_entry" } };
+    return {
+      accepted: false,
+      rejection: { userId: member.userId ?? "", reason: "malformed_entry" },
+    };
   }
 
   if (member.status && !VALID_MEMBER_STATUSES.has(member.status)) {
@@ -171,7 +174,10 @@ async function processMember(
       error: msg,
       tenantId,
     });
-    return { accepted: false, rejection: { userId: member.userId, reason: `internal_error: ${msg}` } };
+    return {
+      accepted: false,
+      rejection: { userId: member.userId, reason: `internal_error: ${msg}` },
+    };
   }
 }
 
@@ -182,7 +188,10 @@ async function processCard(
   now: number,
 ): Promise<{ accepted: boolean; rejection?: CardRejection }> {
   if (!card.cardId) {
-    return { accepted: false, rejection: { cardId: card.cardId ?? "unknown", reason: "malformed_entry" } };
+    return {
+      accepted: false,
+      rejection: { cardId: card.cardId ?? "unknown", reason: "malformed_entry" },
+    };
   }
 
   if (card.status && !VALID_CARD_STATUSES.has(card.status)) {
@@ -235,7 +244,10 @@ async function processCard(
       error: msg,
       tenantId,
     });
-    return { accepted: false, rejection: { cardId: card.cardId, reason: `internal_error: ${msg}` } };
+    return {
+      accepted: false,
+      rejection: { cardId: card.cardId, reason: `internal_error: ${msg}` },
+    };
   }
 }
 

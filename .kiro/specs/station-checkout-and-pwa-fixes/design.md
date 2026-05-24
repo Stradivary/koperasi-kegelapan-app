@@ -5,6 +5,7 @@
 This design addresses 6 bugs in the MBCS PWA application that collectively degrade the Station operator experience and prevent reliable offline-first operation. The bugs span checkout flow logic (24h expiry, no-op callbacks), data synchronization (card sync after NFC ops), UI polish (inconsistent styling), and PWA reliability (offline mode, service worker, install/update prompts).
 
 The fix strategy is:
+
 1. **Bug 1 & 6** (checkout logic): Wire real checkout flow into `StationSection` with automatic 24h force-checkout when session is expired, capping fee at 24h max.
 2. **Bug 2** (card sync): Ensure card payload data syncs to local IndexedDB (Dexie `localDb.cards`) immediately after every successful NFC operation.
 3. **Bug 3** (UI styling): Polish Lucide icon usage, spacing, and component hierarchy using existing design tokens.
@@ -32,11 +33,12 @@ The fix strategy is:
 The bug manifests when a member's parking session exceeds 24 hours (+ 1h drift tolerance = 25h total). The `isSessionExpired` function correctly detects expiry, but there is no automatic force-checkout mechanism. The card remains in `CHECKED_IN` or `STATION_OPERATION` state with no way for the operator to check out the member.
 
 **Formal Specification:**
+
 ```
 FUNCTION isBugCondition_SessionExpired(input)
   INPUT: input of type { payload: CardPayload, nowSeconds: number }
   OUTPUT: boolean
-  
+
   RETURN isSessionExpired(input.payload, input.nowSeconds) = true
          AND input.payload.wallet.state IN {CHECKED_IN, STATION_OPERATION}
          AND input.payload.identity.status = ACTIVE
@@ -48,11 +50,12 @@ END FUNCTION
 The `StationSection` component passes `onCheckout={() => {}}` to `NfcScanDrawer`, making the checkout button a no-op. The actual checkout flow (`validateTransition` → `applyCheckout` → NFC write → local DB update) is never invoked from Station or Terminal modes.
 
 **Formal Specification:**
+
 ```
 FUNCTION isBugCondition_CheckoutSimulation(input)
   INPUT: input of type { trigger: "checkout", source: string, payload: CardPayload }
   OUTPUT: boolean
-  
+
   RETURN input.trigger = "checkout"
          AND input.source IN {"station", "terminal"}
          AND input.payload.wallet.state IN {CHECKED_IN, STATION_OPERATION}
@@ -64,11 +67,12 @@ END FUNCTION
 After successful NFC operations (scan, top-up, issue, fix), the card's current payload data is not consistently synced to the local IndexedDB. The existing `useEffect` hooks in `StationSection` partially handle this for `phase=ready` and `phase=success`, but the sync is incomplete for all operation types and doesn't cover all card fields.
 
 **Formal Specification:**
+
 ```
 FUNCTION isBugCondition_CardSyncMissing(input)
   INPUT: input of type { phase: NfcCardPhase, payload: CardPayload, serialNumber: string }
   OUTPUT: boolean
-  
+
   RETURN input.phase IN {"ready", "success"}
          AND input.payload IS NOT NULL
          AND input.serialNumber IS NOT NULL
@@ -85,11 +89,12 @@ Lucide icons are used inconsistently (mixed sizes, missing stroke-width standard
 When the application loses network connectivity, some pages break because they depend on network-fetched data without fallback. There is no offline indicator to inform the user of connectivity status.
 
 **Formal Specification:**
+
 ```
 FUNCTION isBugCondition_OfflineBreak(input)
   INPUT: input of type { isOnline: boolean, route: string }
   OUTPUT: boolean
-  
+
   RETURN input.isOnline = false
          AND pageRendersWithoutError(input.route) = false
 END FUNCTION
@@ -112,6 +117,7 @@ Service worker registration, pre-caching of critical assets, install prompt capt
 ### Preservation Requirements
 
 **Unchanged Behaviors:**
+
 - Normal checkout for sessions under 24h must continue with standard fee calculation (hours × PARKING_RATE_PER_HOUR capped at balance)
 - Gate (check-in) mode must continue using simulation/no-op for check-in operations
 - Top-up, debit, card issue, and fix operations must continue working correctly
@@ -122,6 +128,7 @@ Service worker registration, pre-caching of critical assets, install prompt capt
 
 **Scope:**
 All inputs that do NOT involve the specific bug conditions should be completely unaffected by these fixes. This includes:
+
 - Normal parking sessions (< 24h)
 - Gate mode operations
 - Online data fetching
@@ -203,6 +210,7 @@ _For any_ NFC operation that fails (phase = "error", aborted, or partial read/wr
 **File**: `src/components/section/StationSection.tsx`
 
 **Changes**:
+
 1. **Implement `handleCheckout` callback**: Replace `onCheckout={() => {}}` with a real checkout handler that:
    - Detects if session is expired via `isSessionExpired(payload, nowSeconds)`
    - If expired: use `force_checkout` trigger, cap fee at `24 * PARKING_RATE_PER_HOUR`
@@ -228,7 +236,7 @@ function applyForceCheckout(payload: CardPayload, nowSeconds: number): ForceChec
   const fee = Math.min(maxFee, payload.wallet.balance);
   const newBalance = payload.wallet.balance - fee;
   const newCounter = payload.wallet.counter + 1n;
-  
+
   return {
     payload: {
       ...payload,
@@ -263,16 +271,16 @@ const handleCheckout = useCallback(async () => {
   const now = Math.floor(Date.now() / 1000);
   const expired = isSessionExpired(state.payload, now);
   const trigger = expired ? "force_checkout" : "gate_checkout";
-  
+
   const validation = validateTransition(state.payload, trigger, now);
   if (!validation.valid) {
     // Show error toast
     return;
   }
-  
+
   let updatedPayload: CardPayload;
   let operationType: string;
-  
+
   if (expired) {
     const result = applyForceCheckout(state.payload, now);
     updatedPayload = result.payload;
@@ -281,7 +289,7 @@ const handleCheckout = useCallback(async () => {
     updatedPayload = applyCheckout(state.payload, now);
     operationType = "checkout";
   }
-  
+
   await write(updatedPayload, operationType);
 }, [state.payload, grant, write]);
 ```
@@ -309,8 +317,7 @@ if (operationType === "missed_checkout") {
 
 **File**: `src/core/state-machine/engine.ts`
 
-**Changes**:
-5. **Export `applyForceCheckout`** as a new function that caps fee at 24h max:
+**Changes**: 5. **Export `applyForceCheckout`** as a new function that caps fee at 24h max:
 
 ```typescript
 export function applyForceCheckout(payload: CardPayload, nowSeconds: number): CardPayload {
@@ -348,6 +355,7 @@ export function applyForceCheckout(payload: CardPayload, nowSeconds: number): Ca
 **File**: `src/components/section/StationSection.tsx`
 
 **Changes**:
+
 1. **Enhance existing `useEffect` for `phase=ready`** to sync all relevant fields:
 
 ```typescript
@@ -371,14 +379,14 @@ async function syncCardToLocalDb(
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const existing = await localDb.cards.get([tenantId, cardId]);
-  
+
   const syncData = {
     balance: payload.wallet.balance,
     counter: Number(payload.wallet.counter),
     status: mapCardStatus(payload.identity.status),
     lastActivityAt: now,
   };
-  
+
   if (existing) {
     await localDb.cards.update([tenantId, cardId], syncData);
   } else {
@@ -400,10 +408,14 @@ async function syncCardToLocalDb(
 
 function mapCardStatus(status: CardStatus): Card["status"] {
   switch (status) {
-    case CardStatus.ACTIVE: return "active";
-    case CardStatus.BLOCKED_TAMPER: return "blocked_tamper";
-    case CardStatus.BLOCKED_FRAUD: return "blocked_fraud";
-    default: return "blocked_admin";
+    case CardStatus.ACTIVE:
+      return "active";
+    case CardStatus.BLOCKED_TAMPER:
+      return "blocked_tamper";
+    case CardStatus.BLOCKED_FRAUD:
+      return "blocked_fraud";
+    default:
+      return "blocked_admin";
   }
 }
 ```
@@ -417,6 +429,7 @@ function mapCardStatus(status: CardStatus): Card["status"] {
 **Files**: Multiple component files
 
 **Changes**:
+
 1. **Standardize Lucide icon sizes**: Use `size={16}` for inline/body, `size={20}` for buttons, `size={24}` for section headers, `size={40}` for hero/empty states
 2. **Consistent spacing**: Use Tailwind spacing scale (`gap-2`, `gap-3`, `gap-4`, `space-y-3`, `space-y-4`) consistently
 3. **Component hierarchy**: Ensure cards use `rounded-2xl`, sections use `rounded-xl`, buttons use `rounded-lg`
@@ -429,13 +442,14 @@ function mapCardStatus(status: CardStatus): Card["status"] {
 **File**: `src/components/block/OfflineIndicator.tsx` (NEW)
 
 **Changes**:
+
 1. **Create `useOnlineStatus` hook**:
 
 ```typescript
 // src/hooks/useOnlineStatus.ts
 export function useOnlineStatus(): boolean {
   const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
+    typeof navigator !== "undefined" ? navigator.onLine : true,
   );
 
   useEffect(() => {
@@ -460,7 +474,7 @@ export function useOnlineStatus(): boolean {
 export function OfflineIndicator() {
   const isOnline = useOnlineStatus();
   if (isOnline) return null;
-  
+
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] bg-signal-bg-warning border-b border-signal-warning px-4 py-2 text-center">
       <p className="type-body2-bold text-signal-warning">
@@ -495,6 +509,7 @@ function RootComponent() {
 **File**: `vite.config.ts`
 
 **Changes**:
+
 1. **Ensure `injectRegister` is set correctly**: Keep `"auto"` but verify SW registration in the app
 2. **Add `skipWaiting: true`** to workbox config for immediate activation
 3. **Add `clientsClaim: true`** to workbox config so new SW takes control immediately
@@ -523,15 +538,11 @@ workbox: {
 
 **File**: `src/components/block/PwaUpdatePrompt.tsx`
 
-**Changes**:
-4. **Add error handling for SW registration failure**
-5. **Add retry logic for update checks**
+**Changes**: 4. **Add error handling for SW registration failure** 5. **Add retry logic for update checks**
 
 **File**: `src/hooks/useInstallPrompt.ts`
 
-**Changes**:
-6. **Add `display-mode: minimal-ui`** to the media query check (some browsers use this)
-7. **Persist dismissal state** to localStorage so prompt doesn't re-appear on same session
+**Changes**: 6. **Add `display-mode: minimal-ui`** to the media query check (some browsers use this) 7. **Persist dismissal state** to localStorage so prompt doesn't re-appear on same session
 
 ## Testing Strategy
 
@@ -546,12 +557,14 @@ The testing strategy follows a two-phase approach: first, surface counterexample
 **Test Plan**: Write unit tests that exercise the checkout flow with expired sessions and verify the no-op behavior. Run on UNFIXED code to observe failures.
 
 **Test Cases**:
+
 1. **Expired Session Checkout Test**: Create a payload with `lastTimestamp` > 25h ago, call checkout handler → observe no state change (will fail on unfixed code)
 2. **Station No-Op Checkout Test**: Simulate checkout button press in Station mode → observe `onCheckout` is a no-op (will fail on unfixed code)
 3. **Card Sync Missing Test**: Complete a top-up operation, check localDb → observe stale balance (will fail on unfixed code)
 4. **Offline Page Render Test**: Set `navigator.onLine = false`, render a route → observe error state (will fail on unfixed code)
 
 **Expected Counterexamples**:
+
 - Checkout handler does nothing for expired sessions
 - `onCheckout={() => {}}` produces no state change
 - localDb.cards shows stale data after NFC operations
@@ -561,6 +574,7 @@ The testing strategy follows a two-phase approach: first, surface counterexample
 **Goal**: Verify that for all inputs where the bug condition holds, the fixed function produces the expected behavior.
 
 **Pseudocode:**
+
 ```
 FOR ALL input WHERE isBugCondition_SessionExpired(input) DO
   result := handleCheckout_fixed(input)
@@ -583,8 +597,9 @@ END FOR
 **Goal**: Verify that for all inputs where the bug condition does NOT hold, the fixed function produces the same result as the original function.
 
 **Pseudocode:**
+
 ```
-FOR ALL input WHERE NOT isBugCondition_SessionExpired(input) 
+FOR ALL input WHERE NOT isBugCondition_SessionExpired(input)
   AND input.payload.wallet.state IN {CHECKED_IN, STATION_OPERATION} DO
   ASSERT applyCheckout_original(input) = applyCheckout_fixed(input)
 END FOR
@@ -599,6 +614,7 @@ END FOR
 ```
 
 **Testing Approach**: Property-based testing is recommended for preservation checking because:
+
 - It generates many random CardPayload configurations to verify fee calculation is unchanged for non-expired sessions
 - It catches edge cases in balance/fee arithmetic that manual tests might miss
 - It provides strong guarantees that gate mode behavior is completely unchanged
@@ -606,6 +622,7 @@ END FOR
 **Test Plan**: Observe behavior on UNFIXED code first for normal checkouts and gate operations, then write property-based tests capturing that behavior.
 
 **Test Cases**:
+
 1. **Normal Checkout Preservation**: Verify `applyCheckout` produces identical results for sessions < 24h
 2. **Gate Mode Preservation**: Verify gate check-in simulation is completely unchanged
 3. **Failed NFC No-Sync Preservation**: Verify no local DB writes occur when NFC operations fail
@@ -625,8 +642,8 @@ END FOR
 ### Property-Based Tests
 
 - Generate random `CardPayload` with `lastTimestamp` in range [0, now] and verify:
-  - If expired: fee = min(24 * RATE, balance), state = CHECKED_OUT
-  - If not expired: fee = ceil(hours) * RATE capped at balance, state = CHECKED_OUT
+  - If expired: fee = min(24 \* RATE, balance), state = CHECKED_OUT
+  - If not expired: fee = ceil(hours) \* RATE capped at balance, state = CHECKED_OUT
 - Generate random non-expired payloads and verify `applyCheckout` output matches original function exactly (preservation)
 - Generate random payloads with various `CardStatus` values and verify blocked cards are always rejected
 - Generate random NFC operation results (success/failure) and verify sync only occurs on success

@@ -54,7 +54,10 @@ export function RootOfflineBanner() {
     if (isOnline) {
       toast.success("Koneksi internet tersambung kembali", { icon: <WifiHigh />, duration: 3000 });
     } else {
-      toast.warning("Koneksi internet terputus. Operasi tetap berjalan secara offline.", { icon: <WifiOff />, duration: 4000 });
+      toast.warning("Koneksi internet terputus. Operasi tetap berjalan secara offline.", {
+        icon: <WifiOff />,
+        duration: 4000,
+      });
     }
   }, [isOnline]);
 

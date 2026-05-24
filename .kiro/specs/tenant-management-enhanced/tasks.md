@@ -41,7 +41,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Handle Web Crypto unavailability by throwing descriptive error
     - _Requirements: 2.1, 2.7, 2.8_
 
-  - [ ]* 2.2 Write property test for device fingerprint determinism
+  - [ ]\* 2.2 Write property test for device fingerprint determinism
     - **Property 8: Device Fingerprint Determinism**
     - **Validates: Requirements 2.1, 2.6**
 
@@ -50,7 +50,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Implement upsert logic: new fingerprint → generate UUID; existing fingerprint → update last_seen_at
     - _Requirements: 2.3, 2.4, 2.5, 2.6_
 
-  - [ ]* 2.4 Write unit tests for Device Registry
+  - [ ]\* 2.4 Write unit tests for Device Registry
     - Test upsert logic (new device vs existing device)
     - Test block/unblock with time boundaries
     - Test session revocation cascade
@@ -64,7 +64,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Bind sessions to device_id
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
 
-  - [ ]* 3.2 Write property test for session independence
+  - [ ]\* 3.2 Write property test for session independence
     - **Property 9: Session Independence**
     - **Validates: Requirements 3.1, 3.4, 3.5**
 
@@ -76,7 +76,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Store deviceId in IndexedDB tenantContext on client
     - _Requirements: 2.2, 3.1, 3.7_
 
-  - [ ]* 3.4 Write unit tests for Auth Session service
+  - [ ]\* 3.4 Write unit tests for Auth Session service
     - Test session creation and max-session enforcement
     - Test refresh token rotation and hash verification
     - Test revocation on failed refresh (compromised token)
@@ -94,11 +94,11 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Execute block + session revocation atomically in single DB transaction
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8_
 
-  - [ ]* 5.2 Write property test for device block enforcement
+  - [ ]\* 5.2 Write property test for device block enforcement
     - **Property 3: Device Block Enforcement**
     - **Validates: Requirements 5.1, 5.3, 5.4**
 
-  - [ ]* 5.3 Write property test for session cascade on device block
+  - [ ]\* 5.3 Write property test for session cascade on device block
     - **Property 4: Session Cascade on Device Block**
     - **Validates: Requirements 4.3, 4.6**
 
@@ -126,11 +126,11 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Return `{ accepted, rejected: [{ key, reason }], serverCursor }`
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 8.1, 8.3, 8.5, 8.6_
 
-  - [ ]* 6.2 Write property test for idempotent sync
+  - [ ]\* 6.2 Write property test for idempotent sync
     - **Property 2: Idempotent Sync**
     - **Validates: Requirements 1.5, 6.2, 6.3**
 
-  - [ ]* 6.3 Write property test for balance consistency
+  - [ ]\* 6.3 Write property test for balance consistency
     - **Property 6: Balance Consistency**
     - **Validates: Requirements 6.4, 6.6**
 
@@ -153,11 +153,11 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Enforce tenant isolation via token tenant_id
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.7, 7.8, 8.2, 8.4, 8.5_
 
-  - [ ]* 7.2 Write property test for cursor monotonicity
+  - [ ]\* 7.2 Write property test for cursor monotonicity
     - **Property 5: Cursor Monotonicity**
     - **Validates: Requirements 7.2, 7.5, 7.6**
 
-  - [ ]* 7.3 Write property test for tenant isolation
+  - [ ]\* 7.3 Write property test for tenant isolation
     - **Property 1: Tenant Isolation**
     - **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
 
@@ -170,7 +170,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Handle 401 (abort + re-auth), 5xx (retry with backoff, max 5 attempts)
     - _Requirements: 7.1, 7.4, 7.5, 7.6, 7.9, 7.10_
 
-  - [ ]* 7.5 Write property test for batch size invariant
+  - [ ]\* 7.5 Write property test for batch size invariant
     - **Property 12: Batch Size Invariant**
     - **Validates: Requirements 7.3, 14.3**
 
@@ -188,7 +188,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Expose lastSyncedAt timestamp and pending Outbox count
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 14.1, 14.2, 14.4, 14.5_
 
-  - [ ]* 9.2 Write property test for sync debounce coalescence
+  - [ ]\* 9.2 Write property test for sync debounce coalescence
     - **Property 11: Sync Debounce Coalescence**
     - **Validates: Requirements 14.1**
 
@@ -219,11 +219,11 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Retry IndexedDB write once on failure
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-  - [ ]* 10.2 Write property test for offline durability
+  - [ ]\* 10.2 Write property test for offline durability
     - **Property 7: Offline Durability**
     - **Validates: Requirements 9.1, 9.3, 9.5**
 
-  - [ ]* 10.3 Write property test for filter correctness
+  - [ ]\* 10.3 Write property test for filter correctness
     - **Property 10: Filter Correctness**
     - **Validates: Requirements 10.3, 10.4, 10.5**
 
@@ -247,7 +247,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Support offline filtering from local IndexedDB
     - _Requirements: 10.3, 10.4, 10.5, 10.7, 10.8, 10.9_
 
-  - [ ]* 11.3 Write unit tests for Transactions UI
+  - [ ]\* 11.3 Write unit tests for Transactions UI
     - Test filter application and pagination
     - Test empty state rendering
     - Test offline data display
@@ -290,7 +290,7 @@ This plan implements the enhanced multitenancy system in incremental steps: serv
     - Connect device block handler to sync engine suppression
     - _Requirements: 11.4, 14.1, 14.2_
 
-  - [ ]* 14.3 Write integration tests for end-to-end sync flow
+  - [ ]\* 14.3 Write integration tests for end-to-end sync flow
     - Test: record transaction locally → push → pull from second device context → verify consistency
     - Test: device block → verify 403 → unblock → verify access restored
     - Test: concurrent sessions from multiple devices

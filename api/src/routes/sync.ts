@@ -224,7 +224,10 @@ syncRoutes.post("/push", async (c) => {
     // Validate required fields, type, and ranges
     const validation = validateTransaction(tx);
     if (!validation.valid) {
-      rejected.push({ key: tx.idempotencyKey ?? "unknown", reason: validation.reason ?? "malformed_event" });
+      rejected.push({
+        key: tx.idempotencyKey ?? "unknown",
+        reason: validation.reason ?? "malformed_event",
+      });
       continue;
     }
 

@@ -33,9 +33,9 @@ test.describe("Admin cards page", () => {
     await issueBtn.click();
 
     // Should open a drawer/dialog for card issuance
-    await expect(
-      page.getByText(/Terbitkan Kartu|Daftarkan Kartu|Nama|NFC/i).first(),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Terbitkan Kartu|Daftarkan Kartu|Nama|NFC/i).first()).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("card search/filter works", async ({ page }) => {
@@ -52,9 +52,7 @@ test.describe("Admin cards page", () => {
 
     if (await anyCard.isVisible()) {
       // Cards exist — check for status badge
-      await expect(
-        page.getByText(/active|aktif|blocked|diblokir/i).first(),
-      ).toBeVisible();
+      await expect(page.getByText(/active|aktif|blocked|diblokir/i).first()).toBeVisible();
     }
   });
 });
@@ -77,11 +75,7 @@ test.describe("Admin cards — card actions", () => {
           page
             .getByRole("menuitem")
             .first()
-            .or(
-              page
-                .getByRole("button", { name: /blokir|block|topup|hapus/i })
-                .first(),
-            ),
+            .or(page.getByRole("button", { name: /blokir|block|topup|hapus/i }).first()),
         ).toBeVisible({ timeout: 3000 });
       }
     }
@@ -101,9 +95,7 @@ test.describe("Admin cards — card actions", () => {
     if (await topupBtn.isVisible()) {
       await topupBtn.click();
       // Should open topup drawer with amount input
-      await expect(
-        page.getByText(/Top.?up|Jumlah|Amount/i).first(),
-      ).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/Top.?up|Jumlah|Amount/i).first()).toBeVisible({ timeout: 3000 });
     }
   });
 });

@@ -242,10 +242,9 @@ describe("sync routes", () => {
     });
 
     it("handles empty/zero cursors", async () => {
-      const res = await app.request(
-        "/api/sync/pull?membersCursor=0&cardsCursor=&txCursor=",
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const res = await app.request("/api/sync/pull?membersCursor=0&cardsCursor=&txCursor=", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       expect(res.status).toBe(200);
     });
   });

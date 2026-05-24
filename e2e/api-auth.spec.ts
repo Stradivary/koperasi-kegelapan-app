@@ -204,12 +204,9 @@ test.describe("API — Superadmin endpoints", () => {
   });
 
   test("GET /api/superadmin/tenants supports pagination", async ({ request }) => {
-    const response = await request.get(
-      `${API_BASE}/api/superadmin/tenants?page=1&pageSize=5`,
-      {
-        headers: { Authorization: `Bearer ${superadminToken}` },
-      },
-    );
+    const response = await request.get(`${API_BASE}/api/superadmin/tenants?page=1&pageSize=5`, {
+      headers: { Authorization: `Bearer ${superadminToken}` },
+    });
 
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -219,12 +216,9 @@ test.describe("API — Superadmin endpoints", () => {
   });
 
   test("GET /api/superadmin/tenants supports search", async ({ request }) => {
-    const response = await request.get(
-      `${API_BASE}/api/superadmin/tenants?search=koperasi`,
-      {
-        headers: { Authorization: `Bearer ${superadminToken}` },
-      },
-    );
+    const response = await request.get(`${API_BASE}/api/superadmin/tenants?search=koperasi`, {
+      headers: { Authorization: `Bearer ${superadminToken}` },
+    });
 
     expect(response.status()).toBe(200);
     const body = await response.json();

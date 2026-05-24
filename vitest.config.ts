@@ -8,11 +8,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
-      exclude: [
-        "src/main.tsx",
-        "src/routeTree.gen.ts",
-        "src/db/index.ts",
-      ],
+      exclude: ["src/main.tsx", "src/routeTree.gen.ts", "src/db/index.ts"],
     },
   },
   resolve: {

@@ -92,8 +92,9 @@ export function useDeviceBlock(): UseDeviceBlockReturn {
     return isDeviceBlocked();
   }, []);
 
-  const blockedUntilFormatted =
-    blockState.blockedUntil ? formatBlockedUntil(blockState.blockedUntil) : null;
+  const blockedUntilFormatted = blockState.blockedUntil
+    ? formatBlockedUntil(blockState.blockedUntil)
+    : null;
 
   return {
     blocked: blockState.blocked,

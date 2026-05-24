@@ -75,7 +75,6 @@ async function simulateHandleUnifiedLogin(params: {
     redirected: false,
     networkFetchAttempted: true,
   };
-
 }
 
 /**

@@ -1,36 +1,34 @@
 {
   "name": "koperasi-kegelapan-api",
   "compatibility_date": "2025-09-02",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "main": "api/src/index.ts",
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "koperasi-kegelapan",
       "database_id": "62122eed-8454-4751-986d-6dcf12fb3d2e",
-      "migrations_dir": "drizzle"
-    }
+      "migrations_dir": "drizzle",
+    },
   ],
   "analytics_engine_datasets": [
     {
       "binding": "SYNC_ANALYTICS",
-      "dataset": "koperasi_sync_events"
+      "dataset": "koperasi_sync_events",
     },
     {
       "binding": "CLIENT_ERRORS_ANALYTICS",
-      "dataset": "koperasi_client_errors"
-    }
+      "dataset": "koperasi_client_errors",
+    },
   ],
   "observability": {
     "enabled": true,
     "logs": {
       "enabled": true,
-      "invocation_logs": true
-    }
+      "invocation_logs": true,
+    },
   },
   "vars": {
-    "SESSION_MASTER_KEY": "override-in-secrets"
-  }
+    "SESSION_MASTER_KEY": "override-in-secrets",
+  },
 }

@@ -14,17 +14,20 @@ import { setCurrentDeviceId } from "./api";
 
 export function initDeviceIdFromStorage(): void {
   // Fire-and-forget: don't block app startup
-  tenantContextStore.getAll().then((contexts) => {
-    if (contexts.length === 0) return;
+  tenantContextStore
+    .getAll()
+    .then((contexts) => {
+      if (contexts.length === 0) return;
 
-    // Pick the most recently updated context
-    const sorted = contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-    const activeCtx = sorted[0];
+      // Pick the most recently updated context
+      const sorted = contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      const activeCtx = sorted[0];
 
-    if (activeCtx?.deviceId) {
-      setCurrentDeviceId(activeCtx.deviceId);
-    }
-  }).catch(() => {
-    // Silently ignore — deviceId will be set later during login or route load
-  });
+      if (activeCtx?.deviceId) {
+        setCurrentDeviceId(activeCtx.deviceId);
+      }
+    })
+    .catch(() => {
+      // Silently ignore — deviceId will be set later during login or route load
+    });
 }

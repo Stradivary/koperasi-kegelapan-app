@@ -112,11 +112,7 @@ export function SyncStatusIndicator({
           config.colorClass,
         ].join(" ")}
       >
-        <Icon
-          size={12}
-          className={config.animate ? "animate-pulse" : ""}
-          aria-hidden="true"
-        />
+        <Icon size={12} className={config.animate ? "animate-pulse" : ""} aria-hidden="true" />
         {config.label}
       </span>
 

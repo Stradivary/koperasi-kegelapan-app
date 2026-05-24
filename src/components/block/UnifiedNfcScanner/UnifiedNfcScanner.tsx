@@ -643,7 +643,10 @@ function ScannerContent({
                     aria-live="polite"
                     aria-atomic="true"
                   >
-                    {mergedLabels.continuousScanCountdown.replaceAll("{countdown}", String(countdown))}
+                    {mergedLabels.continuousScanCountdown.replaceAll(
+                      "{countdown}",
+                      String(countdown),
+                    )}
                   </span>
                   <Button
                     variant="outline"
