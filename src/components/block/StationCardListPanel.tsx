@@ -273,7 +273,11 @@ function CardActionsDropdown({
           <CreditCard size={14} />
           Top-up
         </DropdownMenuItem>
-        <DropdownMenuItem className="h-10" onClick={onRecover} disabled={isRecovering}>
+        <DropdownMenuItem
+          className="h-10"
+          onClick={onRecover}
+          disabled={isRecovering || card.syncStatus !== "synced"}
+        >
           <RefreshCw size={14} />
           Pulihkan Kartu
         </DropdownMenuItem>

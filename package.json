@@ -112,10 +112,5 @@
     "*.{json,md,css,html,yaml,toml}": [
       "oxfmt"
     ]
-  },
-  "pnpm": {
-    "overrides": {
-      "esbuild": ">=0.24.3"
-    }
   }
 }

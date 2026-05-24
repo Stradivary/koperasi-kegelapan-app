@@ -5,7 +5,6 @@ import {
   CardStatus,
   MAGIC,
   type CardPayload,
-  type LogEntry,
   type SessionGrant,
 } from "../payload/types";
 import {
@@ -240,7 +239,8 @@ describe("absolute timestamp in log entries", () => {
     // But we now use absolute timestamp, not delta
     const updated = applyDebit(payload, 5000, NOW);
     expect(updated.logEntries[0].timestamp).toBe(NOW);
-    expect((updated.logEntries[0] as LogEntry).timestamp).toBeUndefined();
+    // Verify there is no deltaTime field — only absolute timestamp
+    expect((updated.logEntries[0] as unknown as Record<string, unknown>).deltaTime).toBeUndefined();
   });
 });
 
