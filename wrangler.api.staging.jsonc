@@ -1,0 +1,35 @@
+{
+    "name": "koperasi-kegelapan-api-staging",
+    "compatibility_date": "2025-09-02",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "main": "api/src/index.ts",
+    "d1_databases": [
+        {
+            "binding": "koperasi_kegelapan_staging",
+            "database_name": "koperasi-kegelapan-staging",
+            "database_id": "ed8e0e45-f6be-4cbb-94a7-96600c4bc89e"
+        }
+    ],
+    "analytics_engine_datasets": [
+        {
+            "binding": "SYNC_ANALYTICS",
+            "dataset": "koperasi_sync_events_staging",
+        },
+        {
+            "binding": "CLIENT_ERRORS_ANALYTICS",
+            "dataset": "koperasi_client_errors_staging",
+        },
+    ],
+    "observability": {
+        "enabled": true,
+        "logs": {
+            "enabled": true,
+            "invocation_logs": true,
+        },
+    },
+    "vars": {
+        "SESSION_MASTER_KEY": "override-in-secrets",
+    },
+}
