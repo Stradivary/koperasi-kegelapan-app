@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CardState } from "../../core/payload/types";
+import { CardState, CardStatus } from "../../core/payload/types";
 import {
+  applyBlockStatus,
   applyCheckout,
   PARKING_RATE_PER_HOUR,
   validateCheckoutBalance,
@@ -10,6 +11,7 @@ import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
 import { useBlockedCheck } from "../../hooks/useBlockedCheck";
 import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
 import { useNfcCard } from "../../hooks/nfc/useNfcCard";
+import { updateLocalCardRecord } from "../../hooks/nfc/updateLocalCardRecord";
 import { useSessionGrant } from "../../hooks/useSessionGrant";
 import { formatDuration } from "../../lib/formatters";
 import { FeedbackCard } from "../block/FeedbackCard";
@@ -54,7 +56,9 @@ export function TerminalSection({
     loading: grantLoading,
     error: grantError,
   } = useSessionGrant(tenantId, accountId, deviceId, "terminal");
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
+  const { state, scan, write, reset, retryScan } = useNfcCard(grant, tenantId, terminalId, {
+    lenient: true,
+  });
   const syncEngine = useSyncEngineContext();
 
   // Use the shared useBlockedCheck hook to handle async blocked status check
@@ -149,6 +153,29 @@ export function TerminalSection({
     write(updatedPayload, "checkout");
   }, [blockedCheck.isReady, state.payload, write, getNowSeconds]);
 
+  // Write blocked status back to the physical card when local DB says blocked
+  // but the on-card status is still ACTIVE. This ensures the card itself becomes
+  // the authoritative source of truth for offline enforcement.
+  useEffect(() => {
+    if (!blockedCheck.isBlocked || !state.payload || state.phase !== "ready") return;
+    if (blockedCheck.isChecking) return;
+
+    const payload = state.payload;
+    if (payload.identity.status === CardStatus.ACTIVE) {
+      const blockedPayload = applyBlockStatus(payload, CardStatus.BLOCKED_ADMIN, getNowSeconds());
+      write(blockedPayload, "admin");
+      void updateLocalCardRecord(tenantId, blockedPayload);
+    }
+  }, [
+    blockedCheck.isBlocked,
+    blockedCheck.isChecking,
+    state.payload,
+    state.phase,
+    write,
+    getNowSeconds,
+    tenantId,
+  ]);
+
   // Notify sync engine on success
   useEffect(() => {
     if (state.phase === "success") {
@@ -166,11 +193,11 @@ export function TerminalSection({
     }
   }, [state.phase]);
 
-  function handleScan() {
+  function handleRetry() {
     autoCheckoutTriggered.current = false;
     setInsufficientBalance(null);
     setTamperDisableAutoScan(false);
-    scan();
+    retryScan();
   }
 
   const cardState = state.payload?.wallet.state;
@@ -292,7 +319,7 @@ export function TerminalSection({
       {state.phase === "success" && state.payload && lastTx && (
         <div className="flex flex-col items-center gap-4 w-full max-w-xs">
           <NfcTapArea phase="success" />
-          {(blockedCheck.notInLocalDb || state.warning) && (
+          {/* {(blockedCheck.notInLocalDb || state.warning) && (
             <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
               <p className="type-body2 text-amber-700 text-center">
                 ⚠️{" "}
@@ -300,7 +327,7 @@ export function TerminalSection({
                   "Kartu tidak terdaftar di database lokal. Data mungkin belum tersinkronisasi."}
               </p>
             </div>
-          )}
+          )} */}
           <FeedbackCard
             variant="success"
             title="Checkout Berhasil"
@@ -327,7 +354,7 @@ export function TerminalSection({
             variant="error"
             title={state.tamperDetected ? "Kartu Terdeteksi Rusak" : "Terjadi Kesalahan"}
             subtitle={state.error ?? undefined}
-            actions={[{ label: "Coba Lagi", onClick: handleScan, variant: "primary" }]}
+            actions={[{ label: "Coba Lagi", onClick: handleRetry, variant: "primary" }]}
           />
         </div>
       )}

@@ -97,8 +97,8 @@ feedback without the download overhead.
 
 | Workflow              | Trigger                                | Jobs                                          |
 | --------------------- | -------------------------------------- | --------------------------------------------- |
-| `ci-test.yml`         | push, PR → master/main                 | lint, typecheck, unit-test, e2e-test          |
-| `deploy.yml`          | ci-test success on master/main; manual | deploy                                        |
+| `ci-test.yml`         | push, PR → master/main/develop         | lint, typecheck, unit-test, e2e-test          |
+| `deploy.yml`          | ci-test success on master/main; manual | deploy (Pages + Workers)                      |
 | `static-analysis.yml` | push/PR → master/main; weekly Monday   | npm-audit, owasp-dependency-check, sonarcloud |
 
 ---
@@ -114,5 +114,7 @@ pnpm typecheck      # tsc --noEmit
 pnpm test           # vitest run
 pnpm test:coverage  # vitest run --coverage  (outputs coverage/lcov.info)
 pnpm e2e            # playwright test
-pnpm deploy         # build + wrangler deploy (manual/local)
+pnpm deploy         # deploy:pages + deploy:api
+pnpm deploy:pages   # build + wrangler pages deploy
+pnpm deploy:api     # wrangler deploy --config wrangler.api.jsonc
 ```

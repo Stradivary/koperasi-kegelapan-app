@@ -3,7 +3,9 @@ import {
   CardStatus,
   TxType,
   LOG_ENTRY_COUNT,
+  LOG_HASH_SIZE,
   type CardPayload,
+  type LogEntry,
   type SessionGrant,
 } from "../payload/types";
 
@@ -147,6 +149,7 @@ export function applyCheckin(
   terminalId: number,
   nowSeconds: number,
 ): CardPayload {
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
   const newCounter = payload.wallet.counter + 1n;
   return {
     ...payload,
@@ -154,26 +157,26 @@ export function applyCheckin(
       ...payload.wallet,
       state: CardState.CHECKED_IN,
       counter: newCounter,
-      lastTimestamp: nowSeconds,
+      lastTimestamp: effectiveTimestamp,
     },
     session: {
-      startTime: nowSeconds,
+      startTime: effectiveTimestamp,
       endTime: 0,
       terminalId,
     },
     logEntries: buildLogEntry(payload.logEntries, {
-      deltaTime: 0,
+      timestamp: effectiveTimestamp,
       amount: 0,
       balanceAfter: payload.wallet.balance,
       flags: TxType.CHECKIN,
-      hash: new Uint8Array(6),
+      hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
 }
 
 export function applyCheckout(payload: CardPayload, nowSeconds: number): CardPayload {
-  const durationSeconds = nowSeconds - payload.session.startTime;
-  const fee = calculateCheckoutFee(payload, nowSeconds);
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
+  const fee = calculateCheckoutFee(payload, effectiveTimestamp);
   const newBalance = payload.wallet.balance - fee;
   const newCounter = payload.wallet.counter + 1n;
   return {
@@ -184,26 +187,25 @@ export function applyCheckout(payload: CardPayload, nowSeconds: number): CardPay
       lastBalance: payload.wallet.balance,
       balance: newBalance,
       counter: newCounter,
-      lastTimestamp: nowSeconds,
+      lastTimestamp: effectiveTimestamp,
     },
     session: {
       ...payload.session,
-      endTime: nowSeconds,
+      endTime: effectiveTimestamp,
     },
     logEntries: buildLogEntry(payload.logEntries, {
-      deltaTime: Math.min(durationSeconds, 0xffff),
+      timestamp: effectiveTimestamp,
       amount: fee,
       balanceAfter: newBalance,
       flags: TxType.CHECKOUT,
-      hash: new Uint8Array(6),
+      hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
 }
 
 export function applyDebit(payload: CardPayload, amount: number, nowSeconds: number): CardPayload {
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
   const newBalance = payload.wallet.balance - amount;
-  const sessionStart = payload.session.startTime;
-  const deltaTime = Math.min(nowSeconds - sessionStart, 0xffff);
   return {
     ...payload,
     wallet: {
@@ -211,19 +213,20 @@ export function applyDebit(payload: CardPayload, amount: number, nowSeconds: num
       lastBalance: payload.wallet.balance,
       balance: newBalance,
       counter: payload.wallet.counter + 1n,
-      lastTimestamp: nowSeconds,
+      lastTimestamp: effectiveTimestamp,
     },
     logEntries: buildLogEntry(payload.logEntries, {
-      deltaTime,
+      timestamp: effectiveTimestamp,
       amount,
       balanceAfter: newBalance,
       flags: TxType.DEBIT,
-      hash: new Uint8Array(6),
+      hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
 }
 
 export function applyTopup(payload: CardPayload, amount: number, nowSeconds: number): CardPayload {
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
   const newBalance = payload.wallet.balance + amount;
   return {
     ...payload,
@@ -232,19 +235,20 @@ export function applyTopup(payload: CardPayload, amount: number, nowSeconds: num
       lastBalance: payload.wallet.balance,
       balance: newBalance,
       counter: payload.wallet.counter + 1n,
-      lastTimestamp: nowSeconds,
+      lastTimestamp: effectiveTimestamp,
     },
     logEntries: buildLogEntry(payload.logEntries, {
-      deltaTime: 0,
+      timestamp: effectiveTimestamp,
       amount,
       balanceAfter: newBalance,
       flags: TxType.CREDIT,
-      hash: new Uint8Array(6),
+      hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
 }
 
 export function applyResetState(payload: CardPayload, nowSeconds: number): CardPayload {
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
   const newCounter = payload.wallet.counter + 1n;
   return {
     ...payload,
@@ -256,7 +260,7 @@ export function applyResetState(payload: CardPayload, nowSeconds: number): CardP
       ...payload.wallet,
       state: CardState.IDLE,
       counter: newCounter,
-      lastTimestamp: nowSeconds,
+      lastTimestamp: effectiveTimestamp,
       flags: 0,
     },
     session: {
@@ -265,18 +269,71 @@ export function applyResetState(payload: CardPayload, nowSeconds: number): CardP
       terminalId: 0,
     },
     logEntries: buildLogEntry(payload.logEntries, {
-      deltaTime: 0,
+      timestamp: effectiveTimestamp,
       amount: 0,
       balanceAfter: payload.wallet.balance,
       flags: TxType.ADMIN,
-      hash: new Uint8Array(6),
+      hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
 }
 
+/**
+ * Apply a blocked status to the card payload.
+ *
+ * Used to write the blocked status back to the physical card when the local DB
+ * indicates the card is blocked (e.g. blocked by admin via server) but the on-card
+ * status is still ACTIVE. This ensures the physical card becomes the authoritative
+ * source of truth for blocked status, enabling offline enforcement.
+ *
+ * Increments the counter and adds an ADMIN log entry to maintain chain integrity.
+ */
+export function applyBlockStatus(
+  payload: CardPayload,
+  blockedStatus: CardStatus,
+  nowSeconds: number,
+): CardPayload {
+  const effectiveTimestamp = resolveTimestamp(nowSeconds);
+  const newCounter = payload.wallet.counter + 1n;
+  return {
+    ...payload,
+    identity: {
+      ...payload.identity,
+      status: blockedStatus,
+    },
+    wallet: {
+      ...payload.wallet,
+      counter: newCounter,
+      lastTimestamp: effectiveTimestamp,
+    },
+    logEntries: buildLogEntry(payload.logEntries, {
+      timestamp: effectiveTimestamp,
+      amount: 0,
+      balanceAfter: payload.wallet.balance,
+      flags: TxType.ADMIN,
+      hash: new Uint8Array(LOG_HASH_SIZE),
+    }),
+  };
+}
+
+/**
+ * Resolves the effective timestamp for a state transition.
+ * If nowSeconds is 0 (programming error), falls back to current wall-clock time and logs a warning.
+ */
+function resolveTimestamp(nowSeconds: number): number {
+  if (nowSeconds === 0) {
+    const fallback = Math.floor(Date.now() / 1000);
+    console.warn(
+      `[state-machine] nowSeconds is 0 — substituting wall-clock time (${fallback}). This indicates a programming error.`,
+    );
+    return fallback;
+  }
+  return nowSeconds;
+}
+
 export function buildLogEntry(
   existing: CardPayload["logEntries"],
-  entry: CardPayload["logEntries"][number],
+  entry: LogEntry,
 ): CardPayload["logEntries"] {
   const entries = [...existing, entry];
   if (entries.length > LOG_ENTRY_COUNT) entries.shift();

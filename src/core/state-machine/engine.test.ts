@@ -1,7 +1,23 @@
-import { describe, it, expect } from "vitest";
-import { validateTransition, isWriteEligible, isSessionExpired, applyDebit } from "./engine";
-import { CardState, CardStatus, type CardPayload, type SessionGrant } from "../payload/types";
-import { MAGIC, CARD_SCHEMA_VERSION } from "../payload/types";
+import { describe, expect, it, vi } from "vitest";
+import {
+  CARD_SCHEMA_VERSION,
+  CardState,
+  CardStatus,
+  MAGIC,
+  type CardPayload,
+  type LogEntry,
+  type SessionGrant,
+} from "../payload/types";
+import {
+  applyCheckin,
+  applyCheckout,
+  applyDebit,
+  applyResetState,
+  applyTopup,
+  isSessionExpired,
+  isWriteEligible,
+  validateTransition,
+} from "./engine";
 
 function makePayload(
   state: CardState,
@@ -176,5 +192,78 @@ describe("applyDebit", () => {
       payload = applyDebit(payload, 1000, NOW + i);
     }
     expect(payload.logEntries).toHaveLength(5);
+  });
+});
+
+describe("absolute timestamp in log entries", () => {
+  it("applyCheckin sets timestamp to nowSeconds", () => {
+    const payload = makePayload(CardState.IDLE);
+    const updated = applyCheckin(payload, 42, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+  });
+
+  it("applyCheckout sets timestamp to nowSeconds", () => {
+    const payload = makePayload(CardState.CHECKED_IN);
+    const updated = applyCheckout(payload, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+  });
+
+  it("applyDebit sets timestamp to nowSeconds", () => {
+    const payload = makePayload(CardState.STATION_OPERATION);
+    const updated = applyDebit(payload, 5000, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+  });
+
+  it("applyTopup sets timestamp to nowSeconds", () => {
+    const payload = makePayload(CardState.IDLE);
+    const updated = applyTopup(payload, 50000, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+  });
+
+  it("applyResetState sets timestamp to nowSeconds", () => {
+    const payload = makePayload(CardState.CHECKED_OUT);
+    const updated = applyResetState(payload, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+  });
+
+  it("log entry hash is 4 bytes", () => {
+    const payload = makePayload(CardState.STATION_OPERATION);
+    const updated = applyDebit(payload, 5000, NOW);
+    expect(updated.logEntries[0].hash.length).toBe(4);
+  });
+
+  it("applyDebit no longer uses deltaTime clamping", () => {
+    // With session.startTime far in the past, old code would clamp to 0xFFFF
+    const payload = makePayload(CardState.STATION_OPERATION);
+    // session.startTime = lastTimestamp - 3600 = 1700000000 - 3600
+    // NOW = 1700010000, so delta would be 1700010000 - (1700000000 - 3600) = 13600
+    // But we now use absolute timestamp, not delta
+    const updated = applyDebit(payload, 5000, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+    expect((updated.logEntries[0] as LogEntry).timestamp).toBeUndefined();
+  });
+});
+
+describe("timestamp zero fallback", () => {
+  it("substitutes Date.now() when nowSeconds is 0", () => {
+    const fakeNow = 1700050000;
+    vi.spyOn(Date, "now").mockReturnValue(fakeNow * 1000);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const payload = makePayload(CardState.STATION_OPERATION);
+    const updated = applyDebit(payload, 5000, 0);
+
+    expect(updated.logEntries[0].timestamp).toBe(fakeNow);
+    expect(updated.wallet.lastTimestamp).toBe(fakeNow);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("nowSeconds is 0"));
+
+    vi.restoreAllMocks();
+  });
+
+  it("uses nowSeconds directly when non-zero", () => {
+    const payload = makePayload(CardState.STATION_OPERATION);
+    const updated = applyDebit(payload, 5000, NOW);
+    expect(updated.logEntries[0].timestamp).toBe(NOW);
+    expect(updated.wallet.lastTimestamp).toBe(NOW);
   });
 });

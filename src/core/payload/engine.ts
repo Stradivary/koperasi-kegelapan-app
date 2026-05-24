@@ -1,5 +1,6 @@
 import {
   MAGIC,
+  CARD_SCHEMA_VERSION,
   CARD_SIZE,
   WIRE_SIZE,
   BUFFER_SIZE,
@@ -90,13 +91,14 @@ function decodeBuffer(raw: Uint8Array, bufOffset: number): Omit<CardPayload, "tr
   const logEntries: LogEntry[] = [];
   for (let i = 0; i < LOG_ENTRY_COUNT; i++) {
     const base = LOG_OFFSET + i * LOG_ENTRY_SIZE;
-    const hash = buf.slice(base + 10, base + 16);
+    const hash = buf.slice(base + 12, base + 16);
+    // Sentinel: all-zero hash means empty slot
     if (hash.every((b) => b === 0)) break;
     logEntries.push({
-      deltaTime: view.getUint16(base, true),
-      amount: readUint24LE(view, base + 2),
-      balanceAfter: view.getUint32(base + 5, true),
-      flags: view.getUint8(base + 9),
+      timestamp: view.getUint32(base, true),
+      amount: readUint24LE(view, base + 4),
+      balanceAfter: view.getUint32(base + 7, true),
+      flags: view.getUint8(base + 11),
       hash,
     });
   }
@@ -109,7 +111,7 @@ function encodeBuffer(payload: Omit<CardPayload, "trailer">): Uint8Array {
   const view = new DataView(buf.buffer);
 
   view.setUint32(HEADER_OFFSET, payload.header.magic, true);
-  view.setUint8(HEADER_OFFSET + 4, payload.header.version);
+  view.setUint8(HEADER_OFFSET + 4, CARD_SCHEMA_VERSION);
   view.setUint8(HEADER_OFFSET + 5, payload.header.type);
   buf.set(payload.header.cardId.slice(0, 6), HEADER_OFFSET + 6);
   view.setUint32(HEADER_OFFSET + 12, payload.header.tenantBind ?? 0, true);
@@ -134,11 +136,14 @@ function encodeBuffer(payload: Omit<CardPayload, "trailer">): Uint8Array {
   for (let i = 0; i < Math.min(payload.logEntries.length, LOG_ENTRY_COUNT); i++) {
     const base = LOG_OFFSET + i * LOG_ENTRY_SIZE;
     const entry = payload.logEntries[i];
-    view.setUint16(base, entry.deltaTime, true);
-    writeUint24LE(view, base + 2, entry.amount);
-    view.setUint32(base + 5, entry.balanceAfter, true);
-    view.setUint8(base + 9, entry.flags);
-    buf.set(entry.hash.slice(0, 6), base + 10);
+    if (entry.amount > 0xffffff) {
+      throw new Error(`Log entry amount ${entry.amount} exceeds uint24 maximum (16,777,215)`);
+    }
+    view.setUint32(base, entry.timestamp, true);
+    writeUint24LE(view, base + 4, entry.amount);
+    view.setUint32(base + 7, entry.balanceAfter, true);
+    view.setUint8(base + 11, entry.flags);
+    buf.set(entry.hash.slice(0, 4), base + 12);
   }
 
   return buf;

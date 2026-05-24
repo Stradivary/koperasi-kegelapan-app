@@ -141,6 +141,7 @@ function makePendingTransaction(overrides: Partial<TransactionLog> = {}): Transa
     tenantId: "t-1",
     cardId: "aabbccddee01",
     userId: null,
+    cardName: null,
     counter: 6,
     type: "debit",
     amount: 50,

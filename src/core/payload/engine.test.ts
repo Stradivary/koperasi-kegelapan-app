@@ -96,18 +96,21 @@ describe("encodePayload / decodePayload round-trip", () => {
       ...decoded,
       logEntries: [
         {
-          deltaTime: 100,
+          timestamp: 1719849600,
           amount: 15000,
           balanceAfter: 485000,
           flags: 0x00,
-          hash: new Uint8Array([1, 2, 3, 4, 5, 6]),
+          hash: new Uint8Array([1, 2, 3, 4]),
         },
       ],
     };
     const encoded = encodePayload(withLog);
     const redecoded = decodePayload(encoded);
+    expect(redecoded.logEntries[0].timestamp).toBe(1719849600);
     expect(redecoded.logEntries[0].amount).toBe(15000);
     expect(redecoded.logEntries[0].balanceAfter).toBe(485000);
+    expect(redecoded.logEntries[0].flags).toBe(0x00);
+    expect(redecoded.logEntries[0].hash).toEqual(new Uint8Array([1, 2, 3, 4]));
   });
 });
 

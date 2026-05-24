@@ -19,6 +19,8 @@ declare global {
     ): Promise<void>;
     addEventListener(type: "reading", handler: (event: NDEFReadingEvent) => void): void;
     addEventListener(type: "readingerror", handler: (event: NDEFErrorEvent) => void): void;
+    removeEventListener(type: "reading", handler: (event: NDEFReadingEvent) => void): void;
+    removeEventListener(type: "readingerror", handler: (event: NDEFErrorEvent) => void): void;
   }
   interface NDEFReadingEvent extends Event {
     serialNumber: string;

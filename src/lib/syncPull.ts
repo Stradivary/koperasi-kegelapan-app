@@ -265,6 +265,7 @@ function mapTransactionToLocal(tx: TransactionPullEntry): TransactionLog {
     tenantId: tx.tenantId,
     cardId: tx.cardId,
     userId: tx.userId,
+    cardName: null,
     counter: tx.counter,
     type: tx.type as TransactionLog["type"],
     amount: tx.amount,
@@ -401,17 +402,37 @@ async function mergePullResponse(
         cardsMerged = cardsToMerge.length;
       }
 
-      // Merge transactions → transactionLog table (skip pending outbox entries)
+      // Merge transactions → transactionLog table (skip pending outbox entries AND existing entries)
       if (response.transactions.data.length > 0) {
         const transactions: TransactionLog[] = [];
         for (const tx of response.transactions.data) {
           const key = `${tx.cardId}:${tx.counter}`;
           if (pendingKeys.has(key)) continue;
+
+          // Check if this transaction already exists locally (by composite key)
+          // to avoid creating duplicates when the same transaction comes back from server
+          const existing = await localDb.transactionLog
+            .where("[tenantId+cardId+counter]")
+            .equals([tx.tenantId, tx.cardId, tx.counter])
+            .first();
+
+          if (existing) {
+            // Already exists — just update syncStatus to "synced" if not already
+            if (existing.id != null && existing.syncStatus !== "synced") {
+              await localDb.transactionLog.update(existing.id, {
+                syncStatus: "synced",
+                syncedAt: Date.now(),
+              });
+            }
+            txMerged++;
+            continue;
+          }
+
           transactions.push(mapTransactionToLocal(tx));
         }
         if (transactions.length > 0) {
           await localDb.transactionLog.bulkPut(transactions);
-          txMerged = transactions.length;
+          txMerged += transactions.length;
         }
       }
     },

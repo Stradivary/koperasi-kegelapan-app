@@ -119,6 +119,14 @@ export async function validateCard(
   raw: Uint8Array,
   sessionGrant: SessionGrant,
 ): Promise<ValidationResult> {
+  if (payload.header.version < 4) {
+    return { valid: false, reason: "Schema version mismatch", tamper: false };
+  }
+
+  if (payload.header.version > 4) {
+    return { valid: false, reason: "Unrecognized schema version", tamper: false };
+  }
+
   if (payload.trailer.keyVersion !== sessionGrant.keyVersion) {
     return {
       valid: false,
@@ -161,17 +169,17 @@ export async function validateCard(
 async function validateChainHash(payload: CardPayload): Promise<boolean> {
   if (payload.logEntries.length === 0) return true;
 
-  let prevHash = new Uint8Array(6);
+  let prevHash = new Uint8Array(4);
   for (const entry of payload.logEntries) {
     const expected = await computeChainHash(
-      entry.deltaTime,
+      entry.timestamp,
       entry.amount,
       entry.balanceAfter,
       entry.flags,
       prevHash,
     );
     let diff = 0;
-    for (let i = 0; i < 6; i++) diff |= expected[i] ^ entry.hash[i];
+    for (let i = 0; i < 4; i++) diff |= expected[i] ^ entry.hash[i];
     if (diff !== 0) return false;
     prevHash = new Uint8Array(entry.hash);
   }
@@ -190,7 +198,14 @@ export async function prepareWrite(
   const withHashes = { ...updatedPayload, logEntries };
 
   const rootHash =
-    logEntries.length > 0 ? logEntries[logEntries.length - 1].hash : new Uint8Array(6);
+    logEntries.length > 0
+      ? (() => {
+          const lastHash = logEntries[logEntries.length - 1].hash;
+          const padded = new Uint8Array(6);
+          padded.set(lastHash.slice(0, 4));
+          return padded;
+        })()
+      : new Uint8Array(6);
 
   const newTrailer: CardPayload["trailer"] = {
     ...currentPayload.trailer,
@@ -228,11 +243,11 @@ async function recomputeChainHashes(
   entries: CardPayload["logEntries"],
 ): Promise<CardPayload["logEntries"]> {
   const result: CardPayload["logEntries"] = [];
-  let prevHash = new Uint8Array(6);
+  let prevHash = new Uint8Array(4);
 
   for (const entry of entries) {
     const hash = await computeChainHash(
-      entry.deltaTime,
+      entry.timestamp,
       entry.amount,
       entry.balanceAfter,
       entry.flags,

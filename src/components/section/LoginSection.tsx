@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import {
   tenantContextStore,
@@ -18,6 +19,7 @@ import {
 } from "../../lib/api";
 import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
 import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "../../lib/utils";
+import { hydrateQueryCache } from "../../hooks/useHydrateCache";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
@@ -141,6 +143,7 @@ async function tryServerLogin(
 
 export function LoginSection() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<LoginMode>("detecting");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -209,6 +212,8 @@ export function LoginSection() {
           if (activeCtx.deviceId) {
             await restoreAuthState(activeCtx.deviceId);
           }
+          // Hydrate React Query cache before navigating
+          await hydrateQueryCache(queryClient, activeCtx.tenantId).catch(() => {});
           const roleRoutes: Record<string, string> = {
             terminal: `/tenant/${activeCtx.tenantId}/terminal`,
             gate: `/tenant/${activeCtx.tenantId}/gate`,
@@ -229,6 +234,12 @@ export function LoginSection() {
   }, [navigate]);
 
   function redirectToRole(tenantId: string, role: string) {
+    // Hydrate React Query cache from IndexedDB before navigating
+    // so the destination page has data immediately available
+    hydrateQueryCache(queryClient, tenantId).catch(() => {
+      // Non-critical — the destination page will hydrate via useHydrateCache
+    });
+
     const roleRoutes: Record<string, string> = {
       terminal: `/tenant/${tenantId}/terminal`,
       gate: `/tenant/${tenantId}/gate`,

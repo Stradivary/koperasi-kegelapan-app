@@ -53,6 +53,7 @@ function makeCheckinEntry(overrides: Partial<TransactionLog> = {}): TransactionL
     tenantId: "t-1",
     cardId: "aabbccddee01",
     userId: null,
+    cardName: null,
     counter: 1,
     type: "checkin",
     amount: 0,

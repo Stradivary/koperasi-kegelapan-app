@@ -1,7 +1,7 @@
 import type { ReconciliationEvent } from "../core/payload/types";
 
 const DB_NAME = "koperasi-wallet";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export interface TenantContext {
   tenantId: string;
@@ -21,6 +21,32 @@ export interface CardSnapshot {
   rawBytes: Uint8Array;
   capturedAt: number;
   serialNumber: string;
+}
+
+/**
+ * Write-ahead journal entry for NFC card writes.
+ * Persisted BEFORE the physical write so recovery is possible on failure.
+ * Keyed by [tenantId, cardIdHex] — one pending write per card at a time.
+ */
+export interface WriteJournal {
+  tenantId: string;
+  cardIdHex: string;
+  serialNumber: string | null;
+  /** The prepared bytes ready to write to card */
+  rawBytes: Uint8Array;
+  /** The expected final payload (for verification after recovery write) */
+  expectedPayload: string; // JSON-serialized CardPayload (Uint8Arrays as hex)
+  /** The payload BEFORE the write (for rollback display / debugging) */
+  previousPayload: string; // JSON-serialized CardPayload
+  /** The intended updated payload (before pipeline processing) */
+  updatedPayload: string; // JSON-serialized CardPayload
+  operationType: string;
+  terminalId: number;
+  createdAt: number;
+  /** How many recovery attempts have been made */
+  attempts: number;
+  /** 'pending' = write not confirmed, 'recovering' = retry in progress */
+  status: "pending" | "recovering";
 }
 
 export interface PolicyCache {
@@ -110,6 +136,10 @@ function openDb(): Promise<IDBDatabase> {
       return;
     }
     const req = idb.open(DB_NAME, DB_VERSION);
+    req.onblocked = () => {
+      // Another tab/SW holds an older version — reject so callers can handle gracefully
+      reject(new Error("IndexedDB upgrade blocked by another connection"));
+    };
     req.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       // v1 stores
@@ -145,6 +175,10 @@ function openDb(): Promise<IDBDatabase> {
       // v4 stores
       if (!db.objectStoreNames.contains("authTokenCache")) {
         db.createObjectStore("authTokenCache", { keyPath: "deviceId" });
+      }
+      // v5 stores
+      if (!db.objectStoreNames.contains("writeJournal")) {
+        db.createObjectStore("writeJournal", { keyPath: ["tenantId", "cardIdHex"] });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -199,6 +233,28 @@ export const cardSnapshotStore = {
   put: (snap: CardSnapshot) => tx<IDBValidKey>("cardSnapshot", "readwrite", (s) => s.put(snap)),
   delete: (tenantId: string, cardIdHex: string) =>
     tx<undefined>("cardSnapshot", "readwrite", (s) => s.delete([tenantId, cardIdHex])),
+};
+
+export const writeJournalStore = {
+  get: async (tenantId: string, cardIdHex: string): Promise<WriteJournal | undefined> => {
+    if (!getIndexedDbFactory()) return undefined;
+    return tx<WriteJournal | undefined>("writeJournal", "readonly", (s) =>
+      s.get([tenantId, cardIdHex]),
+    );
+  },
+  put: (entry: WriteJournal) => tx<IDBValidKey>("writeJournal", "readwrite", (s) => s.put(entry)),
+  delete: (tenantId: string, cardIdHex: string) =>
+    tx<undefined>("writeJournal", "readwrite", (s) => s.delete([tenantId, cardIdHex])),
+  getAll: async (): Promise<WriteJournal[]> => {
+    if (!getIndexedDbFactory()) return [];
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const t = db.transaction("writeJournal", "readonly");
+      const req = t.objectStore("writeJournal").getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(idbError(req.error, "Failed to getAll writeJournal"));
+    });
+  },
 };
 
 export const policyCacheStore = {

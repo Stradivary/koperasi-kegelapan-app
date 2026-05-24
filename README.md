@@ -6,21 +6,22 @@ A tap-based payment system that operates without real-time backend connectivity.
 
 ## Architecture
 
-| Layer    | Tech                                 | Deployment         |
-| -------- | ------------------------------------ | ------------------ |
-| Frontend | React 19, TanStack Router, Vite, PWA | Cloudflare Pages   |
-| API      | Hono on Cloudflare Workers           | Cloudflare Workers |
-| Database | Drizzle ORM + Cloudflare D1 (SQLite) | Cloudflare D1      |
-| NFC      | Web NFC API (NTAG215/216)            | Browser            |
+| Layer     | Tech                                   | Deployment         |
+| --------- | -------------------------------------- | ------------------ |
+| Frontend  | React 19, TanStack Router, Vite 8, PWA | Cloudflare Pages   |
+| API       | Hono on Cloudflare Workers             | Cloudflare Workers |
+| Database  | Drizzle ORM + Cloudflare D1 (SQLite)   | Cloudflare D1      |
+| NFC       | Web NFC API (NTAG215/216)              | Browser            |
+| Analytics | Cloudflare Analytics Engine            | Cloudflare Workers |
 
-The frontend is a Progressive Web App with offline-first capabilities. The API worker handles session grants, reconciliation, and sync. Both are deployed independently to Cloudflare.
+The frontend is a Progressive Web App with offline-first capabilities (vite-plugin-pwa + Workbox). The API worker handles authentication, session grants, reconciliation, sync, and real-time events (SSE). Both are deployed independently to Cloudflare.
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
-- [pnpm](https://pnpm.io/) 9+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm i -g wrangler`)
-- An NFC-capable Android device (for Web NFC features)
+- [Node.js](https://nodejs.org/) 22+
+- [pnpm](https://pnpm.io/) 11+
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (bundled via devDependencies)
+- An NFC-capable Android device (for Web NFC features — Chrome only)
 
 ## Getting Started
 
@@ -35,34 +36,94 @@ pnpm dev
 pnpm dev:api
 ```
 
-The frontend proxies `/api` requests to the local worker automatically.
+The frontend proxies `/api` requests to the local worker automatically via Vite's dev server proxy.
 
 ## Project Structure
 
 ```
-mbcs/
-├── api/src/           # Hono API worker (Cloudflare Workers)
-│   ├── middleware/    # Auth, validation middleware
-│   ├── routes/        # API route handlers
-│   └── lib/           # Shared utilities
-├── src/               # React frontend (SPA)
-│   ├── components/    # UI components (Shadcn/Radix)
-│   ├── core/          # Domain logic (card ops, crypto)
-│   ├── db/            # Local IndexedDB/Dexie schemas
-│   ├── hooks/         # React hooks (NFC, sync, etc.)
-│   ├── integrations/  # External service integrations
-│   ├── lib/           # Utilities, error tracking
-│   ├── routes/        # TanStack file-based routes
-│   └── server/        # Server functions
-├── drizzle/           # D1 migration files
-├── e2e/               # Playwright end-to-end tests
-├── public/            # Static assets, PWA icons
-└── wrangler.api.jsonc # Workers config (D1, Analytics Engine)
+koperasi-kegelapan/
+├── api/src/               # Hono API worker (Cloudflare Workers)
+│   ├── lib/               # Shared utilities (logger, token extraction)
+│   ├── middleware/         # CORS, device block, rate limiting, analytics
+│   └── routes/            # API route handlers (12 route modules)
+├── src/                   # React frontend (SPA)
+│   ├── components/        # UI components (atomic design)
+│   │   ├── ui/            # Shadcn/Radix primitives
+│   │   ├── block/         # Composed UI blocks
+│   │   ├── layout/        # Layout shells (admin, kiosk)
+│   │   └── section/       # Page-level sections
+│   ├── core/              # Domain logic
+│   │   ├── crypto/        # AES-GCM, HKDF, HMAC, PBKDF2
+│   │   ├── nfc/           # NFC adapters, engine, pipeline
+│   │   ├── payload/       # Card binary encode/decode (496-byte format)
+│   │   ├── state-machine/ # Card state transitions
+│   │   └── validation/    # Card and transaction validation
+│   ├── db/                # Database schemas (Drizzle + Dexie/IndexedDB)
+│   ├── domain/            # Domain models
+│   │   ├── card/          # Card domain logic
+│   │   ├── member/        # Member domain logic
+│   │   └── transaction/   # Transaction domain logic
+│   ├── hooks/             # React hooks
+│   │   └── nfc/           # NFC-specific hooks
+│   ├── integrations/      # External service integrations (TanStack Query)
+│   ├── lib/               # Utilities (sync, device, error tracking, etc.)
+│   ├── routes/            # TanStack Router file-based routes
+│   └── server/            # Server-side functions (auth, sync, reconcile)
+├── drizzle/               # D1 migration files
+├── e2e/                   # Playwright end-to-end tests
+├── docs/                  # Specification docs (git submodule)
+├── public/                # Static assets, PWA icons, manifest
+├── wrangler.jsonc         # Cloudflare Pages config
+└── wrangler.api.jsonc     # Cloudflare Workers config (D1, Analytics Engine)
 ```
+
+## API Routes
+
+The Hono API worker exposes the following route groups:
+
+| Route                     | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| `/api/auth`               | Login, token refresh, logout                  |
+| `/api/accounts`           | Account CRUD (admin/operator accounts)        |
+| `/api/cards`              | Card registration, status, balance management |
+| `/api/session-grant`      | Session grant issuance for offline operations |
+| `/api/policy`             | Tenant policy distribution                    |
+| `/api/reconcile`          | Offline transaction reconciliation            |
+| `/api/sync`               | Bidirectional sync (push/pull)                |
+| `/api/sync/sse`           | Real-time sync events (Server-Sent Events)    |
+| `/api/sync/push-entities` | Entity push (members, cards)                  |
+| `/api/tenants`            | Tenant management                             |
+| `/api/superadmin`         | Cross-tenant superadmin operations            |
+| `/api/client-errors`      | Client error reporting (Analytics Engine)     |
+
+Middleware applied globally: CORS, device block enforcement.
+Middleware applied to sync routes: rate limiting (60 req/min per device), analytics tracking.
+
+## Frontend Routes
+
+| Route Pattern                                 | Description                    |
+| --------------------------------------------- | ------------------------------ |
+| `/`                                           | Login / tenant selection       |
+| `/tenant/:tenantId/admin/*`                   | Admin layout (redirect)        |
+| `/tenant/:tenantId/_adminLayout/cards`        | Card management                |
+| `/tenant/:tenantId/_adminLayout/members`      | Member management              |
+| `/tenant/:tenantId/_adminLayout/transactions` | Transaction log                |
+| `/tenant/:tenantId/_adminLayout/settings`     | Tenant settings                |
+| `/tenant/:tenantId/_kioskLayout/gate`         | Gate check-in/out              |
+| `/tenant/:tenantId/_kioskLayout/terminal`     | Terminal (debit/checkout)      |
+| `/tenant/:tenantId/_kioskLayout/kiosk`        | Kiosk (top-up)                 |
+| `/tenant/:tenantId/_kioskLayout/scout`        | Scout (read-only balance)      |
+| `/superadmin`                                 | Superadmin panel               |
+| `/devices`                                    | Device management              |
+| `/dev/*`                                      | Dev/test pages (NFC, issuance) |
 
 ## Database
 
-The API uses Cloudflare D1 with Drizzle ORM. Migrations live in `drizzle/`.
+The API uses Cloudflare D1 with Drizzle ORM. Schema is defined in `src/db/schema.ts` with 11 tables:
+
+`tenants`, `accounts`, `users`, `cards`, `sessionGrants`, `auditLog`, `devices`, `authSessions`, `transactionLog`, `syncCursors`, `cardEvents`
+
+Migrations live in `drizzle/`.
 
 ### Local D1 (development)
 
@@ -94,21 +155,28 @@ pnpm db:local:migrate
 
 ## Scripts
 
-| Command              | Description                           |
-| -------------------- | ------------------------------------- |
-| `pnpm dev`           | Start frontend dev server (port 3000) |
-| `pnpm dev:api`       | Start API worker locally (port 8787)  |
-| `pnpm build`         | Build frontend for production         |
-| `pnpm build:api`     | Dry-run API worker build              |
-| `pnpm test`          | Run unit tests (Vitest)               |
-| `pnpm test:coverage` | Run tests with coverage               |
-| `pnpm e2e`           | Run Playwright end-to-end tests       |
-| `pnpm e2e:ui`        | Run Playwright with UI                |
-| `pnpm lint`          | Lint with oxlint                      |
-| `pnpm lint:fix`      | Lint and auto-fix                     |
-| `pnpm format`        | Format with oxfmt                     |
-| `pnpm typecheck`     | TypeScript type checking              |
-| `pnpm deploy`        | Deploy both Pages and API             |
+| Command               | Description                           |
+| --------------------- | ------------------------------------- |
+| `pnpm dev`            | Start frontend dev server (port 3000) |
+| `pnpm dev:api`        | Start API worker locally (port 8787)  |
+| `pnpm build`          | Build frontend for production         |
+| `pnpm build:api`      | Dry-run API worker build              |
+| `pnpm test`           | Run unit tests (Vitest)               |
+| `pnpm test:coverage`  | Run tests with coverage               |
+| `pnpm e2e`            | Run Playwright end-to-end tests       |
+| `pnpm e2e:ui`         | Run Playwright with UI                |
+| `pnpm lint`           | Lint with oxlint                      |
+| `pnpm lint:fix`       | Lint and auto-fix                     |
+| `pnpm format`         | Format with oxfmt                     |
+| `pnpm format:check`   | Check formatting without changes      |
+| `pnpm typecheck`      | TypeScript type checking              |
+| `pnpm deploy`         | Deploy both Pages and API             |
+| `pnpm deploy:pages`   | Build + deploy frontend only          |
+| `pnpm deploy:api`     | Deploy API worker only                |
+| `pnpm db:generate`    | Generate Drizzle migrations           |
+| `pnpm db:seed`        | Seed local database                   |
+| `pnpm db:seed:remote` | Seed remote database                  |
+| `pnpm db:studio`      | Open Drizzle Studio                   |
 
 ## Deployment
 
@@ -128,20 +196,48 @@ wrangler secret put SESSION_MASTER_KEY --config wrangler.api.jsonc
 
 ## Testing
 
-- **Unit tests**: Vitest — `pnpm test`
-- **E2E tests**: Playwright — `pnpm e2e`
+- **Unit tests**: Vitest + fast-check (property-based) — `pnpm test`
+- **E2E tests**: Playwright (11 spec files) — `pnpm e2e`
+
+E2E test coverage includes: login flows, admin navigation, card management, member management, transactions, settings, role routing, superadmin, API auth, and API sync.
 
 ## UI Components
 
-Uses [Shadcn UI](https://ui.shadcn.com/) with Radix primitives and Tailwind CSS v4.
+Uses [Shadcn UI](https://ui.shadcn.com/) (New York style) with Radix primitives and Tailwind CSS v4.
 
 ```bash
 pnpm dlx shadcn@latest add button
 ```
 
+Component architecture follows atomic design:
+
+- `ui/` — Shadcn primitives (Button, Dialog, Input, etc.)
+- `block/` — Composed blocks (NfcTapArea, TransactionList, etc.)
+- `layout/` — Layout shells (AdminLayout, KioskLayout)
+- `section/` — Full page sections (AdminSection, GateSection, etc.)
+
 ## Documentation
 
-Full system specifications live in the `docs/` submodule, covering product spec, system design, tech specs, API spec, data spec, security spec, and ADRs.
+Full system specifications live in the `docs/` git submodule (Docusaurus site), covering:
+
+- **Product Spec** — Problem statement, users/roles, constraints, acceptance criteria
+- **System Design** — 18 documents (core objective, hardware, security, state machine, crypto model, etc.)
+- **Tech Specs** — 17 documents (architecture, card storage, cryptography, interfaces, etc.)
+- **API Spec** — 7 documents (overview, auth, session grants, policy, cards, reconciliation, reports)
+- **Data Spec** — 5 documents (overview, card binary schema, backend DB, encoding, multitenancy)
+- **Security Spec** — 7 documents (overview, auth, crypto, tamper detection, trust model, data protection, financial risk)
+- **Test Spec** — 3 documents (overview, unit tests, E2E tests)
+- **ADRs** — 12 architecture decision records
+
+## CI/CD
+
+See [CICD_INTEGRATION.md](./CICD_INTEGRATION.md) for full details.
+
+| Workflow              | Trigger                                | Jobs                                          |
+| --------------------- | -------------------------------------- | --------------------------------------------- |
+| `ci-test.yml`         | push, PR → master/main/develop         | lint, typecheck, unit-test, e2e-test          |
+| `deploy.yml`          | ci-test success on master/main; manual | deploy to Cloudflare                          |
+| `static-analysis.yml` | push/PR → master/main; weekly Monday   | npm-audit, owasp-dependency-check, sonarcloud |
 
 ## License
 

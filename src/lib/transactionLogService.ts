@@ -26,15 +26,16 @@ export type TransactionInput = Omit<TransactionLog, "id" | "syncStatus" | "synce
 
 export class DuplicateTransactionError extends Error {
   constructor(tenantId: string, cardId: string, counter: number) {
-    super(
-      `Duplicate transaction: [tenantId=${tenantId}, cardId=${cardId}, counter=${counter}]`,
-    );
+    super(`Duplicate transaction: [tenantId=${tenantId}, cardId=${cardId}, counter=${counter}]`);
     this.name = "DuplicateTransactionError";
   }
 }
 
 export class TransactionWriteError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly cause?: unknown,
+  ) {
     super(message);
     this.name = "TransactionWriteError";
   }
@@ -45,7 +46,7 @@ export class TransactionWriteError extends Error {
 /**
  * Records a transaction to IndexedDB with syncStatus "pending".
  * Enforces composite uniqueness on [tenantId, cardId, counter].
- * Retries the write once on failure.
+ * Uses a Dexie transaction to prevent TOCTOU race conditions.
  */
 export async function recordTransaction(entry: TransactionInput): Promise<TransactionLog> {
   const record: TransactionLog = {
@@ -55,38 +56,20 @@ export async function recordTransaction(entry: TransactionInput): Promise<Transa
     createdAt: Date.now(),
   };
 
-  // Check composite uniqueness before writing
-  const existing = await localDb.transactionLog
-    .where("[tenantId+cardId+counter]")
-    .equals([entry.tenantId, entry.cardId, entry.counter])
-    .first();
+  return localDb.transaction("rw", localDb.transactionLog, async () => {
+    // Check composite uniqueness within the transaction (atomic)
+    const existing = await localDb.transactionLog
+      .where("[tenantId+cardId+counter]")
+      .equals([entry.tenantId, entry.cardId, entry.counter])
+      .first();
 
-  if (existing) {
-    throw new DuplicateTransactionError(entry.tenantId, entry.cardId, entry.counter);
-  }
-
-  let lastError: unknown;
-
-  // Attempt write with one retry on failure
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const id = await localDb.transactionLog.add(record);
-      return { ...record, id: id as number };
-    } catch (err: unknown) {
-      lastError = err;
-      // If it's a constraint violation (duplicate key inserted concurrently), surface immediately
-      if (err instanceof Error && err.name === "ConstraintError") {
-        throw new DuplicateTransactionError(entry.tenantId, entry.cardId, entry.counter);
-      }
-      // Only retry once
-      if (attempt === 0) continue;
+    if (existing) {
+      throw new DuplicateTransactionError(entry.tenantId, entry.cardId, entry.counter);
     }
-  }
 
-  throw new TransactionWriteError(
-    "Failed to persist transaction after retry",
-    lastError,
-  );
+    const id = await localDb.transactionLog.add(record);
+    return { ...record, id: id as number };
+  });
 }
 
 /**
@@ -113,14 +96,30 @@ export async function getTransactions(query: TransactionQuery): Promise<Paginate
 
   // Get total count for pagination metadata
   const allMatching = await filtered.toArray();
-  const total = allMatching.length;
+
+  // Deduplicate by [cardId+counter] — keep the entry with the highest priority syncStatus
+  // Priority: synced > pending > conflict > failed (prefer the most "resolved" entry)
+  const syncPriority: Record<string, number> = { synced: 3, pending: 2, conflict: 1, failed: 0 };
+  const deduped = new Map<string, (typeof allMatching)[number]>();
+  for (const tx of allMatching) {
+    const key = `${tx.cardId}:${tx.counter}`;
+    const existing = deduped.get(key);
+    if (
+      !existing ||
+      (syncPriority[tx.syncStatus] ?? 0) > (syncPriority[existing.syncStatus] ?? 0)
+    ) {
+      deduped.set(key, tx);
+    }
+  }
+  const uniqueEntries = Array.from(deduped.values());
+  const total = uniqueEntries.length;
 
   // Sort by timestamp descending (newest first)
-  allMatching.sort((a, b) => b.timestamp - a.timestamp);
+  uniqueEntries.sort((a, b) => b.timestamp - a.timestamp);
 
   // Apply pagination
   const offset = (page - 1) * pageSize;
-  const entries = allMatching.slice(offset, offset + pageSize);
+  const entries = uniqueEntries.slice(offset, offset + pageSize);
 
   return { entries, total, page, pageSize };
 }

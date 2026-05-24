@@ -438,22 +438,34 @@ async function handleFreshNfcSession({
   let capturedSerial: string | null = null;
 
   try {
+    const readingHandler = (event: NDEFReadingEvent) => {
+      const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+      if (serial) {
+        const existingBytes = extractCardBytes(event.message);
+        scanResolve({ serial, hasData: existingBytes !== null });
+      } else {
+        scanReject(new Error("Kartu tidak memiliki serial number"));
+      }
+    };
+    let scanResolve: (value: { serial: string; hasData: boolean }) => void;
+    let scanReject: (reason: Error) => void;
     const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
-      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-        if (serial) {
-          const existingBytes = extractCardBytes(event.message);
-          resolve({ serial, hasData: existingBytes !== null });
-        } else {
-          reject(new Error("Kartu tidak memiliki serial number"));
-        }
+      scanResolve = resolve;
+      scanReject = reject;
+      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")), {
+        once: true,
       });
-      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
     });
+    reader.addEventListener("reading", readingHandler);
 
     await reader.scan({ signal: abort.signal });
 
     const { serial, hasData } = await scanResult;
+    // Remove the reading listener after first successful read to prevent leak
+    (reader as unknown as EventTarget).removeEventListener(
+      "reading",
+      readingHandler as EventListener,
+    );
     capturedSerial = serial;
 
     issuancePreparedRef.current = {
@@ -582,13 +594,6 @@ async function executeRecovery({
   }
 
   const owner = latestCard.userId ? await localDb.users.get([tenantId, latestCard.userId]) : null;
-  const payload = buildRecoveryPayload({
-    tenantId,
-    card: latestCard,
-    ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
-    keyVersion: grant.keyVersion,
-  });
-  const { bytes } = await prepareWrite(payload, payload, grant);
 
   const abort = new AbortController();
   const reader = new NDEFReader();
@@ -597,24 +602,93 @@ async function executeRecovery({
   let scannedSerial: string | null = null;
 
   try {
-    const scanResult = new Promise<string>((resolve, reject) => {
-      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-        if (!serial) {
-          reject(new Error("Kartu tidak memiliki serial number"));
-          return;
-        }
-        resolve(serial);
-      });
-      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
-    });
+    // Scan and read card data simultaneously
+    const readingHandler = (event: NDEFReadingEvent) => {
+      const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+      if (!serial) {
+        scanReject(new Error("Kartu tidak memiliki serial number"));
+        return;
+      }
+      const cardBytes = extractCardBytes(event.message);
+      scanResolve({ serial, cardBytes });
+    };
+    let scanResolve: (value: { serial: string; cardBytes: Uint8Array | null }) => void;
+    let scanReject: (reason: Error) => void;
+    const scanResult = new Promise<{ serial: string; cardBytes: Uint8Array | null }>(
+      (resolve, reject) => {
+        scanResolve = resolve;
+        scanReject = reject;
+        abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")), {
+          once: true,
+        });
+      },
+    );
+    reader.addEventListener("reading", readingHandler);
 
     await reader.scan({ signal: abort.signal });
-    scannedSerial = await scanResult;
+    const { serial, cardBytes } = await scanResult;
+    // Remove listener after first read to prevent leak
+    (reader as unknown as EventTarget).removeEventListener(
+      "reading",
+      readingHandler as EventListener,
+    );
+    scannedSerial = serial;
 
     if (scannedSerial !== cardId.toLowerCase()) {
       throw new Error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
     }
+
+    // Validate current card state before overwriting
+    if (cardBytes) {
+      try {
+        const { decodePayload } = await import("../../core/payload/engine");
+        const currentPayload = decodePayload(cardBytes);
+        const cardCounter = Number(currentPayload.wallet.counter);
+        const serverCounter = latestCard.counter;
+
+        // Card counter is ahead of or equal to server — card has newer/same data
+        if (cardCounter >= serverCounter && currentPayload.wallet.balance <= latestCard.balance) {
+          // Card is valid and not ahead in balance — no recovery needed
+          throw new Error(
+            "Kartu masih valid dan data sesuai dengan server. Tidak perlu dipulihkan.",
+          );
+        }
+
+        // If card has higher balance than server, it means unsynced topups exist on card
+        // but server doesn't know about them. Use the LOWER balance (server's) to prevent
+        // a cheat where someone uses the card, then recovers to get money back.
+        // The server balance is always the source of truth after sync.
+        if (cardCounter > serverCounter) {
+          // Card has more transactions than server knows — use card's balance
+          // (it's lower because transactions consumed balance)
+          // This is the normal case: card was used offline, server hasn't caught up
+          // Recovery should NOT give money back — skip recovery
+          throw new Error(
+            "Kartu memiliki transaksi yang belum tersinkron ke server. " +
+              "Sinkronkan data terlebih dahulu sebelum melakukan recovery.",
+          );
+        }
+      } catch (decodeErr) {
+        // If the error is one of our validation errors, re-throw it
+        if (
+          decodeErr instanceof Error &&
+          (decodeErr.message.includes("Kartu masih valid") ||
+            decodeErr.message.includes("Kartu memiliki transaksi"))
+        ) {
+          throw decodeErr;
+        }
+        // Card data is corrupted/unreadable — allow recovery (this is a legitimate use case)
+      }
+    }
+    // If cardBytes is null, card is blank or unreadable — allow recovery
+
+    const payload = buildRecoveryPayload({
+      tenantId,
+      card: latestCard,
+      ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
+      keyVersion: grant.keyVersion,
+    });
+    const { bytes } = await prepareWrite(payload, payload, grant);
 
     setRecoveryPhase("writing");
     await reader.write(
@@ -727,7 +801,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId);
-  const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, write, reset, cancel, retryScan } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, conflict, retryWithChanges, reset: resetSync } = useTenantSync();
 
   const syncEngineCtx = useSyncEngineContext();
@@ -1285,7 +1359,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         error={state.error}
         onTopup={handleTopupConfirm}
         onClose={handleDrawerClose}
-        onRetry={scan}
+        onRetry={retryScan}
       />
 
       <IssueCardDrawer

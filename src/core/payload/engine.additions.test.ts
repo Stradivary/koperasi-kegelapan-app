@@ -275,16 +275,16 @@ describe("decodePayload — log entry early-exit", () => {
     const LOG_OFFSET = 104;
     const LOG_ENTRY_SIZE = 16;
 
-    // Write entry 0 with a non-zero hash
-    view.setUint16(LOG_OFFSET, 100, true); // deltaTime
-    view.setUint8(LOG_OFFSET + 2, 0x10); // amount low byte
-    view.setUint32(LOG_OFFSET + 5, 490000, true); // balanceAfter
-    raw[LOG_OFFSET + 10] = 0x01; // non-zero hash byte → entry is valid
+    // Write entry 0 with a non-zero hash (v4 layout: hash at offset 12)
+    view.setUint32(LOG_OFFSET, 1719849600, true); // timestamp
+    view.setUint8(LOG_OFFSET + 4, 0x10); // amount low byte
+    view.setUint32(LOG_OFFSET + 7, 490000, true); // balanceAfter
+    raw[LOG_OFFSET + 12] = 0x01; // non-zero hash byte → entry is valid
 
     // Entry 1 has all-zero hash (default) → should stop here
     // Entry 2 also has non-zero hash — should NOT be read
     const entry2Base = LOG_OFFSET + 2 * LOG_ENTRY_SIZE;
-    raw[entry2Base + 10] = 0x02; // non-zero hash in entry 2
+    raw[entry2Base + 12] = 0x02; // non-zero hash in entry 2
 
     const payload = decodePayload(raw);
     // Should only have 1 entry (entry 0), not 2
