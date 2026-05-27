@@ -10,7 +10,7 @@ import {
   type ServerMemberEntry,
   type ServerCardEntry,
 } from "../syncConflictResolver";
-import type { User, Card, TransactionLog } from "../../db/local-db";
+import type { User, Card, TransactionLog } from "#/db/local-db";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ const mockCardsPut = vi.fn();
 const mockTransactionLogWhere = vi.fn();
 const mockTransactionLogDelete = vi.fn();
 
-vi.mock("../../db/local-db", () => ({
+vi.mock("#/db/local-db", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockUsersGet(...args),

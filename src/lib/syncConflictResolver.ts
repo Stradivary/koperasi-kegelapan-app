@@ -13,7 +13,7 @@
  */
 
 import { toast } from "sonner";
-import { localDb, type User, type Card } from "../db/local-db";
+import { localDb, type User, type Card } from "#/db/local-db";
 import { syncPull, SyncPullError } from "./syncPull";
 
 // ── Types ──────────────────────────────────────────────────────────────

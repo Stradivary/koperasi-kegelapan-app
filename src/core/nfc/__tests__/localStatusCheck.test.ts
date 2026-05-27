@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../db/local-db", () => ({
+vi.mock("#/db/local-db", () => ({
   localDb: {
     cards: {
       get: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock("../../../db/local-db", () => ({
 }));
 
 import { checkLocalBlockedStatus } from "../localStatusCheck";
-import { localDb } from "../../../db/local-db";
+import { localDb } from "#/db/local-db";
 import { makeCard, makeUser, BLOCKED_CARD_STATUSES } from "./fixtures";
 
 // ---------------------------------------------------------------------------

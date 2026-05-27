@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { prepareWrite } from "../../core/nfc/pipelineEngine";
-import { isNfcSupported, extractCardBytes, friendlyWriteError } from "../../core/nfc/engine";
-import type { CardPayload, SessionGrant } from "../../core/payload/types";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { isNfcSupported, extractCardBytes, friendlyWriteError } from "#/core/nfc/engine";
+import type { CardPayload, SessionGrant } from "#/core/payload/types";
 import { decodeAndValidateCard } from "./cardValidation";
 import { UNREGISTERED_CARD_MESSAGE } from "./cardValidation";
 import { verifyWrittenPayload } from "./writeVerification";
@@ -694,72 +694,58 @@ export function useNfcCard(
 
   // #region Reset (full)
 
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    cleanupReader();
+  /**
+   * Shared teardown logic for reset and cancel.
+   * Aborts the NFC session, cleans up the reader, and clears the write journal
+   * unless the last error was a verification failure (journal needed for recovery).
+   */
+  const teardownSession = useCallback(
+    (keepPhase: boolean) => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      cleanupReader();
 
-    // Clear persisted write journal when user abandons the operation.
-    // Only skip clearing if the write landed but verification failed
-    // (WRITE_VERIFICATION_FAILED_MESSAGE) — in that case the journal is
-    // still needed for recovery on next scan.
-    const cardIdHex = state.payload ? getCardIdHex(state.payload) : lastWriteCardIdHexRef.current;
-    if (cardIdHex && phaseRef.current !== "success") {
-      const isVerificationFailure =
-        phaseRef.current === "error" && state.error === WRITE_VERIFICATION_FAILED_MESSAGE;
-      if (!isVerificationFailure) {
-        void clearWriteJournal(tenantId, cardIdHex);
+      const cardIdHex = state.payload ? getCardIdHex(state.payload) : lastWriteCardIdHexRef.current;
+      if (cardIdHex && phaseRef.current !== "success") {
+        const isVerificationFailure =
+          phaseRef.current === "error" && state.error === WRITE_VERIFICATION_FAILED_MESSAGE;
+        if (!isVerificationFailure) {
+          void clearWriteJournal(tenantId, cardIdHex);
+        }
       }
-    }
 
-    pendingWriteRef.current = null;
-    inlineWriteInProgressRef.current = false;
-    lastWriteCardIdHexRef.current = null;
-    clearPendingWriteTimeout();
-    clearPostWriteAutoReset();
-    phaseRef.current = "idle";
-    setState(INITIAL_STATE);
-  }, [
-    cleanupReader,
-    clearPendingWriteTimeout,
-    clearPostWriteAutoReset,
-    state.payload,
-    state.error,
-    tenantId,
-  ]);
+      pendingWriteRef.current = null;
+      inlineWriteInProgressRef.current = false;
+      lastWriteCardIdHexRef.current = null;
+      clearPendingWriteTimeout();
+      clearPostWriteAutoReset();
+      phaseRef.current = "idle";
+
+      if (!keepPhase) {
+        setState(INITIAL_STATE);
+      } else {
+        setState((s) => ({ ...s, phase: "idle" }));
+      }
+    },
+    [
+      cleanupReader,
+      clearPendingWriteTimeout,
+      clearPostWriteAutoReset,
+      state.payload,
+      state.error,
+      tenantId,
+    ],
+  );
+
+  const reset = useCallback(() => {
+    teardownSession(false);
+  }, [teardownSession]);
 
   // #region Cancel (soft)
 
   const cancel = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    cleanupReader();
-
-    // Clear persisted write journal on cancel (same logic as reset)
-    const cardIdHex = state.payload ? getCardIdHex(state.payload) : lastWriteCardIdHexRef.current;
-    if (cardIdHex && phaseRef.current !== "success") {
-      const isVerificationFailure =
-        phaseRef.current === "error" && state.error === WRITE_VERIFICATION_FAILED_MESSAGE;
-      if (!isVerificationFailure) {
-        void clearWriteJournal(tenantId, cardIdHex);
-      }
-    }
-
-    pendingWriteRef.current = null;
-    inlineWriteInProgressRef.current = false;
-    lastWriteCardIdHexRef.current = null;
-    clearPendingWriteTimeout();
-    clearPostWriteAutoReset();
-    phaseRef.current = "idle";
-    setState((s) => ({ ...s, phase: "idle" }));
-  }, [
-    cleanupReader,
-    clearPendingWriteTimeout,
-    clearPostWriteAutoReset,
-    state.payload,
-    state.error,
-    tenantId,
-  ]);
+    teardownSession(true);
+  }, [teardownSession]);
 
   // #region Retry from journal (skip validation)
 

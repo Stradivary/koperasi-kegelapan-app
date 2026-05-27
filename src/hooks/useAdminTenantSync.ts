@@ -13,14 +13,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  localTenantConfigStore,
-  localAccountStore,
-  type LocalTenantConfig,
-} from "../lib/indexeddb";
+import { localTenantConfigStore, localAccountStore, type LocalTenantConfig } from "#/lib/indexeddb";
 import { useTenantSync, type SyncConflict } from "./useTenantSync";
-import { syncPushMembers, syncPushCards } from "../lib/syncPushEntities";
-import { syncPush } from "../lib/syncPush";
+import { syncPushMembers, syncPushCards } from "#/lib/syncPushEntities";
+import { syncPush } from "#/lib/syncPush";
 import { toast } from "sonner";
 
 export type SyncStep =

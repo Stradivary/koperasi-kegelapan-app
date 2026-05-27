@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useKioskAutoScan } from "../useKioskAutoScan";
 import type { NfcCardPhase } from "../nfc/useNfcCard";
-import type { SessionGrant } from "../../core/payload/types";
+import type { SessionGrant } from "#/core/payload/types";
 
 const mockGrant = { sessionKey: new Uint8Array(32), keyVersion: 1 } as SessionGrant;
 

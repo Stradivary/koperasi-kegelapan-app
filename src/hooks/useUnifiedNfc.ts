@@ -14,19 +14,19 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 
-import type { NfcAdapter, NfcError } from "../core/nfc/adapters/types";
-import { GenericNfcLayer } from "../core/nfc/genericNfcLayer";
-import type { PayloadError } from "../core/nfc/payloadTypes";
-import { prepareWrite, commitWrite, readAndValidateCard } from "../core/nfc/pipelineEngine";
-import { validateSession } from "../core/nfc/sessionValidator";
+import type { NfcAdapter, NfcError } from "#/core/nfc/adapters/types";
+import { GenericNfcLayer } from "#/core/nfc/genericNfcLayer";
+import type { PayloadError } from "#/core/nfc/payloadTypes";
+import { prepareWrite, commitWrite, readAndValidateCard } from "#/core/nfc/pipelineEngine";
+import { validateSession } from "#/core/nfc/sessionValidator";
 import {
   nfcReducer,
   initialNfcState,
   type NfcAction,
   type NfcState,
-} from "../core/nfc/stateMachine";
-import type { RawNfcResult } from "../core/nfc/types";
-import type { CardPayload, SessionGrant } from "../core/payload/types";
+} from "#/core/nfc/stateMachine";
+import type { RawNfcResult } from "#/core/nfc/types";
+import type { CardPayload, SessionGrant } from "#/core/payload/types";
 
 // ============================================================================
 // Types

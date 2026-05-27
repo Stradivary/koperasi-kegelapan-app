@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { localDb, type Card } from "../../db/local-db";
-import { syncPull } from "../../lib/syncPull";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useTenantSync } from "../../hooks/useTenantSync";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import { validateUID } from "../../core/validation/uidGlobalValidator";
-import { trackError } from "../../lib/errorTracker";
+import { localDb, type Card } from "#/db/local-db";
+import { syncPull } from "#/lib/syncPull";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useTenantSync } from "#/hooks/useTenantSync";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+import { validateUID } from "#/core/validation/uidGlobalValidator";
+import { trackError } from "#/lib/errorTracker";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -24,9 +24,9 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
-import { applyTopup, applyResetState, validateTopup } from "../../core/state-machine/engine";
-import { prepareWrite } from "../../core/nfc/pipelineEngine";
-import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
+import { applyTopup, applyResetState, validateTopup } from "#/core/state-machine/engine";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { extractCardBytes, isNfcSupported } from "#/core/nfc/engine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -34,9 +34,10 @@ import {
   CardStatus,
   type CardPayload,
   type SessionGrant,
-} from "../../core/payload/types";
-import { encodeTenantBind } from "../../core/payload/tenantBind";
+} from "#/core/payload/types";
+import { encodeTenantBind } from "#/core/payload/tenantBind";
 import { useNfcCard } from "#/hooks/nfc";
+import { getCardsWithUsers } from "#/lib/stationQueries";
 
 interface CardSectionProps {
   tenantId: string;
@@ -641,7 +642,7 @@ async function executeRecovery({
     // Validate current card state before overwriting
     if (cardBytes) {
       try {
-        const { decodePayload } = await import("../../core/payload/engine");
+        const { decodePayload } = await import("#/core/payload/engine");
         const currentPayload = decodePayload(cardBytes);
         const cardCounter = Number(currentPayload.wallet.counter);
         const serverCounter = latestCard.counter;
@@ -719,27 +720,6 @@ async function executeRecovery({
     clearTimeout(timeout);
     abort.abort();
   }
-}
-
-async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
-  const [cardRows, userRows] = await Promise.all([
-    localDb.cards.where("tenantId").equals(tenantId).toArray(),
-    localDb.users.where("tenantId").equals(tenantId).toArray(),
-  ]);
-  const userMap = new Map<string, string>(userRows.map((u) => [u.userId, u.name]));
-  return cardRows
-    .filter((c) => c.status !== "deleted")
-    .map((c) => ({
-      cardId: c.cardId,
-      userId: c.userId,
-      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
-      status: c.status,
-      syncStatus: c.syncStatus ?? "synced",
-      balance: c.balance,
-      counter: c.counter,
-      expiresAt:
-        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
-    }));
 }
 
 export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardSectionProps) {

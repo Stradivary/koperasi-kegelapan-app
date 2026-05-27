@@ -10,14 +10,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 // Mock dependencies
-vi.mock("../../lib/api", () => ({
+vi.mock("#/lib/api", () => ({
   API_BASE_URL: "https://test-api.example.com",
 }));
 
 const mockCacheGet = vi.fn();
 const mockCachePut = vi.fn();
 
-vi.mock("../../lib/indexeddb", () => ({
+vi.mock("#/lib/indexeddb", () => ({
   sessionGrantCacheStore: {
     get: (...args: unknown[]) => mockCacheGet(...args),
     put: (...args: unknown[]) => mockCachePut(...args),
@@ -25,7 +25,7 @@ vi.mock("../../lib/indexeddb", () => ({
 }));
 
 const mockIssueAndCache = vi.fn();
-vi.mock("../../lib/localSessionGrant", () => ({
+vi.mock("#/lib/localSessionGrant", () => ({
   issueAndCacheLocalSessionGrant: (...args: unknown[]) => mockIssueAndCache(...args),
 }));
 

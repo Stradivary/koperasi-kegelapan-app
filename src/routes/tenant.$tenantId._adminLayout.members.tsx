@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MemberSection } from "../components/section/MemberSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { MemberSection } from "#/components/section/MemberSection";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/_adminLayout/members")({
   component: MembersPage,

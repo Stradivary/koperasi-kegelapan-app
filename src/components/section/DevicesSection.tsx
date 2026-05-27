@@ -16,8 +16,8 @@ import {
   reconciliationOutbox,
   type TenantContext,
   type LocalTenantConfig,
-} from "../../lib/indexeddb";
-import { API_BASE_URL } from "../../lib/api";
+} from "#/lib/indexeddb";
+import { API_BASE_URL } from "#/lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";

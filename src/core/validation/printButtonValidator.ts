@@ -11,7 +11,7 @@
  * @see Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
  */
 
-import { localDb, type Card } from "../../db/local-db";
+import { localDb, type Card } from "#/db/local-db";
 
 /** Result of print eligibility evaluation */
 export interface PrintEligibility {

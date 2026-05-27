@@ -1,6 +1,6 @@
 import type { FormEvent, RefObject } from "react";
 import { BookOpen, Layers, Plus, Search, Settings } from "lucide-react";
-import type { TenantSearchResult } from "../../../hooks/useServerTenantSearch";
+import type { TenantSearchResult } from "#/hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
 import { Button } from "../../ui/button";

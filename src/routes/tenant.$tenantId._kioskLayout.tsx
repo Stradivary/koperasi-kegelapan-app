@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
-import { OfflineIndicator } from "../components/block/OfflineIndicator";
-import { KioskLayout } from "../components/layout/KioskLayout";
-import { useReconciliation } from "../hooks/useReconciliation";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { OfflineIndicator } from "#/components/block/OfflineIndicator";
+import { KioskLayout } from "#/components/layout/KioskLayout";
+import { useReconciliation } from "#/hooks/useReconciliation";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 type KioskView = "terminal" | "kiosk" | "scout" | "gate";
 

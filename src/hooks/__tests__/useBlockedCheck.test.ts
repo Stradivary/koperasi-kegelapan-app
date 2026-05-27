@@ -5,11 +5,11 @@ import { useBlockedCheck } from "../useBlockedCheck";
 import type { NfcCardPhase } from "../nfc/useNfcCard";
 
 // Mock checkLocalBlockedStatus
-vi.mock("../../core/nfc/localStatusCheck", () => ({
+vi.mock("#/core/nfc/localStatusCheck", () => ({
   checkLocalBlockedStatus: vi.fn(),
 }));
 
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
+import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
 const mockCheckStatus = vi.mocked(checkLocalBlockedStatus);
 
 describe("useBlockedCheck", () => {

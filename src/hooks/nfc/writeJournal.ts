@@ -1,5 +1,5 @@
-import type { CardPayload } from "../../core/payload/types";
-import { writeJournalStore, type WriteJournal } from "../../lib/indexeddb";
+import type { CardPayload } from "#/core/payload/types";
+import { writeJournalStore, type WriteJournal } from "#/lib/indexeddb";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

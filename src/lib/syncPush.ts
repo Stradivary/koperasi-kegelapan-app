@@ -16,7 +16,7 @@
 import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
 import { getSyncableEntries, updateSyncStatus } from "./transactionLogService";
-import type { TransactionLog } from "../db/local-db";
+import type { TransactionLog } from "#/db/local-db";
 
 // ── Constants ──────────────────────────────────────────────────────────
 

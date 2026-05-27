@@ -3,28 +3,28 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DEBOUNCE_MS, PERIODIC_PULL_INTERVAL_MS } from "../useSyncEngine";
 
 // Mock dependencies
-vi.mock("../../lib/syncPush", () => ({
+vi.mock("#/lib/syncPush", () => ({
   syncPush: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../lib/syncPushEntities", () => ({
+vi.mock("#/lib/syncPushEntities", () => ({
   syncPushEntities: vi.fn().mockResolvedValue(undefined),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
 
-vi.mock("../../lib/syncPull", () => ({
+vi.mock("#/lib/syncPull", () => ({
   syncPull: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../lib/deviceBlock", () => ({
+vi.mock("#/lib/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("../../lib/transactionLogService", () => ({
+vi.mock("#/lib/transactionLogService", () => ({
   getSyncableEntries: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("../../lib/syncLogStore", () => ({
+vi.mock("#/lib/syncLogStore", () => ({
   addSyncLog: vi.fn(),
 }));
 
@@ -60,37 +60,37 @@ describe("sync engine orchestration logic", () => {
   });
 
   it("syncPush is importable and mockable", async () => {
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPush } = await import("#/lib/syncPush");
     await syncPush("tenant-1");
     expect(syncPush).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPull is importable and mockable", async () => {
-    const { syncPull } = await import("../../lib/syncPull");
+    const { syncPull } = await import("#/lib/syncPull");
     await syncPull("tenant-1");
     expect(syncPull).toHaveBeenCalledWith("tenant-1");
   });
 
   it("syncPushEntities is importable and mockable", async () => {
-    const { syncPushEntities } = await import("../../lib/syncPushEntities");
+    const { syncPushEntities } = await import("#/lib/syncPushEntities");
     await syncPushEntities("tenant-1");
     expect(syncPushEntities).toHaveBeenCalledWith("tenant-1");
   });
 
   it("getSyncableEntries returns empty array", async () => {
-    const { getSyncableEntries } = await import("../../lib/transactionLogService");
+    const { getSyncableEntries } = await import("#/lib/transactionLogService");
     const result = await getSyncableEntries("tenant-1");
     expect(result).toEqual([]);
   });
 
   it("getPendingEntityCount returns 0", async () => {
-    const { getPendingEntityCount } = await import("../../lib/syncPushEntities");
+    const { getPendingEntityCount } = await import("#/lib/syncPushEntities");
     const result = await getPendingEntityCount("tenant-1");
     expect(result).toBe(0);
   });
 
   it("isDeviceBlocked returns false by default", async () => {
-    const { isDeviceBlocked } = await import("../../lib/deviceBlock");
+    const { isDeviceBlocked } = await import("#/lib/deviceBlock");
     expect(isDeviceBlocked()).toBe(false);
   });
 });
@@ -165,7 +165,7 @@ describe("useSyncEngine hook behavior", () => {
   it("triggerSync initiates a sync cycle", async () => {
     const { renderHook, act } = await import("@testing-library/react");
     const { useSyncEngine } = await import("../useSyncEngine");
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPush } = await import("#/lib/syncPush");
 
     const { result } = renderHook(() => useSyncEngine("tenant-1", true));
 
@@ -179,7 +179,7 @@ describe("useSyncEngine hook behavior", () => {
   });
 
   it("sets offline status when device is blocked", async () => {
-    const { isDeviceBlocked } = await import("../../lib/deviceBlock");
+    const { isDeviceBlocked } = await import("#/lib/deviceBlock");
     vi.mocked(isDeviceBlocked).mockReturnValue(true);
 
     const { renderHook, act } = await import("@testing-library/react");
@@ -201,7 +201,7 @@ describe("useSyncEngine hook behavior", () => {
   it("notifyMutation schedules a debounced sync", async () => {
     const { renderHook, act } = await import("@testing-library/react");
     const { useSyncEngine } = await import("../useSyncEngine");
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPush } = await import("#/lib/syncPush");
 
     vi.mocked(syncPush).mockClear();
 
@@ -230,7 +230,7 @@ describe("useSyncEngine hook behavior", () => {
   });
 
   it("handles push error and sets error status", async () => {
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPush } = await import("#/lib/syncPush");
     vi.mocked(syncPush).mockRejectedValueOnce(new Error("Network error"));
 
     const { renderHook, act } = await import("@testing-library/react");
@@ -257,7 +257,7 @@ describe("useSyncEngine hook behavior", () => {
   });
 
   it("handles pull error after successful push", async () => {
-    const { syncPull } = await import("../../lib/syncPull");
+    const { syncPull } = await import("#/lib/syncPull");
     vi.mocked(syncPull).mockRejectedValueOnce(new Error("Pull failed"));
 
     const { renderHook, act } = await import("@testing-library/react");
@@ -284,8 +284,8 @@ describe("useSyncEngine hook behavior", () => {
   });
 
   it("handles entity push failure gracefully (continues with transactions)", async () => {
-    const { syncPushEntities } = await import("../../lib/syncPushEntities");
-    const { syncPush } = await import("../../lib/syncPush");
+    const { syncPushEntities } = await import("#/lib/syncPushEntities");
+    const { syncPush } = await import("#/lib/syncPush");
     vi.mocked(syncPushEntities).mockRejectedValueOnce(new Error("Entity push failed"));
     vi.mocked(syncPush).mockClear();
 

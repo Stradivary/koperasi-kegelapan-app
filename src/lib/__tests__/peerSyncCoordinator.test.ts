@@ -7,11 +7,11 @@ import {
   registerTriggerSync,
   peerSyncCoordinator,
 } from "../peerSyncCoordinator";
-import type { TransactionLog } from "../../db/local-db";
+import type { TransactionLog } from "#/db/local-db";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("../../db/local-db", () => {
+vi.mock("#/db/local-db", () => {
   const mockWhere = vi.fn();
   const mockBetween = vi.fn();
   const mockFilter = vi.fn();
@@ -42,7 +42,7 @@ vi.mock("../syncPush", () => ({
   }),
 }));
 
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/db/local-db";
 import { syncPush } from "../syncPush";
 
 // ── Helpers ────────────────────────────────────────────────────────────

@@ -13,9 +13,9 @@ import {
   setActiveTenantId,
   registerTriggerSync,
 } from "../peerSyncCoordinator";
-import type { TransactionLog } from "../../db/local-db";
+import type { TransactionLog } from "#/db/local-db";
 
-vi.mock("../../db/local-db", () => {
+vi.mock("#/db/local-db", () => {
   const mockWhere = vi.fn();
   return {
     localDb: {
@@ -36,7 +36,7 @@ vi.mock("../syncPush", () => ({
   syncPush: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/db/local-db";
 import { syncPush } from "../syncPush";
 
 function makeEntry(overrides: Partial<TransactionLog> = {}): TransactionLog {

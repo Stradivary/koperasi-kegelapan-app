@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { reconciliationOutbox } from "../lib/indexeddb";
-import { API_BASE_URL } from "../lib/api";
+import { reconciliationOutbox } from "#/lib/indexeddb";
+import { API_BASE_URL } from "#/lib/api";
 
 export type ReconciliationStatus = "idle" | "syncing" | "success" | "error";
 

@@ -1,8 +1,8 @@
 import { WifiHigh, WifiOff } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useOnlineStatus } from "../../hooks/useOnlineStatus";
-import type { ReconciliationStatus } from "../../hooks/useReconciliation";
+import { useOnlineStatus } from "#/hooks/useOnlineStatus";
+import type { ReconciliationStatus } from "#/hooks/useReconciliation";
 import { Button } from "../ui/button";
 
 interface OfflineIndicatorProps {

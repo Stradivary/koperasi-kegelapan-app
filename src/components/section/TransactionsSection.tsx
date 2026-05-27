@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
-import { localAccountStore } from "../../lib/indexeddb";
-import type { TransactionLog } from "../../db/local-db";
+import { getTransactions, type TransactionQuery } from "#/lib/transactionLogService";
+import { localAccountStore } from "#/lib/indexeddb";
+import type { TransactionLog } from "#/db/local-db";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -18,8 +18,8 @@ import {
   X,
   Receipt,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { useIsMobile } from "../../hooks/use-mobile";
+import { cn } from "#/lib/utils";
+import { useIsMobile } from "#/hooks/use-mobile";
 import { DataTable } from "../block/data-table";
 
 interface TransactionsSectionProps {

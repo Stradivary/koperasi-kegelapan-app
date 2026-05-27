@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
-import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
+import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

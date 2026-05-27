@@ -1,6 +1,6 @@
-import type { CardPayload } from "../../core/payload/types";
-import { CardStatus } from "../../core/payload/types";
-import { localDb } from "../../db/local-db";
+import type { CardPayload } from "#/core/payload/types";
+import { CardStatus } from "#/core/payload/types";
+import { localDb } from "#/db/local-db";
 
 /**
  * Maps on-card CardStatus enum to local DB status string.

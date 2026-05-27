@@ -15,7 +15,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
-import { localDb } from "../db/local-db";
+import { getCardsWithUsers, getUserRows } from "#/lib/stationQueries";
 
 /**
  * Read IndexedDB and populate React Query cache for a tenant.
@@ -25,39 +25,10 @@ export async function hydrateQueryCache(
   queryClient: { setQueryData: (key: unknown[], data: unknown) => void },
   tenantId: string,
 ): Promise<void> {
-  const [users, cards] = await Promise.all([
-    localDb.users.where("tenantId").equals(tenantId).toArray(),
-    localDb.cards.where("tenantId").equals(tenantId).toArray(),
+  const [stationCards, filteredUsers] = await Promise.all([
+    getCardsWithUsers(tenantId),
+    getUserRows(tenantId),
   ]);
-
-  // Build station-cards data (same shape as getCardsWithUsers)
-  const userMap = new Map(users.map((u) => [u.userId, u.name]));
-  const stationCards = cards
-    .filter((c) => c.status !== "deleted")
-    .map((c) => ({
-      cardId: c.cardId,
-      userId: c.userId,
-      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
-      status: c.status,
-      syncStatus: c.syncStatus ?? "synced",
-      balance: c.balance,
-      counter: c.counter,
-      expiresAt:
-        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
-    }));
-
-  // Build users list (same shape as the users query)
-  const filteredUsers = users
-    .filter((u) => u.status !== "deleted")
-    .map((u) => ({
-      tenantId: u.tenantId,
-      userId: u.userId,
-      name: u.name,
-      status: u.status,
-      createdAt: u.createdAt,
-      updatedAt: u.updatedAt,
-      syncStatus: u.syncStatus ?? "synced",
-    }));
 
   // Set cache directly — this populates the queries without triggering a refetch
   queryClient.setQueryData(["station-cards", tenantId], stationCards);

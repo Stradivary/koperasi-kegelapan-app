@@ -10,8 +10,8 @@
 
 import { apiFetch, API_BASE_URL, DeviceBlockedError, getAccessToken } from "./api";
 import { isDeviceBlocked } from "./deviceBlock";
-import { localDb } from "../db/local-db";
-import type { User, Card } from "../db/local-db";
+import { localDb } from "#/db/local-db";
+import type { User, Card } from "#/db/local-db";
 import { addSyncLog } from "./syncLogStore";
 
 // ── Constants ──────────────────────────────────────────────────────────

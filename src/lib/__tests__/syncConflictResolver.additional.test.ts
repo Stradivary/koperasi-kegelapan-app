@@ -17,7 +17,7 @@ vi.mock("../syncPull", () => ({
 const mockUsersGet = vi.fn();
 const mockUsersPut = vi.fn();
 
-vi.mock("../../db/local-db", () => ({
+vi.mock("#/db/local-db", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockUsersGet(...args),

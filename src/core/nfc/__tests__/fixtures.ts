@@ -5,7 +5,7 @@
  * localStatusCheck, blockEnforcer, and property-based tests.
  */
 
-import type { Card, User } from "../../../db/local-db";
+import type { Card, User } from "#/db/local-db";
 
 /**
  * Creates a full Card record with sensible defaults.

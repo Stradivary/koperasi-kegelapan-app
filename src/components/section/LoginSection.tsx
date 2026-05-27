@@ -5,30 +5,30 @@ import {
   tenantContextStore,
   localTenantConfigStore,
   type LocalTenantConfig,
-} from "../../lib/indexeddb";
-import { localLoginWithReason, cacheServerCredentials } from "../../lib/localTenant";
-import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
-import { localDb } from "../../db/local-db";
-import { BRAND } from "../../lib/brand";
+} from "#/lib/indexeddb";
+import { localLoginWithReason, cacheServerCredentials } from "#/lib/localTenant";
+import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
+import { localDb } from "#/db/local-db";
+import { BRAND } from "#/lib/brand";
 import {
   API_BASE_URL,
   setCurrentDeviceId,
   setAccessToken,
   restoreAuthState,
   getAccessToken,
-} from "../../lib/api";
-import { issueAndCacheLocalSessionGrant } from "../../lib/localSessionGrant";
-import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "../../lib/utils";
-import { hydrateQueryCache } from "../../hooks/useHydrateCache";
+} from "#/lib/api";
+import { issueAndCacheLocalSessionGrant } from "#/lib/localSessionGrant";
+import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "#/lib/utils";
+import { hydrateQueryCache } from "#/hooks/useHydrateCache";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
 import { ServerBrowsePanel } from "../block/loginSection/ServerBrowsePanel";
 import { ScoutBrowsePanel } from "../block/loginSection/ScoutBrowsePanel";
 import { LocalSetupSection } from "./LocalSetupSection";
-import { useServerTenantSearch, type TenantSearchResult } from "../../hooks/useServerTenantSearch";
+import { useServerTenantSearch, type TenantSearchResult } from "#/hooks/useServerTenantSearch";
 import { LoadingState } from "../block/LoadingState";
-import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import { useOnlineStatus } from "#/hooks/useOnlineStatus";
 
 type LoginMode =
   | "detecting"

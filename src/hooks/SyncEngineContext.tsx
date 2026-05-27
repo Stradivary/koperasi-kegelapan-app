@@ -14,7 +14,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { useSyncEngine, type UseSyncEngineReturn } from "./useSyncEngine";
-import { registerTriggerSync, setActiveTenantId } from "../lib/peerSyncCoordinator";
+import { registerTriggerSync, setActiveTenantId } from "#/lib/peerSyncCoordinator";
 // import { useRealTimeSync } from "./useRealTimeSync"; // SSE disabled
 
 // ── Context ────────────────────────────────────────────────────────────

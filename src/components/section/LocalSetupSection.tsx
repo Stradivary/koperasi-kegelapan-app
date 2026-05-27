@@ -1,12 +1,12 @@
-import successHumanImg from "../../assets/images/success_human.svg";
+import successHumanImg from "#/assets/images/success_human.svg";
 import { useCallback, useEffect, useState } from "react";
-import { BRAND } from "../../lib/brand";
+import { BRAND } from "#/lib/brand";
 import { AuthLayout } from "../layout/AuthLayout";
-import { getDeviceFingerprint } from "../../lib/getOrCreateDeviceId";
-import { tenantContextStore } from "../../lib/indexeddb";
-import { isSlugTaken, setupLocalTenant } from "../../lib/localTenant";
-import { createSlug, validateSlugFormat } from "../../lib/slugValidation";
-import { useTenantSync } from "../../hooks/useTenantSync";
+import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
+import { tenantContextStore } from "#/lib/indexeddb";
+import { isSlugTaken, setupLocalTenant } from "#/lib/localTenant";
+import { createSlug, validateSlugFormat } from "#/lib/slugValidation";
+import { useTenantSync } from "#/hooks/useTenantSync";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -117,7 +117,7 @@ export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps
 
       // Auto-sync to server if online (fire-and-forget, don't block setup)
       if (navigator.onLine) {
-        const { localAccountStore } = await import("../../lib/indexeddb");
+        const { localAccountStore } = await import("#/lib/indexeddb");
         const accounts = await localAccountStore.getByTenant(cfg.tenantId);
         const admin = accounts.find((a) => a.role === "admin");
         if (admin) {

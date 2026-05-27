@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { triggerHaptic } from "#/lib/haptics";
-import tapNfcImg from "../../assets/images/nfc/tap_nfc.jpeg";
-import successPhoneImg from "../../assets/images/landing/success_phone.png";
-import failedImg from "../../assets/images/nfc/failed.svg";
-import tamperImg from "../../assets/images/nfc/tamper.svg";
+import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
+import successPhoneImg from "#/assets/images/landing/success_phone.png";
+import failedImg from "#/assets/images/nfc/failed.svg";
+import tamperImg from "#/assets/images/nfc/tamper.svg";
 
 type NfcPhase = "idle" | "scanning" | "validating" | "ready" | "writing" | "success" | "error";
 

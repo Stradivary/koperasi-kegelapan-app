@@ -1,4 +1,4 @@
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/db/local-db";
 
 export interface LocalStatusResult {
   blocked: boolean;

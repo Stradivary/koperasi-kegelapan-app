@@ -185,6 +185,6 @@
 - Dual-buffer recovery hanya bekerja jika setidaknya satu buffer valid — jika kedua buffer corrupt, kartu tidak dapat di-recover
 - Offline mode tidak mendukung multi-device — hanya 1 device yang berfungsi untuk semua role
 - Session grant cache di client bisa stale — jika server melakukan key rotation, kartu akan ditolak sampai grant di-refresh
-- Maximum 16.7 juta per transaksi (uint24 limit pada log entry amount field)
+- Maximum 16 juta per transaksi (uint24 limit pada log entry amount field)
 - Card name pada kartu dibatasi 24 bytes UTF-8 — nama panjang akan di-truncate
 - User ID pada kartu dibatasi 8 bytes ASCII — harus alphanumeric pendek

@@ -1,4 +1,4 @@
-import { localDb, type TransactionLog } from "../db/local-db";
+import { localDb, type TransactionLog } from "#/db/local-db";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

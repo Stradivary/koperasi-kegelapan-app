@@ -10,9 +10,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { DEBOUNCE_MS, PERIODIC_PULL_INTERVAL_MS } from "../useSyncEngine";
-import type { SyncPushResult } from "../../lib/syncPush";
+import type { SyncPushResult } from "#/lib/syncPush";
 
-vi.mock("../../lib/syncPush", () => ({
+vi.mock("#/lib/syncPush", () => ({
   syncPush: vi.fn().mockResolvedValue({
     totalAccepted: 0,
     totalRejected: 0,
@@ -21,7 +21,7 @@ vi.mock("../../lib/syncPush", () => ({
     failedCount: 0,
   }),
 }));
-vi.mock("../../lib/syncPushEntities", () => ({
+vi.mock("#/lib/syncPushEntities", () => ({
   syncPushEntities: vi.fn().mockResolvedValue({
     membersAccepted: 0,
     membersRejected: 0,
@@ -30,7 +30,7 @@ vi.mock("../../lib/syncPushEntities", () => ({
   }),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
-vi.mock("../../lib/syncPull", () => ({
+vi.mock("#/lib/syncPull", () => ({
   syncPull: vi.fn().mockResolvedValue({
     membersPulled: 0,
     cardsPulled: 0,
@@ -38,17 +38,17 @@ vi.mock("../../lib/syncPull", () => ({
     authRequired: false,
   }),
 }));
-vi.mock("../../lib/deviceBlock", () => ({
+vi.mock("#/lib/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
 }));
-vi.mock("../../lib/transactionLogService", () => ({
+vi.mock("#/lib/transactionLogService", () => ({
   getSyncableEntries: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("../../lib/syncLogStore", () => ({
+vi.mock("#/lib/syncLogStore", () => ({
   addSyncLog: vi.fn(),
 }));
 
-import { syncPush } from "../../lib/syncPush";
+import { syncPush } from "#/lib/syncPush";
 
 describe("useSyncEngine — retry backoff after error", () => {
   beforeEach(() => {

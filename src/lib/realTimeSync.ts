@@ -15,7 +15,7 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { syncPull } from "./syncPull";
-import { localDb } from "../db/local-db";
+import { localDb } from "#/db/local-db";
 import { getAccessToken } from "./api";
 import { addSyncLog } from "./syncLogStore";
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TransactionLog } from "../../db/local-db";
+import type { TransactionLog } from "#/db/local-db";
 
 // Mock the local-db module — factory must not reference outer variables
-vi.mock("../../db/local-db", () => {
+vi.mock("#/db/local-db", () => {
   const mockAdd = vi.fn();
   const mockUpdate = vi.fn();
 
@@ -38,7 +38,7 @@ import {
   DuplicateTransactionError,
   type TransactionInput,
 } from "../transactionLogService";
-import { localDb } from "../../db/local-db";
+import { localDb } from "#/db/local-db";
 
 function makeEntry(overrides: Partial<TransactionInput> = {}): TransactionInput {
   return {

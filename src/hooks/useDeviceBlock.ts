@@ -17,7 +17,7 @@ import {
   onDeviceUnblock,
   formatBlockedUntil,
   setupBlockVisibilityHandler,
-} from "../lib/deviceBlock";
+} from "#/lib/deviceBlock";
 
 export interface UseDeviceBlockReturn {
   /** Whether the device is currently blocked */

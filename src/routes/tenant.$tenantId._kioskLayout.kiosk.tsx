@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { KioskSection } from "../components/section/KioskSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { KioskSection } from "#/components/section/KioskSection";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/_kioskLayout/kiosk")({
   component: KioskPage,

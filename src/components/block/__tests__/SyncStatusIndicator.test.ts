@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { createElement } from "react";
 import { SyncStatusIndicator } from "../SyncStatusIndicator";
-import type { SyncEngineStatus } from "../../../hooks/useSyncEngine";
+import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 
 function renderIndicator(props: {
   syncStatus: SyncEngineStatus;

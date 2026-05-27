@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, asc, sql } from "drizzle-orm";
 import { transactionLog, cards, users, devices } from "../../../src/db/schema";
-import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
 import { extractTokenPayload } from "../lib/tokenExtract";
@@ -13,9 +12,6 @@ type Env = {
 };
 
 export const syncRoutes = new Hono<{ Bindings: Env }>();
-
-// Mount SSE sub-routes (provides /sse and /broadcast under /api/sync/)
-syncRoutes.route("/", syncSseRoutes);
 
 // Mount entity push route (provides /push-entities under /api/sync/)
 syncRoutes.route("/", pushEntitiesRoute);

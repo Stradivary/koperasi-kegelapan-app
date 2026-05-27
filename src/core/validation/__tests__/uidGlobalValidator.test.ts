@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock local-db
-vi.mock("../../../db/local-db", () => ({
+vi.mock("#/db/local-db", () => ({
   localDb: {
     cards: {
       filter: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
@@ -10,7 +10,7 @@ vi.mock("../../../db/local-db", () => ({
 }));
 
 // Mock api module
-vi.mock("../../../lib/api", () => ({
+vi.mock("#/lib/api", () => ({
   API_BASE_URL: "https://test-api.example.com",
   apiFetch: vi
     .fn()
@@ -18,8 +18,8 @@ vi.mock("../../../lib/api", () => ({
 }));
 
 import { normalizeUID, validateUIDLocal, validateUID } from "../uidGlobalValidator";
-import { localDb } from "../../../db/local-db";
-import { apiFetch } from "../../../lib/api";
+import { localDb } from "#/db/local-db";
+import { apiFetch } from "#/lib/api";
 
 describe("uidGlobalValidator", () => {
   beforeEach(() => {

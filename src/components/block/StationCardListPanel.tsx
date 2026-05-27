@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { cn } from "../../lib/utils";
+import { cn } from "#/lib/utils";
 import { DataTable } from "./data-table";
 import type { StationCardRow } from "./StationCardsPanel";
 

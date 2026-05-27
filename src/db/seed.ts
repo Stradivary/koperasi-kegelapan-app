@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import { getPlatformProxy } from "wrangler";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
-import { hashPassword, generateId } from "../server/auth";
+import { hashPassword, generateId } from "#/server/auth";
 
 config({ path: [".env.local", ".env"] });
 

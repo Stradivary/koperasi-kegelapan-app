@@ -1,12 +1,9 @@
 import { useEffect } from "react";
-import { useNfcCard } from "../../hooks/nfc/useNfcCard";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useBlockedCheck } from "../../hooks/useBlockedCheck";
-import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
-import {
-  updateLocalCardRecord,
-  updateLocalUserFromCard,
-} from "../../hooks/nfc/updateLocalCardRecord";
+import { useNfcCard } from "#/hooks/nfc/useNfcCard";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useBlockedCheck } from "#/hooks/useBlockedCheck";
+import { useKioskAutoScan } from "#/hooks/useKioskAutoScan";
+import { updateLocalCardRecord, updateLocalUserFromCard } from "#/hooks/nfc/updateLocalCardRecord";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { FeedbackCard } from "../block/FeedbackCard";
