@@ -69,6 +69,22 @@ const SECTION_LABEL: Record<AdminView, string> = {
   settings: "Pengaturan",
 };
 
+function getSyncDotColor({
+  isOnline,
+  syncStatus,
+  pendingCount,
+}: {
+  isOnline: boolean;
+  syncStatus?: SyncEngineStatus;
+  pendingCount?: number;
+}): string {
+  if (!isOnline) return "bg-red-500";
+  if (syncStatus === "error") return "bg-red-500";
+  if (syncStatus === "pushing" || syncStatus === "pulling") return "bg-blue-500 animate-pulse";
+  if ((pendingCount ?? 0) > 0) return "bg-amber-500";
+  return "bg-green-500";
+}
+
 export function AdminLayout({
   tenantName,
   tenantId,
@@ -82,7 +98,7 @@ export function AdminLayout({
   onTriggerSync,
   onSyncToServer,
   isSyncingToServer,
-}: AdminLayoutProps) {
+}: Readonly<AdminLayoutProps>) {
   const navigate = useNavigate();
   const { isOnline } = useOnlineStatus();
   const [collapsed, setCollapsed] = useState(true);
@@ -248,15 +264,7 @@ export function AdminLayout({
             <span
               className={[
                 "size-2.5 rounded-full shrink-0",
-                !isOnline
-                  ? "bg-red-500"
-                  : syncStatus === "error"
-                    ? "bg-red-500"
-                    : syncStatus === "pushing" || syncStatus === "pulling"
-                      ? "bg-blue-500 animate-pulse"
-                      : (pendingCount ?? 0) > 0
-                        ? "bg-amber-500"
-                        : "bg-green-500",
+                getSyncDotColor({ isOnline, syncStatus, pendingCount }),
               ].join(" ")}
               aria-hidden="true"
             />
@@ -421,20 +429,21 @@ function SidebarItem({
   onClick,
   danger,
   tooltip,
-}: SidebarItemProps) {
+}: Readonly<SidebarItemProps>) {
+  let itemStyle: string;
+  if (active) {
+    itemStyle = "bg-brand text-white hover:bg-brand/90 hover:text-white";
+  } else if (danger) {
+    itemStyle = "text-white/60 hover:bg-red-600/20 hover:text-red-300";
+  } else {
+    itemStyle = "text-white/70 hover:bg-white/10 hover:text-white";
+  }
   return (
     <Button
       variant="ghost"
       onClick={onClick}
       title={tooltip}
-      className={[
-        "w-full h-auto justify-start px-3 py-2.5 rounded-lg",
-        active
-          ? "bg-brand text-white hover:bg-brand/90 hover:text-white"
-          : danger
-            ? "text-white/60 hover:bg-red-600/20 hover:text-red-300"
-            : "text-white/70 hover:bg-white/10 hover:text-white",
-      ].join(" ")}
+      className={["w-full h-auto justify-start px-3 py-2.5 rounded-lg", itemStyle].join(" ")}
     >
       <Icon size={18} className="shrink-0" />
       {!collapsed && <span className="type-body1 truncate">{label}</span>}
@@ -447,14 +456,10 @@ interface ConnectivityBadgeProps {
   collapsed: boolean;
 }
 
-function ConnectivityBadge({ isOnline, collapsed }: ConnectivityBadgeProps) {
+function ConnectivityBadge({ isOnline, collapsed }: Readonly<ConnectivityBadgeProps>) {
   const label = isOnline ? "Online" : "Offline";
   return (
-    <div
-      className="flex items-center gap-2"
-      role="status"
-      aria-label={`Connectivity status: ${label}`}
-    >
+    <output className="flex items-center gap-2" aria-label={`Connectivity status: ${label}`}>
       <span
         className={[
           "size-2.5 rounded-full shrink-0",
@@ -467,6 +472,6 @@ function ConnectivityBadge({ isOnline, collapsed }: ConnectivityBadgeProps) {
           {label}
         </span>
       )}
-    </div>
+    </output>
   );
 }

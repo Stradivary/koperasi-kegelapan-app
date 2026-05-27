@@ -9,16 +9,16 @@ export interface MobileNavItem<T extends string = string> {
 }
 
 interface MobileBottomNavProps<T extends string = string> {
-  items: MobileNavItem<T>[];
-  activeId: T;
-  onSelect: (id: T) => void;
+  readonly items: MobileNavItem<T>[];
+  readonly activeId: T;
+  readonly onSelect: (id: T) => void;
 }
 
 export function MobileBottomNav<T extends string = string>({
   items,
   activeId,
   onSelect,
-}: MobileBottomNavProps<T>) {
+}: Readonly<MobileBottomNavProps<T>>) {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg flex items-stretch z-20">
       {items.map(({ id, icon: Icon, label, cta }) =>

@@ -36,7 +36,7 @@ function persistDismissal(): void {
  */
 let earlyPromptEvent: BeforeInstallPromptEvent | null = null;
 
-if (typeof window !== "undefined") {
+if (typeof globalThis.window !== "undefined") {
   globalThis.addEventListener("beforeinstallprompt", (e: Event) => {
     e.preventDefault();
     earlyPromptEvent = e as BeforeInstallPromptEvent;

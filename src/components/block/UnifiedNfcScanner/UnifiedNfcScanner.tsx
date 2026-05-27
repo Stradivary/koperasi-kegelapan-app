@@ -558,7 +558,7 @@ function ScannerContent({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full" role="region" aria-label="NFC Scanner">
+    <section className="flex flex-col items-center gap-4 w-full" aria-label="NFC Scanner">
       {/* Step Indicator */}
       {showSteps && (
         <StepIndicator
@@ -796,7 +796,7 @@ function ScannerContent({
           }}
         />
       )}
-    </div>
+    </section>
   );
 }
 

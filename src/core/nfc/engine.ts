@@ -1,5 +1,5 @@
 import { CARD_SIZE, WIRE_SIZE } from "../payload/types";
-import type { CardPayload, CardStatus } from "../payload/types";
+import type { CardPayload } from "../payload/types";
 import { checkBlocked, checkBlockedSync, type BlockCheckResult } from "../validation/blockEnforcer";
 
 export type NfcReadResult =
@@ -179,12 +179,15 @@ export type BlockGuardResult =
  * @see Requirement 6.5 - Local DB record used as fallback
  * @see Requirement 6.7 - Works regardless of online/offline status
  */
-export async function enforceBlockOnCheckin(
+/**
+ * Shared implementation for block enforcement on NFC operations.
+ */
+async function enforceBlockOnOperation(
   tenantId: string,
   cardId: string,
   payload: CardPayload,
 ): Promise<BlockGuardResult> {
-  const onCardStatus = payload.identity.status as CardStatus;
+  const onCardStatus = payload.identity.status;
   const result = await checkBlocked(tenantId, cardId, onCardStatus);
 
   if (result.blocked) {
@@ -196,6 +199,33 @@ export async function enforceBlockOnCheckin(
   }
 
   return { allowed: true };
+}
+
+/**
+ * Checks whether a card is blocked before a check-in operation.
+ *
+ * Uses both the on-card status (from decoded CardPayload) and the local IndexedDB
+ * record to determine if the card is blocked. If either source indicates a blocked
+ * status, the operation is rejected with the appropriate error message and code.
+ *
+ * This check MUST be called BEFORE any state changes are made to the card.
+ *
+ * @param tenantId - Tenant identifier
+ * @param cardId - Card identifier (hex string, e.g. serialNumber normalized)
+ * @param payload - Decoded CardPayload from NFC read
+ * @returns Promise<BlockGuardResult> - { allowed: true } or { allowed: false, error, errorCode }
+ *
+ * @see Requirement 6.1 - Reject check-in on blocked cards within 200ms
+ * @see Requirement 6.4 - On-card status is authoritative
+ * @see Requirement 6.5 - Local DB record used as fallback
+ * @see Requirement 6.7 - Works regardless of online/offline status
+ */
+export async function enforceBlockOnCheckin(
+  tenantId: string,
+  cardId: string,
+  payload: CardPayload,
+): Promise<BlockGuardResult> {
+  return enforceBlockOnOperation(tenantId, cardId, payload);
 }
 
 /**
@@ -222,18 +252,7 @@ export async function enforceBlockOnCheckout(
   cardId: string,
   payload: CardPayload,
 ): Promise<BlockGuardResult> {
-  const onCardStatus = payload.identity.status as CardStatus;
-  const result = await checkBlocked(tenantId, cardId, onCardStatus);
-
-  if (result.blocked) {
-    return {
-      allowed: false,
-      error: result.message ?? "Akses Ditolak: Kartu Diblokir",
-      errorCode: result.errorCode,
-    };
-  }
-
-  return { allowed: true };
+  return enforceBlockOnOperation(tenantId, cardId, payload);
 }
 
 /**
@@ -253,7 +272,7 @@ export function enforceBlockSync(
   payload: CardPayload,
   dbCard?: Parameters<typeof checkBlockedSync>[1],
 ): BlockGuardResult {
-  const onCardStatus = payload.identity.status as CardStatus;
+  const onCardStatus = payload.identity.status;
   const result = checkBlockedSync(onCardStatus, dbCard);
 
   if (result.blocked) {

@@ -17,7 +17,7 @@ function arraysEqual(left: Uint8Array, right: Uint8Array): boolean {
 
   let diff = 0;
   for (let index = 0; index < left.length; index += 1) {
-    diff |= left[index]! ^ right[index]!;
+    diff |= left[index] ^ right[index];
   }
 
   return diff === 0;
@@ -49,6 +49,31 @@ export async function verifyWrittenPayload(
 }
 
 /**
+ * Verify the card data from a single reading event against the expected payload.
+ * Throws if the data doesn't match.
+ */
+async function verifyReadingEvent(
+  event: NDEFReadingEvent,
+  expectedPayload: CardPayload,
+  grant: SessionGrant,
+): Promise<void> {
+  const raw = extractCardBytes(event.message);
+  if (!raw) {
+    throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
+  }
+
+  const actualPayload = await decodeCardPayloadForVerification(raw, grant);
+  const payloadMatches = arraysEqual(
+    encodePayloadWire(actualPayload),
+    encodePayloadWire(expectedPayload),
+  );
+
+  if (!payloadMatches) {
+    throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
+  }
+}
+
+/**
  * Single attempt to verify the written payload by reading back from the card.
  */
 async function verifyWrittenPayloadOnce(
@@ -74,22 +99,7 @@ async function verifyWrittenPayloadOnce(
     }, VERIFICATION_TIMEOUT_MS);
 
     verificationReader.addEventListener("reading", (event: NDEFReadingEvent) => {
-      void (async () => {
-        const raw = extractCardBytes(event.message);
-        if (!raw) {
-          throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
-        }
-
-        const actualPayload = await decodeCardPayloadForVerification(raw, grant);
-        const payloadMatches = arraysEqual(
-          encodePayloadWire(actualPayload),
-          encodePayloadWire(expectedPayload),
-        );
-
-        if (!payloadMatches) {
-          throw new Error(WRITE_VERIFICATION_FAILED_MESSAGE);
-        }
-      })()
+      verifyReadingEvent(event, expectedPayload, grant)
         .then(() => finish(resolve))
         .catch((e) =>
           finish(() =>

@@ -20,7 +20,7 @@ function generateMemberId(): string {
   return id;
 }
 
-export function MemberSection({ tenantId }: MemberSectionProps) {
+export function MemberSection({ tenantId }: Readonly<MemberSectionProps>) {
   const qc = useQueryClient();
   const syncEngineCtx = useSyncEngineContext();
 

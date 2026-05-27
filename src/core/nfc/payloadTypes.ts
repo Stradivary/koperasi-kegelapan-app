@@ -91,7 +91,7 @@ export type OperationType =
  */
 export interface OperationHandler {
   /** Unique name identifying the operation */
-  name: OperationType | string;
+  name: string;
   /** Display label for the operation button */
   label: string;
   /** Optional icon to display with the button */

@@ -123,9 +123,9 @@ export class MockNfcAdapter implements NfcAdapter {
   // ─── Configuration ─────────────────────────────────────────────────────────
   private _isSupported: boolean;
   private _capabilities: NfcCapabilities;
-  private _defaultDelay: number;
-  private _scanResponses: Array<MockScanResponse | MockErrorResponse>;
-  private _writeResponses: Array<MockWriteResponse>;
+  private readonly _defaultDelay: number;
+  private readonly _scanResponses: Array<MockScanResponse | MockErrorResponse>;
+  private readonly _writeResponses: Array<MockWriteResponse>;
 
   // ─── State ─────────────────────────────────────────────────────────────────
   private _scanResponseIndex = 0;

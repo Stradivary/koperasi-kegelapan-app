@@ -41,7 +41,7 @@ async function deriveTenantKey(tenantId: string, keyVersion: number): Promise<Ui
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCodePoint(bytes[i]);
+  for (const byte of bytes) bin += String.fromCodePoint(byte);
   return btoa(bin);
 }
 

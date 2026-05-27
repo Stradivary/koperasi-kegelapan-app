@@ -39,14 +39,21 @@ function extractTokenPayload(request: Request): Record<string, unknown> | null {
 export async function requireSuperadmin(request: Request): Promise<SuperadminAccount | Response> {
   const payload = extractTokenPayload(request);
 
-  if (!payload || !payload.accountId) {
+  if (!payload?.accountId) {
     return new Response(JSON.stringify({ error: "Authentication required" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const accountId = String(payload.accountId);
+  const rawAccountId = payload.accountId;
+  if (typeof rawAccountId !== "string" && typeof rawAccountId !== "number") {
+    return new Response(JSON.stringify({ error: "Authentication required" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const accountId = String(rawAccountId);
 
   const db = getDb();
   const account = await db

@@ -95,19 +95,22 @@ function StepIndicator({ phase, labels, className }: Readonly<StepIndicatorProps
         const isCompleted = activeIndex > index;
         const isCurrent = activeIndex === index;
 
+        let stepAriaLabel: string;
+        if (isCompleted) {
+          stepAriaLabel = `${step.label} - selesai`;
+        } else if (isCurrent) {
+          stepAriaLabel = `${step.label} - sedang berlangsung`;
+        } else {
+          stepAriaLabel = `${step.label} - belum dimulai`;
+        }
+
         return (
           <div key={step.key} className="flex items-center flex-1 last:flex-none">
             {/* Step circle + label */}
             <div className="flex flex-col items-center gap-1">
               <div
                 aria-current={isCurrent ? "step" : undefined}
-                aria-label={
-                  isCompleted
-                    ? `${step.label} - selesai`
-                    : isCurrent
-                      ? `${step.label} - sedang berlangsung`
-                      : `${step.label} - belum dimulai`
-                }
+                aria-label={stepAriaLabel}
                 className={cn(
                   "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all duration-300",
                   isCompleted && "bg-signal-valid text-white",

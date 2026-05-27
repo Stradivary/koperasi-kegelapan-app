@@ -205,7 +205,7 @@ function handleSseMessage(messageEvent: MessageEvent): void {
   if (!event) return;
 
   // Ignore events from our own device
-  if (_config && event.sourceDeviceId === _config.deviceId) return;
+  if (_config?.deviceId === event.sourceDeviceId) return;
 
   // Handle card_status_change specifically
   if (event.type === "card_status_change") {

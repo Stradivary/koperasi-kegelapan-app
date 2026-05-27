@@ -45,7 +45,12 @@ function getCardRejectionReason(
   return null;
 }
 
-export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateSectionProps) {
+export function GateSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<GateSectionProps>) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
   const { state, scan, write, reset, retryScan } = useNfcCard(grant, tenantId, terminalId, {
     lenient: true,
@@ -262,6 +267,33 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     }
   }, [showAlreadyCheckedIn, showBlocked, reset]);
 
+  function renderReadyContent(payload: NonNullable<typeof state.payload>) {
+    if (blockedCheck.isChecking && state.phase === "ready") {
+      return <p className="type-body2 text-muted-foreground animate-pulse">Memproses...</p>;
+    }
+    if (effectiveBlockedReason && state.phase === "ready") {
+      return (
+        <FeedbackCard
+          variant="blocked"
+          title="Akses Ditolak"
+          subtitle={payload.identity.name}
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    if (isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone) {
+      return (
+        <FeedbackCard
+          variant="warning"
+          title="Sudah Check-in"
+          subtitle={`${payload.identity.name} sudah dalam status masuk.`}
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    return <p className="type-body2 text-muted-foreground animate-pulse">Memproses check-in...</p>;
+  }
+
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
@@ -291,27 +323,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
-            {blockedCheck.isChecking && state.phase === "ready" ? (
-              <p className="type-body2 text-muted-foreground animate-pulse">Memproses...</p>
-            ) : effectiveBlockedReason && state.phase === "ready" ? (
-              <FeedbackCard
-                variant="blocked"
-                title="Akses Ditolak"
-                subtitle={state.payload.identity.name}
-                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-              />
-            ) : isAlreadyCheckedIn && state.phase === "ready" && blockedCheckDone ? (
-              <FeedbackCard
-                variant="warning"
-                title="Sudah Check-in"
-                subtitle={`${state.payload.identity.name} sudah dalam status masuk.`}
-                actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-              />
-            ) : (
-              <p className="type-body2 text-muted-foreground animate-pulse">
-                Memproses check-in...
-              </p>
-            )}
+            {renderReadyContent(state.payload)}
           </div>
         )}
 

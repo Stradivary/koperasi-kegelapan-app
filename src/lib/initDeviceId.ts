@@ -20,7 +20,7 @@ export function initDeviceIdFromStorage(): void {
       if (contexts.length === 0) return;
 
       // Pick the most recently updated context
-      const sorted = contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      const sorted = contexts.toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
       const activeCtx = sorted[0];
 
       if (activeCtx?.deviceId) {

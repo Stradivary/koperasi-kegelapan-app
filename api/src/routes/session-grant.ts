@@ -31,7 +31,7 @@ sessionGrantRoute.get("/", (c) => {
   const accountId = token ? decodeField(token, "accountId") : "anonymous";
   const role = url.searchParams.get("role") ?? (token ? decodeField(token, "role") : "terminal");
 
-  const masterKey = Buffer.from(c.env.SESSION_MASTER_KEY, "utf8").slice(0, 32);
+  const masterKey = Buffer.from(c.env.SESSION_MASTER_KEY, "utf8").subarray(0, 32);
   const grant = issueSessionGrant(masterKey, tenantId, accountId, deviceId, role);
 
   return c.json(grant);

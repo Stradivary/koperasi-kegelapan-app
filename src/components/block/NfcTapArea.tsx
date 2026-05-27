@@ -140,7 +140,7 @@ export function NfcTapArea({
         disabled={disabled}
         className={[
           "flex flex-col items-center gap-3 focus:outline-none transition-all duration-200",
-          !disabled ? "cursor-pointer active:scale-95" : "opacity-50 cursor-default",
+          disabled ? "opacity-50 cursor-default" : "cursor-pointer active:scale-95",
         ].join(" ")}
       >
         <img

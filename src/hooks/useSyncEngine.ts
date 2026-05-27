@@ -19,6 +19,23 @@ import { addSyncLog } from "#/lib/syncLogStore";
 // ── Helpers ────────────────────────────────────────────────────────────
 
 /**
+ * Extract a meaningful detail string from an Error's cause field.
+ */
+function extractCauseDetail(cause: unknown): string {
+  if (cause instanceof Error) return cause.message;
+  if (cause === null || cause === undefined) return "null/undefined cause";
+  if (typeof cause === "string") return cause;
+  if (typeof cause === "object") {
+    try {
+      return JSON.stringify(cause).slice(0, 200);
+    } catch {
+      return "[unparseable cause object]";
+    }
+  }
+  return String(cause);
+}
+
+/**
  * Extract a meaningful detail string from an unknown error value.
  * Handles Error objects, plain objects (e.g. `{}`), strings, and other types.
  */
@@ -26,7 +43,7 @@ function extractErrorDetail(err: unknown): string {
   if (err instanceof Error) {
     const parts = [err.message];
     if (err.cause) {
-      parts.push(`cause: ${err.cause instanceof Error ? err.cause.message : String(err.cause)}`);
+      parts.push(`cause: ${extractCauseDetail(err.cause)}`);
     }
     if (err.stack) {
       // Extract first meaningful stack line (skip the error message line)
@@ -48,7 +65,11 @@ function extractErrorDetail(err: unknown): string {
       return `[Object with keys: ${keys.join(", ")}]`;
     }
   }
-  return String(err);
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "[unparseable value]";
+  }
 }
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -125,11 +146,11 @@ function handleSyncError(
   if (!mountedRef.current) return;
 
   const errorDetail = extractErrorDetail(err);
-  if (!pushSucceeded) {
+  if (pushSucceeded) {
+    addSyncLog("error", "Pull sync gagal (push berhasil)", `tenantId=${tid} | ${errorDetail}`);
+  } else {
     setLastPushSucceeded(false);
     addSyncLog("error", "Push sync gagal", `tenantId=${tid} | ${errorDetail}`);
-  } else {
-    addSyncLog("error", "Pull sync gagal (push berhasil)", `tenantId=${tid} | ${errorDetail}`);
   }
   setSyncStatus("error");
   errorRetryCountRef.current += 1;
@@ -154,6 +175,28 @@ function handleSyncError(
 }
 
 // ── Hook ───────────────────────────────────────────────────────────────
+
+/**
+ * Best-effort entity push: logs failures but does not throw.
+ * Entity push failure should not prevent transaction push/pull.
+ */
+async function pushEntitiesBestEffort(tid: string): Promise<void> {
+  try {
+    await syncPushEntities(tid);
+  } catch (entityErr) {
+    // Log but don't abort — entity push is best-effort
+    console.warn(
+      "[SyncEngine] Entity push failed, continuing with transactions:",
+      entityErr instanceof Error ? entityErr.message : entityErr,
+    );
+    const errorDetail = extractErrorDetail(entityErr);
+    addSyncLog(
+      "warn",
+      "Entity push gagal, melanjutkan dengan transaksi",
+      `tenantId=${tid} | ${errorDetail}`,
+    );
+  }
+}
 
 /**
  * Sync engine orchestrator hook.
@@ -209,13 +252,8 @@ export function useSyncEngine(
     const tid = tenantIdRef.current;
     if (!tid || !enabledRef.current) return;
 
-    // Pre-checks
-    if (isDeviceBlocked()) {
-      if (mountedRef.current) setSyncStatus("offline");
-      return;
-    }
-
-    if (!navigator.onLine) {
+    // Pre-checks: device blocked or offline
+    if (isDeviceBlocked() || !navigator.onLine) {
       if (mountedRef.current) setSyncStatus("offline");
       return;
     }
@@ -228,25 +266,9 @@ export function useSyncEngine(
     let pushSucceeded = false;
 
     try {
-      // Phase 1: Push entities (members + cards) — non-blocking
-      // Entity push failure should not prevent transaction push/pull
+      // Phase 1: Push entities (members + cards) — best-effort, non-blocking
       if (mountedRef.current) setSyncStatus("pushing");
-
-      try {
-        await syncPushEntities(tid);
-      } catch (entityErr) {
-        // Log but don't abort — entity push is best-effort
-        console.warn(
-          "[SyncEngine] Entity push failed, continuing with transactions:",
-          entityErr instanceof Error ? entityErr.message : entityErr,
-        );
-        const errorDetail = extractErrorDetail(entityErr);
-        addSyncLog(
-          "warn",
-          "Entity push gagal, melanjutkan dengan transaksi",
-          `tenantId=${tid} | ${errorDetail}`,
-        );
-      }
+      await pushEntitiesBestEffort(tid);
 
       // Phase 2: Push transactions
       await syncPush(tid);

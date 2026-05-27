@@ -310,7 +310,15 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
 
   // Ensure LocalTenantConfig exists for this tenant
   const existingConfig = await localTenantConfigStore.get(tenantId);
-  if (!existingConfig) {
+  if (existingConfig) {
+    // Update sync timestamp and name (may have changed on server)
+    await localTenantConfigStore.put({
+      ...existingConfig,
+      name: tenantName,
+      slug: tenantSlug,
+      syncedAt: Date.now(),
+    });
+  } else {
     await localTenantConfigStore.put({
       tenantId,
       slug: tenantSlug,
@@ -320,14 +328,6 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
       createdAt: Date.now(),
       syncedAt: Date.now(),
       serverTenantId: tenantId,
-    });
-  } else {
-    // Update sync timestamp and name (may have changed on server)
-    await localTenantConfigStore.put({
-      ...existingConfig,
-      name: tenantName,
-      slug: tenantSlug,
-      syncedAt: Date.now(),
     });
   }
 }

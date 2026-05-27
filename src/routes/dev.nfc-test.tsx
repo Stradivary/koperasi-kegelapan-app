@@ -107,9 +107,12 @@ function NfcTestPage() {
     const writer = new NDEFReader();
     try {
       const enc = new TextEncoder();
-      await writer.write({ records: [{ recordType: "text", data: enc.encode("NFC-TEST") }] }, {
-        overwrite: true,
-      } as never);
+      await writer.write(
+        { records: [{ recordType: "text", data: enc.encode("NFC-TEST") }] },
+        {
+          overwrite: true,
+        },
+      );
       addLog("✅ Write text success — tap card now if writer is waiting");
     } catch (e) {
       addLog(`❌ Write text failed: ${e}`);
@@ -127,9 +130,12 @@ function NfcTestPage() {
     addLog(`Writing 32 random raw bytes (unknown record) …`, `  hex: ${toHex(testData)}`);
     const writer = new NDEFReader();
     try {
-      await writer.write({ records: [{ recordType: "unknown", data: testData.buffer }] }, {
-        overwrite: true,
-      } as never);
+      await writer.write(
+        { records: [{ recordType: "unknown", data: testData.buffer }] },
+        {
+          overwrite: true,
+        },
+      );
       addLog("✅ Write raw success");
     } catch (e) {
       addLog(`❌ Write raw failed: ${e}`);
@@ -147,8 +153,8 @@ function NfcTestPage() {
     try {
       // An empty records array is invalid; a single empty-type record is the correct way to clear
       await writer.write(
-        { records: [{ recordType: "empty", data: new Uint8Array(0) }] } as never,
-        { overwrite: true } as never,
+        { records: [{ recordType: "empty", data: new Uint8Array(0) }] },
+        { overwrite: true },
       );
       addLog("✅ Clear success");
     } catch (e) {
@@ -241,7 +247,7 @@ function NfcTestPage() {
             },
           ],
         },
-        { overwrite: true } as never,
+        { overwrite: true },
       );
       addLog("✅ Write payload success");
     } catch (e) {

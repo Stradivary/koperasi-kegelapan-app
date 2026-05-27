@@ -103,7 +103,7 @@ function base64ToBytes(b64: string): Uint8Array {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCodePoint(bytes[i]);
+  for (const byte of bytes) bin += String.fromCodePoint(byte);
   return btoa(bin);
 }
 
@@ -167,7 +167,7 @@ async function readGrantFromCache(
     const cached = await sessionGrantCacheStore.get(tenantId, accountId, deviceId);
     if (!cached) return null;
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+    const isOffline = typeof navigator === "undefined" ? false : !navigator.onLine;
 
     if (cached.expiresAt <= nowSeconds) {
       // Grant is expired — allow it if offline and within grace period
@@ -298,7 +298,7 @@ export function useSessionGrant(
     setLoading(true);
     setError(null);
 
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
 
     // First, check IndexedDB for a cached grant
     const cachedGrant = await readGrantFromCache(tenantId, accountId, deviceId);
@@ -335,7 +335,7 @@ export function useSessionGrant(
   }, [tenantId, accountId, deviceId, refresh]);
 
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+  const isOffline = typeof navigator === "undefined" ? false : !navigator.onLine;
   const isValid =
     grant !== null &&
     (nowSeconds < grant.expiresAt ||

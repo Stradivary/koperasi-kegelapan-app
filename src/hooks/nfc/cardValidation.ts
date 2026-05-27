@@ -5,11 +5,78 @@ import {
 } from "#/core/nfc/pipelineEngine";
 import { decodePayload } from "#/core/payload/engine";
 import { isTenantBindValid } from "#/core/payload/tenantBind";
-import type { SessionGrant } from "#/core/payload/types";
+import type { SessionGrant, CardPayload } from "#/core/payload/types";
 import { decryptRawCard } from "./cardDecryption";
 import type { CardValidationResult } from "./types";
 
 export { UNREGISTERED_CARD_MESSAGE };
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function buildOfflineResult(
+  payload: CardPayload,
+  grant: SessionGrant,
+  lenient: boolean,
+): CardValidationResult {
+  if (isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
+    return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+  }
+  if (lenient) {
+    return {
+      phase: "ready",
+      payload,
+      error: null,
+      tamperDetected: false,
+      warning: UNREGISTERED_CARD_MESSAGE,
+    };
+  }
+  return {
+    phase: "error",
+    payload: null,
+    error: UNREGISTERED_CARD_MESSAGE,
+    tamperDetected: false,
+    warning: null,
+  };
+}
+
+async function buildOnlineResult(
+  payload: CardPayload,
+  raw: Uint8Array,
+  grant: SessionGrant,
+  lenient: boolean,
+  signal: AbortSignal,
+): Promise<CardValidationResult> {
+  const validation = await validateCard(payload, raw, grant);
+  if (signal.aborted) {
+    return { phase: "error", payload: null, error: null, tamperDetected: false, warning: null };
+  }
+
+  if (validation.valid) {
+    return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+  }
+
+  const isTenantMismatch =
+    validation.reason === TENANT_MISMATCH_REASON || validation.reason === UNREGISTERED_CARD_MESSAGE;
+  const isTamper = validation.tamper ?? false;
+
+  if (lenient && !isTamper) {
+    const warning = isTenantMismatch
+      ? UNREGISTERED_CARD_MESSAGE
+      : (validation.reason ?? "Validasi gagal");
+    return { phase: "ready", payload, error: null, tamperDetected: false, warning };
+  }
+
+  const error = isTenantMismatch
+    ? UNREGISTERED_CARD_MESSAGE
+    : (validation.reason ?? "Validasi gagal");
+  return {
+    phase: "error",
+    payload: isTenantMismatch ? null : payload,
+    error,
+    tamperDetected: isTamper,
+    warning: null,
+  };
+}
 
 /**
  * Decode and validate a raw NFC card payload.
@@ -28,59 +95,9 @@ export async function decodeAndValidateCard(
   const payload = decodePayload(decodableRaw);
   const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
 
-  // ── Offline path: only check tenant binding ────────────────────────────────
   if (isOffline) {
-    if (!isTenantBindValid(payload.header.tenantBind, grant.tenantId)) {
-      if (lenient) {
-        return {
-          phase: "ready",
-          payload,
-          error: null,
-          tamperDetected: false,
-          warning: UNREGISTERED_CARD_MESSAGE,
-        };
-      }
-      return {
-        phase: "error",
-        payload: null,
-        error: UNREGISTERED_CARD_MESSAGE,
-        tamperDetected: false,
-        warning: null,
-      };
-    }
-    return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+    return buildOfflineResult(payload, grant, lenient);
   }
 
-  // ── Online path: full server-side validation ───────────────────────────────
-  const validation = await validateCard(payload, raw, grant);
-  if (signal.aborted) {
-    return { phase: "error", payload: null, error: null, tamperDetected: false, warning: null };
-  }
-
-  if (!validation.valid) {
-    const isTenantMismatch =
-      validation.reason === TENANT_MISMATCH_REASON ||
-      validation.reason === UNREGISTERED_CARD_MESSAGE;
-    const isTamper = validation.tamper ?? false;
-
-    if (lenient && !isTamper) {
-      const warning = isTenantMismatch
-        ? UNREGISTERED_CARD_MESSAGE
-        : (validation.reason ?? "Validasi gagal");
-      return { phase: "ready", payload, error: null, tamperDetected: false, warning };
-    }
-
-    const error = isTenantMismatch
-      ? UNREGISTERED_CARD_MESSAGE
-      : (validation.reason ?? "Validasi gagal");
-    return {
-      phase: "error",
-      payload: isTenantMismatch ? null : payload,
-      error,
-      tamperDetected: isTamper,
-      warning: null,
-    };
-  }
-
-  return { phase: "ready", payload, error: null, tamperDetected: false, warning: null };
+  return buildOnlineResult(payload, raw, grant, lenient, signal);
 }

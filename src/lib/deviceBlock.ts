@@ -188,10 +188,7 @@ async function clearSessionGrantCache(tenantId?: string): Promise<void> {
       const transaction = db.transaction("sessionGrantCache", "readwrite");
       const store = transaction.objectStore("sessionGrantCache");
 
-      if (!tenantId) {
-        // Clear all
-        store.clear();
-      } else {
+      if (tenantId) {
         // Iterate and delete matching tenant entries
         const cursorReq = store.openCursor();
         cursorReq.onsuccess = (event) => {
@@ -204,6 +201,9 @@ async function clearSessionGrantCache(tenantId?: string): Promise<void> {
             cursor.continue();
           }
         };
+      } else {
+        // Clear all
+        store.clear();
       }
 
       transaction.oncomplete = () => {

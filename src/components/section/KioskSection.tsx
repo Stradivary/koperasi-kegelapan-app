@@ -20,7 +20,12 @@ interface KioskSectionProps {
 const MAX_AMOUNT = 1_000_000;
 const QUICK_AMOUNTS = [5_000, 10_000, 15_000, 20_000, 25_000, 50_000];
 
-export function KioskSection({ tenantId, accountId, deviceId, terminalId }: KioskSectionProps) {
+export function KioskSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<KioskSectionProps>) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId);
   const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId);
   const syncEngine = useSyncEngineContext();

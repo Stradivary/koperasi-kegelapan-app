@@ -92,19 +92,19 @@ export function SyncStatusIndicator({
   const Icon = config.icon;
 
   // Re-render periodically to keep relative time fresh
-  const [, setTick] = useState(0);
+  const [_tick, setTick] = useState(0);
   useEffect(() => {
     if (!lastSyncedAt) return;
     const interval = setInterval(() => setTick((t) => t + 1), 30_000);
     return () => clearInterval(interval);
   }, [lastSyncedAt]);
 
+  const pendingLabel = pendingCount > 0 ? `, ${pendingCount} pending` : "";
+  const lastSyncedLabel = lastSyncedAt ? `, last synced ${formatRelativeTime(lastSyncedAt)}` : "";
+  const ariaLabel = `Sync status: ${config.label}${pendingLabel}${lastSyncedLabel}`;
+
   return (
-    <div
-      className="flex items-center gap-2 flex-wrap"
-      role="status"
-      aria-label={`Sync status: ${config.label}${pendingCount > 0 ? `, ${pendingCount} pending` : ""}${lastSyncedAt ? `, last synced ${formatRelativeTime(lastSyncedAt)}` : ""}`}
-    >
+    <output className="flex items-center gap-2 flex-wrap" aria-label={ariaLabel}>
       {/* Status badge */}
       <span
         className={[
@@ -139,6 +139,6 @@ export function SyncStatusIndicator({
           {formatRelativeTime(lastSyncedAt)}
         </span>
       )}
-    </div>
+    </output>
   );
 }

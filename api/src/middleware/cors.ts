@@ -33,7 +33,7 @@ export const corsMiddleware = cors({
     ) {
       return origin;
     }
-    return null as unknown as string;
+    return null;
   },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization", "X-Device-Id"],

@@ -15,16 +15,20 @@ interface StationCardsPanelProps {
   isTopping: boolean;
   isIssuing: boolean;
   isRecovering: boolean;
-  isUpdatingStatus: boolean;
   isDeleting: boolean;
-  isResetting: boolean;
   hasGrant: boolean;
   onTopupCard: (cardId: string) => void;
   onRecoverCard: (card: StationCardRow) => void;
   onIssueNew: () => void;
-  onUpdateCardStatus: (card: StationCardRow, newStatus: string) => void;
   onDeleteCard: (card: StationCardRow) => void;
-  onResetCard: (card: StationCardRow) => void;
+  /** @deprecated Not used — kept for API compatibility */
+  isUpdatingStatus?: boolean;
+  /** @deprecated Not used — kept for API compatibility */
+  isResetting?: boolean;
+  /** @deprecated Not used — kept for API compatibility */
+  onUpdateCardStatus?: (card: StationCardRow, status: string) => void;
+  /** @deprecated Not used — kept for API compatibility */
+  onResetCard?: (card: StationCardRow) => void;
 }
 
 export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCardsPanelProps>(

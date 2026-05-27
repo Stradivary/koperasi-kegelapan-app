@@ -39,6 +39,63 @@ const SYNC_BADGE_VARIANT: Record<StationMemberRow["syncStatus"], "default" | "se
   pending: "secondary",
 };
 
+// ─── Module-level cell components ────────────────────────────────────────────
+
+function MemberNameCell({ value }: Readonly<{ value: string }>) {
+  return <span className="font-medium">{value}</span>;
+}
+
+function MemberIdCell({ value }: Readonly<{ value: string }>) {
+  return <span className="text-xs text-muted-foreground">#{value}</span>;
+}
+
+function MemberStatusCell({ value }: Readonly<{ value: string }>) {
+  return (
+    <Badge
+      variant={value === "active" ? "default" : "destructive"}
+      className="text-[10px] px-1.5 py-0"
+    >
+      {value === "active" ? "Aktif" : "Ditangguhkan"}
+    </Badge>
+  );
+}
+
+function MemberSyncCell({ value }: Readonly<{ value: StationMemberRow["syncStatus"] }>) {
+  return (
+    <Badge variant={SYNC_BADGE_VARIANT[value]} className="text-[10px] px-1.5 py-0">
+      {value === "synced" ? "Synced" : "Pending"}
+    </Badge>
+  );
+}
+
+interface MemberActionsCellProps {
+  member: StationMemberRow;
+  isToggling: boolean;
+  isDeleting?: boolean;
+  onToggleStatus: (userId: string, currentStatus: string) => void;
+  onSetDeleteTarget: (member: StationMemberRow) => void;
+  onDeleteMember?: (userId: string) => void;
+}
+
+function MemberActionsCell({
+  member,
+  isToggling,
+  isDeleting,
+  onToggleStatus,
+  onSetDeleteTarget,
+  onDeleteMember,
+}: Readonly<MemberActionsCellProps>) {
+  return (
+    <MemberActionsDropdown
+      member={member}
+      isToggling={isToggling}
+      isDeleting={isDeleting}
+      onToggleStatus={() => onToggleStatus(member.userId, member.status)}
+      onDelete={onDeleteMember ? () => onSetDeleteTarget(member) : undefined}
+    />
+  );
+}
+
 export function StationMembersPanel({
   members,
   isLoading,
@@ -61,50 +118,34 @@ export function StationMembersPanel({
   const columns = [
     columnHelper.accessor("name", {
       header: "Nama",
-      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      cell: (info) => <MemberNameCell value={info.getValue()} />,
     }),
     columnHelper.accessor("userId", {
       header: "ID",
-      cell: (info) => <span className="text-xs text-muted-foreground">#{info.getValue()}</span>,
+      cell: (info) => <MemberIdCell value={info.getValue()} />,
     }),
     columnHelper.accessor("status", {
       header: "Status",
-      cell: (info) => {
-        const status = info.getValue();
-        return (
-          <Badge
-            variant={status === "active" ? "default" : "destructive"}
-            className="text-[10px] px-1.5 py-0"
-          >
-            {status === "active" ? "Aktif" : "Ditangguhkan"}
-          </Badge>
-        );
-      },
+      cell: (info) => <MemberStatusCell value={info.getValue()} />,
     }),
     columnHelper.accessor("syncStatus", {
       header: "Sync",
-      cell: (info) => (
-        <Badge variant={SYNC_BADGE_VARIANT[info.getValue()]} className="text-[10px] px-1.5 py-0">
-          {info.getValue() === "synced" ? "Synced" : "Pending"}
-        </Badge>
-      ),
+      cell: (info) => <MemberSyncCell value={info.getValue()} />,
     }),
     columnHelper.display({
       id: "actions",
       header: "",
       enableSorting: false,
-      cell: (info) => {
-        const m = info.row.original;
-        return (
-          <MemberActionsDropdown
-            member={m}
-            isToggling={isToggling}
-            isDeleting={isDeleting}
-            onToggleStatus={() => onToggleStatus(m.userId, m.status)}
-            onDelete={onDeleteMember ? () => setDeleteTarget(m) : undefined}
-          />
-        );
-      },
+      cell: (info) => (
+        <MemberActionsCell
+          member={info.row.original}
+          isToggling={isToggling}
+          isDeleting={isDeleting}
+          onToggleStatus={onToggleStatus}
+          onSetDeleteTarget={setDeleteTarget}
+          onDeleteMember={onDeleteMember}
+        />
+      ),
     }),
   ];
 
@@ -241,13 +282,13 @@ function MemberActionsDropdown({
   isDeleting,
   onToggleStatus,
   onDelete,
-}: {
+}: Readonly<{
   member: StationMemberRow;
   isToggling: boolean;
   isDeleting?: boolean;
   onToggleStatus: () => void;
   onDelete?: () => void;
-}) {
+}>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

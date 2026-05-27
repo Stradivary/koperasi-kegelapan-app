@@ -30,21 +30,19 @@ interface MobileRowProps<TData> {
 }
 
 function MobileRow<TData>({ row, index, onRowClick, renderMobileItem }: MobileRowProps<TData>) {
+  if (onRowClick) {
+    return (
+      <button
+        type="button"
+        className={cn("w-full text-left transition-colors hover:bg-muted/30 cursor-pointer")}
+        onClick={() => onRowClick(row.original)}
+      >
+        {renderMobileItem(row, index)}
+      </button>
+    );
+  }
   return (
-    <div
-      className={cn("transition-colors hover:bg-muted/30", onRowClick && "cursor-pointer")}
-      onClick={() => onRowClick?.(row.original)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onRowClick?.(row.original);
-        }
-      }}
-      role={onRowClick ? "button" : undefined}
-      tabIndex={onRowClick ? 0 : undefined}
-    >
-      {renderMobileItem(row, index)}
-    </div>
+    <div className={cn("transition-colors hover:bg-muted/30")}>{renderMobileItem(row, index)}</div>
   );
 }
 
@@ -66,6 +64,15 @@ function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
     ariaSort = "none";
   }
 
+  let sortIcon: React.ReactNode = null;
+  if (sorted === "asc") {
+    sortIcon = <ArrowUp className="size-3.5" />;
+  } else if (sorted === "desc") {
+    sortIcon = <ArrowDown className="size-3.5" />;
+  } else {
+    sortIcon = <ArrowUpDown className="size-3.5" />;
+  }
+
   return (
     <TableHead
       key={headerCell.id}
@@ -81,7 +88,6 @@ function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
             }
           : undefined
       }
-      role={canSort ? "button" : undefined}
       tabIndex={canSort ? 0 : undefined}
       aria-sort={ariaSort}
     >
@@ -89,17 +95,7 @@ function SortableHeader<TData>({ headerCell }: SortableHeaderProps<TData>) {
         {headerCell.isPlaceholder
           ? null
           : flexRender(headerCell.column.columnDef.header, headerCell.getContext())}
-        {canSort && (
-          <span className="text-muted-foreground/60">
-            {sorted === "asc" ? (
-              <ArrowUp className="size-3.5" />
-            ) : sorted === "desc" ? (
-              <ArrowDown className="size-3.5" />
-            ) : (
-              <ArrowUpDown className="size-3.5" />
-            )}
-          </span>
-        )}
+        {canSort && <span className="text-muted-foreground/60">{sortIcon}</span>}
       </div>
     </TableHead>
   );
@@ -139,7 +135,7 @@ export function DataTable<TData>({
   getRowId,
   enableRowSelection: _enableRowSelection = false,
   enableSorting = true,
-}: DataTableProps<TData>) {
+}: Readonly<DataTableProps<TData>>) {
   const isMobile = useIsMobile();
 
   // Responsive default: 5 on mobile, 10 on desktop (caller can override)
@@ -230,71 +226,73 @@ export function DataTable<TData>({
       {/* Content */}
       {!isLoading && !error && (
         <>
-          {rows.length === 0 ? (
-            hasSearch ? (
-              defaultEmptySearchState
-            ) : (
-              defaultEmptyState
-            )
-          ) : isMobile && renderMobileItem ? (
-            /* ─── Mobile: Card List ─── */
-            <div className="rounded-2xl border divide-y overflow-hidden">
-              {rows.map((row, index) => (
-                <MobileRow
-                  key={row.id}
-                  row={row}
-                  index={index}
-                  onRowClick={onRowClick}
-                  renderMobileItem={renderMobileItem}
-                />
-              ))}
-            </div>
-          ) : (
-            /* ─── Desktop: Table ─── */
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {table
-                      .getHeaderGroups()
-                      .map((headerGroup) =>
-                        headerGroup.headers.map((headerCell) => (
-                          <SortableHeader key={headerCell.id} headerCell={headerCell} />
-                        )),
-                      )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow
+          {(() => {
+            if (rows.length === 0) {
+              return hasSearch ? defaultEmptySearchState : defaultEmptyState;
+            }
+            if (isMobile && renderMobileItem) {
+              return (
+                /* ─── Mobile: Card List ─── */
+                <div className="rounded-2xl border divide-y overflow-hidden">
+                  {rows.map((row, index) => (
+                    <MobileRow
                       key={row.id}
-                      className={cn(onRowClick && "cursor-pointer")}
-                      onClick={() => onRowClick?.(row.original)}
-                      onKeyDown={
-                        onRowClick
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                onRowClick(row.original);
-                              }
-                            }
-                          : undefined
-                      }
-                      tabIndex={onRowClick ? 0 : undefined}
-                      role={onRowClick ? "button" : undefined}
-                      data-state={row.getIsSelected() ? "selected" : undefined}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
-                    </TableRow>
+                      row={row}
+                      index={index}
+                      onRowClick={onRowClick}
+                      renderMobileItem={renderMobileItem}
+                    />
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                </div>
+              );
+            }
+            return (
+              /* ─── Desktop: Table ─── */
+              <div className="rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {table
+                        .getHeaderGroups()
+                        .map((headerGroup) =>
+                          headerGroup.headers.map((headerCell) => (
+                            <SortableHeader key={headerCell.id} headerCell={headerCell} />
+                          )),
+                        )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className={cn(onRowClick && "cursor-pointer")}
+                        onClick={() => onRowClick?.(row.original)}
+                        onKeyDown={
+                          onRowClick
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onRowClick(row.original);
+                                }
+                              }
+                            : undefined
+                        }
+                        tabIndex={onRowClick ? 0 : undefined}
+                        role={onRowClick ? "button" : undefined}
+                        data-state={row.getIsSelected() ? "selected" : undefined}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
 
           {/* Pagination */}
           {showPagination && (totalItems ?? 0) > 0 && (

@@ -164,7 +164,99 @@ function isCurrentServerDevice(
   return currentDeviceId === device.fingerprintHash || currentDeviceId === device.deviceId;
 }
 
-export function SettingsSection({ tenantId }: SettingsSectionProps) {
+async function fetchLocalSyncStats(tenantId: string): Promise<LocalSyncStats> {
+  const isNotDeleted = (item: { status: string }) => item.status !== "deleted";
+  const [membersTotal, membersSynced, cardsTotal, cardsSynced, txTotal, txSynced] =
+    await Promise.all([
+      localDb.users.where("tenantId").equals(tenantId).filter(isNotDeleted).count(),
+      localDb.users
+        .where("[tenantId+syncStatus]")
+        .equals([tenantId, "synced"])
+        .filter(isNotDeleted)
+        .count(),
+      localDb.cards.where("tenantId").equals(tenantId).filter(isNotDeleted).count(),
+      localDb.cards
+        .where("[tenantId+syncStatus]")
+        .equals([tenantId, "synced"])
+        .filter(isNotDeleted)
+        .count(),
+      localDb.transactionLog
+        .where("[tenantId+syncStatus]")
+        .between([tenantId, ""], [tenantId, "\uffff"], true, true)
+        .count(),
+      localDb.transactionLog.where("[tenantId+syncStatus]").equals([tenantId, "synced"]).count(),
+    ]);
+  return { membersSynced, membersTotal, cardsSynced, cardsTotal, txSynced, txTotal };
+}
+
+function renderDeviceListContent({
+  devicesLoading,
+  devices,
+  currentDeviceId,
+}: {
+  devicesLoading: boolean;
+  devices: ServerDevice[];
+  currentDeviceId: string | null;
+}) {
+  if (devicesLoading && devices.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <RefreshCw size={32} className="mx-auto text-muted-foreground/40 mb-3 animate-spin" />
+        <p className="type-body1 text-muted-foreground">Memuat perangkat...</p>
+      </div>
+    );
+  }
+  if (devices.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <Smartphone size={32} className="mx-auto text-muted-foreground/40 mb-3" />
+        <p className="type-body1 text-muted-foreground">Belum ada perangkat terdaftar</p>
+        <p className="type-body2 text-muted-foreground/70 mt-1">
+          Perangkat akan muncul setelah login dari perangkat lain
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border divide-y">
+      {[...devices]
+        .sort((a, b) => {
+          const aCurrent = isCurrentServerDevice(currentDeviceId, a) ? 1 : 0;
+          const bCurrent = isCurrentServerDevice(currentDeviceId, b) ? 1 : 0;
+          return bCurrent - aCurrent;
+        })
+        .map((device) => {
+          const isCurrent = isCurrentServerDevice(currentDeviceId, device);
+          const deviceName = parseDeviceName(device.userAgent);
+          return (
+            <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
+              <div className={`rounded-full p-2 ${isCurrent ? "bg-brand/10" : "bg-muted"}`}>
+                <Smartphone
+                  size={14}
+                  className={isCurrent ? "text-brand" : "text-muted-foreground"}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="type-body1 text-foreground text-sm truncate">{deviceName}</p>
+                  {isCurrent && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-brand">
+                      Perangkat ini
+                    </Badge>
+                  )}
+                </div>
+                <p className="type-body2 text-muted-foreground text-xs">
+                  Terakhir aktif {formatDate(device.lastSeenAt * 1000)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
   const {
     onSyncToServer,
     isSyncingToServer,
@@ -189,38 +281,8 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
 
   const refreshSyncStats = useCallback(async () => {
     try {
-      const [membersTotal, membersSynced, cardsTotal, cardsSynced, txTotal, txSynced] =
-        await Promise.all([
-          localDb.users
-            .where("tenantId")
-            .equals(tenantId)
-            .filter((user) => user.status !== "deleted")
-            .count(),
-          localDb.users
-            .where("[tenantId+syncStatus]")
-            .equals([tenantId, "synced"])
-            .filter((user) => user.status !== "deleted")
-            .count(),
-          localDb.cards
-            .where("tenantId")
-            .equals(tenantId)
-            .filter((card) => card.status !== "deleted")
-            .count(),
-          localDb.cards
-            .where("[tenantId+syncStatus]")
-            .equals([tenantId, "synced"])
-            .filter((card) => card.status !== "deleted")
-            .count(),
-          localDb.transactionLog
-            .where("[tenantId+syncStatus]")
-            .between([tenantId, ""], [tenantId, "\uffff"], true, true)
-            .count(),
-          localDb.transactionLog
-            .where("[tenantId+syncStatus]")
-            .equals([tenantId, "synced"])
-            .count(),
-        ]);
-      setSyncStats({ membersSynced, membersTotal, cardsSynced, cardsTotal, txSynced, txTotal });
+      const stats = await fetchLocalSyncStats(tenantId);
+      setSyncStats(stats);
     } catch {
       // Non-critical
     }
@@ -281,6 +343,10 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
     loadDevices();
   }, [syncEngine?.lastSyncedAt, loadDevices, loadTenantProfile, refreshSyncStats]);
 
+  const lastSyncedStr = displayedLastSyncedAt
+    ? new Date(displayedLastSyncedAt).toLocaleString("id-ID")
+    : "-";
+
   return (
     <div className="space-y-4">
       {/* ─── Tenant Profile Viewer ─────────────────────────────────────── */}
@@ -324,9 +390,7 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                 />
                 <ProfileRow label="Timezone" value={tenantConfig?.timezone ?? "—"} />
                 {tenantContext && (
-                  <>
-                    <ProfileRow label="Device ID" value={tenantContext.deviceId} mono truncate />
-                  </>
+                  <ProfileRow label="Device ID" value={tenantContext.deviceId} mono truncate />
                 )}
                 {tenantConfig?.createdAt && (
                   <ProfileRow label="Dibuat" value={formatDate(tenantConfig.createdAt)} />
@@ -395,7 +459,7 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
                       </p>
                       <p className="type-body2 text-muted-foreground">
                         {tenantConfig?.mode === "synced"
-                          ? `Terakhir disinkronisasi: ${displayedLastSyncedAt ? new Date(displayedLastSyncedAt).toLocaleString("id-ID") : "-"}`
+                          ? `Terakhir disinkronisasi: ${lastSyncedStr}`
                           : "Tenant belum terdaftar di server"}
                       </p>
                     </div>
@@ -567,66 +631,11 @@ export function SettingsSection({ tenantId }: SettingsSectionProps) {
 
           <CollapsibleContent>
             <CardContent className="p-2 pt-4">
-              {devicesLoading && devices.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-8 text-center">
-                  <RefreshCw
-                    size={32}
-                    className="mx-auto text-muted-foreground/40 mb-3 animate-spin"
-                  />
-                  <p className="type-body1 text-muted-foreground">Memuat perangkat...</p>
-                </div>
-              ) : devices.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-8 text-center">
-                  <Smartphone size={32} className="mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="type-body1 text-muted-foreground">Belum ada perangkat terdaftar</p>
-                  <p className="type-body2 text-muted-foreground/70 mt-1">
-                    Perangkat akan muncul setelah login dari perangkat lain
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-lg border divide-y">
-                  {[...devices]
-                    .sort((a, b) => {
-                      const aCurrent = isCurrentServerDevice(currentDeviceId, a) ? 1 : 0;
-                      const bCurrent = isCurrentServerDevice(currentDeviceId, b) ? 1 : 0;
-                      return bCurrent - aCurrent;
-                    })
-                    .map((device) => {
-                      const isCurrent = isCurrentServerDevice(currentDeviceId, device);
-                      const deviceName = parseDeviceName(device.userAgent);
-                      return (
-                        <div key={device.deviceId} className="flex items-center gap-3 px-4 py-3">
-                          <div
-                            className={`rounded-full p-2 ${isCurrent ? "bg-brand/10" : "bg-muted"}`}
-                          >
-                            <Smartphone
-                              size={14}
-                              className={isCurrent ? "text-brand" : "text-muted-foreground"}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="type-body1 text-foreground text-sm truncate">
-                                {deviceName}
-                              </p>
-                              {isCurrent && (
-                                <Badge
-                                  variant="default"
-                                  className="text-[10px] px-1.5 py-0 bg-brand"
-                                >
-                                  Perangkat ini
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="type-body2 text-muted-foreground text-xs">
-                              Terakhir aktif {formatDate(device.lastSeenAt * 1000)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
+              {renderDeviceListContent({
+                devicesLoading,
+                devices,
+                currentDeviceId,
+              })}
 
               <Button
                 variant="outline"
@@ -668,7 +677,7 @@ interface ProfileRowProps {
   truncate?: boolean;
 }
 
-function ProfileRow({ label, value, mono, truncate }: ProfileRowProps) {
+function ProfileRow({ label, value, mono, truncate }: Readonly<ProfileRowProps>) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5">
       <span className="type-body2 text-muted-foreground">{label}</span>
@@ -690,7 +699,7 @@ interface ChecklistItemProps {
   detail?: string;
 }
 
-function ChecklistItem({ icon: Icon, label, checked, detail }: ChecklistItemProps) {
+function ChecklistItem({ icon: Icon, label, checked, detail }: Readonly<ChecklistItemProps>) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       {checked ? (

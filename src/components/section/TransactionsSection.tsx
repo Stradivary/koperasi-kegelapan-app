@@ -62,7 +62,10 @@ function amountPrefix(type: TransactionLog["type"]) {
   return "";
 }
 
-function TypeIcon({ type, className }: { type: TransactionLog["type"]; className?: string }) {
+function TypeIcon({
+  type,
+  className,
+}: Readonly<{ type: TransactionLog["type"]; className?: string }>) {
   if (CREDIT_TYPES.has(type))
     return <ArrowDownLeft size={14} className={cn("text-emerald-600", className)} />;
   if (DEBIT_TYPES.has(type))
@@ -70,7 +73,7 @@ function TypeIcon({ type, className }: { type: TransactionLog["type"]; className
   return <Receipt size={14} className={cn("text-muted-foreground", className)} />;
 }
 
-function SyncIcon({ status }: { status: TransactionLog["syncStatus"] }) {
+function SyncIcon({ status }: Readonly<{ status: TransactionLog["syncStatus"] }>) {
   if (status === "synced") return <CheckCircle2 size={12} className="text-green-500 shrink-0" />;
   if (status === "pending") return <Clock size={12} className="text-amber-500 shrink-0" />;
   return <AlertCircle size={12} className="text-destructive shrink-0" />;
@@ -176,7 +179,7 @@ const columns = [
   }),
 ];
 
-export function TransactionsSection({ tenantId, accountId }: TransactionsSectionProps) {
+export function TransactionsSection({ tenantId, accountId }: Readonly<TransactionsSectionProps>) {
   const isMobile = useIsMobile();
   const responsivePageSize = isMobile ? 5 : PAGE_SIZE_DEFAULT;
 
@@ -316,7 +319,7 @@ export function TransactionsSection({ tenantId, accountId }: TransactionsSection
       }}
       showSearch={false}
       enableSorting={false}
-      getRowId={(row) => (row.id != null ? String(row.id) : `${row.cardId}-${row.counter}`)}
+      getRowId={(row) => (row.id == null ? `${row.cardId}-${row.counter}` : String(row.id))}
       header={
         <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted/30 p-3">
           <div className="flex flex-col gap-1">
