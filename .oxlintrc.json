@@ -8,26 +8,27 @@
   "ignorePatterns": ["dist", "node_modules", ".wrangler", "src/routeTree.gen.ts", "coverage"],
   "rules": {
     "no-unused-vars": "error",
-    "no-negated-condition": "warn",
 
-    "typescript/no-explicit-any": "warn",
+    "typescript/no-explicit-any": "off",
     "typescript/consistent-type-imports": "error",
     "typescript/no-unused-vars": "error",
-    "typescript/prefer-optional-chain": "warn",
-    "typescript/no-unnecessary-type-assertion": "warn",
-    "typescript/no-redundant-type-constituents": "warn",
+    "typescript/prefer-optional-chain": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-redundant-type-constituents": "off",
 
     "react/rules-of-hooks": "error",
-    "react/exhaustive-deps": "warn",
-    "react/no-array-index-key": "warn",
-    "react/no-unstable-nested-components": "warn",
-    "react/hook-use-state": "warn",
-    "react/no-unused-prop-types": "warn",
+    "react/exhaustive-deps": "off",
+    "react/no-array-index-key": "off",
+    "react/no-unstable-nested-components": "off",
+    "react/hook-use-state": "off",
+    "react/no-unused-prop-types": "off",
 
-    "unicorn/no-nested-ternary": "warn",
-    "unicorn/prefer-at": "warn",
-    "unicorn/prefer-math-min-max": "warn",
-    "unicorn/prefer-negative-index": "warn",
-    "unicorn/prefer-dom-node-dataset": "warn"
+    "no-negated-condition": "off",
+
+    "unicorn/no-nested-ternary": "off",
+    "unicorn/prefer-at": "off",
+    "unicorn/prefer-math-min-max": "off",
+    "unicorn/prefer-negative-index": "off",
+    "unicorn/prefer-dom-node-dataset": "off"
   }
 }

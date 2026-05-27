@@ -247,7 +247,13 @@ describe("useSyncEngine hook behavior", () => {
     expect(result.current.lastPushSucceeded).toBe(false);
 
     // Reset mock
-    vi.mocked(syncPush).mockResolvedValue(undefined);
+    vi.mocked(syncPush).mockResolvedValue({
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount: 0,
+    });
   });
 
   it("handles pull error after successful push", async () => {
@@ -269,7 +275,12 @@ describe("useSyncEngine hook behavior", () => {
     expect(result.current.lastPushSucceeded).toBe(true);
 
     // Reset mock
-    vi.mocked(syncPull).mockResolvedValue(undefined);
+    vi.mocked(syncPull).mockResolvedValue({
+      membersPulled: 0,
+      cardsPulled: 0,
+      transactionsPulled: 0,
+      authRequired: false,
+    });
   });
 
   it("handles entity push failure gracefully (continues with transactions)", async () => {
@@ -292,6 +303,11 @@ describe("useSyncEngine hook behavior", () => {
     expect(syncPush).toHaveBeenCalledWith("tenant-1");
 
     // Reset mock
-    vi.mocked(syncPushEntities).mockResolvedValue(undefined);
+    vi.mocked(syncPushEntities).mockResolvedValue({
+      membersAccepted: 0,
+      membersRejected: 0,
+      cardsAccepted: 0,
+      cardsRejected: 0,
+    });
   });
 });

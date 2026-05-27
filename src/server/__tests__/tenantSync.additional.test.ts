@@ -90,10 +90,12 @@ vi.mock("#/db", () => {
 import { getDb } from "#/db";
 
 function getInternalMockDb() {
-  return (getDb as ReturnType<typeof vi.fn>)() as ReturnType<typeof getDb> & {
-    __setGetResult: (val: unknown) => void;
-    __setBatchThrow: (msg: string | null) => void;
-  };
+  return (
+    getDb as unknown as () => ReturnType<typeof getDb> & {
+      __setGetResult: (val: unknown) => void;
+      __setBatchThrow: (msg: string | null) => void;
+    }
+  )();
 }
 
 const validRequest = {

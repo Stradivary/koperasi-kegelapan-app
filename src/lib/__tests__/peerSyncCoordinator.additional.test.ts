@@ -124,14 +124,15 @@ describe("peerSyncCoordinator additional coverage", () => {
       // The FORCE_PUSH_TIMEOUT_MS is 3000ms — we simulate the timeout rejection
       const origSetTimeout = globalThis.setTimeout;
       vi.spyOn(globalThis, "setTimeout").mockImplementation(
-        (fn: TimerHandler, delay?: number, ...args: unknown[]) => {
+        (fn: TimerHandler, delay?: number, ...args: unknown[]): ReturnType<typeof setTimeout> => {
           if (delay === 3000) {
-            // Immediately trigger the timeout
             return origSetTimeout(() => {
               if (typeof fn === "function") fn(...args);
             }, 0) as unknown as ReturnType<typeof setTimeout>;
           }
-          return origSetTimeout(fn as TimerHandler, delay, ...args);
+          return origSetTimeout(fn as TimerHandler, delay, ...args) as unknown as ReturnType<
+            typeof setTimeout
+          >;
         },
       );
 

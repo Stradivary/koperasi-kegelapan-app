@@ -24,7 +24,7 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
-import { applyTopup, applyResetState } from "../../core/state-machine/engine";
+import { applyTopup, applyResetState, validateTopup } from "../../core/state-machine/engine";
 import { prepareWrite } from "../../core/nfc/pipelineEngine";
 import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
 import {
@@ -1262,6 +1262,12 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const handleTopupConfirm = useCallback(
     async (amount: number) => {
       if (!state.payload || !grant) return;
+
+      const validation = validateTopup(state.payload, amount);
+      if (!validation.valid) {
+        toast.error(validation.reason ?? "Nominal top-up tidak valid");
+        return;
+      }
 
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);

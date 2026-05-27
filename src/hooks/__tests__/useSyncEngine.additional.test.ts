@@ -10,16 +10,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { DEBOUNCE_MS, PERIODIC_PULL_INTERVAL_MS } from "../useSyncEngine";
+import type { SyncPushResult } from "../../lib/syncPush";
 
 vi.mock("../../lib/syncPush", () => ({
-  syncPush: vi.fn().mockResolvedValue(undefined),
+  syncPush: vi.fn().mockResolvedValue({
+    totalAccepted: 0,
+    totalRejected: 0,
+    pullNeeded: false,
+    conflictCount: 0,
+    failedCount: 0,
+  }),
 }));
 vi.mock("../../lib/syncPushEntities", () => ({
-  syncPushEntities: vi.fn().mockResolvedValue(undefined),
+  syncPushEntities: vi.fn().mockResolvedValue({
+    membersAccepted: 0,
+    membersRejected: 0,
+    cardsAccepted: 0,
+    cardsRejected: 0,
+  }),
   getPendingEntityCount: vi.fn().mockResolvedValue(0),
 }));
 vi.mock("../../lib/syncPull", () => ({
-  syncPull: vi.fn().mockResolvedValue(undefined),
+  syncPull: vi.fn().mockResolvedValue({
+    membersPulled: 0,
+    cardsPulled: 0,
+    transactionsPulled: 0,
+    authRequired: false,
+  }),
 }));
 vi.mock("../../lib/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
@@ -58,7 +75,13 @@ describe("useSyncEngine — retry backoff after error", () => {
     expect(result.current.syncStatus).toBe("error");
 
     // After backoff (1000ms for first retry), should retry
-    vi.mocked(syncPush).mockResolvedValue(undefined);
+    vi.mocked(syncPush).mockResolvedValue({
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount: 0,
+    });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1100);
     });
@@ -105,10 +128,10 @@ describe("useSyncEngine — queued sync after cycle completes", () => {
   it("executes queued sync after current cycle finishes", async () => {
     const { useSyncEngine } = await import("../useSyncEngine");
 
-    let resolvePush: () => void;
+    let resolvePush: (v: SyncPushResult) => void;
     vi.mocked(syncPush).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<SyncPushResult>((resolve) => {
           resolvePush = resolve;
         }),
     );
@@ -127,9 +150,21 @@ describe("useSyncEngine — queued sync after cycle completes", () => {
     });
 
     // Complete the first sync
-    vi.mocked(syncPush).mockResolvedValue(undefined);
+    vi.mocked(syncPush).mockResolvedValue({
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount: 0,
+    });
     await act(async () => {
-      resolvePush!();
+      resolvePush!({
+        totalAccepted: 0,
+        totalRejected: 0,
+        pullNeeded: false,
+        conflictCount: 0,
+        failedCount: 0,
+      });
       await vi.advanceTimersByTimeAsync(200);
     });
 
@@ -152,10 +187,10 @@ describe("useSyncEngine — notifyMutation while syncing", () => {
   it("queues sync via debounce when notifyMutation called while syncing", async () => {
     const { useSyncEngine } = await import("../useSyncEngine");
 
-    let resolvePush: () => void;
+    let resolvePush: (v: SyncPushResult) => void;
     vi.mocked(syncPush).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<SyncPushResult>((resolve) => {
           resolvePush = resolve;
         }),
     );
@@ -174,9 +209,21 @@ describe("useSyncEngine — notifyMutation while syncing", () => {
     });
 
     // Complete the sync
-    vi.mocked(syncPush).mockResolvedValue(undefined);
+    vi.mocked(syncPush).mockResolvedValue({
+      totalAccepted: 0,
+      totalRejected: 0,
+      pullNeeded: false,
+      conflictCount: 0,
+      failedCount: 0,
+    });
     await act(async () => {
-      resolvePush!();
+      resolvePush!({
+        totalAccepted: 0,
+        totalRejected: 0,
+        pullNeeded: false,
+        conflictCount: 0,
+        failedCount: 0,
+      });
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 200);
     });
 

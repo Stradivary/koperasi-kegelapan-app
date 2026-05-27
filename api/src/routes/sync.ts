@@ -89,6 +89,9 @@ function validateTransaction(tx: PushTransaction): { valid: boolean; reason?: st
   if (tx.amount < 0 || tx.amount > 16000000) {
     return { valid: false, reason: "invalid_amount" };
   }
+  if (tx.type === "topup" && tx.amount > 2000000) {
+    return { valid: false, reason: "topup_amount_exceeds_limit" };
+  }
   if (tx.balanceAfter < 0 || tx.balanceAfter > 16000000) {
     return { valid: false, reason: "invalid_balance" };
   }

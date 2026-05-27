@@ -114,6 +114,8 @@ export function isWriteEligible(
 export const PARKING_RATE_PER_HOUR = 2_000;
 export const MIN_BALANCE_AFTER_CHECKOUT = 0;
 export const MIN_BALANCE_BEFORE_CHECKIN = 10_000;
+export const MAX_BALANCE = 16_000_000;
+export const MAX_TOPUP_AMOUNT = 2_000_000;
 
 /**
  * Calculate the checkout fee for a given payload and timestamp.
@@ -223,6 +225,33 @@ export function applyDebit(payload: CardPayload, amount: number, nowSeconds: num
       hash: new Uint8Array(LOG_HASH_SIZE),
     }),
   };
+}
+
+/**
+ * Validates a topup amount against business rules.
+ * Returns { valid: true } or { valid: false, reason }.
+ */
+export function validateTopup(
+  payload: CardPayload,
+  amount: number,
+): { valid: boolean; reason?: string } {
+  if (amount <= 0) {
+    return { valid: false, reason: "Nominal top-up harus lebih dari 0" };
+  }
+  if (amount > MAX_TOPUP_AMOUNT) {
+    return {
+      valid: false,
+      reason: `Nominal top-up maksimal ${MAX_TOPUP_AMOUNT.toLocaleString("id-ID")}`,
+    };
+  }
+  const balanceAfter = payload.wallet.balance + amount;
+  if (balanceAfter > MAX_BALANCE) {
+    return {
+      valid: false,
+      reason: `Saldo setelah top-up (${balanceAfter.toLocaleString("id-ID")}) melebihi batas maksimal ${MAX_BALANCE.toLocaleString("id-ID")}`,
+    };
+  }
+  return { valid: true };
 }
 
 export function applyTopup(payload: CardPayload, amount: number, nowSeconds: number): CardPayload {

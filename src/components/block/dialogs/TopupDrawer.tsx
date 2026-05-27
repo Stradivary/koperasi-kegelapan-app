@@ -5,6 +5,7 @@ import failedImg from "../../../assets/images/nfc/failed.svg";
 import type { NfcCardPhase } from "../../../hooks/nfc/useNfcCard";
 import type { CardPayload } from "../../../core/payload/types";
 import type { NfcPhase } from "../../../core/nfc/stateMachine";
+import { validateTopup, MAX_TOPUP_AMOUNT, MAX_BALANCE } from "../../../core/state-machine/engine";
 import {
   Drawer,
   DrawerContent,
@@ -61,8 +62,11 @@ export function TopupDrawer({
   const parsedAmount = Number.parseInt(amount, 10);
   const isValidAmount = !Number.isNaN(parsedAmount) && parsedAmount > 0;
 
+  const topupValidation = isValidAmount && payload ? validateTopup(payload, parsedAmount) : null;
+  const canConfirm = isValidAmount && (!topupValidation || topupValidation.valid);
+
   function handleConfirm() {
-    if (!isValidAmount) return;
+    if (!canConfirm) return;
     onTopup(parsedAmount);
     setAmount("");
   }
@@ -144,7 +148,12 @@ export function TopupDrawer({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   autoFocus
+                  max={MAX_TOPUP_AMOUNT}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Maks. top-up: {formatRupiah(MAX_TOPUP_AMOUNT)} · Maks. saldo:{" "}
+                  {formatRupiah(MAX_BALANCE)}
+                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -161,11 +170,19 @@ export function TopupDrawer({
               </div>
 
               {isValidAmount && (
-                <div className="rounded-lg bg-muted/50 p-3 text-sm text-center">
-                  <span className="text-muted-foreground">Saldo setelah top-up: </span>
-                  <span className="font-bold">
-                    {formatRupiah(payload.wallet.balance + parsedAmount)}
-                  </span>
+                <div
+                  className={`rounded-lg p-3 text-sm text-center ${topupValidation && !topupValidation.valid ? "bg-destructive/10 border border-destructive/20" : "bg-muted/50"}`}
+                >
+                  {topupValidation && !topupValidation.valid ? (
+                    <span className="text-destructive font-medium">{topupValidation.reason}</span>
+                  ) : (
+                    <>
+                      <span className="text-muted-foreground">Saldo setelah top-up: </span>
+                      <span className="font-bold">
+                        {formatRupiah(payload.wallet.balance + parsedAmount)}
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -211,7 +228,7 @@ export function TopupDrawer({
           {hasCard && (
             <Button
               onClick={handleConfirm}
-              disabled={!isValidAmount}
+              disabled={!canConfirm}
               className="w-full bg-brand-dark hover:bg-brand-dark/90 text-white"
             >
               <CreditCard size={16} />
