@@ -112,7 +112,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
           (NO_AUTH_ROLES as readonly string[]).includes(c.role),
         );
         const activeCtx =
-          noAuthCtx ?? contexts.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
+          noAuthCtx ?? contexts.toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
         if (activeCtx) {
           // Restore deviceId and access token from IndexedDB
           if (activeCtx.deviceId) {

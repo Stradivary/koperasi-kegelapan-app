@@ -14,11 +14,14 @@ export function DataTableSkeleton({
   rows = 5,
   isMobile = false,
 }: Readonly<DataTableSkeletonProps>) {
+  const rowKeys = Array.from({ length: rows }, (_, i) => `row-${i}`);
+  const colKeys = Array.from({ length: columns }, (_, i) => `col-${i}`);
+
   if (isMobile) {
     return (
       <div className="space-y-2">
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={`mobile-row-${i}`} className="rounded-xl border p-4 space-y-2">
+        {rowKeys.map((rowKey) => (
+          <div key={rowKey} className="rounded-xl border p-4 space-y-2">
             <div className="flex items-center gap-3">
               <Skeleton className="size-9 rounded-lg" />
               <div className="flex-1 space-y-1.5">
@@ -36,18 +39,15 @@ export function DataTableSkeleton({
     <div className="rounded-lg border overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b bg-muted/30">
-        {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={`header-col-${i}`} className="h-3.5 flex-1" />
+        {colKeys.map((colKey) => (
+          <Skeleton key={`header-${colKey}`} className="h-3.5 flex-1" />
         ))}
       </div>
       {/* Rows */}
-      {Array.from({ length: rows }).map((_, i) => (
-        <div
-          key={`row-${i}`}
-          className="flex items-center gap-2 px-3 py-3 border-b last:border-b-0"
-        >
-          {Array.from({ length: columns }).map((_, j) => (
-            <Skeleton key={`row-${i}-col-${j}`} className="h-3.5 flex-1" />
+      {rowKeys.map((rowKey) => (
+        <div key={rowKey} className="flex items-center gap-2 px-3 py-3 border-b last:border-b-0">
+          {colKeys.map((colKey) => (
+            <Skeleton key={`${rowKey}-${colKey}`} className="h-3.5 flex-1" />
           ))}
         </div>
       ))}

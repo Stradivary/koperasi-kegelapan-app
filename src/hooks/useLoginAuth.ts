@@ -142,6 +142,164 @@ async function tryServerLogin(
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+/**
+ * Maps a server login error to a user-facing Indonesian message.
+ */
+function serverLoginErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    if (err.message === "tenant_inactive") return "Tenant tidak lagi aktif";
+    if (err.message === "tenant_not_found") return "Koperasi tidak ditemukan";
+  }
+  return "Username atau password salah";
+}
+
+/**
+ * Silently attempts to fetch a fresh access token from the server after a
+ * successful local login. Failures are intentionally swallowed — the token
+ * is non-critical for offline operation.
+ */
+async function silentlyRefreshToken(
+  username: string,
+  password: string,
+  effectiveSlug: string | undefined,
+  fingerprintHash: string,
+): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        password,
+        deviceFingerprint: {
+          hash: fingerprintHash,
+          userAgent: navigator.userAgent,
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
+          platform: navigator.platform,
+        },
+        tenantSlug: effectiveSlug,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+      }
+    }
+  } catch {
+    clearTimeout(timeout);
+    // Non-critical — sync will work next time user logs in via server
+  }
+}
+
+/**
+ * Persists server login data to local stores and sets the active device/token.
+ */
+async function persistServerLoginData(
+  data: Record<string, unknown>,
+  deviceId: string,
+): Promise<void> {
+  await tenantContextStore.put({
+    tenantId: data.tenantId as string,
+    tenantSlug: data.tenantSlug as string,
+    tenantName: data.tenantName as string,
+    deviceId,
+    accountId: data.accountId as string,
+    role: data.role as string,
+    canAccessStation: ["admin", "station"].includes(data.role as string),
+    terminalId: 0,
+    updatedAt: Date.now(),
+  });
+
+  const existingConfig = await localTenantConfigStore.get(data.tenantId as string);
+  if (!existingConfig) {
+    await localTenantConfigStore.put({
+      tenantId: data.tenantId as string,
+      slug: data.tenantSlug as string,
+      name: data.tenantName as string,
+      timezone: "Asia/Jakarta",
+      mode: "synced",
+      createdAt: Date.now(),
+      syncedAt: Date.now(),
+      serverTenantId: data.tenantId as string,
+    });
+  }
+
+  if (data.deviceId) {
+    await localDb.deviceInfo.put({
+      deviceId: data.deviceId as string,
+      tenantId: data.tenantId as string,
+      fingerprintHash: deviceId,
+      registeredAt: Date.now(),
+    });
+  }
+
+  setCurrentDeviceId(deviceId);
+
+  if (data.accessToken) {
+    setAccessToken(data.accessToken as string);
+  }
+}
+
+/**
+ * Attempts a server auth request for device setup and caches the credentials
+ * locally for offline use. Returns the result or null on failure.
+ */
+async function tryDeviceSetupServerAuth(
+  username: string,
+  password: string,
+): Promise<LocalLoginResult | null> {
+  const fingerprintHash = await getDeviceFingerprint();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        password,
+        deviceFingerprint: {
+          hash: fingerprintHash,
+          userAgent: navigator.userAgent,
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
+          platform: navigator.platform,
+        },
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    await cacheServerCredentials({
+      tenantId: data.tenantId,
+      tenantSlug: data.tenantSlug,
+      tenantName: data.tenantName,
+      accountId: data.accountId,
+      role: data.role,
+      username,
+      password,
+    });
+    return {
+      tenantId: data.tenantId,
+      tenantSlug: data.tenantSlug,
+      tenantName: data.tenantName,
+      accountId: data.accountId,
+      role: data.role,
+    };
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
@@ -183,38 +341,9 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
       }
 
       if (localResult) {
-        // If online and no token yet, try to get a fresh one from server silently
+        // If online and no token yet, silently refresh from server
         if (!getAccessToken() && navigator.onLine) {
-          try {
-            const serverFingerprintHash = await getDeviceFingerprint();
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-            const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                username,
-                password,
-                deviceFingerprint: {
-                  hash: serverFingerprintHash,
-                  userAgent: navigator.userAgent,
-                  // eslint-disable-next-line @typescript-eslint/no-deprecated
-                  platform: navigator.platform,
-                },
-                tenantSlug: effectiveSlug,
-              }),
-              signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.accessToken) {
-                setAccessToken(data.accessToken);
-              }
-            }
-          } catch {
-            // Non-critical — sync will work next time user logs in via server
-          }
+          await silentlyRefreshToken(username, password, effectiveSlug, fingerprintId);
         }
 
         issueAndCacheLocalSessionGrant(
@@ -241,15 +370,7 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
       try {
         data = await tryServerLogin(username, password, effectiveSlug, fingerprintId);
       } catch (err) {
-        if (err instanceof Error) {
-          if (err.message === "tenant_inactive") {
-            setError("Tenant tidak lagi aktif");
-          } else if (err.message === "tenant_not_found") {
-            setError("Koperasi tidak ditemukan");
-          } else {
-            setError("Username atau password salah");
-          }
-        }
+        setError(serverLoginErrorMessage(err));
         return;
       }
 
@@ -259,48 +380,7 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
         return;
       }
 
-      const deviceId = fingerprintId;
-
-      await tenantContextStore.put({
-        tenantId: data.tenantId as string,
-        tenantSlug: data.tenantSlug as string,
-        tenantName: data.tenantName as string,
-        deviceId,
-        accountId: data.accountId as string,
-        role: data.role as string,
-        canAccessStation: ["admin", "station"].includes(data.role as string),
-        terminalId: 0,
-        updatedAt: Date.now(),
-      });
-
-      const existingConfig = await localTenantConfigStore.get(data.tenantId as string);
-      if (!existingConfig) {
-        await localTenantConfigStore.put({
-          tenantId: data.tenantId as string,
-          slug: data.tenantSlug as string,
-          name: data.tenantName as string,
-          timezone: "Asia/Jakarta",
-          mode: "synced",
-          createdAt: Date.now(),
-          syncedAt: Date.now(),
-          serverTenantId: data.tenantId as string,
-        });
-      }
-
-      if (data.deviceId) {
-        await localDb.deviceInfo.put({
-          deviceId: data.deviceId as string,
-          tenantId: data.tenantId as string,
-          fingerprintHash: fingerprintId,
-          registeredAt: Date.now(),
-        });
-      }
-
-      setCurrentDeviceId(deviceId);
-
-      if (data.accessToken) {
-        setAccessToken(data.accessToken as string);
-      }
+      await persistServerLoginData(data, fingerprintId);
 
       cacheServerCredentials({
         tenantId: data.tenantId as string,
@@ -331,7 +411,6 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
     setLoading(true);
     setError(null);
     try {
-      // Early offline check: device setup requires internet for initial activation
       // Try local login first to see if cached credentials exist
       const localOutcome = await localLoginWithReason(username, password);
       const localResult = localOutcome.success
@@ -344,67 +423,18 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
           }
         : null;
 
-      if (navigator.onLine === false) {
-        // Offline: if no cached credentials, show educative message and skip network
-        if (!localResult) {
-          setError(
-            "Perangkat baru wajib terhubung internet untuk aktivasi awal. Hubungkan ke jaringan WiFi atau data seluler, lalu coba lagi.",
-          );
-          return;
-        }
+      // Offline: device setup requires internet for initial activation
+      if (!navigator.onLine && !localResult) {
+        setError(
+          "Perangkat baru wajib terhubung internet untuk aktivasi awal. Hubungkan ke jaringan WiFi atau data seluler, lalu coba lagi.",
+        );
+        return;
       }
 
-      // Use local result if available
-      let result = localResult;
-
-      // If local fails and online, try server + cache
-      if (!result && navigator.onLine) {
-        const fingerprintHash = await getDeviceFingerprint();
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/auth/token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              username,
-              password,
-              deviceFingerprint: {
-                hash: fingerprintHash,
-                userAgent: navigator.userAgent,
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
-                platform: navigator.platform,
-              },
-            }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-
-          if (res.ok) {
-            const data = await res.json();
-            // Cache for offline use
-            await cacheServerCredentials({
-              tenantId: data.tenantId,
-              tenantSlug: data.tenantSlug,
-              tenantName: data.tenantName,
-              accountId: data.accountId,
-              role: data.role,
-              username,
-              password,
-            });
-            result = {
-              tenantId: data.tenantId,
-              tenantSlug: data.tenantSlug,
-              tenantName: data.tenantName,
-              accountId: data.accountId,
-              role: data.role,
-            };
-          }
-        } catch {
-          clearTimeout(timeout);
-        }
-      }
+      // Use local result if available, otherwise try server
+      const result =
+        localResult ??
+        (navigator.onLine ? await tryDeviceSetupServerAuth(username, password) : null);
 
       if (!result) {
         setError("Username atau password salah");
