@@ -109,7 +109,7 @@ export function TenantListPanel({
   onCreateTenant,
   pagination,
   onPageChange,
-}: TenantListPanelProps) {
+}: Readonly<TenantListPanelProps>) {
   // Convert 1-based page to 0-based for DataTable
   const serverPagination: ServerPaginationMeta = {
     pageIndex: pagination.page - 1,

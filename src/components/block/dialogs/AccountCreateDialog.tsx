@@ -94,7 +94,7 @@ export function AccountCreateDialog({
   error,
   tenants,
   tenantsLoading,
-}: AccountCreateDialogProps) {
+}: Readonly<AccountCreateDialogProps>) {
   const [tenantId, setTenantId] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

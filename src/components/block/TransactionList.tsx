@@ -29,7 +29,10 @@ export function TransactionList({ entries }: Readonly<TransactionListProps>) {
           const txTime =
             entry.timestamp > 0 ? new Date(entry.timestamp * 1000).toLocaleTimeString() : "—";
           return (
-            <div key={i} className="px-3 py-2 flex items-center justify-between">
+            <div
+              key={`${entry.timestamp}-${entry.flags}-${i}`}
+              className="px-3 py-2 flex items-center justify-between"
+            >
               <div>
                 <span className="text-xs">{FLAG_LABELS[entry.flags & 0x0f] ?? "Unknown"}</span>
                 <span className="ml-2 text-xs text-muted-foreground">{txTime}</span>

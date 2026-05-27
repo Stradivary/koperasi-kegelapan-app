@@ -47,7 +47,7 @@ export function TopupDrawer({
   onTopup,
   onClose,
   onRetry,
-}: TopupDrawerProps) {
+}: Readonly<TopupDrawerProps>) {
   const [amount, setAmount] = useState("");
 
   // Cast NfcCardPhase to NfcPhase (compatible subset)

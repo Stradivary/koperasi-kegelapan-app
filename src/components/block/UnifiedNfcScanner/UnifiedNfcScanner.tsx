@@ -412,7 +412,7 @@ function ScannerContent({
   renderReady,
   renderSuccess,
   renderError,
-}: ScannerContentProps) {
+}: Readonly<ScannerContentProps>) {
   const { rawResult, payload, classification, isCheckedIn, error, tamperDetected } = state;
 
   // Handlers for check-in/check-out actions
@@ -851,7 +851,7 @@ export function UnifiedNfcScanner({
   renderHeader,
   renderFooter,
   labels,
-}: UnifiedNfcScannerProps) {
+}: Readonly<UnifiedNfcScannerProps>) {
   // Merge custom labels with defaults
   const mergedLabels: NfcLabels = { ...DEFAULT_LABELS, ...labels };
 

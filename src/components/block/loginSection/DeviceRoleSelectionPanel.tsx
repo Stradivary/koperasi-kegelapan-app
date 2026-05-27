@@ -42,7 +42,7 @@ export function DeviceRoleSelectionPanel({
   onSelectRole,
   onBack,
   backLabel = "Kembali",
-}: DeviceRoleSelectionPanelProps) {
+}: Readonly<DeviceRoleSelectionPanelProps>) {
   return (
     <AuthLayout variant="brand-dark">
       <div>

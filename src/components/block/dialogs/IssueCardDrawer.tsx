@@ -72,7 +72,7 @@ export function IssueCardDrawer({
   onIssue,
   onClose,
   onRetry,
-}: IssueCardDrawerProps) {
+}: Readonly<IssueCardDrawerProps>) {
   const [userId, setUserId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");

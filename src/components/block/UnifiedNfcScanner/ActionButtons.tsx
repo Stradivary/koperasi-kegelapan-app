@@ -84,7 +84,7 @@ export function ActionButtons({
   onInitializeCard,
   renderActions,
   labels,
-}: ActionButtonsProps) {
+}: Readonly<ActionButtonsProps>) {
   const mergedLabels = { ...DEFAULT_LABELS, ...labels };
 
   // If custom renderActions is provided, use it instead of default buttons

@@ -97,7 +97,7 @@ export function StationCardListPanel({
   onRecoverCard,
   onDeleteCard,
   onIssueNew,
-}: StationCardListPanelProps) {
+}: Readonly<StationCardListPanelProps>) {
   const [deleteTarget, setDeleteTarget] = useState<StationCardRow | null>(null);
   const nfcSupported = typeof globalThis !== "undefined" && "NDEFReader" in globalThis;
 

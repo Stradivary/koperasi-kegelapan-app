@@ -15,7 +15,7 @@ export function CardNotBlankDrawer({
   isProcessing,
   onConfirm,
   onCancel,
-}: CardNotBlankDrawerProps) {
+}: Readonly<CardNotBlankDrawerProps>) {
   return (
     <ConfirmationDialogDrawer
       open={open}

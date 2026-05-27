@@ -148,7 +148,7 @@ export function TenantCreateDialog({
   onSubmit,
   isSubmitting,
   error,
-}: TenantCreateDialogProps) {
+}: Readonly<TenantCreateDialogProps>) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);

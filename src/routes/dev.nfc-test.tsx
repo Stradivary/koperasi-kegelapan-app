@@ -408,7 +408,7 @@ function NfcTestPage() {
         </div>
         <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs space-y-0.5 max-h-80 overflow-y-auto">
           {log.map((line, i) => (
-            <p key={i} className="whitespace-pre-wrap break-all">
+            <p key={`log-${i}-${line.slice(0, 20)}`} className="whitespace-pre-wrap break-all">
               {line}
             </p>
           ))}

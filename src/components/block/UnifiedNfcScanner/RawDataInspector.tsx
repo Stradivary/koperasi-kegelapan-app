@@ -56,7 +56,7 @@ function formatHexDump(bytes: Uint8Array): string[] {
  *
  * @see Requirements 25.1, 25.2, 25.3, 25.4
  */
-function RawDataInspector({ rawResult, labels }: RawDataInspectorProps) {
+function RawDataInspector({ rawResult, labels }: Readonly<RawDataInspectorProps>) {
   if (!rawResult) {
     return null;
   }

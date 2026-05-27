@@ -18,7 +18,7 @@
 
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "off",
-    "react/no-array-index-key": "off",
+    "react/no-array-index-key": "warn",
     "react/no-unstable-nested-components": "off",
     "react/hook-use-state": "off",
     "react/no-unused-prop-types": "off",

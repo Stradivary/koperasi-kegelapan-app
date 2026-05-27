@@ -42,7 +42,7 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
       onRecoverCard,
       onIssueNew,
       onDeleteCard,
-    },
+    }: Readonly<StationCardsPanelProps>,
     ref,
   ) {
     useImperativeHandle(ref, () => ({

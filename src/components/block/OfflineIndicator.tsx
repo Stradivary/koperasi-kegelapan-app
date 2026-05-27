@@ -11,7 +11,11 @@ interface OfflineIndicatorProps {
   onSync: () => void;
 }
 
-export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIndicatorProps) {
+export function OfflineIndicator({
+  pendingCount,
+  syncStatus,
+  onSync,
+}: Readonly<OfflineIndicatorProps>) {
   const isOnline = typeof navigator !== "undefined" && navigator.onLine;
 
   if (pendingCount === 0 && isOnline) return null;

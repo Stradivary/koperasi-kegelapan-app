@@ -20,7 +20,7 @@ export function CardOverwriteDrawer({
   onConfirm,
   onCancel,
   isProcessing,
-}: CardOverwriteDrawerProps) {
+}: Readonly<CardOverwriteDrawerProps>) {
   if (!existingCard) return null;
 
   const ownerDisplay =

@@ -20,7 +20,7 @@ export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [5, 10, 20, 30, 50],
   totalItems,
-}: DataTablePaginationProps<TData>) {
+}: Readonly<DataTablePaginationProps<TData>>) {
   const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = table.getPageCount();
   const total = totalItems ?? table.getFilteredRowModel().rows.length;

@@ -87,7 +87,7 @@ export function SyncStatusIndicator({
   lastSyncedAt,
   pendingCount,
   onSync,
-}: SyncStatusIndicatorProps) {
+}: Readonly<SyncStatusIndicatorProps>) {
   const config = STATUS_CONFIG[syncStatus];
   const Icon = config.icon;
 

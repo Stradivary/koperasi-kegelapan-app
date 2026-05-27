@@ -61,7 +61,7 @@ export function FeedbackCard({
   actions,
   autoClose,
   onClose,
-}: FeedbackCardProps) {
+}: Readonly<FeedbackCardProps>) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-dismiss timer with cleanup

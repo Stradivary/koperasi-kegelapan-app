@@ -30,7 +30,7 @@ export function StationFixCardPanel({
   hasGrant,
   onFixCard,
   onBack,
-}: StationFixCardPanelProps) {
+}: Readonly<StationFixCardPanelProps>) {
   const [phase, setPhase] = useState<FixPhase>("form");
   const [cardId, setCardId] = useState(initialCardId ?? "");
   const [userId, setUserId] = useState<string | null>(null);

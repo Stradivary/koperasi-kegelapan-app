@@ -53,7 +53,7 @@ export function ChangePasswordDialog({
   onSubmit,
   isSubmitting,
   error,
-}: ChangePasswordDialogProps) {
+}: Readonly<ChangePasswordDialogProps>) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});

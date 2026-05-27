@@ -103,7 +103,7 @@ export function TenantDetailPanel({
   onStatusChange,
   onBack,
   isUpdating,
-}: TenantDetailPanelProps) {
+}: Readonly<TenantDetailPanelProps>) {
   const [confirmTarget, setConfirmTarget] = useState<TenantStatus | null>(null);
 
   // Loading state

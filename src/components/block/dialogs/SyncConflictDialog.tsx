@@ -51,7 +51,7 @@ export function SyncConflictDialog({
   onRetryWithChanges,
   isRetrying,
   open,
-}: SyncConflictDialogProps) {
+}: Readonly<SyncConflictDialogProps>) {
   const [newSlug, setNewSlug] = useState(conflict.currentSlug);
   const [newAdminUsername, setNewAdminUsername] = useState(conflict.currentAdminUsername);
   const [slugError, setSlugError] = useState<string | null>(null);
