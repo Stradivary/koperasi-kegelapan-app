@@ -166,15 +166,15 @@ class CardNotBlankError extends Error {
 type IssuancePhase = "idle" | "scanning" | "writing" | "done" | "error";
 
 interface IssuanceRefs {
-  issuancePreparedRef: React.MutableRefObject<{
+  issuancePreparedRef: React.RefObject<{
     bytes: Uint8Array;
     serial: string;
     payload: CardPayload;
     issueData: { name: string; userId: string | null; balance: number; expiresAt: number | null };
   } | null>;
-  issuanceReaderRef: React.MutableRefObject<NDEFReader | null>;
-  issuanceAbortRef: React.MutableRefObject<AbortController | null>;
-  issuanceTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  issuanceReaderRef: React.RefObject<NDEFReader | null>;
+  issuanceAbortRef: React.RefObject<AbortController | null>;
+  issuanceTimeoutRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
 }
 
 interface IssuanceSetters {
@@ -563,6 +563,45 @@ async function handleFreshNfcSession({
 }
 
 /**
+ * Validate the current card state before overwriting during recovery.
+ * Throws if the card is still valid or has unsynced transactions.
+ * Returns silently if recovery is allowed.
+ */
+async function validateCardForRecovery(
+  cardBytes: Uint8Array | null,
+  serverCounter: number,
+  serverBalance: number,
+): Promise<void> {
+  if (!cardBytes) return; // Blank or unreadable — allow recovery
+
+  try {
+    const { decodePayload } = await import("#/core/payload/engine");
+    const currentPayload = decodePayload(cardBytes);
+    const cardCounter = Number(currentPayload.wallet.counter);
+
+    if (cardCounter >= serverCounter && currentPayload.wallet.balance <= serverBalance) {
+      throw new Error("Kartu masih valid dan data sesuai dengan server. Tidak perlu dipulihkan.");
+    }
+
+    if (cardCounter > serverCounter) {
+      throw new Error(
+        "Kartu memiliki transaksi yang belum tersinkron ke server. " +
+          "Sinkronkan data terlebih dahulu sebelum melakukan recovery.",
+      );
+    }
+  } catch (decodeErr) {
+    if (
+      decodeErr instanceof Error &&
+      (decodeErr.message.includes("Kartu masih valid") ||
+        decodeErr.message.includes("Kartu memiliki transaksi"))
+    ) {
+      throw decodeErr;
+    }
+    // Card data is corrupted/unreadable — allow recovery
+  }
+}
+
+/**
  * Handles the full NFC recovery scan-and-write flow.
  */
 async function executeRecovery({
@@ -640,48 +679,7 @@ async function executeRecovery({
     }
 
     // Validate current card state before overwriting
-    if (cardBytes) {
-      try {
-        const { decodePayload } = await import("#/core/payload/engine");
-        const currentPayload = decodePayload(cardBytes);
-        const cardCounter = Number(currentPayload.wallet.counter);
-        const serverCounter = latestCard.counter;
-
-        // Card counter is ahead of or equal to server — card has newer/same data
-        if (cardCounter >= serverCounter && currentPayload.wallet.balance <= latestCard.balance) {
-          // Card is valid and not ahead in balance — no recovery needed
-          throw new Error(
-            "Kartu masih valid dan data sesuai dengan server. Tidak perlu dipulihkan.",
-          );
-        }
-
-        // If card has higher balance than server, it means unsynced topups exist on card
-        // but server doesn't know about them. Use the LOWER balance (server's) to prevent
-        // a cheat where someone uses the card, then recovers to get money back.
-        // The server balance is always the source of truth after sync.
-        if (cardCounter > serverCounter) {
-          // Card has more transactions than server knows — use card's balance
-          // (it's lower because transactions consumed balance)
-          // This is the normal case: card was used offline, server hasn't caught up
-          // Recovery should NOT give money back — skip recovery
-          throw new Error(
-            "Kartu memiliki transaksi yang belum tersinkron ke server. " +
-              "Sinkronkan data terlebih dahulu sebelum melakukan recovery.",
-          );
-        }
-      } catch (decodeErr) {
-        // If the error is one of our validation errors, re-throw it
-        if (
-          decodeErr instanceof Error &&
-          (decodeErr.message.includes("Kartu masih valid") ||
-            decodeErr.message.includes("Kartu memiliki transaksi"))
-        ) {
-          throw decodeErr;
-        }
-        // Card data is corrupted/unreadable — allow recovery (this is a legitimate use case)
-      }
-    }
-    // If cardBytes is null, card is blank or unreadable — allow recovery
+    await validateCardForRecovery(cardBytes, latestCard.counter, latestCard.balance);
 
     const payload = buildRecoveryPayload({
       tenantId,
@@ -722,7 +720,12 @@ async function executeRecovery({
   }
 }
 
-export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardSectionProps) {
+export function CardSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<CardSectionProps>) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);

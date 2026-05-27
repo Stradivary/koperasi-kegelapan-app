@@ -35,13 +35,16 @@ export async function getCardsWithUsers(tenantId: string): Promise<StationCardRo
     .map((c) => ({
       cardId: c.cardId,
       userId: c.userId,
-      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
+      userName:
+        c.userId !== null && c.userId !== undefined ? (userMap.get(c.userId) ?? null) : null,
       status: c.status,
-      syncStatus: (c.syncStatus ?? "synced") as "pending" | "synced",
+      syncStatus: c.syncStatus ?? "synced",
       balance: c.balance,
       counter: c.counter,
       expiresAt:
-        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
+        c.expiresAt !== null && c.expiresAt !== undefined
+          ? new Date(c.expiresAt * 1000).toISOString().split("T")[0]
+          : null,
     }));
 }
 
@@ -53,6 +56,6 @@ export async function getUserRows(tenantId: string): Promise<StationUserRow[]> {
       userId: u.userId,
       name: u.name,
       status: u.status,
-      syncStatus: (u.syncStatus ?? "synced") as "pending" | "synced",
+      syncStatus: u.syncStatus ?? "synced",
     }));
 }

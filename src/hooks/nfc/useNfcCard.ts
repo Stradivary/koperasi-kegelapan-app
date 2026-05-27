@@ -304,56 +304,73 @@ export function useNfcCard(
       // Journal retry mode: skip full validation and directly attempt journal write.
       // Used when "Coba Lagi" is pressed after a write/verification failure.
       if (journalRetryModeRef.current) {
-        journalRetryModeRef.current = false;
-        try {
-          // Minimal decode to get cardIdHex — no full validation
-          const minimalResult = await decodeAndValidateCard(
-            raw,
-            currentGrant,
-            event.serialNumber,
-            true, // lenient — skip strict checks
-            readSignal,
-          );
-          if (readSignal.aborted) return;
-
-          const payload = minimalResult.payload;
-          if (payload) {
-            const cardIdHex = getCardIdHex(payload);
-            const journal = await getPendingJournal(tenantId, cardIdHex);
-
-            if (journal) {
-              await handleJournalRecovery(journal, cardIdHex, event.serialNumber, readSignal);
-              return;
-            }
-          }
-          // No journal found — fall through to normal ready state
-          if (minimalResult.phase === "ready") {
-            phaseRef.current = "ready";
-            setState({
-              phase: "ready",
-              payload: minimalResult.payload,
-              serialNumber: event.serialNumber,
-              error: null,
-              tamperDetected: false,
-              warning: minimalResult.warning,
-            });
-          } else {
-            phaseRef.current = "error";
-            setState((s) => ({
-              ...s,
-              phase: "error",
-              error: minimalResult.error ?? "Gagal membaca kartu",
-              tamperDetected: minimalResult.tamperDetected,
-            }));
-          }
-          return;
-        } catch {
-          if (readSignal.aborted) return;
-          handlePostWriteReadError();
-          return;
-        }
+        await handleJournalRetryMode(raw, event, currentGrant, readSignal);
+        return;
       }
 
+      await handleNormalScan(raw, event, currentGrant, readSignal);
+    }
+
+    async function handleJournalRetryMode(
+      raw: Uint8Array,
+      event: NDEFReadingEvent,
+      currentGrant: NonNullable<typeof grant>,
+      readSignal: AbortSignal,
+    ) {
+      journalRetryModeRef.current = false;
+      try {
+        // Minimal decode to get cardIdHex — no full validation
+        const minimalResult = await decodeAndValidateCard(
+          raw,
+          currentGrant,
+          event.serialNumber,
+          true, // lenient — skip strict checks
+          readSignal,
+        );
+        if (readSignal.aborted) return;
+
+        const payload = minimalResult.payload;
+        if (payload) {
+          const cardIdHex = getCardIdHex(payload);
+          const journal = await getPendingJournal(tenantId, cardIdHex);
+
+          if (journal) {
+            await handleJournalRecovery(journal, cardIdHex, event.serialNumber, readSignal);
+            return;
+          }
+        }
+        // No journal found — fall through to normal ready state
+        if (minimalResult.phase === "ready") {
+          phaseRef.current = "ready";
+          setState({
+            phase: "ready",
+            payload: minimalResult.payload,
+            serialNumber: event.serialNumber,
+            error: null,
+            tamperDetected: false,
+            warning: minimalResult.warning,
+          });
+        } else {
+          phaseRef.current = "error";
+          setState((s) => ({
+            ...s,
+            phase: "error",
+            error: minimalResult.error ?? "Gagal membaca kartu",
+            tamperDetected: minimalResult.tamperDetected,
+          }));
+        }
+      } catch {
+        if (readSignal.aborted) return;
+        handlePostWriteReadError();
+      }
+    }
+
+    async function handleNormalScan(
+      raw: Uint8Array,
+      event: NDEFReadingEvent,
+      currentGrant: NonNullable<typeof grant>,
+      readSignal: AbortSignal,
+    ) {
       try {
         const result = await decodeAndValidateCard(
           raw,
@@ -721,10 +738,10 @@ export function useNfcCard(
       clearPostWriteAutoReset();
       phaseRef.current = "idle";
 
-      if (!keepPhase) {
-        setState(INITIAL_STATE);
-      } else {
+      if (keepPhase) {
         setState((s) => ({ ...s, phase: "idle" }));
+      } else {
+        setState(INITIAL_STATE);
       }
     },
     [

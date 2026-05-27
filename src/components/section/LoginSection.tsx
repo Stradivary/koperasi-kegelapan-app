@@ -320,7 +320,7 @@ export function LoginSection() {
    * Unified login handler: local-first → server fallback → cache credentials.
    * Works with optional tenantSlug for scoped server login.
    */
-  async function handleUnifiedLogin(e: React.FormEvent) {
+  async function handleUnifiedLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -484,7 +484,7 @@ export function LoginSection() {
     }
   }
 
-  async function handleDeviceSetupAuth(e: React.FormEvent) {
+  async function handleDeviceSetupAuth(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);

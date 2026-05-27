@@ -10,11 +10,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { syncPush } from "#/lib/syncPush";
-import { syncPushEntities } from "#/lib/syncPushEntities";
+import { syncPushEntities, getPendingEntityCount } from "#/lib/syncPushEntities";
 import { syncPull } from "#/lib/syncPull";
 import { isDeviceBlocked } from "#/lib/deviceBlock";
 import { getSyncableEntries } from "#/lib/transactionLogService";
-import { getPendingEntityCount } from "#/lib/syncPushEntities";
 import { addSyncLog } from "#/lib/syncLogStore";
 
 // ── Helpers ────────────────────────────────────────────────────────────

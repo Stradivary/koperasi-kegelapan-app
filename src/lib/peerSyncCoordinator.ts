@@ -135,7 +135,8 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
         .filter((entry) => entry.type === "checkin" && entry.syncStatus === "synced")
         .toArray();
 
-      const lastSynced = syncedCheckins.sort((a, b) => b.timestamp - a.timestamp)[0];
+      const sortedCheckins = syncedCheckins.toSorted((a, b) => b.timestamp - a.timestamp);
+      const lastSynced = sortedCheckins[0];
 
       return {
         lastCheckinSynced: true,

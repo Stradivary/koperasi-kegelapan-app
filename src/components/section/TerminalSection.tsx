@@ -50,7 +50,7 @@ export function TerminalSection({
   accountId,
   deviceId,
   terminalId,
-}: TerminalSectionProps) {
+}: Readonly<TerminalSectionProps>) {
   const {
     grant,
     loading: grantLoading,
@@ -319,15 +319,6 @@ export function TerminalSection({
       {state.phase === "success" && state.payload && lastTx && (
         <div className="flex flex-col items-center gap-4 w-full max-w-xs">
           <NfcTapArea phase="success" />
-          {/* {(blockedCheck.notInLocalDb || state.warning) && (
-            <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
-              <p className="type-body2 text-amber-700 text-center">
-                ⚠️{" "}
-                {state.warning ??
-                  "Kartu tidak terdaftar di database lokal. Data mungkin belum tersinkronisasi."}
-              </p>
-            </div>
-          )} */}
           <FeedbackCard
             variant="success"
             title="Checkout Berhasil"

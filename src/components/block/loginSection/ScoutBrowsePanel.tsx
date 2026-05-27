@@ -34,12 +34,12 @@ export function ScoutBrowsePanel({
   onSelectLocal,
   onEnterSlug,
   onBack,
-}: ScoutBrowsePanelProps) {
+}: Readonly<ScoutBrowsePanelProps>) {
   const [manualSlug, setManualSlug] = useState("");
 
   const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error && isOnline;
 
-  function handleManualSlugSubmit(e: React.FormEvent) {
+  function handleManualSlugSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const slug = manualSlug.trim().toLowerCase();
     if (slug.length > 0) {

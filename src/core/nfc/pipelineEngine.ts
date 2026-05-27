@@ -200,7 +200,7 @@ export async function prepareWrite(
   const rootHash =
     logEntries.length > 0
       ? (() => {
-          const lastHash = logEntries[logEntries.length - 1].hash;
+          const lastHash = logEntries.at(-1)!.hash;
           const padded = new Uint8Array(6);
           padded.set(lastHash.slice(0, 4));
           return padded;

@@ -3,8 +3,6 @@ import { TxType } from "#/core/payload/types";
 
 interface TransactionListProps {
   entries: LogEntry[];
-  /** @deprecated No longer needed — timestamps are now absolute */
-  sessionStart?: number;
 }
 
 const FLAG_LABELS: Record<number, string> = {
@@ -15,7 +13,7 @@ const FLAG_LABELS: Record<number, string> = {
   0x04: "Admin",
 };
 
-export function TransactionList({ entries }: TransactionListProps) {
+export function TransactionList({ entries }: Readonly<TransactionListProps>) {
   const valid = entries.filter(
     (e) => e.timestamp > 0 || e.amount > 0 || (e.flags & 0x0f) === TxType.CHECKIN,
   );

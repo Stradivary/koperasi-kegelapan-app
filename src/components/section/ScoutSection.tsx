@@ -17,7 +17,12 @@ interface ScoutSectionProps {
   terminalId: number;
 }
 
-export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: ScoutSectionProps) {
+export function ScoutSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<ScoutSectionProps>) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "scout");
   const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
 
@@ -160,10 +165,7 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
             </div>
           </div>
 
-          <TransactionList
-            entries={state.payload.logEntries}
-            sessionStart={state.payload.session.startTime}
-          />
+          <TransactionList entries={state.payload.logEntries} />
 
           <Button variant="outline" onClick={reset} className="w-full h-12">
             Selesai

@@ -1,4 +1,4 @@
-import type { FormEvent, RefObject } from "react";
+import type { RefObject } from "react";
 import { BookOpen, Layers, Plus, Search, Settings } from "lucide-react";
 import type { TenantSearchResult } from "#/hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";
@@ -21,7 +21,7 @@ interface LoginFormPanelProps {
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onTenantSlugChange: (value: string) => void;
-  onSubmit: (event: FormEvent) => void;
+  onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void;
   onOpenServerBrowse: () => void;
   onStartSetup: () => void;
   onStartDeviceSetup: () => void;
@@ -48,7 +48,7 @@ export function LoginFormPanel({
   onStartDeviceSetup,
   onViewRegisteredTenants,
   onOpenScoutBrowse,
-}: LoginFormPanelProps) {
+}: Readonly<LoginFormPanelProps>) {
   return (
     <AuthLayout variant="brand-dark">
       <div>

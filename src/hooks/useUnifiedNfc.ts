@@ -161,9 +161,7 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
 
   // Keep a ref to the GenericNfcLayer so it persists across renders
   const layerRef = useRef<GenericNfcLayer | null>(null);
-  if (!layerRef.current) {
-    layerRef.current = new GenericNfcLayer({ adapter });
-  }
+  layerRef.current ??= new GenericNfcLayer({ adapter });
   const genericLayer = layerRef.current;
 
   // AbortController ref for cancelling operations
