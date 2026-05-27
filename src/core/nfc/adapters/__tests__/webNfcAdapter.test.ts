@@ -356,9 +356,9 @@ describe("WebNfcAdapter", () => {
       adapter.onReading = null;
 
       const scanPromise = adapter.scan();
-      const reader = MockNDEFReader.instances[MockNDEFReader.instances.length - 1];
+      const reader = MockNDEFReader.instances.at(-1);
 
-      reader.simulateReading("04:A1:B2:C3", []);
+      reader?.simulateReading("04:A1:B2:C3", []);
       await scanPromise;
       // No error thrown
     });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { createElement } from "react";
 import {
   validateSlug,
@@ -231,27 +231,33 @@ describe("TenantCreateDialog component", () => {
     expect(slugInput.value).toBe("custom-slug");
   });
 
-  it("shows validation error on blur for invalid name", () => {
+  it("shows validation error on blur for invalid name", async () => {
     render(createElement(TenantCreateDialog, defaultProps));
     const nameInput = screen.getByLabelText("Tenant Name");
-    fireEvent.change(nameInput, { target: { value: "A" } });
-    fireEvent.blur(nameInput);
+    await act(async () => {
+      fireEvent.change(nameInput, { target: { value: "A" } });
+      fireEvent.blur(nameInput);
+    });
     expect(screen.getByText(/between/)).toBeDefined();
   });
 
-  it("shows validation error on blur for invalid username", () => {
+  it("shows validation error on blur for invalid username", async () => {
     render(createElement(TenantCreateDialog, defaultProps));
     const usernameInput = screen.getByLabelText("Admin Username");
-    fireEvent.change(usernameInput, { target: { value: "ab" } });
-    fireEvent.blur(usernameInput);
+    await act(async () => {
+      fireEvent.change(usernameInput, { target: { value: "ab" } });
+      fireEvent.blur(usernameInput);
+    });
     expect(screen.getByText(/between 3 and 50/)).toBeDefined();
   });
 
-  it("shows validation error on blur for short password", () => {
+  it("shows validation error on blur for short password", async () => {
     render(createElement(TenantCreateDialog, defaultProps));
     const passwordInput = screen.getByLabelText("Admin Password");
-    fireEvent.change(passwordInput, { target: { value: "short" } });
-    fireEvent.blur(passwordInput);
+    await act(async () => {
+      fireEvent.change(passwordInput, { target: { value: "short" } });
+      fireEvent.blur(passwordInput);
+    });
     expect(screen.getByText(/between 8 and 128/)).toBeDefined();
   });
 
@@ -266,18 +272,20 @@ describe("TenantCreateDialog component", () => {
     expect(screen.getByText("Creating...")).toBeDefined();
   });
 
-  it("calls onSubmit with form data when valid form is submitted", () => {
+  it("calls onSubmit with form data when valid form is submitted", async () => {
     const onSubmit = vi.fn();
     render(createElement(TenantCreateDialog, { ...defaultProps, onSubmit }));
 
-    fireEvent.change(screen.getByLabelText("Tenant Name"), {
-      target: { value: "Test Koperasi" },
-    });
-    fireEvent.change(screen.getByLabelText("Admin Username"), {
-      target: { value: "admin" },
-    });
-    fireEvent.change(screen.getByLabelText("Admin Password"), {
-      target: { value: "password123" },
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Tenant Name"), {
+        target: { value: "Test Koperasi" },
+      });
+      fireEvent.change(screen.getByLabelText("Admin Username"), {
+        target: { value: "admin" },
+      });
+      fireEvent.change(screen.getByLabelText("Admin Password"), {
+        target: { value: "password123" },
+      });
     });
 
     // Need to set timezone via the Select component - simulate by finding the trigger
@@ -319,12 +327,14 @@ describe("TenantCreateDialog component", () => {
     expect(screen.getByText("Username already exists")).toBeDefined();
   });
 
-  it("resets form when dialog reopens", () => {
+  it("resets form when dialog reopens", async () => {
     const { rerender } = render(createElement(TenantCreateDialog, defaultProps));
 
     // Fill in some data
-    fireEvent.change(screen.getByLabelText("Tenant Name"), {
-      target: { value: "Test" },
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Tenant Name"), {
+        target: { value: "Test" },
+      });
     });
 
     // Close and reopen

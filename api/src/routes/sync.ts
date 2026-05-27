@@ -383,9 +383,7 @@ syncRoutes.get("/pull", async (c) => {
       m.updatedAt instanceof Date ? Math.floor(m.updatedAt.getTime() / 1000) : Number(m.updatedAt),
   }));
   const newMembersCursor =
-    membersData.length > 0
-      ? String(membersData[membersData.length - 1].updatedAt)
-      : String(membersCursor);
+    membersData.length > 0 ? String(membersData.at(-1)!.updatedAt) : String(membersCursor);
 
   // 5. Query cards — updatedAt is raw integer (unix timestamp seconds)
   const cardsResult = await db
@@ -438,7 +436,7 @@ syncRoutes.get("/pull", async (c) => {
     updatedAt: Number(card.updatedAt),
   }));
   const newCardsCursor =
-    cardsData.length > 0 ? String(cardsData[cardsData.length - 1].updatedAt) : String(cardsCursor);
+    cardsData.length > 0 ? String(cardsData.at(-1)!.updatedAt) : String(cardsCursor);
 
   // 6. Query transactions — createdAt is raw integer (unix timestamp seconds)
   const txResult = await db
@@ -483,8 +481,7 @@ syncRoutes.get("/pull", async (c) => {
     flagged: tx.flagged,
     createdAt: tx.createdAt,
   }));
-  const newTxCursor =
-    txData.length > 0 ? String(txData[txData.length - 1].createdAt) : String(txCursor);
+  const newTxCursor = txData.length > 0 ? String(txData.at(-1)!.createdAt) : String(txCursor);
 
   // 7. Return response
   const response: SyncPullResponse = {

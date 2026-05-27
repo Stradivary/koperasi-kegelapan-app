@@ -974,10 +974,10 @@ describe("useNfcCard", () => {
     });
 
     // Tap card with same serial as journal — completePendingWrite runs
-    const newReader = MockNDEFReader.instances[MockNDEFReader.instances.length - 1];
+    const newReader = MockNDEFReader.instances.at(-1);
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1100)); // past debounce
-      newReader.emit("reading", makeReadingEvent(journal.entry.serialNumber));
+      newReader?.emit("reading", makeReadingEvent(journal.entry.serialNumber));
       await new Promise((r) => setTimeout(r, 50));
     });
 
@@ -1006,9 +1006,9 @@ describe("useNfcCard", () => {
       await result.current.retryScan();
     });
 
-    const newReader = MockNDEFReader.instances[MockNDEFReader.instances.length - 1];
+    const newReader = MockNDEFReader.instances.at(-1);
     await act(async () => {
-      newReader.emit("reading", makeReadingEvent());
+      newReader?.emit("reading", makeReadingEvent());
       await new Promise((r) => setTimeout(r, 50));
     });
 
@@ -1028,9 +1028,9 @@ describe("useNfcCard", () => {
       await result.current.retryScan();
     });
 
-    const newReader = MockNDEFReader.instances[MockNDEFReader.instances.length - 1];
+    const newReader = MockNDEFReader.instances.at(-1);
     await act(async () => {
-      newReader.emit("reading", makeReadingEvent());
+      newReader?.emit("reading", makeReadingEvent());
       await new Promise((r) => setTimeout(r, 50));
     });
 
