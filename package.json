@@ -78,6 +78,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-event-client": "latest",
     "@tanstack/devtools-vite": "latest",
