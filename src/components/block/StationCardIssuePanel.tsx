@@ -21,7 +21,7 @@ export function StationCardIssuePanel({
   isIssuing,
   onIssueCard,
   onCancel,
-}: StationCardIssuePanelProps) {
+}: Readonly<StationCardIssuePanelProps>) {
   const [issueName, setIssueName] = useState("");
   const [issueUserId, setIssueUserId] = useState<string | null>(null);
   const [issueBalance, setIssueBalance] = useState("");

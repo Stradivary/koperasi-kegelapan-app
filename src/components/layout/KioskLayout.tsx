@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Monitor, MonitorSmartphone, Search, DoorOpen, Check, LogOut } from "lucide-react";
-import { BRAND } from "../../lib/brand";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { BRAND } from "#/lib/brand";
+import { tenantContextStore } from "#/lib/indexeddb";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Button } from "../ui/button";
 

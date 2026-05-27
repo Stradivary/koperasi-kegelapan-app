@@ -1,10 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  localTenantConfigStore,
-  localAccountStore,
-  type LocalTenantConfig,
-} from "../lib/indexeddb";
-import { API_BASE_URL, setAccessToken } from "../lib/api";
+import { localTenantConfigStore, localAccountStore, type LocalTenantConfig } from "#/lib/indexeddb";
+import { API_BASE_URL, setAccessToken } from "#/lib/api";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
 

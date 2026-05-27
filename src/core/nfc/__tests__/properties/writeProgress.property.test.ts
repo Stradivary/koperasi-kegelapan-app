@@ -340,7 +340,7 @@ describe("Write Progress Feedback Property Tests", () => {
 
           // Verify last phase is "complete"
           expect(phaseTracker.length).toBeGreaterThan(0);
-          expect(phaseTracker[phaseTracker.length - 1]).toBe("complete");
+          expect(phaseTracker.at(-1)).toBe("complete");
         }),
         { numRuns: 100 },
       );

@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock } from "lucide-react";
-import { useNfcCard } from "../../hooks/nfc/useNfcCard";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useBlockedCheck } from "../../hooks/useBlockedCheck";
-import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { validateTransition, applyCheckin } from "../../core/state-machine/engine";
-import { CardState, CardStatus } from "../../core/payload/types";
-import { notifyCheckin } from "../../lib/peerSyncCoordinator";
+import { useNfcCard } from "#/hooks/nfc/useNfcCard";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useBlockedCheck } from "#/hooks/useBlockedCheck";
+import { useKioskAutoScan } from "#/hooks/useKioskAutoScan";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { validateTransition, applyCheckin, applyBlockStatus } from "#/core/state-machine/engine";
+import { CardState, CardStatus } from "#/core/payload/types";
+import { notifyCheckin } from "#/lib/peerSyncCoordinator";
+import { updateLocalCardRecord } from "#/hooks/nfc/updateLocalCardRecord";
 import { Input } from "../ui/input";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
-import type { CardPayload } from "../../core/payload/types";
-import type { BlockedCheckResult } from "../../hooks/useBlockedCheck";
+import type { CardPayload } from "#/core/payload/types";
+import type { BlockedCheckResult } from "#/hooks/useBlockedCheck";
 
 interface GateSectionProps {
   tenantId: string;
@@ -46,7 +47,9 @@ function getCardRejectionReason(
 
 export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateSectionProps) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "gate");
-  const { state, scan, write, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
+  const { state, scan, write, reset, retryScan } = useNfcCard(grant, tenantId, terminalId, {
+    lenient: true,
+  });
   const syncEngine = useSyncEngineContext();
 
   // Simulation mode: date+time picker
@@ -85,6 +88,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     loading,
     phase: state.phase,
     scan,
+    resetDelay: 2000,
     autoStart: true,
   });
 
@@ -125,6 +129,15 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     if (blockedCheck.isBlocked) {
       autoCheckinTriggered.current = true;
       // blockedReason is already available via blockedCheck.blockedReason
+
+      // Write blocked status back to the physical card if on-card status is still ACTIVE.
+      // This ensures the card itself becomes the authoritative source of truth,
+      // enabling offline enforcement on subsequent taps without needing local DB.
+      if (payload.identity.status === CardStatus.ACTIVE) {
+        const blockedPayload = applyBlockStatus(payload, CardStatus.BLOCKED_ADMIN, getNowSeconds());
+        write(blockedPayload, "admin");
+        void updateLocalCardRecord(tenantId, blockedPayload);
+      }
       return;
     }
 
@@ -213,15 +226,20 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
     }
   }, [state.phase]);
 
-  function handleScan() {
+  function handleRetry() {
     autoCheckinTriggered.current = false;
     setCardRejectionReason(null);
     setTamperDisableAutoScan(false);
-    scan();
+    retryScan();
   }
 
   // Derive the effective blocked reason (from on-card status/balance OR from local DB check)
-  const effectiveBlockedReason = cardRejectionReason ?? blockedCheck.blockedReason;
+  // Exclude "already checked in" reasons — those get their own friendly UI path
+  const effectiveBlockedReason =
+    cardRejectionReason === "Anda sudah melakukan check in" ||
+    cardRejectionReason === "Anda sedang dalam operasi di station"
+      ? null
+      : (cardRejectionReason ?? blockedCheck.blockedReason);
 
   const cardState = state.payload?.wallet.state;
   const isAlreadyCheckedIn =
@@ -301,15 +319,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
         {state.phase === "success" && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase="success" />
-            {(blockedCheck.notInLocalDb || state.warning) && (
-              <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3 w-full">
-                <p className="type-body2 text-amber-700 text-center">
-                  ⚠️{" "}
-                  {state.warning ??
-                    "Kartu tidak terdaftar di database lokal. Data mungkin belum tersinkronisasi."}
-                </p>
-              </div>
-            )}
+
             <FeedbackCard
               variant="success"
               title="Check-in Berhasil"
@@ -330,7 +340,7 @@ export function GateSection({ tenantId, accountId, deviceId, terminalId }: GateS
               variant="error"
               title={state.tamperDetected ? "Kartu Terdeteksi Rusak" : "Terjadi Kesalahan"}
               subtitle={state.error ?? undefined}
-              actions={[{ label: "Coba Lagi", onClick: handleScan }]}
+              actions={[{ label: "Coba Lagi", onClick: handleRetry }]}
             />
           </div>
         )}

@@ -3,15 +3,18 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    environment: "node",
+    environment: "jsdom",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "api/src/**/*.test.ts"],
+    setupFiles: ["src/test-setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
       exclude: [
         "src/main.tsx",
         "src/routeTree.gen.ts",
-        "src/db/index.ts",
+        "src/db/**",
+        "src/lib/indexeddb.ts",
+        "src/components/ui/**",
       ],
     },
   },

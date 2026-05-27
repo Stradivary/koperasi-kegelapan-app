@@ -64,6 +64,7 @@ export interface TransactionLog {
   tenantId: string;
   cardId: string; // hex string
   userId: string | null;
+  cardName: string | null; // human-readable card holder name for visibility
   counter: number;
   type: "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin";
   amount: number;
@@ -199,6 +200,29 @@ class LocalDb extends Dexie {
               }
             }),
         ]);
+      });
+
+    this.version(6)
+      .stores({
+        users: "[tenantId+userId], tenantId, [tenantId+syncStatus]",
+        cards: "[tenantId+cardId], tenantId, userId, [tenantId+syncStatus]",
+        auditLog: "++id, tenantId, cardId, [tenantId+timestamp]",
+        sessionGrants: "grantId, tenantId, accountId",
+        transactionLog:
+          "++id, [tenantId+cardId+counter], [tenantId+syncStatus], [tenantId+syncStatus+timestamp], [tenantId+timestamp]",
+        syncCursors: "[tenantId+entityType]",
+        deviceInfo: "deviceId, tenantId",
+      })
+      .upgrade((tx) => {
+        // Add cardName field to existing transaction log entries
+        return tx
+          .table("transactionLog")
+          .toCollection()
+          .modify((entry: Record<string, unknown>) => {
+            if (entry.cardName === undefined) {
+              entry.cardName = null;
+            }
+          });
       });
   }
 }

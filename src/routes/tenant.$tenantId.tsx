@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { SyncEngineProvider } from "../hooks/SyncEngineContext";
-import { tenantContextStore } from "../lib/indexeddb";
+import { SyncEngineProvider, useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { useHydrateCache } from "#/hooks/useHydrateCache";
+import { tenantContextStore } from "#/lib/indexeddb";
 
 export const Route = createFileRoute("/tenant/$tenantId")({
   component: TenantLayout,
@@ -19,12 +20,22 @@ function TenantLayout() {
         setIsAuthenticated(!!ctx);
       }
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [tenantId]);
 
   return (
     <SyncEngineProvider tenantId={tenantId} enabled={isAuthenticated}>
+      <TenantCacheHydrator tenantId={tenantId} enabled={isAuthenticated} />
       <Outlet />
     </SyncEngineProvider>
   );
+}
+
+/** Inner component that can access SyncEngineContext to react to sync completions */
+function TenantCacheHydrator({ tenantId, enabled }: { tenantId: string; enabled: boolean }) {
+  const syncEngine = useSyncEngineContext();
+  useHydrateCache(enabled ? tenantId : null, syncEngine?.lastSyncedAt);
+  return null;
 }

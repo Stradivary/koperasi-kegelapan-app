@@ -8,7 +8,7 @@
  */
 
 import { CardStatus } from "../payload/types";
-import { localDb, type Card } from "../../db/local-db";
+import { localDb, type Card } from "#/db/local-db";
 
 /** Result of a block check */
 export interface BlockCheckResult {

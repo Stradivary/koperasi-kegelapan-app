@@ -148,7 +148,7 @@ export function TenantCreateDialog({
   onSubmit,
   isSubmitting,
   error,
-}: TenantCreateDialogProps) {
+}: Readonly<TenantCreateDialogProps>) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -230,7 +230,7 @@ export function TenantCreateDialog({
   );
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       // Mark all fields as touched

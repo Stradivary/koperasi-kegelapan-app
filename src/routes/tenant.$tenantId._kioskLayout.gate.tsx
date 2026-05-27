@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GateSection } from "../components/section/GateSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { GateSection } from "#/components/section/GateSection";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/_kioskLayout/gate")({
   component: GatePage,

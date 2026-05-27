@@ -1,33 +1,42 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { computeChainHash, computeHmac, verifyHmac, encryptBuffer, decryptBuffer } from "./engine";
 
 describe("computeChainHash", () => {
-  it("produces a 6-byte hash", async () => {
-    const prevHash = new Uint8Array(6);
+  it("produces a 4-byte hash", async () => {
+    const prevHash = new Uint8Array(4);
     const hash = await computeChainHash(100, 15000, 485000, 0x00, prevHash);
-    expect(hash).toHaveLength(6);
+    expect(hash).toHaveLength(4);
   });
 
   it("is deterministic", async () => {
-    const prevHash = new Uint8Array(6);
+    const prevHash = new Uint8Array(4);
     const h1 = await computeChainHash(100, 15000, 485000, 0x00, prevHash);
     const h2 = await computeChainHash(100, 15000, 485000, 0x00, prevHash);
     expect(h1).toEqual(h2);
   });
 
   it("changes with different input", async () => {
-    const prevHash = new Uint8Array(6);
+    const prevHash = new Uint8Array(4);
     const h1 = await computeChainHash(100, 15000, 485000, 0x00, prevHash);
     const h2 = await computeChainHash(100, 20000, 480000, 0x00, prevHash);
     expect(h1).not.toEqual(h2);
   });
 
   it("chains correctly: second hash depends on first", async () => {
-    const genesis = new Uint8Array(6);
+    const genesis = new Uint8Array(4);
     const h1 = await computeChainHash(100, 15000, 485000, 0x00, genesis);
     const h2a = await computeChainHash(200, 5000, 480000, 0x00, h1);
     const h2b = await computeChainHash(200, 5000, 480000, 0x00, genesis);
     expect(h2a).not.toEqual(h2b);
+  });
+
+  it("right-pads prevHash with zeros if shorter than 4 bytes", async () => {
+    const shortPrev = new Uint8Array([0xab, 0xcd]);
+    const paddedPrev = new Uint8Array([0xab, 0xcd, 0x00, 0x00]);
+    const h1 = await computeChainHash(100, 15000, 485000, 0x00, shortPrev);
+    const h2 = await computeChainHash(100, 15000, 485000, 0x00, paddedPrev);
+    expect(h1).toEqual(h2);
   });
 });
 
@@ -177,21 +186,21 @@ describe("verifyHmac — edge cases", () => {
 
 describe("computeChainHash — additional cases", () => {
   it("produces different hashes for different flags", async () => {
-    const prev = new Uint8Array(6);
+    const prev = new Uint8Array(4);
     const h1 = await computeChainHash(100, 5000, 45000, 0x00, prev);
     const h2 = await computeChainHash(100, 5000, 45000, 0x01, prev);
     expect(h1).not.toEqual(h2);
   });
 
   it("produces different hashes for different balanceAfter", async () => {
-    const prev = new Uint8Array(6);
+    const prev = new Uint8Array(4);
     const h1 = await computeChainHash(100, 5000, 45000, 0, prev);
     const h2 = await computeChainHash(100, 5000, 46000, 0, prev);
     expect(h1).not.toEqual(h2);
   });
 
-  it("produces different hashes for different deltaTime", async () => {
-    const prev = new Uint8Array(6);
+  it("produces different hashes for different timestamp", async () => {
+    const prev = new Uint8Array(4);
     const h1 = await computeChainHash(100, 5000, 45000, 0, prev);
     const h2 = await computeChainHash(200, 5000, 45000, 0, prev);
     expect(h1).not.toEqual(h2);

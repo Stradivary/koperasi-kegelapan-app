@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { NfcCardPhase } from "./nfc/useNfcCard";
-import type { SessionGrant } from "../core/payload/types";
+import type { SessionGrant } from "#/core/payload/types";
 
 export interface UseKioskAutoScanOptions {
   enabled: boolean;

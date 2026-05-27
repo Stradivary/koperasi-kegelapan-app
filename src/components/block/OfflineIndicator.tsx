@@ -1,8 +1,8 @@
 import { WifiHigh, WifiOff } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useOnlineStatus } from "../../hooks/useOnlineStatus";
-import type { ReconciliationStatus } from "../../hooks/useReconciliation";
+import { useOnlineStatus } from "#/hooks/useOnlineStatus";
+import type { ReconciliationStatus } from "#/hooks/useReconciliation";
 import { Button } from "../ui/button";
 
 interface OfflineIndicatorProps {
@@ -11,7 +11,11 @@ interface OfflineIndicatorProps {
   onSync: () => void;
 }
 
-export function OfflineIndicator({ pendingCount, syncStatus, onSync }: OfflineIndicatorProps) {
+export function OfflineIndicator({
+  pendingCount,
+  syncStatus,
+  onSync,
+}: Readonly<OfflineIndicatorProps>) {
   const isOnline = typeof navigator !== "undefined" && navigator.onLine;
 
   if (pendingCount === 0 && isOnline) return null;
@@ -54,7 +58,10 @@ export function RootOfflineBanner() {
     if (isOnline) {
       toast.success("Koneksi internet tersambung kembali", { icon: <WifiHigh />, duration: 3000 });
     } else {
-      toast.warning("Koneksi internet terputus. Operasi tetap berjalan secara offline.", { icon: <WifiOff />, duration: 4000 });
+      toast.warning("Koneksi internet terputus. Operasi tetap berjalan secara offline.", {
+        icon: <WifiOff />,
+        duration: 4000,
+      });
     }
   }, [isOnline]);
 

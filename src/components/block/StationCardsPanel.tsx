@@ -1,23 +1,8 @@
 import { useImperativeHandle, forwardRef } from "react";
 import { StationCardListPanel } from "./StationCardListPanel";
+import type { StationCardRow, StationUserRow } from "#/lib/stationQueries";
 
-export interface StationCardRow {
-  cardId: string;
-  userId: string | null;
-  userName: string | null;
-  status: string;
-  syncStatus: "pending" | "synced";
-  balance: number;
-  counter: number;
-  expiresAt: string | null;
-}
-
-export interface StationUserRow {
-  userId: string;
-  name: string;
-  status: string;
-  syncStatus: "pending" | "synced";
-}
+export type { StationCardRow, StationUserRow };
 
 export interface StationCardsPanelHandle {
   goToList: () => void;
@@ -57,7 +42,7 @@ export const StationCardsPanel = forwardRef<StationCardsPanelHandle, StationCard
       onRecoverCard,
       onIssueNew,
       onDeleteCard,
-    },
+    }: Readonly<StationCardsPanelProps>,
     ref,
   ) {
     useImperativeHandle(ref, () => ({

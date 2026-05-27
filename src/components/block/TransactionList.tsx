@@ -1,9 +1,8 @@
-import type { LogEntry } from "../../core/payload/types";
-import { TxType } from "../../core/payload/types";
+import type { LogEntry } from "#/core/payload/types";
+import { TxType } from "#/core/payload/types";
 
 interface TransactionListProps {
   entries: LogEntry[];
-  sessionStart: number;
 }
 
 const FLAG_LABELS: Record<number, string> = {
@@ -14,9 +13,9 @@ const FLAG_LABELS: Record<number, string> = {
   0x04: "Admin",
 };
 
-export function TransactionList({ entries, sessionStart }: TransactionListProps) {
+export function TransactionList({ entries }: Readonly<TransactionListProps>) {
   const valid = entries.filter(
-    (e) => e.deltaTime > 0 || e.amount > 0 || (e.flags & 0x0f) === TxType.CHECKIN,
+    (e) => e.timestamp > 0 || e.amount > 0 || (e.flags & 0x0f) === TxType.CHECKIN,
   );
   if (valid.length === 0) return null;
 
@@ -28,11 +27,12 @@ export function TransactionList({ entries, sessionStart }: TransactionListProps)
       <div className="rounded-lg border bg-card divide-y text-sm">
         {valid.map((entry, i) => {
           const txTime =
-            sessionStart > 0
-              ? new Date((sessionStart + entry.deltaTime) * 1000).toLocaleTimeString()
-              : `+${entry.deltaTime}s`;
+            entry.timestamp > 0 ? new Date(entry.timestamp * 1000).toLocaleTimeString() : "—";
           return (
-            <div key={i} className="px-3 py-2 flex items-center justify-between">
+            <div
+              key={`${entry.timestamp}-${entry.flags}-${i}`}
+              className="px-3 py-2 flex items-center justify-between"
+            >
               <div>
                 <span className="text-xs">{FLAG_LABELS[entry.flags & 0x0f] ?? "Unknown"}</span>
                 <span className="ml-2 text-xs text-muted-foreground">{txTime}</span>

@@ -53,7 +53,7 @@ export function ChangePasswordDialog({
   onSubmit,
   isSubmitting,
   error,
-}: ChangePasswordDialogProps) {
+}: Readonly<ChangePasswordDialogProps>) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -91,7 +91,7 @@ export function ChangePasswordDialog({
   );
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       setTouched({ newPassword: true, confirmPassword: true });

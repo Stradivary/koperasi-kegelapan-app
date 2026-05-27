@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { AdminLayout, type AdminView } from "../components/layout/AdminLayout";
-import { useSyncEngineContext } from "../hooks/SyncEngineContext";
-import { useAdminTenantSync } from "../hooks/useAdminTenantSync";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { AdminLayout, type AdminView } from "#/components/layout/AdminLayout";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { useAdminTenantSync } from "#/hooks/useAdminTenantSync";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 const ADMIN_PATHS: Record<Exclude<AdminView, "scout">, string> = {
   cards: "cards",

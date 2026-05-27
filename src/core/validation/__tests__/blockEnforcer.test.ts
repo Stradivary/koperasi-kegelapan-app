@@ -1,10 +1,10 @@
- import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CardStatus } from "../../payload/types";
-import type { Card } from "../../../db/local-db";
+import type { Card } from "#/db/local-db";
 import { stubCard } from "../../nfc/__tests__/fixtures";
 
 // Mock the local-db module
-vi.mock("../../../db/local-db", () => ({
+vi.mock("#/db/local-db", () => ({
   localDb: {
     cards: {
       get: vi.fn().mockResolvedValue(null),
@@ -21,8 +21,7 @@ import {
   enforceOnCheckout,
   applyAdminBlock,
 } from "../blockEnforcer";
-import { localDb } from "../../../db/local-db";
-
+import { localDb } from "#/db/local-db";
 
 describe("blockEnforcer", () => {
   beforeEach(() => {

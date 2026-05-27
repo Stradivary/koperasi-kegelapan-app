@@ -15,7 +15,7 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { syncPull } from "./syncPull";
-import { localDb } from "../db/local-db";
+import { localDb } from "#/db/local-db";
 import { getAccessToken } from "./api";
 import { addSyncLog } from "./syncLogStore";
 
@@ -129,7 +129,7 @@ function invalidateCardCaches(cardId: string, tenantId: string): void {
  *
  * @see Requirements 5.2, 5.3, 5.4, 5.5
  */
-async function handleCardStatusChange(payload: CardStatusChangePayload): Promise<void> {
+async function handleCardStatusChange(payload: Readonly<CardStatusChangePayload>): Promise<void> {
   const { cardId, tenantId, newStatus, changedBy, timestamp } = payload;
 
   const writeToDb = async (): Promise<void> => {
@@ -138,12 +138,7 @@ async function handleCardStatusChange(payload: CardStatusChangePayload): Promise
     if (existingCard) {
       // Card exists — update status
       await localDb.cards.update([tenantId, cardId], {
-        status: newStatus as
-          | "active"
-          | "blocked_tamper"
-          | "blocked_fraud"
-          | "blocked_expired"
-          | "blocked_admin",
+        status: newStatus,
       });
     } else {
       // Card not in local cache — create a minimal record with block status
@@ -151,12 +146,7 @@ async function handleCardStatusChange(payload: CardStatusChangePayload): Promise
         tenantId,
         cardId,
         userId: null,
-        status: newStatus as
-          | "active"
-          | "blocked_tamper"
-          | "blocked_fraud"
-          | "blocked_expired"
-          | "blocked_admin",
+        status: newStatus,
         balance: 0,
         counter: 0,
         keyVersion: 1,

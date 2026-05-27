@@ -1,5 +1,5 @@
-import type { CardPayload } from "../../../core/payload/types";
-import type { CardClassification } from "../../../core/nfc/types";
+import type { CardPayload } from "#/core/payload/types";
+import type { CardClassification } from "#/core/nfc/types";
 import { CardStatusBadge } from "../CardStatusBadge";
 
 /**
@@ -63,7 +63,7 @@ export function CardInfoDisplay({
   isCheckedIn,
   showCheckInStatus,
   labels,
-}: CardInfoDisplayProps) {
+}: Readonly<CardInfoDisplayProps>) {
   // Valid payload card — show full card info
   if (classification === "valid_payload" && payload) {
     return (

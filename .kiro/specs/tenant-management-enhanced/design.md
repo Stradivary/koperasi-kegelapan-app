@@ -165,6 +165,7 @@ type SyncStatus = "idle" | "pushing" | "pulling" | "error" | "offline";
 ```
 
 **Responsibilities**:
+
 - Track sync cursors per tenant per entity type
 - Queue local mutations in outbox for push
 - Apply server deltas to local IndexedDB on pull
@@ -207,6 +208,7 @@ interface DeviceRecord {
 ```
 
 **Responsibilities**:
+
 - Generate stable device IDs from fingerprint attributes
 - Track last-seen timestamps on each authenticated request
 - Enforce device blocking with configurable duration
@@ -261,6 +263,7 @@ interface PaginatedTransactions {
 ```
 
 **Responsibilities**:
+
 - Record transactions locally with sync metadata
 - Provide paginated queries for the Transactions UI
 - Track sync status per entry (local-only, synced, conflict)
@@ -273,59 +276,60 @@ interface PaginatedTransactions {
 ```typescript
 // New table: devices
 interface DevicesTable {
-  device_id: string;          // PK, UUID
-  tenant_id: string;          // FK → tenants
-  account_id: string;         // FK → accounts
-  fingerprint_hash: string;   // SHA-256 of device attributes
+  device_id: string; // PK, UUID
+  tenant_id: string; // FK → tenants
+  account_id: string; // FK → accounts
+  fingerprint_hash: string; // SHA-256 of device attributes
   user_agent: string;
   platform: string;
-  last_seen_at: number;       // unix timestamp
+  last_seen_at: number; // unix timestamp
   blocked_until: number | null; // unix timestamp, null = not blocked
   created_at: number;
 }
 
 // New table: auth_sessions (replaces implicit session tracking)
 interface AuthSessionsTable {
-  session_id: string;         // PK, UUID
-  tenant_id: string;          // FK → tenants
-  account_id: string;         // FK → accounts
-  device_id: string;          // FK → devices
+  session_id: string; // PK, UUID
+  tenant_id: string; // FK → tenants
+  account_id: string; // FK → accounts
+  device_id: string; // FK → devices
   refresh_token_hash: string; // SHA-256 of refresh token
-  expires_at: number;         // unix timestamp
-  revoked_at: number | null;  // null = active
+  expires_at: number; // unix timestamp
+  revoked_at: number | null; // null = active
   created_at: number;
 }
 
 // New table: transaction_log (server-side, replaces audit_log)
 interface TransactionLogTable {
-  id: number;                 // PK, auto-increment
-  tenant_id: string;          // FK → tenants
-  card_id: string;            // hex string (normalized from blob)
-  user_id: number | null;     // FK → users (denormalized for query perf)
+  id: number; // PK, auto-increment
+  tenant_id: string; // FK → tenants
+  card_id: string; // hex string (normalized from blob)
+  user_id: number | null; // FK → users (denormalized for query perf)
   counter: number;
-  type: string;               // debit, credit, checkin, checkout, topup, admin
+  type: string; // debit, credit, checkin, checkout, topup, admin
   amount: number;
   balance_after: number;
-  timestamp: number;          // unix timestamp of transaction
-  hash: string;               // hex string
+  timestamp: number; // unix timestamp of transaction
+  hash: string; // hex string
   terminal_id: number | null;
-  device_id: string | null;   // FK → devices
-  idempotency_key: string;    // UNIQUE, for dedup
+  device_id: string | null; // FK → devices
+  idempotency_key: string; // UNIQUE, for dedup
   flagged: boolean;
-  created_at: number;         // server receipt time
+  created_at: number; // server receipt time
 }
 
 // Extended: sync_cursors (track per-device sync state)
 interface SyncCursorsTable {
   tenant_id: string;
   device_id: string;
-  entity_type: string;        // 'members' | 'cards' | 'transactions'
-  last_cursor: string;        // ISO timestamp or sequence number
+  entity_type: string; // 'members' | 'cards' | 'transactions'
+  last_cursor: string; // ISO timestamp or sequence number
   updated_at: number;
 }
 ```
 
 **Validation Rules**:
+
 - `devices.fingerprint_hash` must be a valid 64-char hex string
 - `devices.blocked_until` when set must be > current time (enforced at query time)
 - `auth_sessions.revoked_at` once set is immutable
@@ -337,7 +341,7 @@ interface SyncCursorsTable {
 ```typescript
 // Extended local-db.ts
 export interface TransactionLog {
-  id?: number;              // auto-increment
+  id?: number; // auto-increment
   tenantId: string;
   cardId: string;
   userId: number | null;
@@ -380,8 +384,9 @@ async function bidirectionalSync(tenantId: string, deviceId: string): Promise<Sy
 
   // Phase 1: Push local changes to server
   const pendingMembers = await localDb.users
-    .where("tenantId").equals(tenantId)
-    .filter(u => u.updatedAt > lastSyncCursor("members"))
+    .where("tenantId")
+    .equals(tenantId)
+    .filter((u) => u.updatedAt > lastSyncCursor("members"))
     .toArray();
 
   const pendingTransactions = await localDb.transactionLog
@@ -402,23 +407,32 @@ async function bidirectionalSync(tenantId: string, deviceId: string): Promise<Sy
   // Phase 2: Pull server changes
   const cursors = await getSyncCursors(tenantId);
   const pullResult = await fetch(
-    `/api/sync/pull?tenantId=${tenantId}&membersCursor=${cursors.members}&cardsCursor=${cursors.cards}&txCursor=${cursors.transactions}`
+    `/api/sync/pull?tenantId=${tenantId}&membersCursor=${cursors.members}&cardsCursor=${cursors.cards}&txCursor=${cursors.transactions}`,
   );
 
   const serverData = await pullResult.json();
 
   // Phase 3: Merge server data into local (server-wins for conflicts)
-  await localDb.transaction("rw", [localDb.users, localDb.cards, localDb.transactionLog], async () => {
-    for (const member of serverData.members) {
-      await localDb.users.put({ ...member, tenantId });
-    }
-    for (const card of serverData.cards) {
-      await localDb.cards.put({ ...card, tenantId });
-    }
-    for (const tx of serverData.transactions) {
-      await localDb.transactionLog.put({ ...tx, tenantId, syncStatus: "synced", syncedAt: Date.now() });
-    }
-  });
+  await localDb.transaction(
+    "rw",
+    [localDb.users, localDb.cards, localDb.transactionLog],
+    async () => {
+      for (const member of serverData.members) {
+        await localDb.users.put({ ...member, tenantId });
+      }
+      for (const card of serverData.cards) {
+        await localDb.cards.put({ ...card, tenantId });
+      }
+      for (const tx of serverData.transactions) {
+        await localDb.transactionLog.put({
+          ...tx,
+          tenantId,
+          syncStatus: "synced",
+          syncedAt: Date.now(),
+        });
+      }
+    },
+  );
 
   // Phase 4: Update cursors
   await updateSyncCursors(tenantId, serverData.newCursors);
@@ -428,16 +442,19 @@ async function bidirectionalSync(tenantId: string, deviceId: string): Promise<Sy
 ```
 
 **Preconditions:**
+
 - Device is authenticated with valid access token
 - Device is not blocked (`blocked_until` is null or in the past)
 - Network connectivity is available
 
 **Postconditions:**
+
 - All pending local transactions are submitted to server
 - Local state reflects server state up to the returned cursor
 - Sync cursors are updated for next incremental sync
 
 **Loop Invariants:**
+
 - Each entity is processed exactly once per sync cycle
 - Idempotency keys prevent duplicate server-side insertions
 
@@ -462,7 +479,7 @@ async function generateDeviceFingerprint(): Promise<DeviceFingerprint> {
   const encoder = new TextEncoder();
   const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(raw));
   const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, "0"))
+    .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
   return {
@@ -477,9 +494,11 @@ async function generateDeviceFingerprint(): Promise<DeviceFingerprint> {
 ```
 
 **Preconditions:**
+
 - Browser environment with `navigator`, `screen`, and `crypto.subtle` available
 
 **Postconditions:**
+
 - Returns a deterministic fingerprint for the same device/browser combination
 - Hash is a valid 64-character hex string
 
@@ -488,7 +507,7 @@ async function generateDeviceFingerprint(): Promise<DeviceFingerprint> {
 ```typescript
 async function blockDeviceAndRevokeSessions(
   deviceId: string,
-  durationSeconds: number
+  durationSeconds: number,
 ): Promise<{ sessionsRevoked: number; blockedUntil: number }> {
   // PRECONDITION: caller has superadmin role, deviceId exists
   // POSTCONDITION: device is blocked, all its sessions are revoked
@@ -500,29 +519,20 @@ async function blockDeviceAndRevokeSessions(
   // Atomic: block device + revoke all sessions
   await db.transaction(async (tx) => {
     // Block the device
-    await tx.update(devices)
-      .set({ blockedUntil })
-      .where(eq(devices.deviceId, deviceId));
+    await tx.update(devices).set({ blockedUntil }).where(eq(devices.deviceId, deviceId));
 
     // Revoke all active sessions for this device
-    await tx.update(authSessions)
+    await tx
+      .update(authSessions)
       .set({ revokedAt: now })
-      .where(
-        and(
-          eq(authSessions.deviceId, deviceId),
-          isNull(authSessions.revokedAt)
-        )
-      );
+      .where(and(eq(authSessions.deviceId, deviceId), isNull(authSessions.revokedAt)));
   });
 
-  const revoked = await db.select({ count: count() })
+  const revoked = await db
+    .select({ count: count() })
     .from(authSessions)
-    .where(
-      and(
-        eq(authSessions.deviceId, deviceId),
-        eq(authSessions.revokedAt, now)
-      )
-    ).get();
+    .where(and(eq(authSessions.deviceId, deviceId), eq(authSessions.revokedAt, now)))
+    .get();
 
   return {
     sessionsRevoked: revoked?.count ?? 0,
@@ -532,11 +542,13 @@ async function blockDeviceAndRevokeSessions(
 ```
 
 **Preconditions:**
+
 - Caller authenticated as superadmin
 - `deviceId` references an existing device record
 - `durationSeconds` is a positive integer
 
 **Postconditions:**
+
 - `devices.blocked_until` is set to `now + durationSeconds`
 - All active `auth_sessions` for the device have `revoked_at` set
 - Subsequent requests from the device receive 403
@@ -549,16 +561,18 @@ async function blockDeviceAndRevokeSessions(
 async function syncPushHandler(
   tenantId: string,
   deviceId: string,
-  payload: SyncPushPayload
-): Promise<SyncPushResponse>
+  payload: SyncPushPayload,
+): Promise<SyncPushResponse>;
 ```
 
 **Preconditions:**
+
 - `tenantId` matches the authenticated token's tenant
 - `deviceId` is registered and not blocked
 - `payload.transactions` each have valid `idempotency_key`
 
 **Postconditions:**
+
 - All valid transactions are inserted into `transaction_log`
 - Duplicate idempotency keys are silently skipped (not errors)
 - `cards` table balance/counter updated for newer counters
@@ -569,15 +583,17 @@ async function syncPushHandler(
 ```typescript
 async function syncPullHandler(
   tenantId: string,
-  cursors: { members: string; cards: string; transactions: string }
-): Promise<SyncPullResponse>
+  cursors: { members: string; cards: string; transactions: string },
+): Promise<SyncPullResponse>;
 ```
 
 **Preconditions:**
+
 - `tenantId` is valid and caller has read access
 - Cursors are valid ISO timestamps or "0" for initial sync
 
 **Postconditions:**
+
 - Returns all entities modified after the given cursors
 - Response size is bounded (max 500 entities per type per request)
 - New cursor values are included for next incremental pull
@@ -586,13 +602,15 @@ async function syncPullHandler(
 ### Function: checkDeviceAccess
 
 ```typescript
-async function checkDeviceAccess(deviceId: string): Promise<DeviceAccessResult>
+async function checkDeviceAccess(deviceId: string): Promise<DeviceAccessResult>;
 ```
 
 **Preconditions:**
+
 - `deviceId` is a valid UUID string
 
 **Postconditions:**
+
 - Returns `{ allowed: true }` if device is not blocked
 - Returns `{ allowed: false, blockedUntil }` if device is blocked and `blocked_until > now`
 - Automatically unblocks expired blocks (returns allowed)
@@ -606,8 +624,10 @@ const syncEngine = useSyncEngine(tenantId, deviceId);
 
 useEffect(() => {
   if (isOnline) {
-    syncEngine.fullSync().then(result => {
-      console.log(`Synced: ${result.push.accepted} pushed, ${result.pull.transactions.length} pulled`);
+    syncEngine.fullSync().then((result) => {
+      console.log(
+        `Synced: ${result.push.accepted} pushed, ${result.pull.transactions.length} pulled`,
+      );
     });
   }
 }, [isOnline]);
@@ -627,87 +647,88 @@ const result = await fetch(`/api/superadmin/devices/${deviceId}/block`, {
 // Example 4: Transaction list in UI
 const { data } = useQuery({
   queryKey: ["transactions", tenantId, { page: 1 }],
-  queryFn: () => transactionLogService.getTransactions({
-    tenantId,
-    page: 1,
-    pageSize: 20,
-  }),
+  queryFn: () =>
+    transactionLogService.getTransactions({
+      tenantId,
+      page: 1,
+      pageSize: 20,
+    }),
 });
 ```
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 ### Property 1: Tenant Isolation
 
-*For any* sync operation (push or pull) and any authenticated request, the response SHALL contain only entities where entity.tenantId matches the authenticated token's tenantId. No entity belonging to a different tenant shall ever appear in a sync response.
+_For any_ sync operation (push or pull) and any authenticated request, the response SHALL contain only entities where entity.tenantId matches the authenticated token's tenantId. No entity belonging to a different tenant shall ever appear in a sync response.
 
 **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
 
 ### Property 2: Idempotent Sync
 
-*For any* transaction T pushed N times (N ≥ 1) with the same idempotency_key, the server SHALL store exactly one copy of T. The idempotency_key UNIQUE constraint ensures duplicate pushes are silently skipped without error.
+_For any_ transaction T pushed N times (N ≥ 1) with the same idempotency_key, the server SHALL store exactly one copy of T. The idempotency_key UNIQUE constraint ensures duplicate pushes are silently skipped without error.
 
 **Validates: Requirements 1.5, 6.2, 6.3**
 
 ### Property 3: Device Block Enforcement
 
-*For any* device D and any point in time T, D is allowed access if and only if D.blocked_until is null OR D.blocked_until ≤ T. When D.blocked_until > T, all API requests from D SHALL return 403.
+_For any_ device D and any point in time T, D is allowed access if and only if D.blocked_until is null OR D.blocked_until ≤ T. When D.blocked_until > T, all API requests from D SHALL return 403.
 
 **Validates: Requirements 5.1, 5.3, 5.4**
 
 ### Property 4: Session Cascade on Device Block
 
-*For any* device D with N active sessions (where N ≥ 0), after a block operation on D, the count of active (non-revoked) sessions for D SHALL be 0. All sessions SHALL have revoked_at set to the block timestamp.
+_For any_ device D with N active sessions (where N ≥ 0), after a block operation on D, the count of active (non-revoked) sessions for D SHALL be 0. All sessions SHALL have revoked_at set to the block timestamp.
 
 **Validates: Requirements 4.3, 4.6**
 
 ### Property 5: Cursor Monotonicity
 
-*For any* sync pull request with cursor value C, all entities in the response SHALL have updated_at > C. The new cursor returned in the response SHALL be ≥ the maximum updated_at of all returned entities.
+_For any_ sync pull request with cursor value C, all entities in the response SHALL have updated_at > C. The new cursor returned in the response SHALL be ≥ the maximum updated_at of all returned entities.
 
 **Validates: Requirements 7.2, 7.5, 7.6**
 
 ### Property 6: Balance Consistency
 
-*For any* card C on the server, C.balance SHALL equal the balanceAfter value of the transaction with the highest counter for that card. Transactions with counter ≤ the server's known counter for a card SHALL be rejected as stale.
+_For any_ card C on the server, C.balance SHALL equal the balanceAfter value of the transaction with the highest counter for that card. Transactions with counter ≤ the server's known counter for a card SHALL be rejected as stale.
 
 **Validates: Requirements 6.4, 6.6**
 
 ### Property 7: Offline Durability
 
-*For any* transaction recorded locally in IndexedDB, the entry SHALL persist in the outbox with syncStatus "pending" until the server confirms acceptance. No local transaction SHALL be removed or lost regardless of sync status, network state, or application restarts.
+_For any_ transaction recorded locally in IndexedDB, the entry SHALL persist in the outbox with syncStatus "pending" until the server confirms acceptance. No local transaction SHALL be removed or lost regardless of sync status, network state, or application restarts.
 
 **Validates: Requirements 9.1, 9.3, 9.5**
 
 ### Property 8: Device Fingerprint Determinism
 
-*For any* set of browser attributes (userAgent, screenResolution, timezone, language, platform), the generated Device_Fingerprint hash SHALL be a deterministic 64-character hexadecimal string. Calling the fingerprint function twice with identical inputs SHALL produce identical output.
+_For any_ set of browser attributes (userAgent, screenResolution, timezone, language, platform), the generated Device_Fingerprint hash SHALL be a deterministic 64-character hexadecimal string. Calling the fingerprint function twice with identical inputs SHALL produce identical output.
 
 **Validates: Requirements 2.1, 2.6**
 
 ### Property 9: Session Independence
 
-*For any* account with active sessions on devices D1, D2, ..., Dn, creating a new session on device Dn+1 SHALL NOT invalidate or modify sessions on D1 through Dn. Each session SHALL be independently validated against its own device_id and expiry.
+_For any_ account with active sessions on devices D1, D2, ..., Dn, creating a new session on device Dn+1 SHALL NOT invalidate or modify sessions on D1 through Dn. Each session SHALL be independently validated against its own device_id and expiry.
 
 **Validates: Requirements 3.1, 3.4, 3.5**
 
 ### Property 10: Filter Correctness
 
-*For any* transaction query with filter predicates (cardId, type, dateFrom, dateTo), all returned transactions SHALL satisfy every specified predicate. No transaction that fails any predicate SHALL appear in the results.
+_For any_ transaction query with filter predicates (cardId, type, dateFrom, dateTo), all returned transactions SHALL satisfy every specified predicate. No transaction that fails any predicate SHALL appear in the results.
 
 **Validates: Requirements 10.3, 10.4, 10.5**
 
 ### Property 11: Sync Debounce Coalescence
 
-*For any* sequence of N local mutations occurring within a 5-second window, the Sync_Engine SHALL trigger exactly one sync operation (not N operations). The sync SHALL fire after 5 seconds of mutation quiescence.
+_For any_ sequence of N local mutations occurring within a 5-second window, the Sync_Engine SHALL trigger exactly one sync operation (not N operations). The sync SHALL fire after 5 seconds of mutation quiescence.
 
 **Validates: Requirements 14.1**
 
 ### Property 12: Batch Size Invariant
 
-*For any* sync push or pull operation, each HTTP request SHALL contain at most 500 entities per entity type. Datasets larger than 500 entities SHALL be split across multiple requests.
+_For any_ sync push or pull operation, each HTTP request SHALL contain at most 500 entities per entity type. Datasets larger than 500 entities SHALL be split across multiple requests.
 
 **Validates: Requirements 7.3, 14.3**
 
@@ -791,20 +812,20 @@ const { data } = useQuery({
 
 ### Current System Gaps Identified
 
-| # | Gap | Impact | Priority |
-|---|-----|--------|----------|
-| 1 | **No `devices` table on server** — device tracking is implicit via `session_grants.device_id` with no metadata | Cannot identify or manage devices, no fingerprinting | High |
-| 2 | **No `auth_sessions` table** — session lifecycle not tracked server-side | Cannot revoke sessions, no audit trail of logins | High |
-| 3 | **No bidirectional sync for members/cards** — only one-shot tenant registration and reconciliation exist | Multi-device setups see stale data, no cross-device consistency | High |
-| 4 | **Transaction log only in `audit_log`** — no sync status tracking, no pull mechanism | Devices cannot pull transaction history from server | High |
-| 5 | **No device blocking mechanism** — superadmin cannot remotely invalidate a compromised device | Security risk: stolen devices retain access until token expiry | High |
-| 6 | **No Transactions UI section** — admin can only see cards and members | No visibility into transaction history, no filtering/search | Medium |
-| 7 | **`audit_log` uses BLOB for card_id** — inconsistent with local DB (hex string) | Sync requires conversion, potential bugs | Medium |
-| 8 | **No sync cursor tracking** — no way to do incremental pulls | Full data reload on every sync, poor performance at scale | Medium |
-| 9 | **Local `AuditEntry` has no `syncStatus` field** — cannot track what's been synced | Risk of duplicate pushes or missed entries | Medium |
-| 10 | **No `user_id` denormalization in transaction log** — requires JOIN for member-based queries | Slow transaction queries by member | Low |
-| 11 | **No multi-device session awareness** — login doesn't track which device is which | Cannot show "logged in devices" to admin | Medium |
-| 12 | **Reconciliation endpoint doesn't validate device** — any authenticated request can reconcile | Blocked devices could still push reconciliation events | Medium |
-| 13 | **No configurable block duration** — if blocking existed, no way to set time-limited blocks | Superadmin would need manual unblock process | Low |
-| 14 | **`cards` table `card_id` is BLOB on server but hex string locally** — type mismatch | Sync layer needs bidirectional conversion | Medium |
-| 15 | **No `updated_at` on `cards` or `audit_log`** — cannot do cursor-based incremental sync | Must track changes via separate mechanism | Medium |
+| #   | Gap                                                                                                            | Impact                                                          | Priority |
+| --- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- |
+| 1   | **No `devices` table on server** — device tracking is implicit via `session_grants.device_id` with no metadata | Cannot identify or manage devices, no fingerprinting            | High     |
+| 2   | **No `auth_sessions` table** — session lifecycle not tracked server-side                                       | Cannot revoke sessions, no audit trail of logins                | High     |
+| 3   | **No bidirectional sync for members/cards** — only one-shot tenant registration and reconciliation exist       | Multi-device setups see stale data, no cross-device consistency | High     |
+| 4   | **Transaction log only in `audit_log`** — no sync status tracking, no pull mechanism                           | Devices cannot pull transaction history from server             | High     |
+| 5   | **No device blocking mechanism** — superadmin cannot remotely invalidate a compromised device                  | Security risk: stolen devices retain access until token expiry  | High     |
+| 6   | **No Transactions UI section** — admin can only see cards and members                                          | No visibility into transaction history, no filtering/search     | Medium   |
+| 7   | **`audit_log` uses BLOB for card_id** — inconsistent with local DB (hex string)                                | Sync requires conversion, potential bugs                        | Medium   |
+| 8   | **No sync cursor tracking** — no way to do incremental pulls                                                   | Full data reload on every sync, poor performance at scale       | Medium   |
+| 9   | **Local `AuditEntry` has no `syncStatus` field** — cannot track what's been synced                             | Risk of duplicate pushes or missed entries                      | Medium   |
+| 10  | **No `user_id` denormalization in transaction log** — requires JOIN for member-based queries                   | Slow transaction queries by member                              | Low      |
+| 11  | **No multi-device session awareness** — login doesn't track which device is which                              | Cannot show "logged in devices" to admin                        | Medium   |
+| 12  | **Reconciliation endpoint doesn't validate device** — any authenticated request can reconcile                  | Blocked devices could still push reconciliation events          | Medium   |
+| 13  | **No configurable block duration** — if blocking existed, no way to set time-limited blocks                    | Superadmin would need manual unblock process                    | Low      |
+| 14  | **`cards` table `card_id` is BLOB on server but hex string locally** — type mismatch                           | Sync layer needs bidirectional conversion                       | Medium   |
+| 15  | **No `updated_at` on `cards` or `audit_log`** — cannot do cursor-based incremental sync                        | Must track changes via separate mechanism                       | Medium   |

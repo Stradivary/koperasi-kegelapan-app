@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { localDb, type User } from "../../db/local-db";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { localDb, type User } from "#/db/local-db";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { StationMembersPanel } from "../block/StationMembersPanel";
 import type { StationUserRow } from "../block/StationCardsPanel";
 

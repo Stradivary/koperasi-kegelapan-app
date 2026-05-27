@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CardSection } from "../components/section/CardSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { CardSection } from "#/components/section/CardSection";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/_adminLayout/cards")({
   component: CardsPage,

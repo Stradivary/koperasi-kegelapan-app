@@ -12,7 +12,7 @@ interface DeviceSetupAuthPanelProps {
   loading: boolean;
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void;
   onCancel: () => void;
   cancelLabel?: string;
 }
@@ -27,7 +27,7 @@ export function DeviceSetupAuthPanel({
   onSubmit,
   onCancel,
   cancelLabel = "Batal",
-}: DeviceSetupAuthPanelProps) {
+}: Readonly<DeviceSetupAuthPanelProps>) {
   return (
     <AuthLayout variant="brand-dark">
       <div>

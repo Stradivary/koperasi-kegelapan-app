@@ -6,9 +6,7 @@
  * re-authentication when the block expires.
  */
 
-import {
-  tenantContextStore,
-} from "./indexeddb";
+import { tenantContextStore } from "./indexeddb";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,9 +50,7 @@ export function isDeviceBlocked(): boolean {
 }
 
 /** Subscribe to block state changes. Returns unsubscribe function. */
-export function subscribeToDeviceBlock(
-  listener: (state: DeviceBlockState) => void,
-): () => void {
+export function subscribeToDeviceBlock(listener: (state: DeviceBlockState) => void): () => void {
   _listeners.add(listener);
   return () => {
     _listeners.delete(listener);
@@ -70,10 +66,7 @@ export function onDeviceUnblock(callback: () => void): void {
  * Handle a device block response from the server.
  * Clears auth state and sets up the unblock timer.
  */
-export async function handleDeviceBlocked(
-  blockedUntil: number,
-  tenantId?: string,
-): Promise<void> {
+export async function handleDeviceBlocked(blockedUntil: number, tenantId?: string): Promise<void> {
   _blockState = { blocked: true, blockedUntil };
   notifyListeners();
 
@@ -179,9 +172,8 @@ async function clearAuthState(tenantId?: string): Promise<void> {
 }
 
 async function clearSessionGrantCache(tenantId?: string): Promise<void> {
-  const idb = typeof globalThis !== "undefined" && "indexedDB" in globalThis
-    ? globalThis.indexedDB
-    : null;
+  const idb =
+    typeof globalThis !== "undefined" && "indexedDB" in globalThis ? globalThis.indexedDB : null;
   if (!idb) return;
 
   return new Promise((resolve) => {

@@ -17,7 +17,7 @@ import {
   onDeviceUnblock,
   formatBlockedUntil,
   setupBlockVisibilityHandler,
-} from "../lib/deviceBlock";
+} from "#/lib/deviceBlock";
 
 export interface UseDeviceBlockReturn {
   /** Whether the device is currently blocked */
@@ -92,8 +92,9 @@ export function useDeviceBlock(): UseDeviceBlockReturn {
     return isDeviceBlocked();
   }, []);
 
-  const blockedUntilFormatted =
-    blockState.blockedUntil ? formatBlockedUntil(blockState.blockedUntil) : null;
+  const blockedUntilFormatted = blockState.blockedUntil
+    ? formatBlockedUntil(blockState.blockedUntil)
+    : null;
 
   return {
     blocked: blockState.blocked,

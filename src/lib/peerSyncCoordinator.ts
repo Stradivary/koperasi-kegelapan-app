@@ -14,7 +14,7 @@
  * @see Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7
  */
 
-import { localDb } from "../db/local-db";
+import { localDb } from "#/db/local-db";
 import { syncPush } from "./syncPush";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -135,7 +135,8 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
         .filter((entry) => entry.type === "checkin" && entry.syncStatus === "synced")
         .toArray();
 
-      const lastSynced = syncedCheckins.sort((a, b) => b.timestamp - a.timestamp)[0];
+      const sortedCheckins = syncedCheckins.toSorted((a, b) => b.timestamp - a.timestamp);
+      const lastSynced = sortedCheckins[0];
 
       return {
         lastCheckinSynced: true,

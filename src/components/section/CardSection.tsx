@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { localDb, type Card } from "../../db/local-db";
-import { syncPull } from "../../lib/syncPull";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useTenantSync } from "../../hooks/useTenantSync";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
-import { checkLocalBlockedStatus } from "../../core/nfc/localStatusCheck";
-import { validateUID } from "../../core/validation/uidGlobalValidator";
-import { trackError } from "../../lib/errorTracker";
+import { localDb, type Card } from "#/db/local-db";
+import { syncPull } from "#/lib/syncPull";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useTenantSync } from "#/hooks/useTenantSync";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+import { validateUID } from "#/core/validation/uidGlobalValidator";
+import { trackError } from "#/lib/errorTracker";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -24,9 +24,9 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
-import { applyTopup, applyResetState } from "../../core/state-machine/engine";
-import { prepareWrite } from "../../core/nfc/pipelineEngine";
-import { extractCardBytes, isNfcSupported } from "../../core/nfc/engine";
+import { applyTopup, applyResetState, validateTopup } from "#/core/state-machine/engine";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { extractCardBytes, isNfcSupported } from "#/core/nfc/engine";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -34,9 +34,10 @@ import {
   CardStatus,
   type CardPayload,
   type SessionGrant,
-} from "../../core/payload/types";
-import { encodeTenantBind } from "../../core/payload/tenantBind";
+} from "#/core/payload/types";
+import { encodeTenantBind } from "#/core/payload/tenantBind";
 import { useNfcCard } from "#/hooks/nfc";
+import { getCardsWithUsers } from "#/lib/stationQueries";
 
 interface CardSectionProps {
   tenantId: string;
@@ -165,15 +166,15 @@ class CardNotBlankError extends Error {
 type IssuancePhase = "idle" | "scanning" | "writing" | "done" | "error";
 
 interface IssuanceRefs {
-  issuancePreparedRef: React.MutableRefObject<{
+  issuancePreparedRef: React.RefObject<{
     bytes: Uint8Array;
     serial: string;
     payload: CardPayload;
     issueData: { name: string; userId: string | null; balance: number; expiresAt: number | null };
   } | null>;
-  issuanceReaderRef: React.MutableRefObject<NDEFReader | null>;
-  issuanceAbortRef: React.MutableRefObject<AbortController | null>;
-  issuanceTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  issuanceReaderRef: React.RefObject<NDEFReader | null>;
+  issuanceAbortRef: React.RefObject<AbortController | null>;
+  issuanceTimeoutRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
 }
 
 interface IssuanceSetters {
@@ -438,22 +439,34 @@ async function handleFreshNfcSession({
   let capturedSerial: string | null = null;
 
   try {
+    const readingHandler = (event: NDEFReadingEvent) => {
+      const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+      if (serial) {
+        const existingBytes = extractCardBytes(event.message);
+        scanResolve({ serial, hasData: existingBytes !== null });
+      } else {
+        scanReject(new Error("Kartu tidak memiliki serial number"));
+      }
+    };
+    let scanResolve: (value: { serial: string; hasData: boolean }) => void;
+    let scanReject: (reason: Error) => void;
     const scanResult = new Promise<{ serial: string; hasData: boolean }>((resolve, reject) => {
-      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-        if (serial) {
-          const existingBytes = extractCardBytes(event.message);
-          resolve({ serial, hasData: existingBytes !== null });
-        } else {
-          reject(new Error("Kartu tidak memiliki serial number"));
-        }
+      scanResolve = resolve;
+      scanReject = reject;
+      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")), {
+        once: true,
       });
-      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
     });
+    reader.addEventListener("reading", readingHandler);
 
     await reader.scan({ signal: abort.signal });
 
     const { serial, hasData } = await scanResult;
+    // Remove the reading listener after first successful read to prevent leak
+    (reader as unknown as EventTarget).removeEventListener(
+      "reading",
+      readingHandler as EventListener,
+    );
     capturedSerial = serial;
 
     issuancePreparedRef.current = {
@@ -550,6 +563,45 @@ async function handleFreshNfcSession({
 }
 
 /**
+ * Validate the current card state before overwriting during recovery.
+ * Throws if the card is still valid or has unsynced transactions.
+ * Returns silently if recovery is allowed.
+ */
+async function validateCardForRecovery(
+  cardBytes: Uint8Array | null,
+  serverCounter: number,
+  serverBalance: number,
+): Promise<void> {
+  if (!cardBytes) return; // Blank or unreadable — allow recovery
+
+  try {
+    const { decodePayload } = await import("#/core/payload/engine");
+    const currentPayload = decodePayload(cardBytes);
+    const cardCounter = Number(currentPayload.wallet.counter);
+
+    if (cardCounter >= serverCounter && currentPayload.wallet.balance <= serverBalance) {
+      throw new Error("Kartu masih valid dan data sesuai dengan server. Tidak perlu dipulihkan.");
+    }
+
+    if (cardCounter > serverCounter) {
+      throw new Error(
+        "Kartu memiliki transaksi yang belum tersinkron ke server. " +
+          "Sinkronkan data terlebih dahulu sebelum melakukan recovery.",
+      );
+    }
+  } catch (decodeErr) {
+    if (
+      decodeErr instanceof Error &&
+      (decodeErr.message.includes("Kartu masih valid") ||
+        decodeErr.message.includes("Kartu memiliki transaksi"))
+    ) {
+      throw decodeErr;
+    }
+    // Card data is corrupted/unreadable — allow recovery
+  }
+}
+
+/**
  * Handles the full NFC recovery scan-and-write flow.
  */
 async function executeRecovery({
@@ -582,13 +634,6 @@ async function executeRecovery({
   }
 
   const owner = latestCard.userId ? await localDb.users.get([tenantId, latestCard.userId]) : null;
-  const payload = buildRecoveryPayload({
-    tenantId,
-    card: latestCard,
-    ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
-    keyVersion: grant.keyVersion,
-  });
-  const { bytes } = await prepareWrite(payload, payload, grant);
 
   const abort = new AbortController();
   const reader = new NDEFReader();
@@ -597,24 +642,52 @@ async function executeRecovery({
   let scannedSerial: string | null = null;
 
   try {
-    const scanResult = new Promise<string>((resolve, reject) => {
-      reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-        const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
-        if (!serial) {
-          reject(new Error("Kartu tidak memiliki serial number"));
-          return;
-        }
-        resolve(serial);
-      });
-      abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")));
-    });
+    // Scan and read card data simultaneously
+    const readingHandler = (event: NDEFReadingEvent) => {
+      const serial = event.serialNumber?.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase() || null;
+      if (!serial) {
+        scanReject(new Error("Kartu tidak memiliki serial number"));
+        return;
+      }
+      const cardBytes = extractCardBytes(event.message);
+      scanResolve({ serial, cardBytes });
+    };
+    let scanResolve: (value: { serial: string; cardBytes: Uint8Array | null }) => void;
+    let scanReject: (reason: Error) => void;
+    const scanResult = new Promise<{ serial: string; cardBytes: Uint8Array | null }>(
+      (resolve, reject) => {
+        scanResolve = resolve;
+        scanReject = reject;
+        abort.signal.addEventListener("abort", () => reject(new Error("Waktu habis")), {
+          once: true,
+        });
+      },
+    );
+    reader.addEventListener("reading", readingHandler);
 
     await reader.scan({ signal: abort.signal });
-    scannedSerial = await scanResult;
+    const { serial, cardBytes } = await scanResult;
+    // Remove listener after first read to prevent leak
+    (reader as unknown as EventTarget).removeEventListener(
+      "reading",
+      readingHandler as EventListener,
+    );
+    scannedSerial = serial;
 
     if (scannedSerial !== cardId.toLowerCase()) {
       throw new Error("Kartu yang di-scan tidak sesuai dengan kartu yang dipilih");
     }
+
+    // Validate current card state before overwriting
+    await validateCardForRecovery(cardBytes, latestCard.counter, latestCard.balance);
+
+    const payload = buildRecoveryPayload({
+      tenantId,
+      card: latestCard,
+      ownerName: owner?.name ?? latestCard.notes ?? "Anggota",
+      keyVersion: grant.keyVersion,
+    });
+    const { bytes } = await prepareWrite(payload, payload, grant);
 
     setRecoveryPhase("writing");
     await reader.write(
@@ -647,28 +720,12 @@ async function executeRecovery({
   }
 }
 
-async function getCardsWithUsers(tenantId: string): Promise<StationCardRow[]> {
-  const [cardRows, userRows] = await Promise.all([
-    localDb.cards.where("tenantId").equals(tenantId).toArray(),
-    localDb.users.where("tenantId").equals(tenantId).toArray(),
-  ]);
-  const userMap = new Map<string, string>(userRows.map((u) => [u.userId, u.name]));
-  return cardRows
-    .filter((c) => c.status !== "deleted")
-    .map((c) => ({
-      cardId: c.cardId,
-      userId: c.userId,
-      userName: c.userId != null ? (userMap.get(c.userId) ?? null) : null,
-      status: c.status,
-      syncStatus: c.syncStatus ?? "synced",
-      balance: c.balance,
-      counter: c.counter,
-      expiresAt:
-        c.expiresAt != null ? new Date(c.expiresAt * 1000).toISOString().split("T")[0] : null,
-    }));
-}
-
-export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardSectionProps) {
+export function CardSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<CardSectionProps>) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [topupDrawerOpen, setTopupDrawerOpen] = useState(false);
   const [topupTargetCardId, setTopupTargetCardId] = useState<string | null>(null);
@@ -727,7 +784,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
   const qc = useQueryClient();
 
   const { grant } = useSessionGrant(tenantId, accountId, deviceId);
-  const { state, scan, write, reset, cancel } = useNfcCard(grant, tenantId, terminalId);
+  const { state, scan, write, reset, cancel, retryScan } = useNfcCard(grant, tenantId, terminalId);
   const { status: syncStatus, conflict, retryWithChanges, reset: resetSync } = useTenantSync();
 
   const syncEngineCtx = useSyncEngineContext();
@@ -1189,6 +1246,12 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
     async (amount: number) => {
       if (!state.payload || !grant) return;
 
+      const validation = validateTopup(state.payload, amount);
+      if (!validation.valid) {
+        toast.error(validation.reason ?? "Nominal top-up tidak valid");
+        return;
+      }
+
       const now = Math.floor(Date.now() / 1000);
       const updated = applyTopup(state.payload, amount, now);
       await write(updated, "topup");
@@ -1285,7 +1348,7 @@ export function CardSection({ tenantId, accountId, deviceId, terminalId }: CardS
         error={state.error}
         onTopup={handleTopupConfirm}
         onClose={handleDrawerClose}
-        onRetry={scan}
+        onRetry={retryScan}
       />
 
       <IssueCardDrawer

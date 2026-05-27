@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, BookOpen, Search, WifiOff } from "lucide-react";
-import type { TenantSearchResult } from "../../../hooks/useServerTenantSearch";
-import type { LocalTenantConfig } from "../../../lib/indexeddb";
+import type { TenantSearchResult } from "#/hooks/useServerTenantSearch";
+import type { LocalTenantConfig } from "#/lib/indexeddb";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
 import { Button } from "../../ui/button";
@@ -34,12 +34,12 @@ export function ScoutBrowsePanel({
   onSelectLocal,
   onEnterSlug,
   onBack,
-}: ScoutBrowsePanelProps) {
+}: Readonly<ScoutBrowsePanelProps>) {
   const [manualSlug, setManualSlug] = useState("");
 
   const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error && isOnline;
 
-  function handleManualSlugSubmit(e: React.FormEvent) {
+  function handleManualSlugSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const slug = manualSlug.trim().toLowerCase();
     if (slug.length > 0) {

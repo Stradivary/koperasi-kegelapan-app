@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { tenantContextStore, type TenantContext } from "../lib/indexeddb";
-import { getDeviceFingerprint } from "../lib/getOrCreateDeviceId";
-import { restoreAuthState } from "../lib/api";
-import { LoadingState } from "../components/block/LoadingState";
+import { tenantContextStore, type TenantContext } from "#/lib/indexeddb";
+import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
+import { restoreAuthState } from "#/lib/api";
+import { LoadingState } from "#/components/block/LoadingState";
 
 function getRoleRoute(tenantId: string, role: string): string {
   const roleRoutes: Record<string, string> = {

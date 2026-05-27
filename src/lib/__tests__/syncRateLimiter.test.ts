@@ -135,9 +135,7 @@ describe("syncRateLimiter", () => {
       activateRateLimit(30);
 
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener).toHaveBeenCalledWith(
-        expect.objectContaining({ rateLimited: true }),
-      );
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({ rateLimited: true }));
     });
 
     it("replaces previous rate limit if called again", () => {

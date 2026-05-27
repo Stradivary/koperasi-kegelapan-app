@@ -13,11 +13,11 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { BRAND } from "../../lib/brand";
-import { useOnlineStatus } from "../../hooks/useOnlineStatus";
-import { tenantContextStore } from "../../lib/indexeddb";
+import { BRAND } from "#/lib/brand";
+import { useOnlineStatus } from "#/hooks/useOnlineStatus";
+import { tenantContextStore } from "#/lib/indexeddb";
 import { Button } from "../ui/button";
-import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
+import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "../ui/drawer";
 import { MobileBottomNav, type MobileNavItem } from "./MobileBottomNav";

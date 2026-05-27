@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
-import type { SyncConflict } from "../../../hooks/useTenantSync";
-import { validateSlugFormat } from "../../../lib/slugValidation";
+import type { SyncConflict } from "#/hooks/useTenantSync";
+import { validateSlugFormat } from "#/lib/slugValidation";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -51,7 +51,7 @@ export function SyncConflictDialog({
   onRetryWithChanges,
   isRetrying,
   open,
-}: SyncConflictDialogProps) {
+}: Readonly<SyncConflictDialogProps>) {
   const [newSlug, setNewSlug] = useState(conflict.currentSlug);
   const [newAdminUsername, setNewAdminUsername] = useState(conflict.currentAdminUsername);
   const [slugError, setSlugError] = useState<string | null>(null);

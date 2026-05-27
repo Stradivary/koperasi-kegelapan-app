@@ -1,7 +1,7 @@
-import type { CardPayload } from "../../core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 import { CardStatusBadge } from "./CardStatusBadge";
 import { Button } from "../ui/button";
-import { formatTime, formatDuration } from "../../lib/formatters";
+import { formatTime, formatDuration } from "#/lib/formatters";
 
 interface CheckoutConfirmCardProps {
   payload: CardPayload;
@@ -17,7 +17,7 @@ export function CheckoutConfirmCard({
   fee,
   onConfirm,
   phase,
-}: CheckoutConfirmCardProps) {
+}: Readonly<CheckoutConfirmCardProps>) {
   const balanceAfter = payload.wallet.balance - fee;
   return (
     <div className="bg-white rounded-2xl border p-4 space-y-3">

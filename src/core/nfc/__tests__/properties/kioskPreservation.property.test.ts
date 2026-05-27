@@ -202,10 +202,10 @@ describe("Preservation 3.1: Valid same-tenant cards with balance >= 10,000 check
           expect(result.identity.name).toBe(name);
 
           // 4. Verify log entry is added with CHECKIN type
-          const lastLog = result.logEntries[result.logEntries.length - 1];
-          expect(lastLog.flags).toBe(TxType.CHECKIN);
-          expect(lastLog.amount).toBe(0);
-          expect(lastLog.balanceAfter).toBe(balance);
+          const lastLog = result.logEntries.at(-1);
+          expect(lastLog?.flags).toBe(TxType.CHECKIN);
+          expect(lastLog?.amount).toBe(0);
+          expect(lastLog?.balanceAfter).toBe(balance);
         },
       ),
       { numRuns: 50 },
@@ -262,10 +262,10 @@ describe("Preservation 3.2: Valid cards with balance >= fee checkout normally", 
           expect(result.session.endTime).toBe(NOW_SECONDS);
 
           // 4. Verify log entry with CHECKOUT type
-          const lastLog = result.logEntries[result.logEntries.length - 1];
-          expect(lastLog.flags).toBe(TxType.CHECKOUT);
-          expect(lastLog.amount).toBe(actualFee);
-          expect(lastLog.balanceAfter).toBe(balance - actualFee);
+          const lastLog = result.logEntries.at(-1);
+          expect(lastLog?.flags).toBe(TxType.CHECKOUT);
+          expect(lastLog?.amount).toBe(actualFee);
+          expect(lastLog?.balanceAfter).toBe(balance - actualFee);
         },
       ),
       { numRuns: 50 },
@@ -596,10 +596,10 @@ describe("Preservation 3.7: Debit transactions with sufficient balance deduct co
           expect(result.wallet.lastTimestamp).toBe(NOW_SECONDS);
 
           // Verify log entry
-          const lastLog = result.logEntries[result.logEntries.length - 1];
-          expect(lastLog.amount).toBe(amount);
-          expect(lastLog.balanceAfter).toBe(balance - amount);
-          expect(lastLog.flags).toBe(TxType.DEBIT);
+          const lastLog = result.logEntries.at(-1);
+          expect(lastLog?.amount).toBe(amount);
+          expect(lastLog?.balanceAfter).toBe(balance - amount);
+          expect(lastLog?.flags).toBe(TxType.DEBIT);
         },
       ),
       { numRuns: 50 },

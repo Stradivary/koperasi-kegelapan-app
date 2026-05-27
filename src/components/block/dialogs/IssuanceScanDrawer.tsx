@@ -1,8 +1,8 @@
 import { CheckCircle2 } from "lucide-react";
-import failedImg from "../../../assets/images/nfc/failed.svg";
-import type { CardPayload } from "../../../core/payload/types";
-import { CardState, CardStatus } from "../../../core/payload/types";
-import type { NfcPhase } from "../../../core/nfc/stateMachine";
+import failedImg from "#/assets/images/nfc/failed.svg";
+import type { CardPayload } from "#/core/payload/types";
+import { CardState, CardStatus } from "#/core/payload/types";
+import type { NfcPhase } from "#/core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,
@@ -91,7 +91,7 @@ export function IssuanceScanDrawer({
   onClose,
   onRetry,
   minimal = false,
-}: IssuanceScanDrawerProps) {
+}: Readonly<IssuanceScanDrawerProps>) {
   const nfcPhase = toNfcPhase(phase);
 
   const isScanning = phase === "scanning";
@@ -208,7 +208,10 @@ export function IssuanceScanDrawer({
                         Log ({payload.logEntries.length} entri)
                       </p>
                       {payload.logEntries.map((e, i) => (
-                        <div key={i} className="pl-2 border-l space-y-0.5">
+                        <div
+                          key={`${e.timestamp}-${e.flags}-${i}`}
+                          className="pl-2 border-l space-y-0.5"
+                        >
                           <InfoRow label={`[${i}] amount`} value={String(e.amount)} />
                           <InfoRow label={`[${i}] balance`} value={String(e.balanceAfter)} />
                           <InfoRow label={`[${i}] flags`} value={`0x${e.flags.toString(16)}`} />

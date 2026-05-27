@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { CreditCard } from "lucide-react";
-import successHandImg from "../../../assets/images/success_hand.svg";
-import failedImg from "../../../assets/images/nfc/failed.svg";
-import type { CardPayload } from "../../../core/payload/types";
-import type { NfcPhase } from "../../../core/nfc/stateMachine";
+import successHandImg from "#/assets/images/success_hand.svg";
+import failedImg from "#/assets/images/nfc/failed.svg";
+import type { CardPayload } from "#/core/payload/types";
+import type { NfcPhase } from "#/core/nfc/stateMachine";
 import {
   Drawer,
   DrawerContent,
@@ -72,7 +72,7 @@ export function IssueCardDrawer({
   onIssue,
   onClose,
   onRetry,
-}: IssueCardDrawerProps) {
+}: Readonly<IssueCardDrawerProps>) {
   const [userId, setUserId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");

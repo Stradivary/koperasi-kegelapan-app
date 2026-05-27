@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
-import { getTransactions, type TransactionQuery } from "../../lib/transactionLogService";
-import { localAccountStore } from "../../lib/indexeddb";
-import type { TransactionLog } from "../../db/local-db";
+import { getTransactions, type TransactionQuery } from "#/lib/transactionLogService";
+import { localAccountStore } from "#/lib/indexeddb";
+import type { TransactionLog } from "#/db/local-db";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -18,8 +18,8 @@ import {
   X,
   Receipt,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { useIsMobile } from "../../hooks/use-mobile";
+import { cn } from "#/lib/utils";
+import { useIsMobile } from "#/hooks/use-mobile";
 import { DataTable } from "../block/data-table";
 
 interface TransactionsSectionProps {
@@ -122,7 +122,15 @@ const columns = [
   }),
   columnHelper.accessor("cardId", {
     header: "Card ID",
-    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+    cell: (info) => {
+      const cardName = info.row.original.cardName;
+      return (
+        <div className="min-w-0">
+          {cardName && <div className="text-xs font-medium truncate">{cardName}</div>}
+          <span className="font-mono text-xs text-muted-foreground">{info.getValue()}</span>
+        </div>
+      );
+    },
   }),
   columnHelper.accessor("operatorName", {
     header: "Operator",
@@ -430,9 +438,16 @@ export function TransactionsSection({ tenantId, accountId }: TransactionsSection
                 {amountPrefix(tx.type)}Rp {formatAmount(tx.amount)}
               </span>
             </div>
-            {/* Row 2: card ID + balance after */}
+            {/* Row 2: card name/ID + balance after */}
             <div className="flex items-center justify-between mt-2 pl-12">
-              <span className="text-xs text-muted-foreground font-mono truncate">{tx.cardId}</span>
+              <div className="min-w-0 flex-1">
+                {tx.cardName && (
+                  <span className="text-xs font-medium truncate block">{tx.cardName}</span>
+                )}
+                <span className="text-xs text-muted-foreground font-mono truncate block">
+                  {tx.cardId}
+                </span>
+              </div>
               <span className="text-xs font-medium text-emerald-600 shrink-0">
                 Saldo: Rp {formatAmount(tx.balanceAfter)}
               </span>

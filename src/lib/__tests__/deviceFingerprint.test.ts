@@ -37,7 +37,7 @@ describe("generateDeviceFingerprint", () => {
       () =>
         ({
           resolvedOptions: () => ({ timeZone: mockTimezone }),
-        }) as unknown as Intl.DateTimeFormat
+        }) as unknown as Intl.DateTimeFormat,
     );
   });
 
@@ -93,9 +93,7 @@ describe("generateDeviceFingerprint", () => {
       configurable: true,
     });
 
-    await expect(generateDeviceFingerprint()).rejects.toThrow(
-      "Web Crypto API is not available"
-    );
+    await expect(generateDeviceFingerprint()).rejects.toThrow("Web Crypto API is not available");
 
     // Restore
     Object.defineProperty(globalThis, "crypto", {

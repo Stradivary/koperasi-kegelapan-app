@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gt, asc, sql } from "drizzle-orm";
 import { transactionLog, cards, users, devices } from "../../../src/db/schema";
-import { syncSseRoutes } from "./sync-sse";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
 import { extractTokenPayload } from "../lib/tokenExtract";
@@ -13,9 +12,6 @@ type Env = {
 };
 
 export const syncRoutes = new Hono<{ Bindings: Env }>();
-
-// Mount SSE sub-routes (provides /sse and /broadcast under /api/sync/)
-syncRoutes.route("/", syncSseRoutes);
 
 // Mount entity push route (provides /push-entities under /api/sync/)
 syncRoutes.route("/", pushEntitiesRoute);
@@ -88,6 +84,9 @@ function validateTransaction(tx: PushTransaction): { valid: boolean; reason?: st
   }
   if (tx.amount < 0 || tx.amount > 16000000) {
     return { valid: false, reason: "invalid_amount" };
+  }
+  if (tx.type === "topup" && tx.amount > 2000000) {
+    return { valid: false, reason: "topup_amount_exceeds_limit" };
   }
   if (tx.balanceAfter < 0 || tx.balanceAfter > 16000000) {
     return { valid: false, reason: "invalid_balance" };
@@ -224,7 +223,10 @@ syncRoutes.post("/push", async (c) => {
     // Validate required fields, type, and ranges
     const validation = validateTransaction(tx);
     if (!validation.valid) {
-      rejected.push({ key: tx.idempotencyKey ?? "unknown", reason: validation.reason ?? "malformed_event" });
+      rejected.push({
+        key: tx.idempotencyKey ?? "unknown",
+        reason: validation.reason ?? "malformed_event",
+      });
       continue;
     }
 
@@ -381,9 +383,7 @@ syncRoutes.get("/pull", async (c) => {
       m.updatedAt instanceof Date ? Math.floor(m.updatedAt.getTime() / 1000) : Number(m.updatedAt),
   }));
   const newMembersCursor =
-    membersData.length > 0
-      ? String(membersData[membersData.length - 1].updatedAt)
-      : String(membersCursor);
+    membersData.length > 0 ? String(membersData.at(-1)!.updatedAt) : String(membersCursor);
 
   // 5. Query cards — updatedAt is raw integer (unix timestamp seconds)
   const cardsResult = await db
@@ -436,7 +436,7 @@ syncRoutes.get("/pull", async (c) => {
     updatedAt: Number(card.updatedAt),
   }));
   const newCardsCursor =
-    cardsData.length > 0 ? String(cardsData[cardsData.length - 1].updatedAt) : String(cardsCursor);
+    cardsData.length > 0 ? String(cardsData.at(-1)!.updatedAt) : String(cardsCursor);
 
   // 6. Query transactions — createdAt is raw integer (unix timestamp seconds)
   const txResult = await db
@@ -481,8 +481,7 @@ syncRoutes.get("/pull", async (c) => {
     flagged: tx.flagged,
     createdAt: tx.createdAt,
   }));
-  const newTxCursor =
-    txData.length > 0 ? String(txData[txData.length - 1].createdAt) : String(txCursor);
+  const newTxCursor = txData.length > 0 ? String(txData.at(-1)!.createdAt) : String(txCursor);
 
   // 7. Return response
   const response: SyncPullResponse = {

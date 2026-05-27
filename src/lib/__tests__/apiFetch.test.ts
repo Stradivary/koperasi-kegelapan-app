@@ -41,22 +41,18 @@ describe("apiFetch", () => {
 
   it("throws DeviceBlockedError when server returns 403 device_blocked", async () => {
     const blockedUntil = Math.floor(Date.now() / 1000) + 3600;
-    const mockResponse = new Response(
-      JSON.stringify({ error: "device_blocked", blockedUntil }),
-      { status: 403 },
-    );
+    const mockResponse = new Response(JSON.stringify({ error: "device_blocked", blockedUntil }), {
+      status: 403,
+    });
     vi.mocked(fetch).mockResolvedValue(mockResponse);
 
-    await expect(
-      apiFetch("https://api.example.com/test", undefined, "tenant-1"),
-    ).rejects.toThrow(DeviceBlockedError);
+    await expect(apiFetch("https://api.example.com/test", undefined, "tenant-1")).rejects.toThrow(
+      DeviceBlockedError,
+    );
   });
 
   it("passes through non-device-blocked 403 responses", async () => {
-    const mockResponse = new Response(
-      JSON.stringify({ error: "forbidden" }),
-      { status: 403 },
-    );
+    const mockResponse = new Response(JSON.stringify({ error: "forbidden" }), { status: 403 });
     vi.mocked(fetch).mockResolvedValue(mockResponse);
 
     const result = await apiFetch("https://api.example.com/test");

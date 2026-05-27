@@ -1,5 +1,5 @@
-import { localDb } from "../../db/local-db";
-import { API_BASE_URL, apiFetch } from "../../lib/api";
+import { localDb } from "#/db/local-db";
+import { API_BASE_URL, apiFetch } from "#/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

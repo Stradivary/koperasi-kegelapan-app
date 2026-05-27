@@ -1,4 +1,4 @@
-import { CardStatus } from "../../core/payload/types";
+import { CardStatus } from "#/core/payload/types";
 
 const STATUS_LABELS: Record<number, string> = {
   [CardStatus.ACTIVE]: "Active",
@@ -21,7 +21,7 @@ interface CardStatusBadgeProps {
   localBlockedReason?: string | null;
 }
 
-export function CardStatusBadge({ status, localBlockedReason }: CardStatusBadgeProps) {
+export function CardStatusBadge({ status, localBlockedReason }: Readonly<CardStatusBadgeProps>) {
   if (localBlockedReason) {
     return (
       <span className="text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-700">

@@ -96,11 +96,7 @@ export async function getDevicesByTenant(
   db: DrizzleD1Database<Record<string, unknown>>,
   tenantId: string,
 ): Promise<Device[]> {
-  return db
-    .select()
-    .from(devices)
-    .where(eq(devices.tenantId, tenantId))
-    .all();
+  return db.select().from(devices).where(eq(devices.tenantId, tenantId)).all();
 }
 
 /**
@@ -117,10 +113,7 @@ export async function blockDevice(
   const now = Math.floor(Date.now() / 1000);
   const blockedUntil = now + durationSeconds;
 
-  await db
-    .update(devices)
-    .set({ blockedUntil })
-    .where(eq(devices.deviceId, deviceId));
+  await db.update(devices).set({ blockedUntil }).where(eq(devices.deviceId, deviceId));
 }
 
 /**
@@ -130,10 +123,7 @@ export async function unblockDevice(
   db: DrizzleD1Database<Record<string, unknown>>,
   deviceId: string,
 ): Promise<void> {
-  await db
-    .update(devices)
-    .set({ blockedUntil: null })
-    .where(eq(devices.deviceId, deviceId));
+  await db.update(devices).set({ blockedUntil: null }).where(eq(devices.deviceId, deviceId));
 }
 
 /**

@@ -12,8 +12,8 @@
  */
 
 import { useEffect, useRef } from "react";
-import { connect, disconnect, fullSyncOnLogin, onEvent, isConnected } from "../lib/realTimeSync";
-import { API_BASE_URL, getCurrentDeviceId } from "../lib/api";
+import { connect, disconnect, fullSyncOnLogin, onEvent, isConnected } from "#/lib/realTimeSync";
+import { API_BASE_URL, getCurrentDeviceId } from "#/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

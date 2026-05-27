@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useNfcCard } from "../../hooks/nfc/useNfcCard";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useBlockedCheck } from "../../hooks/useBlockedCheck";
-import { useKioskAutoScan } from "../../hooks/useKioskAutoScan";
+import { useNfcCard } from "#/hooks/nfc/useNfcCard";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useBlockedCheck } from "#/hooks/useBlockedCheck";
+import { useKioskAutoScan } from "#/hooks/useKioskAutoScan";
+import { updateLocalCardRecord, updateLocalUserFromCard } from "#/hooks/nfc/updateLocalCardRecord";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { TransactionList } from "../block/TransactionList";
 import { FeedbackCard } from "../block/FeedbackCard";
@@ -16,7 +17,12 @@ interface ScoutSectionProps {
   terminalId: number;
 }
 
-export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: ScoutSectionProps) {
+export function ScoutSection({
+  tenantId,
+  accountId,
+  deviceId,
+  terminalId,
+}: Readonly<ScoutSectionProps>) {
   const { grant, loading } = useSessionGrant(tenantId, accountId, deviceId, "scout");
   const { state, scan, reset } = useNfcCard(grant, tenantId, terminalId, { lenient: true });
 
@@ -36,6 +42,17 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
     scan,
     autoStart: true,
   });
+
+  // Update local card and user records when a card is successfully read.
+  // This ensures the local DB reflects the latest physical card state (balance,
+  // counter, status) even from a read-only scout operation — enabling accurate
+  // blocked-status checks and data recovery from card history without server sync.
+  useEffect(() => {
+    if (state.phase === "ready" && state.payload) {
+      void updateLocalCardRecord(tenantId, state.payload);
+      void updateLocalUserFromCard(tenantId, state.payload);
+    }
+  }, [state.phase, state.payload, tenantId]);
 
   // Auto-reset after displaying card info so the scan loop continues
   useEffect(() => {
@@ -102,13 +119,6 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
           )}
 
           {/* Not in local DB warning */}
-          {blockedCheck.notInLocalDb && (
-            <div className="rounded-xl bg-amber-50 border border-amber-300/50 p-3">
-              <p className="type-body2 text-amber-700 text-center">
-                ⚠️ Kartu tidak ditemukan di database lokal. Data mungkin belum tersinkronisasi.
-              </p>
-            </div>
-          )}
 
           {/* Card info — always shown regardless of blocked status */}
           <div className="bg-white rounded-2xl border p-5 space-y-4">
@@ -155,10 +165,7 @@ export function ScoutSection({ tenantId, accountId, deviceId, terminalId }: Scou
             </div>
           </div>
 
-          <TransactionList
-            entries={state.payload.logEntries}
-            sessionStart={state.payload.session.startTime}
-          />
+          <TransactionList entries={state.payload.logEntries} />
 
           <Button variant="outline" onClick={reset} className="w-full h-12">
             Selesai

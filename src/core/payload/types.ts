@@ -1,5 +1,5 @@
 export const MAGIC = 0x4b4f5057; // "KOPW"
-export const CARD_SCHEMA_VERSION = 3;
+export const CARD_SCHEMA_VERSION = 4;
 
 export const BUFFER_SIZE = 216;
 export const TRAILER_SIZE = 64;
@@ -19,6 +19,7 @@ export const LOG_OFFSET = 104; // 7 × 16 = 112 bytes
 
 export const LOG_ENTRY_SIZE = 16;
 export const LOG_ENTRY_COUNT = 5;
+export const LOG_HASH_SIZE = 4; // reduced from 6
 
 // Offsets within trailer (relative to trailer start)
 export const TRAILER_EXPIRES_AT = 0; // uint32
@@ -54,11 +55,11 @@ export enum TxType {
 }
 
 export interface LogEntry {
-  deltaTime: number;
-  amount: number;
-  balanceAfter: number;
-  flags: number;
-  hash: Uint8Array;
+  timestamp: number; // uint32 — absolute Unix seconds
+  amount: number; // uint24 — transaction amount (max 16,777,215)
+  balanceAfter: number; // uint32 — balance after transaction
+  flags: number; // uint8  — TxType enum
+  hash: Uint8Array; // 4 bytes — truncated SHA-256 chain hash
 }
 
 export interface CardPayload {

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { triggerHaptic } from "#/lib/haptics";
-import tapNfcImg from "../../assets/images/nfc/tap_nfc.jpeg";
-import successPhoneImg from "../../assets/images/landing/success_phone.png";
-import failedImg from "../../assets/images/nfc/failed.svg";
-import tamperImg from "../../assets/images/nfc/tamper.svg";
+import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
+import successPhoneImg from "#/assets/images/landing/success_phone.png";
+import failedImg from "#/assets/images/nfc/failed.svg";
+import tamperImg from "#/assets/images/nfc/tamper.svg";
 
 type NfcPhase = "idle" | "scanning" | "validating" | "ready" | "writing" | "success" | "error";
 
@@ -103,7 +103,7 @@ export function NfcTapArea({
   label,
   sublabel,
   tamperDetected,
-}: NfcTapAreaProps) {
+}: Readonly<NfcTapAreaProps>) {
   const config = phaseConfig[phase];
   const displayLabel = tamperDetected ? "⚠ Kartu terdeteksi rusak" : (label ?? config.label);
   const displaySublabel = sublabel ?? config.sublabel;
@@ -267,7 +267,7 @@ interface NfcStatusLabelProps {
   tamperDetected?: boolean;
 }
 
-export function NfcStatusLabel({ phase, error, tamperDetected }: NfcStatusLabelProps) {
+export function NfcStatusLabel({ phase, error, tamperDetected }: Readonly<NfcStatusLabelProps>) {
   if (phase === "error") {
     return (
       <p className="type-body2 text-signal-error text-center">

@@ -18,7 +18,11 @@ interface LoadingStateProps {
  * - `section` — centered within a section/card
  * - `page` — full-screen centered loading
  */
-function LoadingState({ text = "Memuat...", variant = "section", className }: LoadingStateProps) {
+function LoadingState({
+  text = "Memuat...",
+  variant = "section",
+  className,
+}: Readonly<LoadingStateProps>) {
   if (variant === "page") {
     return (
       <div

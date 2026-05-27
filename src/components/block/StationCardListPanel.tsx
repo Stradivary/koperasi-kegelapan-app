@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { cn } from "../../lib/utils";
+import { cn } from "#/lib/utils";
 import { DataTable } from "./data-table";
 import type { StationCardRow } from "./StationCardsPanel";
 
@@ -97,7 +97,7 @@ export function StationCardListPanel({
   onRecoverCard,
   onDeleteCard,
   onIssueNew,
-}: StationCardListPanelProps) {
+}: Readonly<StationCardListPanelProps>) {
   const [deleteTarget, setDeleteTarget] = useState<StationCardRow | null>(null);
   const nfcSupported = typeof globalThis !== "undefined" && "NDEFReader" in globalThis;
 
@@ -273,7 +273,11 @@ function CardActionsDropdown({
           <CreditCard size={14} />
           Top-up
         </DropdownMenuItem>
-        <DropdownMenuItem className="h-10" onClick={onRecover} disabled={isRecovering}>
+        <DropdownMenuItem
+          className="h-10"
+          onClick={onRecover}
+          disabled={isRecovering || card.syncStatus !== "synced"}
+        >
           <RefreshCw size={14} />
           Pulihkan Kartu
         </DropdownMenuItem>

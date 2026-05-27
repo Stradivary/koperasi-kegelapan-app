@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useCallback } from "react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Separator } from "../components/ui/separator";
-import { makeFreshCard } from "../components/section/IssuanceTestSection";
-import { prepareWrite } from "../core/nfc/pipelineEngine";
-import { encodePayloadWire } from "../core/payload/engine";
-import type { SessionGrant } from "../core/payload/types";
-import { API_BASE_URL } from "../lib/api";
+import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
+import { Separator } from "#/components/ui/separator";
+import { makeFreshCard } from "#/components/section/IssuanceTestSection";
+import { prepareWrite } from "#/core/nfc/pipelineEngine";
+import { encodePayloadWire } from "#/core/payload/engine";
+import type { SessionGrant } from "#/core/payload/types";
+import { API_BASE_URL } from "#/lib/api";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,
@@ -408,7 +408,7 @@ function NfcTestPage() {
         </div>
         <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs space-y-0.5 max-h-80 overflow-y-auto">
           {log.map((line, i) => (
-            <p key={i} className="whitespace-pre-wrap break-all">
+            <p key={`log-${i}-${line.slice(0, 20)}`} className="whitespace-pre-wrap break-all">
               {line}
             </p>
           ))}

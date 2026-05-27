@@ -108,7 +108,7 @@ export async function verifyHmac(
 }
 
 export async function computeChainHash(
-  deltaTime: number,
+  timestamp: number,
   amount: number,
   balanceAfter: number,
   flags: number,
@@ -116,15 +116,15 @@ export async function computeChainHash(
 ): Promise<Uint8Array> {
   const data = new Uint8Array(16);
   const view = new DataView(data.buffer);
-  view.setUint16(0, deltaTime, true);
-  data[2] = amount & 0xff;
-  data[3] = (amount >> 8) & 0xff;
-  data[4] = (amount >> 16) & 0xff;
-  view.setUint32(5, balanceAfter, true);
-  data[9] = flags;
-  data.set(prevHash.slice(0, 6), 10);
+  view.setUint32(0, timestamp, true); // bytes 0-3
+  data[4] = amount & 0xff; // bytes 4-6 (uint24 LE)
+  data[5] = (amount >> 8) & 0xff;
+  data[6] = (amount >> 16) & 0xff;
+  view.setUint32(7, balanceAfter, true); // bytes 7-10
+  data[11] = flags; // byte 11
+  data.set(prevHash.slice(0, 4), 12); // bytes 12-15
   const hash = await crypto.subtle.digest("SHA-256", data.buffer);
-  return new Uint8Array(hash).slice(0, 6);
+  return new Uint8Array(hash).slice(0, 4);
 }
 
 export async function sha256(data: Uint8Array): Promise<Uint8Array> {

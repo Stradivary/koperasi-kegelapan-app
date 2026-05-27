@@ -24,7 +24,7 @@ vi.mock("../engine", () => ({
 vi.mock("../../crypto/engine", () => ({
   computeHmac: vi.fn().mockResolvedValue(new Uint8Array(8)),
   verifyHmac: vi.fn().mockResolvedValue(true),
-  computeChainHash: vi.fn().mockResolvedValue(new Uint8Array(6)),
+  computeChainHash: vi.fn().mockResolvedValue(new Uint8Array(4)),
   encryptBuffer: vi.fn().mockResolvedValue(new Uint8Array(184)), // ENCRYPTED_BODY_END - ENCRYPTED_BODY_START + 16 auth tag
   decryptBuffer: vi.fn().mockResolvedValue(new Uint8Array(168)), // ENCRYPTED_BODY_END - ENCRYPTED_BODY_START
 }));
@@ -67,7 +67,7 @@ function makePayload(overrides: Partial<CardPayload> = {}): CardPayload {
   return {
     header: {
       magic: MAGIC,
-      version: 1,
+      version: 4,
       type: 0,
       cardId,
       tenantBind: 0,
@@ -213,6 +213,30 @@ describe("validateCard", () => {
     vi.mocked(buildHmacInput).mockReturnValue(new Uint8Array(231));
   });
 
+  it("rejects with schema version mismatch when header.version < 4", async () => {
+    const payload = makePayload({ header: { ...makePayload().header, version: 3 } });
+    const grant = makeSessionGrant();
+    const raw = new Uint8Array(BUFFER_SIZE * 2 + 64);
+
+    const result = await validateCard(payload, raw, grant);
+
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("Schema version mismatch");
+    expect(result.tamper).toBe(false);
+  });
+
+  it("rejects with unrecognized schema version when header.version > 4", async () => {
+    const payload = makePayload({ header: { ...makePayload().header, version: 5 } });
+    const grant = makeSessionGrant();
+    const raw = new Uint8Array(BUFFER_SIZE * 2 + 64);
+
+    const result = await validateCard(payload, raw, grant);
+
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("Unrecognized schema version");
+    expect(result.tamper).toBe(false);
+  });
+
   it("returns valid=true for a well-formed payload", async () => {
     const payload = makePayload();
     const grant = makeSessionGrant();
@@ -285,18 +309,16 @@ describe("validateCard", () => {
   it("rejects and sets tamper=true when chain hash is invalid", async () => {
     const { computeChainHash } = await import("../../crypto/engine");
     // Return a hash that won't match the stored entry hash (all zeros)
-    vi.mocked(computeChainHash).mockResolvedValue(
-      new Uint8Array([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
-    );
+    vi.mocked(computeChainHash).mockResolvedValue(new Uint8Array([0xff, 0xff, 0xff, 0xff]));
 
     const payload = makePayload({
       logEntries: [
         {
-          deltaTime: 10,
+          timestamp: 10,
           amount: 5000,
           balanceAfter: 45000,
           flags: 0,
-          hash: new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]), // won't match 0xff...
+          hash: new Uint8Array([0x01, 0x02, 0x03, 0x04]), // won't match 0xff...
         },
       ],
     });
@@ -322,13 +344,13 @@ describe("validateCard", () => {
 
   it("accepts a payload with matching chain hashes", async () => {
     const { computeChainHash } = await import("../../crypto/engine");
-    const matchingHash = new Uint8Array([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+    const matchingHash = new Uint8Array([0x11, 0x22, 0x33, 0x44]);
     vi.mocked(computeChainHash).mockResolvedValue(matchingHash);
 
     const payload = makePayload({
       logEntries: [
         {
-          deltaTime: 10,
+          timestamp: 10,
           amount: 5000,
           balanceAfter: 45000,
           flags: 0,
@@ -357,7 +379,7 @@ describe("prepareWrite", () => {
     const { encodePayloadWire } = await import("../../payload/engine");
     const { buildHmacInput } = await import("../../payload/engine");
     vi.mocked(computeHmac).mockResolvedValue(new Uint8Array(8).fill(0x77));
-    vi.mocked(computeChainHash).mockResolvedValue(new Uint8Array(6).fill(0x33));
+    vi.mocked(computeChainHash).mockResolvedValue(new Uint8Array(4).fill(0x33));
     vi.mocked(encodePayloadWire).mockReturnValue(new Uint8Array(WIRE_SIZE));
     vi.mocked(buildHmacInput).mockReturnValue(new Uint8Array(231));
   });
@@ -398,19 +420,22 @@ describe("prepareWrite", () => {
 
   it("sets rootHash to the last log entry hash when entries exist", async () => {
     const { computeChainHash } = await import("../../crypto/engine");
-    const lastHash = new Uint8Array([0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
+    const lastHash = new Uint8Array([0xaa, 0xbb, 0xcc, 0xdd]);
     vi.mocked(computeChainHash).mockResolvedValue(lastHash);
 
     const updated = makePayload({
       logEntries: [
-        { deltaTime: 5, amount: 1000, balanceAfter: 49000, flags: 0, hash: new Uint8Array(6) },
+        { timestamp: 5, amount: 1000, balanceAfter: 49000, flags: 0, hash: new Uint8Array(4) },
       ],
     });
     const grant = makeSessionGrant();
 
     const result = await prepareWrite(makePayload(), updated, grant);
 
-    expect(result.payload.trailer.rootHash).toEqual(lastHash);
+    // rootHash is 6 bytes: 4-byte chain hash zero-padded to 6
+    const expectedRootHash = new Uint8Array(6);
+    expectedRootHash.set(lastHash.slice(0, 4));
+    expect(result.payload.trailer.rootHash).toEqual(expectedRootHash);
   });
 
   it("sets rootHash to all-zeros when there are no log entries", async () => {
@@ -458,12 +483,12 @@ describe("prepareWrite", () => {
 
   it("recomputes chain hashes for all log entries", async () => {
     const { computeChainHash } = await import("../../crypto/engine");
-    vi.mocked(computeChainHash).mockResolvedValue(new Uint8Array(6).fill(0x42));
+    vi.mocked(computeChainHash).mockResolvedValue(new Uint8Array(4).fill(0x42));
 
     const updated = makePayload({
       logEntries: [
-        { deltaTime: 1, amount: 100, balanceAfter: 900, flags: 0, hash: new Uint8Array(6) },
-        { deltaTime: 2, amount: 200, balanceAfter: 700, flags: 0, hash: new Uint8Array(6) },
+        { timestamp: 1, amount: 100, balanceAfter: 900, flags: 0, hash: new Uint8Array(4) },
+        { timestamp: 2, amount: 200, balanceAfter: 700, flags: 0, hash: new Uint8Array(4) },
       ],
     });
     const grant = makeSessionGrant();
@@ -570,14 +595,14 @@ describe("readAndValidateCard", () => {
     }
   });
 
-  it("returns ok=true with payload and serialNumber on success (v1 card)", async () => {
+  it("returns ok=true with payload and serialNumber on success (v4 card)", async () => {
     const { readCard } = await import("../engine");
     const { decodePayload } = await import("../../payload/engine");
 
     const payload = makePayload();
     const raw = new Uint8Array(WIRE_SIZE);
-    // Set version byte to 1 at offset 4
-    raw[4] = 1;
+    // Set version byte to 4 at offset 4
+    raw[4] = 4;
 
     vi.mocked(readCard).mockResolvedValue({ ok: true, raw, serialNumber: "AA:BB:CC:DD:EE:FF" });
     vi.mocked(decodePayload).mockReturnValue(payload);
@@ -596,9 +621,9 @@ describe("readAndValidateCard", () => {
     const { decodePayload } = await import("../../payload/engine");
     const { decryptBuffer } = await import("../../crypto/engine");
 
-    const payload = makePayload({ header: { ...makePayload().header, version: 2 } });
+    const payload = makePayload({ header: { ...makePayload().header, version: 4 } });
     const raw = new Uint8Array(WIRE_SIZE);
-    raw[4] = 2; // version = 2
+    raw[4] = 4; // version = 4 (>= 2, triggers decryption)
 
     vi.mocked(readCard).mockResolvedValue({ ok: true, raw, serialNumber: "11:22:33" });
     vi.mocked(decodePayload).mockReturnValue(payload);
@@ -616,7 +641,7 @@ describe("readAndValidateCard", () => {
 
     const payload = makePayload();
     const raw = new Uint8Array(WIRE_SIZE);
-    raw[4] = 1;
+    raw[4] = 4;
 
     vi.mocked(readCard).mockResolvedValue({ ok: true, raw, serialNumber: "AA:BB" });
     vi.mocked(decodePayload).mockReturnValue(payload);

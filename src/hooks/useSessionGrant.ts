@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SessionGrant } from "../core/payload/types";
-import { API_BASE_URL } from "../lib/api";
-import { sessionGrantCacheStore, type CachedSessionGrant } from "../lib/indexeddb";
-import { issueAndCacheLocalSessionGrant } from "../lib/localSessionGrant";
+import type { SessionGrant } from "#/core/payload/types";
+import { API_BASE_URL } from "#/lib/api";
+import { sessionGrantCacheStore, type CachedSessionGrant } from "#/lib/indexeddb";
+import { issueAndCacheLocalSessionGrant } from "#/lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
 export const OFFLINE_GRACE_PERIOD_SECONDS = 3600;

@@ -125,7 +125,7 @@ const phaseVisuals: Record<string, PhaseVisualConfig> = {
  *
  * @see Requirements 9.2, 9.3
  */
-export function NfcTapArea({ phase, labels }: NfcTapAreaProps) {
+export function NfcTapArea({ phase, labels }: Readonly<NfcTapAreaProps>) {
   const config = phaseVisuals[phase] ?? phaseVisuals.idle;
   const label = labels?.[phase as keyof typeof labels] ?? DEFAULT_LABELS[phase] ?? "";
 

@@ -7,7 +7,7 @@ describe("cn", () => {
   });
 
   it("handles conditional classes", () => {
-    const stateHidden = false
+    const stateHidden = false;
     expect(cn("base", stateHidden && "hidden", "visible")).toBe("base visible");
   });
 
@@ -33,17 +33,17 @@ describe("DeviceSetupLaunchContext", () => {
 
   beforeEach(() => {
     mockStorage = {};
-    vi.stubGlobal("window", {
-      sessionStorage: {
-        getItem: (key: string) => mockStorage[key] ?? null,
-        setItem: (key: string, value: string) => {
-          mockStorage[key] = value;
-        },
-        removeItem: (key: string) => {
-          delete mockStorage[key];
-        },
+    const storageMock = {
+      getItem: (key: string) => mockStorage[key] ?? null,
+      setItem: (key: string, value: string) => {
+        mockStorage[key] = value;
       },
-    });
+      removeItem: (key: string) => {
+        delete mockStorage[key];
+      },
+    };
+    vi.stubGlobal("window", { sessionStorage: storageMock });
+    vi.stubGlobal("sessionStorage", storageMock);
   });
 
   afterEach(() => {

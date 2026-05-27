@@ -1,6 +1,7 @@
-import type { CardPayload } from "../../core/payload/types";
-import { reconciliationOutbox, makeIdempotencyKey } from "../../lib/indexeddb";
-import { recordTransaction } from "../../lib/transactionLogService";
+import type { CardPayload } from "#/core/payload/types";
+import { reconciliationOutbox, makeIdempotencyKey } from "#/lib/indexeddb";
+import { recordTransaction } from "#/lib/transactionLogService";
+import { updateLocalCardRecord, updateLocalUserFromCard } from "./updateLocalCardRecord";
 
 type TransactionOperationType = "debit" | "credit" | "checkin" | "checkout" | "topup" | "admin";
 
@@ -10,6 +11,7 @@ interface RecordCardWriteParams {
   operationType: string;
   currentPayload: CardPayload;
   updatedPayload: CardPayload;
+  cardName: string | null;
 }
 
 /**
@@ -25,14 +27,21 @@ export async function recordCardWrite({
   operationType,
   currentPayload,
   updatedPayload,
+  cardName,
 }: RecordCardWriteParams): Promise<void> {
   const cardIdHex = Array.from(updatedPayload.header.cardId)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const lastHash = Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(6))
+  const lastHash = Array.from(updatedPayload.logEntries.at(-1)?.hash ?? new Uint8Array(4))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const amount = currentPayload.wallet.balance - updatedPayload.wallet.balance;
+  const balanceDiff = currentPayload.wallet.balance - updatedPayload.wallet.balance;
+
+  // Use updatedPayload timestamp, fallback to current time if 0 (defensive)
+  const timestamp =
+    updatedPayload.wallet.lastTimestamp > 0
+      ? updatedPayload.wallet.lastTimestamp
+      : Math.floor(Date.now() / 1000);
 
   await reconciliationOutbox.add({
     tenantId,
@@ -40,9 +49,9 @@ export async function recordCardWrite({
     cardId: cardIdHex,
     counter: Number(updatedPayload.wallet.counter),
     type: operationType,
-    amount,
+    amount: balanceDiff,
     balanceAfter: updatedPayload.wallet.balance,
-    timestamp: updatedPayload.wallet.lastTimestamp,
+    timestamp,
     hash: lastHash,
     idempotencyKey: makeIdempotencyKey(tenantId, cardIdHex, Number(updatedPayload.wallet.counter)),
   });
@@ -52,11 +61,12 @@ export async function recordCardWrite({
       tenantId,
       cardId: cardIdHex,
       userId: updatedPayload.identity.userId ? updatedPayload.identity.userId : null,
+      cardName,
       counter: Number(updatedPayload.wallet.counter),
       type: operationType as TransactionOperationType,
-      amount: Math.abs(amount),
+      amount: Math.abs(balanceDiff),
       balanceAfter: updatedPayload.wallet.balance,
-      timestamp: updatedPayload.wallet.lastTimestamp,
+      timestamp,
       hash: lastHash,
       terminalId,
       deviceId: null,
@@ -64,4 +74,10 @@ export async function recordCardWrite({
   } catch {
     /* Non-critical — transaction log is best-effort */
   }
+
+  // Update local card and user records with latest state from the written card.
+  // This ensures local DB always reflects the physical card state (balance, counter,
+  // status) for accurate blocked-status checks and data recovery without server sync.
+  await updateLocalCardRecord(tenantId, updatedPayload);
+  await updateLocalUserFromCard(tenantId, updatedPayload);
 }

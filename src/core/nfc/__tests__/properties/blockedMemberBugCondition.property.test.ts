@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkLocalBlockedStatus } from "../../localStatusCheck";
 
 // Mock the local-db module
-vi.mock("../../../../db/local-db", () => {
+vi.mock("#/db/local-db", () => {
   const cardsStore = new Map<string, any>();
   const usersStore = new Map<string, any>();
 
@@ -47,7 +47,7 @@ vi.mock("../../../../db/local-db", () => {
 });
 
 // Import the mocked module to access test stores
-import { localDb } from "../../../../db/local-db";
+import { localDb } from "#/db/local-db";
 
 const cardsStore = (localDb as any).__cardsStore as Map<string, any>;
 const usersStore = (localDb as any).__usersStore as Map<string, any>;

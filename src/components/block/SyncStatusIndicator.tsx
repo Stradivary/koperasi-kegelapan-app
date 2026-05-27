@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
-import type { SyncEngineStatus } from "../../hooks/useSyncEngine";
+import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ export function SyncStatusIndicator({
   lastSyncedAt,
   pendingCount,
   onSync,
-}: SyncStatusIndicatorProps) {
+}: Readonly<SyncStatusIndicatorProps>) {
   const config = STATUS_CONFIG[syncStatus];
   const Icon = config.icon;
 
@@ -112,11 +112,7 @@ export function SyncStatusIndicator({
           config.colorClass,
         ].join(" ")}
       >
-        <Icon
-          size={12}
-          className={config.animate ? "animate-pulse" : ""}
-          aria-hidden="true"
-        />
+        <Icon size={12} className={config.animate ? "animate-pulse" : ""} aria-hidden="true" />
         {config.label}
       </span>
 

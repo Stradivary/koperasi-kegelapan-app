@@ -1,13 +1,13 @@
-import { useNfcCard } from "../../hooks/nfc/useNfcCard";
-import { useSessionGrant } from "../../hooks/useSessionGrant";
-import { useSyncEngineContext } from "../../hooks/SyncEngineContext";
+import { useNfcCard } from "#/hooks/nfc/useNfcCard";
+import { useSessionGrant } from "#/hooks/useSessionGrant";
+import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { CardStatusBadge } from "../block/CardStatusBadge";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { applyDebit, isWriteEligible } from "../../core/state-machine/engine";
-import { CardStatus } from "../../core/payload/types";
-import { localDb } from "../../db/local-db";
+import { applyDebit, isWriteEligible } from "#/core/state-machine/engine";
+import { CardStatus } from "#/core/payload/types";
+import { localDb } from "#/db/local-db";
 import { useState } from "react";
 
 interface KioskSectionProps {

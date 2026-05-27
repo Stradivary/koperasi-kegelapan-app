@@ -100,6 +100,7 @@ describe("local-db", () => {
         tenantId: "t1",
         cardId: "c1",
         userId: null,
+        cardName: null,
         counter: 1,
         type: "debit",
         amount: 5000,

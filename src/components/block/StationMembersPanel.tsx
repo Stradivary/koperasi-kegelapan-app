@@ -48,7 +48,7 @@ export function StationMembersPanel({
   onCreateMember,
   onToggleStatus,
   onDeleteMember,
-}: StationMembersPanelProps) {
+}: Readonly<StationMembersPanelProps>) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StationMemberRow | null>(null);
 

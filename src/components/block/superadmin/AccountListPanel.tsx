@@ -182,7 +182,7 @@ export function AccountListPanel({
   onToggleStatus,
   pagination,
   onPageChange,
-}: AccountListPanelProps) {
+}: Readonly<AccountListPanelProps>) {
   const serverPagination: ServerPaginationMeta = {
     pageIndex: pagination.page - 1,
     pageSize: pagination.pageSize,

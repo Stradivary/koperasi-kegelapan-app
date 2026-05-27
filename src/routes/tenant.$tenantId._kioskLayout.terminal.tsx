@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TerminalSection } from "../components/section/TerminalSection";
-import { TenantRoutePending, useTenantContext } from "../hooks/useTenantContext";
+import { TerminalSection } from "#/components/section/TerminalSection";
+import { TenantRoutePending, useTenantContext } from "#/hooks/useTenantContext";
 
 export const Route = createFileRoute("/tenant/$tenantId/_kioskLayout/terminal")({
   component: TerminalPage,

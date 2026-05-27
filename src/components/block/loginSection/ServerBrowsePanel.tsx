@@ -1,5 +1,5 @@
 import { ArrowLeft, Search, WifiOff } from "lucide-react";
-import type { TenantSearchResult } from "../../../hooks/useServerTenantSearch";
+import type { TenantSearchResult } from "#/hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
 import { Button } from "../../ui/button";
@@ -25,7 +25,7 @@ export function ServerBrowsePanel({
   onQueryChange,
   onSelect,
   onBack,
-}: ServerBrowsePanelProps) {
+}: Readonly<ServerBrowsePanelProps>) {
   const showNoResults = !loading && query.length >= 2 && results.length === 0 && !error && isOnline;
 
   return (

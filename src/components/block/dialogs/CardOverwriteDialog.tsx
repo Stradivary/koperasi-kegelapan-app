@@ -25,7 +25,7 @@ export function CardOverwriteDialog({
   onConfirm,
   onCancel,
   isProcessing,
-}: CardOverwriteDialogProps) {
+}: Readonly<CardOverwriteDialogProps>) {
   if (!existingCard) return null;
 
   const ownerDisplay =

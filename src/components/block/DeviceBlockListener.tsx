@@ -4,7 +4,7 @@
  * Shows toast notifications and handles navigation on block/unblock events.
  */
 
-import { useDeviceBlock } from "../../hooks/useDeviceBlock";
+import { useDeviceBlock } from "#/hooks/useDeviceBlock";
 
 export function DeviceBlockListener() {
   // The hook handles all side effects (toast, navigation, visibility listener)
