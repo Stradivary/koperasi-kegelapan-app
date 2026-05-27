@@ -230,7 +230,7 @@ export function TenantCreateDialog({
   );
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       // Mark all fields as touched

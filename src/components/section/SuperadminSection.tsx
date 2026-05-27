@@ -118,7 +118,7 @@ export function SuperadminSection() {
   const [statusConfirmAccount, setStatusConfirmAccount] = useState<AccountListItem | null>(null);
 
   // ── Superadmin Login Handler ──
-  async function handleSuperadminLogin(e: React.FormEvent) {
+  async function handleSuperadminLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoginLoading(true);
     setLoginError(null);

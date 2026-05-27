@@ -23,13 +23,13 @@ const mockMarkJournalRecovering = vi.fn();
 const mockMarkJournalPending = vi.fn();
 const mockGetCardIdHex = vi.fn();
 
-vi.mock("../../../core/nfc/engine", () => ({
+vi.mock("#/core/nfc/engine", () => ({
   isNfcSupported: () => mockIsNfcSupported(),
   extractCardBytes: (...args: unknown[]) => mockExtractCardBytes(...args),
   friendlyWriteError: (...args: unknown[]) => mockFriendlyWriteError(...args),
 }));
 
-vi.mock("../../../core/nfc/pipelineEngine", () => ({
+vi.mock("#/core/nfc/pipelineEngine", () => ({
   prepareWrite: (...args: unknown[]) => mockPrepareWrite(...args),
 }));
 

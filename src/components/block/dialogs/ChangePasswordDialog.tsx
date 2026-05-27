@@ -91,7 +91,7 @@ export function ChangePasswordDialog({
   );
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
 
       setTouched({ newPassword: true, confirmPassword: true });
