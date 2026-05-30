@@ -308,7 +308,7 @@ interface TransactionPullEntry {
 
 const PULL_LIMIT = 500;
 
-function bytesToHex(bytes: Uint8Array | ArrayBuffer | unknown): string {
+function bytesToHex(bytes: unknown): string {
   if (bytes instanceof ArrayBuffer) {
     bytes = new Uint8Array(bytes);
   }
@@ -421,17 +421,17 @@ syncRoutes.get("/pull", async (c) => {
         ? Math.floor(card.createdAt.getTime() / 1000)
         : Number(card.createdAt),
     lastActivityAt:
-      card.lastActivityAt instanceof Date
-        ? Math.floor(card.lastActivityAt.getTime() / 1000)
-        : card.lastActivityAt != null
-          ? Number(card.lastActivityAt)
-          : null,
+      card.lastActivityAt == null
+        ? null
+        : card.lastActivityAt instanceof Date
+          ? Math.floor(card.lastActivityAt.getTime() / 1000)
+          : Number(card.lastActivityAt),
     expiresAt:
-      card.expiresAt instanceof Date
-        ? Math.floor(card.expiresAt.getTime() / 1000)
-        : card.expiresAt != null
-          ? Number(card.expiresAt)
-          : null,
+      card.expiresAt == null
+        ? null
+        : card.expiresAt instanceof Date
+          ? Math.floor(card.expiresAt.getTime() / 1000)
+          : Number(card.expiresAt),
     notes: card.notes,
     updatedAt: Number(card.updatedAt),
   }));

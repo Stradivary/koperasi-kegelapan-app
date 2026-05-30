@@ -6,7 +6,17 @@ vi.mock("../deviceBlock", () => ({
   checkDeviceBlockResponse: vi.fn().mockResolvedValue(false),
 }));
 
-// Mock indexeddb module
+// Mock indexeddb.lazy module (api.ts imports from here)
+const mockAuthTokenCacheStore = {
+  put: vi.fn().mockResolvedValue(undefined),
+  get: vi.fn().mockResolvedValue(null),
+  delete: vi.fn().mockResolvedValue(undefined),
+};
+vi.mock("../indexeddb.lazy", () => ({
+  getAuthTokenCacheStore: () => Promise.resolve(mockAuthTokenCacheStore),
+}));
+
+// Mock indexeddb module (for direct imports in tests)
 vi.mock("../indexeddb", () => ({
   authTokenCacheStore: {
     put: vi.fn().mockResolvedValue(undefined),
@@ -28,7 +38,6 @@ import {
   restoreAuthState,
 } from "../api";
 import { isDeviceBlocked, checkDeviceBlockResponse } from "../deviceBlock";
-import { authTokenCacheStore } from "../indexeddb";
 
 describe("api module", () => {
   let mockLocalStorage: Record<string, string>;
@@ -92,21 +101,27 @@ describe("api module", () => {
       expect(mockLocalStorage["kk_access_token"]).toBeUndefined();
     });
 
-    it("persists to IndexedDB when deviceId is set", () => {
+    it("persists to IndexedDB when deviceId is set", async () => {
       setCurrentDeviceId("dev1");
       setAccessToken("token-idb");
-      expect(authTokenCacheStore.put).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deviceId: "dev1",
-          accessToken: "token-idb",
-        }),
-      );
+      // IndexedDB persistence is async (fire-and-forget), wait for it
+      await vi.waitFor(() => {
+        expect(mockAuthTokenCacheStore.put).toHaveBeenCalledWith(
+          expect.objectContaining({
+            deviceId: "dev1",
+            accessToken: "token-idb",
+          }),
+        );
+      });
     });
 
-    it("deletes from IndexedDB when clearing with deviceId set", () => {
+    it("deletes from IndexedDB when clearing with deviceId set", async () => {
       setCurrentDeviceId("dev1");
       setAccessToken(null);
-      expect(authTokenCacheStore.delete).toHaveBeenCalledWith("dev1");
+      // IndexedDB deletion is async (fire-and-forget), wait for it
+      await vi.waitFor(() => {
+        expect(mockAuthTokenCacheStore.delete).toHaveBeenCalledWith("dev1");
+      });
     });
   });
 
@@ -218,7 +233,7 @@ describe("api module", () => {
 
     it("falls back to IndexedDB when no localStorage token", async () => {
       setAccessToken(null);
-      vi.mocked(authTokenCacheStore.get).mockResolvedValue({
+      mockAuthTokenCacheStore.get.mockResolvedValue({
         deviceId: "dev1",
         accessToken: "idb-token",
         expiresAt: Date.now() + 100000,
@@ -232,8 +247,7 @@ describe("api module", () => {
     it("returns false when no token available", async () => {
       setAccessToken(null);
 
-      // @ts-expect-error Null is expected for test purposes
-      vi.mocked(authTokenCacheStore.get).mockResolvedValue(null);
+      mockAuthTokenCacheStore.get.mockResolvedValue(null);
       const result = await restoreAuthState("dev1");
       expect(result).toBe(false);
     });

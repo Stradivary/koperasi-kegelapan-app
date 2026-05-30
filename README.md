@@ -4,7 +4,31 @@
 
 A tap-based payment system that operates without real-time backend connectivity. Wallet state (balance, session, tamper-evident log) is stored encrypted on NTAG215 NFC cards, allowing terminals to authorise transactions offline using cryptographic proofs.
 
-## Architecture
+---
+
+## Table of Contents
+
+- [High-Level Design (HLD)](./docs-arch/HIGH_LEVEL_DESIGN.md)
+- [Security Architecture](./docs-arch/SECURITY.md)
+- [Folder Structure & Clean Architecture](./docs-arch/FOLDER_STRUCTURE.md)
+- [Software Quality](./docs-arch/SOFTWARE_QUALITY.md)
+- [Architecture Stack](#architecture-stack)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [API Routes](#api-routes)
+- [Frontend Routes](#frontend-routes)
+- [Database](#database)
+- [Scripts](#scripts)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [UI Components](#ui-components)
+- [Documentation](#documentation)
+- [CI/CD](#cicd)
+
+---
+
+## Architecture Stack
 
 | Layer     | Tech                                   | Deployment         |
 | --------- | -------------------------------------- | ------------------ |
@@ -14,7 +38,7 @@ A tap-based payment system that operates without real-time backend connectivity.
 | NFC       | Web NFC API (NTAG215/216)              | Browser            |
 | Analytics | Cloudflare Analytics Engine            | Cloudflare Workers |
 
-The frontend is a Progressive Web App with offline-first capabilities (vite-plugin-pwa + Workbox). The API worker handles authentication, session grants, reconciliation, sync, and real-time events (SSE). Both are deployed independently to Cloudflare.
+The frontend is a Progressive Web App with offline-first capabilities (vite-plugin-pwa + Workbox). The API worker handles authentication, session grants, reconciliation, and sync. Both are deployed independently to Cloudflare.
 
 ## Prerequisites
 
@@ -45,7 +69,7 @@ koperasi-kegelapan/
 ├── api/src/               # Hono API worker (Cloudflare Workers)
 │   ├── lib/               # Shared utilities (logger, token extraction)
 │   ├── middleware/         # CORS, device block, rate limiting, analytics
-│   └── routes/            # API route handlers (12 route modules)
+│   └── routes/            # API route handlers (11 route modules)
 ├── src/                   # React frontend (SPA)
 │   ├── components/        # UI components (atomic design)
 │   │   ├── ui/            # Shadcn/Radix primitives
@@ -59,12 +83,8 @@ koperasi-kegelapan/
 │   │   ├── state-machine/ # Card state transitions
 │   │   └── validation/    # Card and transaction validation
 │   ├── db/                # Database schemas (Drizzle + Dexie/IndexedDB)
-│   ├── domain/            # Domain models
-│   │   ├── card/          # Card domain logic
-│   │   ├── member/        # Member domain logic
-│   │   └── transaction/   # Transaction domain logic
-│   ├── hooks/             # React hooks
-│   │   └── nfc/           # NFC-specific hooks
+│   ├── domain/            # Domain models (card, member, transaction)
+│   ├── hooks/             # React hooks (NFC, sync, auth, etc.)
 │   ├── integrations/      # External service integrations (TanStack Query)
 │   ├── lib/               # Utilities (sync, device, error tracking, etc.)
 │   ├── routes/            # TanStack Router file-based routes
@@ -72,6 +92,7 @@ koperasi-kegelapan/
 ├── drizzle/               # D1 migration files
 ├── e2e/                   # Playwright end-to-end tests
 ├── docs/                  # Specification docs (git submodule)
+├── docs-arch/             # Architecture documentation (HLD, Security, etc.)
 ├── public/                # Static assets, PWA icons, manifest
 ├── wrangler.jsonc         # Cloudflare Pages config
 └── wrangler.api.jsonc     # Cloudflare Workers config (D1, Analytics Engine)
@@ -133,17 +154,10 @@ pnpm db:local:migrate     # Apply migrations to local D1
 pnpm db:seed              # Seed local database
 ```
 
-Query local D1:
-
-```bash
-pnpm db:local:query -- "SELECT name FROM sqlite_master WHERE type='table';"
-```
-
 ### Remote D1 (production)
 
 ```bash
 pnpm db:remote:migrate    # Apply migrations to remote D1
-pnpm db:remote:query -- "SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
 ### Reset local state
@@ -200,45 +214,3 @@ wrangler secret put SESSION_MASTER_KEY --config wrangler.api.jsonc
 - **E2E tests**: Playwright (11 spec files) — `pnpm e2e`
 
 E2E test coverage includes: login flows, admin navigation, card management, member management, transactions, settings, role routing, superadmin, API auth, and API sync.
-
-## UI Components
-
-Uses [Shadcn UI](https://ui.shadcn.com/) (New York style) with Radix primitives and Tailwind CSS v4.
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-Component architecture follows atomic design:
-
-- `ui/` — Shadcn primitives (Button, Dialog, Input, etc.)
-- `block/` — Composed blocks (NfcTapArea, TransactionList, etc.)
-- `layout/` — Layout shells (AdminLayout, KioskLayout)
-- `section/` — Full page sections (AdminSection, GateSection, etc.)
-
-## Documentation
-
-Full system specifications live in the `docs/` git submodule (Docusaurus site), covering:
-
-- **Product Spec** — Problem statement, users/roles, constraints, acceptance criteria
-- **System Design** — 18 documents (core objective, hardware, security, state machine, crypto model, etc.)
-- **Tech Specs** — 17 documents (architecture, card storage, cryptography, interfaces, etc.)
-- **API Spec** — 7 documents (overview, auth, session grants, policy, cards, reconciliation, reports)
-- **Data Spec** — 5 documents (overview, card binary schema, backend DB, encoding, multitenancy)
-- **Security Spec** — 7 documents (overview, auth, crypto, tamper detection, trust model, data protection, financial risk)
-- **Test Spec** — 3 documents (overview, unit tests, E2E tests)
-- **ADRs** — 12 architecture decision records
-
-## CI/CD
-
-See [CICD_INTEGRATION.md](./CICD_INTEGRATION.md) for full details.
-
-| Workflow              | Trigger                                | Jobs                                          |
-| --------------------- | -------------------------------------- | --------------------------------------------- |
-| `ci-test.yml`         | push, PR → master/main/develop         | lint, typecheck, unit-test, e2e-test          |
-| `deploy.yml`          | ci-test success on master/main; manual | deploy to Cloudflare                          |
-| `static-analysis.yml` | push/PR → master/main; weekly Monday   | npm-audit, owasp-dependency-check, sonarcloud |
-
-## License
-
-Private — all rights reserved.

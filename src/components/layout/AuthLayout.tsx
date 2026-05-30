@@ -12,7 +12,7 @@ export function AuthLayout({
   headerSubtitle = BRAND.BYLINE,
   variant = "brand",
   align = "center",
-}: AuthLayoutProps) {
+}: Readonly<AuthLayoutProps>) {
   const headerBg = variant === "brand-dark" ? "bg-brand-dark" : "bg-brand";
   const containerAlign = align === "center" ? "items-center" : "items-start pt-4";
 

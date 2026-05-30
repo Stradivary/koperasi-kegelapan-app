@@ -28,7 +28,7 @@ export function SuperadminLayout({
   activeSection,
   onSectionChange,
   children,
-}: SuperadminLayoutProps) {
+}: Readonly<SuperadminLayoutProps>) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -152,19 +152,20 @@ interface SidebarItemProps {
   danger?: boolean;
 }
 
-function SidebarItem({ icon: Icon, label, active, onClick, danger }: SidebarItemProps) {
+function SidebarItem({ icon: Icon, label, active, onClick, danger }: Readonly<SidebarItemProps>) {
+  let itemStyle: string;
+  if (active) {
+    itemStyle = "bg-brand text-white hover:bg-brand/90 hover:text-white";
+  } else if (danger) {
+    itemStyle = "text-white/60 hover:bg-red-600/20 hover:text-red-300";
+  } else {
+    itemStyle = "text-white/70 hover:bg-white/10 hover:text-white";
+  }
   return (
     <Button
       variant="ghost"
       onClick={onClick}
-      className={[
-        "w-full h-auto justify-start px-3 py-2.5 rounded-lg",
-        active
-          ? "bg-brand text-white hover:bg-brand/90 hover:text-white"
-          : danger
-            ? "text-white/60 hover:bg-red-600/20 hover:text-red-300"
-            : "text-white/70 hover:bg-white/10 hover:text-white",
-      ].join(" ")}
+      className={["w-full h-auto justify-start px-3 py-2.5 rounded-lg", itemStyle].join(" ")}
     >
       <Icon size={18} className="shrink-0" />
       <span className="type-body1 truncate">{label}</span>

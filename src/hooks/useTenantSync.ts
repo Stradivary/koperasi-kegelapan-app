@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { localTenantConfigStore, localAccountStore, type LocalTenantConfig } from "#/lib/indexeddb";
+import type { LocalTenantConfig } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { API_BASE_URL, setAccessToken } from "#/lib/api";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "conflict" | "error";
@@ -58,6 +59,7 @@ export function useTenantSync(): UseTenantSyncReturn {
       lastPasswordRef.current = adminPasswordHash;
 
       try {
+        const { localAccountStore, localTenantConfigStore } = await getIndexedDb();
         // Resolve the actual admin username from IndexedDB instead of hardcoding
         const accounts = await localAccountStore.getByTenant(config.tenantId);
         const admin = accounts.find((a) => a.role === "admin");

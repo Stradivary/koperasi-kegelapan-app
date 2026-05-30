@@ -145,7 +145,7 @@ export function TenantListPanel({
           <div>
             <h2 className="text-lg font-semibold text-foreground">Tenants</h2>
             <p className="text-sm text-muted-foreground">
-              {pagination.total} tenant{pagination.total !== 1 ? "s" : ""} total
+              {pagination.total} tenant{pagination.total === 1 ? "" : "s"} total
             </p>
           </div>
           <Button size="sm" onClick={onCreateTenant}>

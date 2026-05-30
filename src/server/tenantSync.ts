@@ -208,11 +208,13 @@ export function validateSyncRequest(body: unknown): ValidationError[] {
 
   const req = body as Record<string, unknown>;
 
-  errors.push(...validateSlug(req.slug));
-  errors.push(...validateName(req.name));
-  errors.push(...validateTimezone(req.timezone));
-  errors.push(...validateAdminUsername(req.adminUsername));
-  errors.push(...validateAdminPasswordHash(req.adminPasswordHash));
+  errors.push(
+    ...validateSlug(req.slug),
+    ...validateName(req.name),
+    ...validateTimezone(req.timezone),
+    ...validateAdminUsername(req.adminUsername),
+    ...validateAdminPasswordHash(req.adminPasswordHash),
+  );
 
   return errors;
 }
@@ -342,7 +344,7 @@ export async function processTenantSync(
       conflictTenant = await db
         .select({ tenantId: tenants.tenantId, slug: tenants.slug, name: tenants.name })
         .from(tenants)
-        .where(eq(tenants.tenantId, existingByAdmin!.tenantId))
+        .where(eq(tenants.tenantId, existingByAdmin.tenantId))
         .get();
     }
     return buildConflictResult(existingBySlug, existingByAdmin, conflictTenant);

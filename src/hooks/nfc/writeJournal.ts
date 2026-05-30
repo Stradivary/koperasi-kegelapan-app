@@ -1,5 +1,6 @@
 import type { CardPayload } from "#/core/payload/types";
-import { writeJournalStore, type WriteJournal } from "#/lib/indexeddb";
+import type { WriteJournal } from "#/lib/indexeddb";
+import { getWriteJournalStore } from "#/lib/indexeddb.lazy";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ export async function saveWriteJournal(params: {
   terminalId: number;
 }): Promise<void> {
   try {
+    const writeJournalStore = await getWriteJournalStore();
     const entry: WriteJournal = {
       tenantId: params.tenantId,
       cardIdHex: params.cardIdHex,
@@ -104,6 +106,7 @@ export async function saveWriteJournal(params: {
  */
 export async function clearWriteJournal(tenantId: string, cardIdHex: string): Promise<void> {
   try {
+    const writeJournalStore = await getWriteJournalStore();
     await writeJournalStore.delete(tenantId, cardIdHex);
   } catch {
     // Non-fatal — stale entry will be auto-cleared on expiry
@@ -127,6 +130,7 @@ export async function getPendingJournal(
 } | null> {
   let entry: WriteJournal | undefined;
   try {
+    const writeJournalStore = await getWriteJournalStore();
     entry = await writeJournalStore.get(tenantId, cardIdHex);
   } catch {
     // IndexedDB unavailable or store not yet created (version upgrade pending)
@@ -137,6 +141,7 @@ export async function getPendingJournal(
   // Auto-clear expired entries
   if (Date.now() - entry.createdAt > JOURNAL_EXPIRY_MS) {
     try {
+      const writeJournalStore = await getWriteJournalStore();
       await writeJournalStore.delete(tenantId, cardIdHex);
     } catch {
       // Best-effort cleanup
@@ -160,7 +165,8 @@ export async function getPendingJournal(
   } catch {
     // Corrupted journal entry — clear it
     try {
-      await writeJournalStore.delete(tenantId, cardIdHex);
+      const store = await getWriteJournalStore();
+      await store.delete(tenantId, cardIdHex);
     } catch {
       // Best-effort
     }
@@ -174,6 +180,7 @@ export async function getPendingJournal(
  */
 export async function markJournalRecovering(tenantId: string, cardIdHex: string): Promise<void> {
   try {
+    const writeJournalStore = await getWriteJournalStore();
     const entry = await writeJournalStore.get(tenantId, cardIdHex);
     if (!entry) return;
     await writeJournalStore.put({
@@ -192,6 +199,7 @@ export async function markJournalRecovering(tenantId: string, cardIdHex: string)
  */
 export async function markJournalPending(tenantId: string, cardIdHex: string): Promise<void> {
   try {
+    const writeJournalStore = await getWriteJournalStore();
     const entry = await writeJournalStore.get(tenantId, cardIdHex);
     if (!entry) return;
     await writeJournalStore.put({ ...entry, status: "pending" });

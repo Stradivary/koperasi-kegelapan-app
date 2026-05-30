@@ -2,7 +2,7 @@ import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Monitor, MonitorSmartphone, Search, DoorOpen, Check, LogOut } from "lucide-react";
 import { BRAND } from "#/lib/brand";
-import { tenantContextStore } from "#/lib/indexeddb";
+import { getTenantContextStore } from "#/lib/indexeddb.lazy";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Button } from "../ui/button";
 
@@ -17,8 +17,6 @@ interface KioskLayoutProps {
   /** The stored device role — used to restrict mode switching for dedicated devices */
   deviceRole?: string;
   trailing?: React.ReactNode;
-  /** @deprecated Use mode switching instead. Kept for backward compat. */
-  onLogoLongPress?: () => void;
 }
 
 const HOLD_MS = 500;
@@ -50,7 +48,7 @@ export function KioskLayout({
   canAccessStation = false,
   deviceRole,
   trailing,
-}: KioskLayoutProps) {
+}: Readonly<KioskLayoutProps>) {
   const navigate = useNavigate();
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
@@ -60,11 +58,14 @@ export function KioskLayout({
   // - admin/station: all 4 (terminal, scout, gate, admin)
   // - scout: only scout (no switching to gate/terminal)
   // - gate/terminal/kiosk (non-admin): terminal, scout, gate (3 options)
-  const modeOptions = canAccessStation
-    ? MODE_OPTIONS
-    : deviceRole === "scout"
-      ? MODE_OPTIONS.filter((option) => option.key === "scout")
-      : MODE_OPTIONS.filter((option) => option.key !== "admin");
+  let modeOptions: (typeof MODE_OPTIONS)[number][];
+  if (canAccessStation) {
+    modeOptions = [...MODE_OPTIONS];
+  } else if (deviceRole === "scout") {
+    modeOptions = MODE_OPTIONS.filter((option) => option.key === "scout");
+  } else {
+    modeOptions = MODE_OPTIONS.filter((option) => option.key !== "admin");
+  }
 
   function startHold() {
     setHolding(true);
@@ -81,6 +82,7 @@ export function KioskLayout({
 
   const handleSwitchMode = useCallback(
     async (mode: "terminal" | "kiosk" | "scout" | "gate" | "admin") => {
+      const tenantContextStore = await getTenantContextStore();
       const ctx = await tenantContextStore.get(tenantId);
       if (ctx) {
         await tenantContextStore.put({
@@ -98,6 +100,7 @@ export function KioskLayout({
   );
 
   const handleLogout = useCallback(async () => {
+    const tenantContextStore = await getTenantContextStore();
     await tenantContextStore.delete(tenantId);
     setShowModePicker(false);
     navigate({ to: "/" });

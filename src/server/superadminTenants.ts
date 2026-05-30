@@ -17,11 +17,7 @@ import type {
   TenantListItem,
   TenantListResponse,
   TenantDetail,
-  TenantAccountInfo,
-  CreateTenantRequest,
-  CreateTenantSuccess,
   CreateTenantConflict,
-  CreateTenantValidationError,
   CreateTenantResult,
   UpdateTenantStatusResult,
   StatusUpdateError,
@@ -34,15 +30,17 @@ export type {
   TenantListItem,
   TenantListResponse,
   TenantDetail,
-  TenantAccountInfo,
-  CreateTenantRequest,
-  CreateTenantSuccess,
   CreateTenantConflict,
-  CreateTenantValidationError,
   CreateTenantResult,
   UpdateTenantStatusResult,
   StatusUpdateError,
 };
+export type {
+  TenantAccountInfo,
+  CreateTenantRequest,
+  CreateTenantSuccess,
+  CreateTenantValidationError,
+} from "./superadminTenants.types";
 export { VALID_TRANSITIONS, isValidTransition };
 
 // ─── List Tenants ────────────────────────────────────────────────────────────
@@ -274,11 +272,13 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
   // Normalize slug to lowercase before validation
   const rawSlug = typeof req.slug === "string" ? req.slug.toLowerCase() : req.slug;
 
-  validationErrors.push(...validateSlug(rawSlug));
-  validationErrors.push(...validateName(req.name));
-  validationErrors.push(...validateTimezone(req.timezone));
-  validationErrors.push(...validateAdminUsername(req.adminUsername));
-  validationErrors.push(...validateAdminPassword(req.adminPassword));
+  validationErrors.push(
+    ...validateSlug(rawSlug),
+    ...validateName(req.name),
+    ...validateTimezone(req.timezone),
+    ...validateAdminUsername(req.adminUsername),
+    ...validateAdminPassword(req.adminPassword),
+  );
 
   if (validationErrors.length > 0) {
     return {
@@ -328,7 +328,7 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
       conflictTenant = await db
         .select({ slug: tenants.slug, name: tenants.name })
         .from(tenants)
-        .where(eq(tenants.tenantId, existingByUsername!.tenantId))
+        .where(eq(tenants.tenantId, existingByUsername.tenantId))
         .get();
     }
     return {
@@ -445,7 +445,7 @@ export async function updateTenantStatus(
     };
   }
 
-  const currentStatus = tenant.status as TenantStatus;
+  const currentStatus = tenant.status;
 
   // Step 2: Validate the status transition
   if (!isValidTransition(currentStatus, targetStatus)) {

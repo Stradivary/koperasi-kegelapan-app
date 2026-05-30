@@ -6,7 +6,7 @@
  * re-authentication when the block expires.
  */
 
-import { tenantContextStore } from "./indexeddb";
+import { getTenantContextStore } from "./indexeddb.lazy";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -146,6 +146,7 @@ function notifyListeners(): void {
 
 async function clearAuthState(tenantId?: string): Promise<void> {
   try {
+    const tenantContextStore = await getTenantContextStore();
     if (tenantId) {
       // Clear specific tenant context
       await tenantContextStore.delete(tenantId);
@@ -188,10 +189,7 @@ async function clearSessionGrantCache(tenantId?: string): Promise<void> {
       const transaction = db.transaction("sessionGrantCache", "readwrite");
       const store = transaction.objectStore("sessionGrantCache");
 
-      if (!tenantId) {
-        // Clear all
-        store.clear();
-      } else {
+      if (tenantId) {
         // Iterate and delete matching tenant entries
         const cursorReq = store.openCursor();
         cursorReq.onsuccess = (event) => {
@@ -204,6 +202,9 @@ async function clearSessionGrantCache(tenantId?: string): Promise<void> {
             cursor.continue();
           }
         };
+      } else {
+        // Clear all
+        store.clear();
       }
 
       transaction.oncomplete = () => {

@@ -67,11 +67,7 @@ export function CardInfoDisplay({
   // Valid payload card — show full card info
   if (classification === "valid_payload" && payload) {
     return (
-      <div
-        className="rounded-lg border p-4 space-y-3"
-        role="region"
-        aria-label={payload.identity.name}
-      >
+      <section className="rounded-lg border p-4 space-y-3" aria-label={payload.identity.name}>
         {/* Cardholder name and status */}
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium truncate">{payload.identity.name}</p>
@@ -103,28 +99,29 @@ export function CardInfoDisplay({
               : (labels?.notCheckedIn ?? "Belum Masuk")}
           </p>
         )}
-      </div>
+      </section>
     );
   }
 
   // Non-payload card — show serial and classification label
   const classificationKey = classification === "invalid_format" ? "invalidFormat" : classification;
-  const classificationLabel = classification
-    ? classificationKey && classificationKey in (labels ?? {})
+  let classificationLabel = "";
+  if (classification) {
+    const hasCustomLabel = classificationKey && classificationKey in (labels ?? {});
+    classificationLabel = hasCustomLabel
       ? (labels as Record<string, string>)[classificationKey]
-      : (DEFAULT_CLASSIFICATION_LABELS[classification] ?? classification)
-    : "";
+      : (DEFAULT_CLASSIFICATION_LABELS[classification] ?? classification);
+  }
 
   return (
-    <div
+    <section
       className="rounded-lg border p-4 space-y-2"
-      role="region"
       aria-label={classificationLabel || "Informasi kartu"}
     >
       <p className="text-sm font-medium">{classificationLabel}</p>
       {serialNumber && (
         <p className="text-xs text-muted-foreground font-mono truncate">{serialNumber}</p>
       )}
-    </div>
+    </section>
   );
 }

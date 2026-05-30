@@ -106,10 +106,8 @@ function toNfcError(error: Error): NfcError {
     recoverable = false;
   } else if (error.message.toLowerCase().includes("timeout")) {
     code = "TIMEOUT";
-    recoverable = true;
   } else if (error.message.toLowerCase().includes("write")) {
     code = "WRITE_FAILED";
-    recoverable = true;
   }
 
   return {
@@ -160,16 +158,16 @@ function encodeTextRecord(text: string): Uint8Array {
  */
 export class GenericNfcLayer {
   /** The underlying NFC adapter */
-  private adapter: NfcAdapter;
+  private readonly adapter: NfcAdapter;
 
   /** Callback for raw scan results */
-  private onRawScan?: (result: RawNfcResult) => void;
+  private readonly onRawScan?: (result: RawNfcResult) => void;
 
   /** Callback for errors */
-  private onError?: (error: NfcError) => void;
+  private readonly onError?: (error: NfcError) => void;
 
   /** Callback for write progress */
-  private onWriteProgress?: (phase: WritePhase) => void;
+  private readonly onWriteProgress?: (phase: WritePhase) => void;
 
   /** Current abort controller for cancelling operations */
   private abortController: AbortController | null = null;

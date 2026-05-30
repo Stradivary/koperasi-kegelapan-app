@@ -38,6 +38,7 @@ import {
 import { encodeTenantBind } from "#/core/payload/tenantBind";
 import { useNfcCard } from "#/hooks/nfc";
 import { getCardsWithUsers } from "#/lib/stationQueries";
+import { decodePayload } from "#/core/payload/engine";
 
 interface CardSectionProps {
   tenantId: string;
@@ -575,7 +576,6 @@ async function validateCardForRecovery(
   if (!cardBytes) return; // Blank or unreadable — allow recovery
 
   try {
-    const { decodePayload } = await import("#/core/payload/engine");
     const currentPayload = decodePayload(cardBytes);
     const cardCounter = Number(currentPayload.wallet.counter);
 
@@ -1274,14 +1274,19 @@ export function CardSection({
     setIssuancePayload(null);
   }, []);
 
+  const issueCardDrawerPhase =
+    issuancePhase === "idle"
+      ? "form"
+      : issuancePhase === "scanning"
+        ? "scanning"
+        : issuancePhase === "writing"
+          ? "writing"
+          : issuancePhase === "done"
+            ? "done"
+            : "error";
+
   return (
     <>
-      {/* {state.error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-          {state.error}
-        </div>
-      )} */}
-
       {!showFixCard && (
         <StationCardsPanel
           ref={cardsPanelRef}
@@ -1300,7 +1305,7 @@ export function CardSection({
           onTopupCard={handleTopupCard}
           onRecoverCard={(card) => startCardRecovery(card.cardId)}
           onIssueNew={handleIssueNew}
-          onUpdateCardStatus={(card, newStatus) =>
+          onUpdateCardStatus={(card: StationCardRow, newStatus: string) =>
             updateCardStatus.mutate({ card, status: newStatus })
           }
           onDeleteCard={(card) => deleteCard.mutate({ card })}
@@ -1356,17 +1361,7 @@ export function CardSection({
         onOpenChange={(open) => {
           if (!open) handleIssuanceDrawerClose();
         }}
-        phase={
-          issuancePhase === "idle"
-            ? "form"
-            : issuancePhase === "scanning"
-              ? "scanning"
-              : issuancePhase === "writing"
-                ? "writing"
-                : issuancePhase === "done"
-                  ? "done"
-                  : "error"
-        }
+        phase={issueCardDrawerPhase}
         payload={issuancePayload}
         error={issuanceError}
         members={members.data ?? []}

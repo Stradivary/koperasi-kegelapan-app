@@ -225,6 +225,72 @@ export function TerminalSection({
     }
   }, [shouldAutoReset, reset]);
 
+  function renderReadyContent(payload: NonNullable<typeof state.payload>) {
+    if (blockedCheck.isChecking && state.phase === "ready") {
+      return <p className="type-body2 text-muted-foreground animate-pulse">Memproses...</p>;
+    }
+    if (blockedCheck.isBlocked && state.phase === "ready") {
+      return (
+        <FeedbackCard
+          variant="blocked"
+          title="Checkout Ditolak"
+          subtitle={payload.identity.name}
+          details={
+            blockedCheck.blockedReason
+              ? [{ label: "Alasan", value: blockedCheck.blockedReason }]
+              : undefined
+          }
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    if (insufficientBalance && state.phase === "ready") {
+      return (
+        <FeedbackCard
+          variant="warning"
+          title="Saldo Tidak Cukup"
+          subtitle={payload.identity.name}
+          details={[
+            {
+              label: "Saldo saat ini",
+              value: `Rp ${insufficientBalance.currentBalance.toLocaleString("id-ID")}`,
+            },
+            {
+              label: "Biaya parkir",
+              value: `Rp ${insufficientBalance.fee.toLocaleString("id-ID")}`,
+            },
+            {
+              label: "Perlu top-up minimal",
+              value: `Rp ${insufficientBalance.deficit.toLocaleString("id-ID")}`,
+            },
+          ]}
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    if (cardState === CardState.IDLE && state.phase === "ready" && blockedCheck.isReady) {
+      return (
+        <FeedbackCard
+          variant="warning"
+          title="Belum Check-in"
+          subtitle={`${payload.identity.name} belum melakukan check-in.`}
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    if (cardState === CardState.CHECKED_OUT && state.phase === "ready" && blockedCheck.isReady) {
+      return (
+        <FeedbackCard
+          variant="warning"
+          title="Sudah Checkout"
+          subtitle={`${payload.identity.name} sudah dalam status keluar.`}
+          actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
+        />
+      );
+    }
+    return <p className="type-body2 text-muted-foreground animate-pulse">Memproses checkout...</p>;
+  }
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
       {grantLoading && (
@@ -258,60 +324,7 @@ export function TerminalSection({
       {(state.phase === "ready" || state.phase === "writing") && state.payload && (
         <div className="flex flex-col items-center gap-4 w-full max-w-xs">
           <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />
-          {blockedCheck.isChecking && state.phase === "ready" ? (
-            <p className="type-body2 text-muted-foreground animate-pulse">Memproses...</p>
-          ) : blockedCheck.isBlocked && state.phase === "ready" ? (
-            <FeedbackCard
-              variant="blocked"
-              title="Checkout Ditolak"
-              subtitle={state.payload.identity.name}
-              details={
-                blockedCheck.blockedReason
-                  ? [{ label: "Alasan", value: blockedCheck.blockedReason }]
-                  : undefined
-              }
-              actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-            />
-          ) : insufficientBalance && state.phase === "ready" ? (
-            <FeedbackCard
-              variant="warning"
-              title="Saldo Tidak Cukup"
-              subtitle={state.payload.identity.name}
-              details={[
-                {
-                  label: "Saldo saat ini",
-                  value: `Rp ${insufficientBalance.currentBalance.toLocaleString("id-ID")}`,
-                },
-                {
-                  label: "Biaya parkir",
-                  value: `Rp ${insufficientBalance.fee.toLocaleString("id-ID")}`,
-                },
-                {
-                  label: "Perlu top-up minimal",
-                  value: `Rp ${insufficientBalance.deficit.toLocaleString("id-ID")}`,
-                },
-              ]}
-              actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-            />
-          ) : cardState === CardState.IDLE && state.phase === "ready" && blockedCheck.isReady ? (
-            <FeedbackCard
-              variant="warning"
-              title="Belum Check-in"
-              subtitle={`${state.payload.identity.name} belum melakukan check-in.`}
-              actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-            />
-          ) : cardState === CardState.CHECKED_OUT &&
-            state.phase === "ready" &&
-            blockedCheck.isReady ? (
-            <FeedbackCard
-              variant="warning"
-              title="Sudah Checkout"
-              subtitle={`${state.payload.identity.name} sudah dalam status keluar.`}
-              actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
-            />
-          ) : (
-            <p className="type-body2 text-muted-foreground animate-pulse">Memproses checkout...</p>
-          )}
+          {renderReadyContent(state.payload)}
         </div>
       )}
 

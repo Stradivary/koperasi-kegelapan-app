@@ -69,7 +69,8 @@ export function validateTransition(
     };
   }
 
-  const nextState = VALID_TRANSITIONS[state as CardState]?.[trigger];
+  const cardState: CardState = state as CardState;
+  const nextState = VALID_TRANSITIONS[cardState]?.[trigger];
   if (nextState === undefined) {
     return {
       valid: false,

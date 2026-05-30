@@ -37,6 +37,37 @@ interface StationCardListPanelProps {
 
 const columnHelper = createColumnHelper<StationCardRow>();
 
+// ─── Module-level cell component for actions column ───────────────────────────
+
+interface CardActionsCellProps {
+  card: StationCardRow;
+  isRecovering: boolean;
+  isDeleting: boolean;
+  onTopupCard: (cardId: string) => void;
+  onRecoverCard: (card: StationCardRow) => void;
+  onSetDeleteTarget: (card: StationCardRow) => void;
+}
+
+function CardActionsCell({
+  card,
+  isRecovering,
+  isDeleting,
+  onTopupCard,
+  onRecoverCard,
+  onSetDeleteTarget,
+}: Readonly<CardActionsCellProps>) {
+  return (
+    <CardActionsDropdown
+      card={card}
+      isRecovering={isRecovering}
+      isDeleting={isDeleting}
+      onTopup={() => onTopupCard(card.cardId)}
+      onRecover={() => onRecoverCard(card)}
+      onDelete={() => onSetDeleteTarget(card)}
+    />
+  );
+}
+
 const SYNC_BADGE_VARIANT: Record<StationCardRow["syncStatus"], "default" | "secondary"> = {
   synced: "default",
   pending: "secondary",
@@ -108,19 +139,16 @@ export function StationCardListPanel({
       id: "actions",
       header: "",
       enableSorting: false,
-      cell: (info) => {
-        const card = info.row.original;
-        return (
-          <CardActionsDropdown
-            card={card}
-            isRecovering={isRecovering}
-            isDeleting={isDeleting}
-            onTopup={() => onTopupCard(card.cardId)}
-            onRecover={() => onRecoverCard(card)}
-            onDelete={() => setDeleteTarget(card)}
-          />
-        );
-      },
+      cell: (info) => (
+        <CardActionsCell
+          card={info.row.original}
+          isRecovering={isRecovering}
+          isDeleting={isDeleting}
+          onTopupCard={onTopupCard}
+          onRecoverCard={onRecoverCard}
+          onSetDeleteTarget={setDeleteTarget}
+        />
+      ),
     }),
   ];
 
@@ -253,14 +281,14 @@ function CardActionsDropdown({
   onTopup,
   onRecover,
   onDelete,
-}: {
+}: Readonly<{
   card: StationCardRow;
   isRecovering: boolean;
   isDeleting: boolean;
   onTopup: () => void;
   onRecover: () => void;
   onDelete: () => void;
-}) {
+}>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

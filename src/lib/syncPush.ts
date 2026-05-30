@@ -236,6 +236,54 @@ async function processBatchResponse(
 // ── Main Push Logic ────────────────────────────────────────────────────
 
 /**
+ * Handle a non-2xx, non-429 4xx response from the push endpoint.
+ * Throws NonRetryableServerError.
+ */
+async function handlePushClientError(response: Response): Promise<never> {
+  const body = await response.json().catch(() => ({
+    accepted: 0,
+    rejected: [],
+    serverCursor: String(Math.floor(Date.now() / 1000)),
+  }));
+  throw new NonRetryableServerError(
+    `Server rejected batch with status ${response.status}`,
+    response.status,
+    body as SyncPushResponse,
+  );
+}
+
+/**
+ * Handle a 429 rate-limited response: wait for Retry-After and signal retry.
+ */
+async function handlePushRateLimit(response: Response): Promise<void> {
+  const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
+  const pauseMs = Math.min(retryAfter * 1000, 120_000);
+  await sleep(pauseMs);
+}
+
+/**
+ * Process a single HTTP response from the push endpoint.
+ * Returns the parsed response on 2xx, throws on 4xx, returns null on 5xx (retryable).
+ */
+async function processPushHttpResponse(response: Response): Promise<SyncPushResponse | null> {
+  if (response.ok) {
+    return (await response.json()) as SyncPushResponse;
+  }
+
+  if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+    await handlePushClientError(response);
+  }
+
+  if (response.status === 429) {
+    await handlePushRateLimit(response);
+    return null; // signal: retry
+  }
+
+  // 5xx: retryable
+  return null;
+}
+
+/**
  * Send a single batch to the server with retry logic.
  * Returns the server response or throws after max retries.
  * Throws NonRetryableServerError for 4xx responses (except 429).
@@ -263,34 +311,13 @@ async function pushBatchWithRetry(
         tenantId,
       );
 
-      // 2xx: success
-      if (response.ok) {
-        return (await response.json()) as SyncPushResponse;
-      }
+      const result = await processPushHttpResponse(response);
+      if (result !== null) return result;
 
-      // 4xx (except 429): not retryable — throw NonRetryableServerError
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        const body = await response.json().catch(() => ({
-          accepted: 0,
-          rejected: [],
-          serverCursor: String(Math.floor(Date.now() / 1000)),
-        }));
-        throw new NonRetryableServerError(
-          `Server rejected batch with status ${response.status}`,
-          response.status,
-          body as SyncPushResponse,
-        );
-      }
-
-      // 429: rate limited — respect Retry-After header
+      // null means retryable (429 already slept — just continue; 5xx sets lastError)
       if (response.status === 429) {
-        const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
-        const pauseMs = Math.min(retryAfter * 1000, 120_000);
-        await sleep(pauseMs);
         continue;
       }
-
-      // 5xx: retryable server error
       lastError = new Error(`Server error: ${response.status}`);
     } catch (error: unknown) {
       // Re-throw non-retryable errors immediately
@@ -309,6 +336,53 @@ async function pushBatchWithRetry(
   }
 
   throw new SyncPushError(`Sync push failed after ${MAX_RETRY_ATTEMPTS} attempts`, lastError);
+}
+
+/**
+ * Mark all corrupt entries as "failed" and return the count.
+ */
+async function markCorruptEntriesFailed(corrupt: TransactionLog[]): Promise<number> {
+  let count = 0;
+  for (const entry of corrupt) {
+    if (entry.id) {
+      await updateSyncStatus(entry.id, "failed");
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Process a single batch: send to server, handle response, return aggregate counts.
+ * Returns null if the batch was marked failed (NonRetryableServerError).
+ */
+async function processSingleBatch(
+  batch: TransactionLog[],
+  tenantId: string,
+): Promise<{
+  accepted: number;
+  rejected: number;
+  pullNeeded: boolean;
+  conflictCount: number;
+  failedCount: number;
+} | null> {
+  const payload: PushBatchPayload = {
+    tenantId,
+    transactions: batch.map(toPushTransaction),
+  };
+
+  let response: SyncPushResponse;
+  try {
+    response = await pushBatchWithRetry(payload, tenantId);
+  } catch (error: unknown) {
+    if (error instanceof NonRetryableServerError) {
+      const failedCount = await markCorruptEntriesFailed(batch);
+      return { accepted: 0, rejected: 0, pullNeeded: false, conflictCount: 0, failedCount };
+    }
+    throw error;
+  }
+
+  return processBatchResponse(batch, response);
 }
 
 /**
@@ -359,15 +433,7 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
   // Step 2: Validate entries — isolate corrupt ones before push
   const { valid: validEntries, corrupt: corruptEntries } = partitionEntries(pendingEntries);
 
-  let failedCount = 0;
-
-  // Mark corrupt entries as "failed" so they don't block future syncs
-  for (const entry of corruptEntries) {
-    if (entry.id) {
-      await updateSyncStatus(entry.id, "failed");
-      failedCount++;
-    }
-  }
+  let failedCount = await markCorruptEntriesFailed(corruptEntries);
 
   // If no valid entries remain after filtering, return early
   if (validEntries.length === 0) {
@@ -395,31 +461,9 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
       throw new DeviceBlockedError("Device is blocked — sync push aborted");
     }
 
-    const payload: PushBatchPayload = {
-      tenantId,
-      transactions: batch.map(toPushTransaction),
-    };
+    const batchResult = await processSingleBatch(batch, tenantId);
+    if (batchResult === null) continue;
 
-    let response: SyncPushResponse;
-    try {
-      response = await pushBatchWithRetry(payload, tenantId);
-    } catch (error: unknown) {
-      // Handle non-retryable server rejection: mark all entries in batch as "failed"
-      if (error instanceof NonRetryableServerError) {
-        for (const entry of batch) {
-          if (entry.id) {
-            await updateSyncStatus(entry.id, "failed");
-            failedCount++;
-          }
-        }
-        // Continue with next batch instead of aborting entire sync
-        continue;
-      }
-      // Re-throw other errors (DeviceBlockedError, SyncPushError after max retries)
-      throw error;
-    }
-
-    const batchResult = await processBatchResponse(batch, response);
     totalAccepted += batchResult.accepted;
     totalRejected += batchResult.rejected;
     if (batchResult.pullNeeded) pullNeeded = true;

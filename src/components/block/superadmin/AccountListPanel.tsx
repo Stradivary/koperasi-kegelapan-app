@@ -217,7 +217,7 @@ export function AccountListPanel({
           <div>
             <h2 className="text-lg font-semibold text-foreground">Accounts</h2>
             <p className="text-sm text-muted-foreground">
-              {pagination.total} account{pagination.total !== 1 ? "s" : ""} total
+              {pagination.total} account{pagination.total === 1 ? "" : "s"} total
             </p>
           </div>
           <Button size="sm" onClick={onCreateAccount}>

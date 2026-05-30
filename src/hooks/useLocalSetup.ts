@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { tenantContextStore } from "#/lib/indexeddb";
+import { getTenantContextStore, getLocalAccountStore } from "#/lib/indexeddb.lazy";
 import { isSlugTaken, setupLocalTenant } from "#/lib/localTenant";
 import { createSlug, validateSlugFormat } from "#/lib/slugValidation";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
@@ -134,6 +134,7 @@ export function useLocalSetup(options: UseLocalSetupOptions): UseLocalSetupRetur
         adminPassword,
       });
 
+      const tenantContextStore = await getTenantContextStore();
       await tenantContextStore.put({
         tenantId: cfg.tenantId,
         tenantSlug: cfg.slug,
@@ -148,7 +149,7 @@ export function useLocalSetup(options: UseLocalSetupOptions): UseLocalSetupRetur
 
       // Auto-sync to server if online (fire-and-forget, don't block setup)
       if (navigator.onLine) {
-        const { localAccountStore } = await import("#/lib/indexeddb");
+        const localAccountStore = await getLocalAccountStore();
         const accounts = await localAccountStore.getByTenant(cfg.tenantId);
         const admin = accounts.find((a) => a.role === "admin");
         if (admin) {

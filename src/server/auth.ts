@@ -1,6 +1,4 @@
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
-import { randomUUID } from "node:crypto";
-import { createHmac } from "node:crypto";
+import { pbkdf2Sync, randomBytes, timingSafeEqual, randomUUID, createHmac } from "node:crypto";
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");

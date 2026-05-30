@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { tenantContextStore, type TenantContext } from "#/lib/indexeddb";
+import type { TenantContext } from "#/lib/indexeddb";
+import { getTenantContextStore } from "#/lib/indexeddb.lazy";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
 import { restoreAuthState } from "#/lib/api";
 import { LoadingState } from "#/components/block/LoadingState";
@@ -28,6 +29,7 @@ export function useTenantContext(tenantId: string, allowedRoles?: readonly strin
     let active = true;
 
     async function loadTenantContext() {
+      const tenantContextStore = await getTenantContextStore();
       const context = await tenantContextStore.get(tenantId);
 
       if (!active) return;

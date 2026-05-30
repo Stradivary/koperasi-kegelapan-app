@@ -82,6 +82,24 @@ interface AccountListResponse {
   pageSize: number;
 }
 
+class TenantApiError extends Error {
+  errors: CreateTenantError["errors"];
+  constructor(errors: CreateTenantError["errors"]) {
+    super("Tenant API error");
+    this.name = "TenantApiError";
+    this.errors = errors;
+  }
+}
+
+class AccountApiError extends Error {
+  errors: CreateAccountError["errors"];
+  constructor(errors: CreateAccountError["errors"]) {
+    super("Account API error");
+    this.name = "AccountApiError";
+    this.errors = errors;
+  }
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function SuperadminSection() {
@@ -212,7 +230,7 @@ export function SuperadminSection() {
   // ── Create Tenant Mutation ──
   const createTenantMutation = useMutation<
     { tenantId: string; slug: string; name: string; adminAccountId: string },
-    CreateTenantError,
+    TenantApiError,
     CreateTenantRequest
   >({
     mutationFn: async (data) => {
@@ -229,7 +247,7 @@ export function SuperadminSection() {
       if (!handled.ok) {
         // Transform server errors into CreateTenantError format
         if (body.error === "validation" && body.errors) {
-          throw { errors: body.errors } as CreateTenantError;
+          throw new TenantApiError(body.errors);
         }
         if (body.error === "conflict") {
           const fieldErrors: { field: string; message: string }[] = [];
@@ -245,11 +263,11 @@ export function SuperadminSection() {
               message: `Username already exists (in tenant "${body.existingTenantName}")`,
             });
           }
-          throw { errors: fieldErrors } as CreateTenantError;
+          throw new TenantApiError(fieldErrors);
         }
-        throw {
-          errors: [{ field: "general", message: body.error || "Failed to create tenant" }],
-        } as CreateTenantError;
+        throw new TenantApiError([
+          { field: "general", message: body.error || "Failed to create tenant" },
+        ]);
       }
 
       return body;
@@ -396,7 +414,7 @@ export function SuperadminSection() {
   // ── Create Account Mutation ──
   const createAccountMutation = useMutation<
     { accountId: string; username: string },
-    CreateAccountError,
+    AccountApiError,
     CreateAccountFormData
   >({
     mutationFn: async (data) => {
@@ -411,16 +429,14 @@ export function SuperadminSection() {
 
       if (!handled.ok) {
         if (body.error === "validation" && body.errors) {
-          throw { errors: body.errors } as CreateAccountError;
+          throw new AccountApiError(body.errors);
         }
         if (body.error === "Username already exists") {
-          throw {
-            errors: [{ field: "username", message: "Username already exists" }],
-          } as CreateAccountError;
+          throw new AccountApiError([{ field: "username", message: "Username already exists" }]);
         }
-        throw {
-          errors: [{ field: "general", message: body.error || "Failed to create account" }],
-        } as CreateAccountError;
+        throw new AccountApiError([
+          { field: "general", message: body.error || "Failed to create account" },
+        ]);
       }
 
       return body;
@@ -567,8 +583,12 @@ export function SuperadminSection() {
     : null;
 
   // ── Create error for dialog ──
-  const createError: CreateTenantError | null = createTenantMutation.error ?? null;
-  const createAccountError: CreateAccountError | null = createAccountMutation.error ?? null;
+  const createError: CreateTenantError | null = createTenantMutation.error
+    ? { errors: createTenantMutation.error.errors }
+    : null;
+  const createAccountError: CreateAccountError | null = createAccountMutation.error
+    ? { errors: createAccountMutation.error.errors }
+    : null;
 
   const accountPagination: PaginationState = {
     page: accountListQuery.data?.page ?? accountPage,

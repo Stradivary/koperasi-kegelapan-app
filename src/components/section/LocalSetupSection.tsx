@@ -12,7 +12,7 @@ interface LocalSetupSectionProps {
   onBack: () => void;
 }
 
-export function LocalSetupSection({ onComplete, onBack }: LocalSetupSectionProps) {
+export function LocalSetupSection({ onComplete, onBack }: Readonly<LocalSetupSectionProps>) {
   const setup = useLocalSetup({ onComplete });
 
   return (

@@ -1,5 +1,5 @@
 import { checkDeviceBlockResponse, isDeviceBlocked } from "./deviceBlock";
-import { authTokenCacheStore } from "./indexeddb";
+import { getAuthTokenCacheStore } from "./indexeddb.lazy";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "https://koperasi-kegelapan-api.ahmad-muzaki-st.workers.dev";
@@ -93,18 +93,22 @@ export function setAccessToken(token: string | null, expiresAt?: number): void {
   // Also persist to IndexedDB (async, best-effort, survives storage clearing)
   if (token && _cachedDeviceId) {
     const expiry = expiresAt ?? Date.now() + 24 * 60 * 60 * 1000; // default 24h
-    authTokenCacheStore
-      .put({
-        deviceId: _cachedDeviceId,
-        accessToken: token,
-        expiresAt: expiry,
-        storedAt: Date.now(),
-      })
+    getAuthTokenCacheStore()
+      .then((store) =>
+        store.put({
+          deviceId: _cachedDeviceId!,
+          accessToken: token,
+          expiresAt: expiry,
+          storedAt: Date.now(),
+        }),
+      )
       .catch(() => {
         // Silently fail — persistence is best-effort
       });
   } else if (!token && _cachedDeviceId) {
-    authTokenCacheStore.delete(_cachedDeviceId).catch(() => {});
+    getAuthTokenCacheStore()
+      .then((store) => store.delete(_cachedDeviceId!))
+      .catch(() => {});
   }
 }
 
@@ -137,6 +141,7 @@ export async function restoreAuthState(deviceId: string): Promise<boolean> {
 
   // Fallback: try IndexedDB
   try {
+    const authTokenCacheStore = await getAuthTokenCacheStore();
     const entry = await authTokenCacheStore.get(deviceId);
     if (entry) {
       _cachedAccessToken = entry.accessToken;

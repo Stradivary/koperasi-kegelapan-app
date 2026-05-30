@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { tenantContextStore, localTenantConfigStore } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { localLoginWithReason, cacheServerCredentials } from "#/lib/localTenant";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
 import { localDb } from "#/db/local-db";
@@ -69,6 +69,7 @@ async function tryLocalLogin(
   }
   if (!localOutcome.success) return null;
 
+  const { tenantContextStore } = await getIndexedDb();
   await tenantContextStore.put({
     tenantId: localOutcome.tenantId,
     tenantSlug: localOutcome.tenantSlug,
@@ -203,6 +204,7 @@ async function persistServerLoginData(
   data: Record<string, unknown>,
   deviceId: string,
 ): Promise<void> {
+  const { tenantContextStore, localTenantConfigStore } = await getIndexedDb();
   await tenantContextStore.put({
     tenantId: data.tenantId as string,
     tenantSlug: data.tenantSlug as string,
@@ -300,6 +302,72 @@ async function tryDeviceSetupServerAuth(
   }
 }
 
+/**
+ * Handles a successful local login: silently refreshes token if online,
+ * issues a local session grant, and calls the success callback.
+ */
+async function handleLocalLoginSuccess(
+  localResult: LocalLoginResult,
+  username: string,
+  password: string,
+  effectiveSlug: string | undefined,
+  fingerprintId: string,
+  onLoginSuccess: (tenantId: string, role: string) => void,
+): Promise<void> {
+  if (!getAccessToken() && navigator.onLine) {
+    await silentlyRefreshToken(username, password, effectiveSlug, fingerprintId);
+  }
+  issueAndCacheLocalSessionGrant(
+    localResult.tenantId,
+    localResult.accountId,
+    fingerprintId,
+    localResult.role,
+  ).catch(() => {
+    // Non-critical — useSessionGrant will handle fallback
+  });
+  onLoginSuccess(localResult.tenantId, localResult.role);
+}
+
+/**
+ * Handles the server login fallback: fetches, validates, persists, and caches.
+ * Returns an error message string on failure, or null on success.
+ */
+async function handleServerLoginFallback(
+  username: string,
+  password: string,
+  effectiveSlug: string | undefined,
+  fingerprintId: string,
+  onLoginSuccess: (tenantId: string, role: string) => void,
+): Promise<string | null> {
+  let data: Record<string, unknown>;
+  try {
+    data = await tryServerLogin(username, password, effectiveSlug, fingerprintId);
+  } catch (err) {
+    return serverLoginErrorMessage(err);
+  }
+
+  if (effectiveSlug && data.tenantSlug !== effectiveSlug) {
+    return "Akun ini bukan milik koperasi yang dipilih";
+  }
+
+  await persistServerLoginData(data, fingerprintId);
+
+  cacheServerCredentials({
+    tenantId: data.tenantId as string,
+    tenantSlug: data.tenantSlug as string,
+    tenantName: data.tenantName as string,
+    accountId: data.accountId as string,
+    role: data.role as string,
+    username,
+    password,
+  }).catch(() => {
+    // Non-critical — offline replay won't work but login still succeeds
+  });
+
+  onLoginSuccess(data.tenantId as string, data.role as string);
+  return null;
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
@@ -341,21 +409,14 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
       }
 
       if (localResult) {
-        // If online and no token yet, silently refresh from server
-        if (!getAccessToken() && navigator.onLine) {
-          await silentlyRefreshToken(username, password, effectiveSlug, fingerprintId);
-        }
-
-        issueAndCacheLocalSessionGrant(
-          localResult.tenantId,
-          localResult.accountId,
+        await handleLocalLoginSuccess(
+          localResult,
+          username,
+          password,
+          effectiveSlug,
           fingerprintId,
-          localResult.role,
-        ).catch(() => {
-          // Non-critical — useSessionGrant will handle fallback
-        });
-
-        onLoginSuccess(localResult.tenantId, localResult.role);
+          onLoginSuccess,
+        );
         return;
       }
 
@@ -366,35 +427,16 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
       }
 
       // 3. Try server login as fallback (online only)
-      let data: Record<string, unknown>;
-      try {
-        data = await tryServerLogin(username, password, effectiveSlug, fingerprintId);
-      } catch (err) {
-        setError(serverLoginErrorMessage(err));
-        return;
-      }
-
-      // Validate that the server response matches the selected tenant
-      if (effectiveSlug && data.tenantSlug !== effectiveSlug) {
-        setError("Akun ini bukan milik koperasi yang dipilih");
-        return;
-      }
-
-      await persistServerLoginData(data, fingerprintId);
-
-      cacheServerCredentials({
-        tenantId: data.tenantId as string,
-        tenantSlug: data.tenantSlug as string,
-        tenantName: data.tenantName as string,
-        accountId: data.accountId as string,
-        role: data.role as string,
+      const serverError = await handleServerLoginFallback(
         username,
         password,
-      }).catch(() => {
-        // Non-critical — offline replay won't work but login still succeeds
-      });
-
-      onLoginSuccess(data.tenantId as string, data.role as string);
+        effectiveSlug,
+        fingerprintId,
+        onLoginSuccess,
+      );
+      if (serverError) {
+        setError(serverError);
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError("Tidak dapat terhubung ke server. Periksa koneksi Anda.");

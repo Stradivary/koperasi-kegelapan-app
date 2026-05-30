@@ -2,6 +2,35 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { createElement } from "react";
+
+// Mock Radix Dialog to avoid jsdom timeout issues
+vi.mock("#/components/ui/dialog.tsx", () => {
+  const { createElement: h } = require("react");
+  return {
+    Dialog: ({ children, open }: any) =>
+      open ? h("div", { "data-testid": "dialog" }, children) : null,
+    DialogContent: ({ children, className }: any) => h("div", { className }, children),
+    DialogHeader: ({ children }: any) => h("div", undefined, children),
+    DialogTitle: ({ children }: any) => h("h2", undefined, children),
+    DialogDescription: ({ children }: any) => h("p", undefined, children),
+    DialogFooter: ({ children, className }: any) => h("div", { className }, children),
+  };
+});
+
+// Mock Radix Select to avoid jsdom issues
+vi.mock("#/components/ui/select.tsx", () => {
+  const { createElement: h } = require("react");
+  return {
+    Select: ({ children, value, onValueChange: _ovc }: any) =>
+      h("div", { "data-testid": "select-root", "data-value": value }, children),
+    SelectTrigger: ({ children, id, onBlur, ...props }: any) =>
+      h("button", { id, onBlur, ...props }, children),
+    SelectValue: ({ placeholder }: any) => h("span", undefined, placeholder),
+    SelectContent: ({ children }: any) => h("div", undefined, children),
+    SelectItem: ({ children, value }: any) => h("option", { value }, children),
+  };
+});
+
 import {
   validateSlug,
   validateName,

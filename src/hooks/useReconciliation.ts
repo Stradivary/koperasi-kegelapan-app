@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { reconciliationOutbox } from "#/lib/indexeddb";
+import { getReconciliationOutbox } from "#/lib/indexeddb.lazy";
 import { API_BASE_URL } from "#/lib/api";
 
 export type ReconciliationStatus = "idle" | "syncing" | "success" | "error";
@@ -11,12 +11,14 @@ export function useReconciliation(tenantId: string, terminalId: number) {
   const [pendingCount, setPendingCount] = useState(0);
 
   const checkPending = useCallback(async () => {
+    const reconciliationOutbox = await getReconciliationOutbox();
     const pending = await reconciliationOutbox.getPending(tenantId);
     setPendingCount(pending.length);
     return pending.length;
   }, [tenantId]);
 
   const sync = useCallback(async () => {
+    const reconciliationOutbox = await getReconciliationOutbox();
     const pending = await reconciliationOutbox.getPending(tenantId);
     if (pending.length === 0) {
       setStatus("success");

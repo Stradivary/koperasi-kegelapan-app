@@ -1,5 +1,5 @@
 import type { CardPayload } from "#/core/payload/types";
-import { reconciliationOutbox, makeIdempotencyKey } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { recordTransaction } from "#/lib/transactionLogService";
 import { updateLocalCardRecord, updateLocalUserFromCard } from "./updateLocalCardRecord";
 
@@ -42,6 +42,8 @@ export async function recordCardWrite({
     updatedPayload.wallet.lastTimestamp > 0
       ? updatedPayload.wallet.lastTimestamp
       : Math.floor(Date.now() / 1000);
+
+  const { reconciliationOutbox, makeIdempotencyKey } = await getIndexedDb();
 
   await reconciliationOutbox.add({
     tenantId,

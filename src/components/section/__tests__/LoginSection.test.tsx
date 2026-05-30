@@ -1,16 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Tests for src/components/section/LoginSection.tsx
- *
- * Covers:
- * - Renders LoadingState when mode is "detecting"
- * - Renders LocalSetupSection when mode is "setup"
- * - Renders ServerBrowsePanel when mode is "server-browse"
- * - Renders ScoutBrowsePanel when mode is "scout-browse"
- * - Renders DeviceSetupAuthPanel when mode is "device-setup" and setupStep is "auth"
- * - Renders DeviceRoleSelectionPanel when mode is "device-setup" and setupStep is "pick-role"
- * - Renders LoginFormPanel when mode is "login"
- * - Passes correct callbacks to panels
+ * Tests for LoginSection.tsx
+ * Targets: lines 64, 83-89, 109-115, 173-174, 184
+ * Covers: detecting/setup/server-browse/scout-browse/device-setup/login modes
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
@@ -18,317 +10,340 @@ import userEvent from "@testing-library/user-event";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-const mockUseLoginFlow = vi.fn();
-const mockUseLoginAuth = vi.fn();
-const mockUseServerTenantSearch = vi.fn();
-const mockUseOnlineStatus = vi.fn();
 const mockNavigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mockNavigate }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mockNavigate,
-}));
+const mockFlow = {
+  mode: "login" as string,
+  setupStep: "auth" as string,
+  username: "",
+  password: "",
+  localTenants: [],
+  deviceSetupLaunchContext: null as null | { returnLabel?: string; returnTo: string },
+  pendingContext: null,
+  setUsername: vi.fn(),
+  setPassword: vi.fn(),
+  redirectToRole: vi.fn(),
+  enterDeviceSetup: vi.fn(),
+  exitDeviceSetup: vi.fn(),
+  enterServerBrowse: vi.fn(),
+  enterSetup: vi.fn(),
+  enterLogin: vi.fn(),
+  enterScoutBrowse: vi.fn(),
+  handleScoutSelectTenant: vi.fn(),
+  handlePickDeviceRole: vi.fn(),
+  advanceToPickRole: vi.fn(),
+};
 
-vi.mock("#/hooks/useLoginFlow", () => ({
-  useLoginFlow: () => mockUseLoginFlow(),
-}));
+vi.mock("#/hooks/useLoginFlow", () => ({ useLoginFlow: () => mockFlow }));
 
-vi.mock("#/hooks/useLoginAuth", () => ({
-  useLoginAuth: (...args: unknown[]) => mockUseLoginAuth(...args),
-}));
+const mockAuth = {
+  loading: false,
+  error: null as string | null,
+  handleUnifiedLogin: vi.fn(),
+  handleDeviceSetupAuth: vi.fn(),
+};
+vi.mock("#/hooks/useLoginAuth", () => ({ useLoginAuth: () => mockAuth }));
 
 vi.mock("#/hooks/useServerTenantSearch", () => ({
-  useServerTenantSearch: () => mockUseServerTenantSearch(),
+  useServerTenantSearch: () => ({
+    query: "",
+    setQuery: vi.fn(),
+    results: [],
+    loading: false,
+    error: null,
+  }),
 }));
 
-vi.mock("#/hooks/useOnlineStatus", () => ({
-  useOnlineStatus: () => mockUseOnlineStatus(),
+vi.mock("#/hooks/useOnlineStatus", () => ({ useOnlineStatus: () => ({ isOnline: true }) }));
+vi.mock("#/lib/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" } }));
+
+vi.mock("#/components/block/LoadingState", () => ({
+  LoadingState: ({ variant }: { variant?: string }) => <div data-testid={`loading-${variant}`} />,
 }));
 
-// ── Stub child panels ─────────────────────────────────────────────────────────
-
-vi.mock("../../block/LoadingState", () => ({
-  LoadingState: ({ variant }: { variant?: string }) => (
-    <div data-testid="loading-state" data-variant={variant} />
-  ),
-}));
-
-vi.mock("../LocalSetupSection", () => ({
-  LocalSetupSection: ({
-    onBack,
-  }: {
-    onComplete: (tenantId: string, role: string) => void;
-    onBack: () => void;
-  }) => (
-    <div data-testid="local-setup-section">
-      <button onClick={onBack}>Back from Setup</button>
-    </div>
-  ),
-}));
-
-vi.mock("../../block/loginSection/ServerBrowsePanel", () => ({
-  ServerBrowsePanel: ({ onBack }: { onBack: () => void }) => (
-    <div data-testid="server-browse-panel">
-      <button onClick={onBack}>Back from Server Browse</button>
-    </div>
-  ),
-}));
-
-vi.mock("../../block/loginSection/ScoutBrowsePanel", () => ({
-  ScoutBrowsePanel: ({ onBack }: { onBack: () => void }) => (
-    <div data-testid="scout-browse-panel">
-      <button onClick={onBack}>Back from Scout Browse</button>
-    </div>
-  ),
-}));
-
-vi.mock("../../block/loginSection/DeviceSetupAuthPanel", () => ({
-  DeviceSetupAuthPanel: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="device-setup-auth-panel">
-      <button onClick={onCancel}>Cancel Device Setup</button>
-    </div>
-  ),
-}));
-
-vi.mock("../../block/loginSection/DeviceRoleSelectionPanel", () => ({
-  DeviceRoleSelectionPanel: ({ onBack }: { onBack: () => void }) => (
-    <div data-testid="device-role-selection-panel">
-      <button onClick={onBack}>Back from Role Selection</button>
-    </div>
-  ),
-}));
-
-vi.mock("../../block/loginSection/LoginFormPanel", () => ({
-  LoginFormPanel: ({
-    onStartSetup,
-    onOpenServerBrowse,
-    onStartDeviceSetup,
-    onOpenScoutBrowse,
-  }: {
+vi.mock("#/components/block/loginSection/LoginFormPanel", () => ({
+  LoginFormPanel: (props: {
     onStartSetup: () => void;
-    onOpenServerBrowse: () => void;
     onStartDeviceSetup: () => void;
+    onOpenServerBrowse: () => void;
     onOpenScoutBrowse: () => void;
+    onViewRegisteredTenants: () => void;
   }) => (
     <div data-testid="login-form-panel">
-      <button onClick={onStartSetup}>Start Setup</button>
-      <button onClick={onOpenServerBrowse}>Open Server Browse</button>
-      <button onClick={onStartDeviceSetup}>Start Device Setup</button>
-      <button onClick={onOpenScoutBrowse}>Open Scout Browse</button>
+      <button onClick={props.onStartSetup}>start-setup</button>
+      <button onClick={props.onStartDeviceSetup}>start-device-setup</button>
+      <button onClick={props.onOpenServerBrowse}>open-server-browse</button>
+      <button onClick={props.onOpenScoutBrowse}>open-scout-browse</button>
+      <button onClick={props.onViewRegisteredTenants}>view-tenants</button>
+    </div>
+  ),
+}));
+
+vi.mock("#/components/block/loginSection/ServerBrowsePanel", () => ({
+  ServerBrowsePanel: (props: {
+    onBack: () => void;
+    onSelect: (t: { tenantId: string; name: string; slug: string }) => void;
+  }) => (
+    <div data-testid="server-browse-panel">
+      <button onClick={props.onBack}>back</button>
+      <button
+        onClick={() => props.onSelect({ tenantId: "t1", name: "Koperasi A", slug: "koperasi-a" })}
+      >
+        select-tenant
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("#/components/block/loginSection/ScoutBrowsePanel", () => ({
+  ScoutBrowsePanel: (props: {
+    onBack: () => void;
+    onSelectServer: (t: { tenantId: string; name: string; slug: string }) => void;
+    onSelectLocal: (t: { tenantId: string; name: string; slug: string }) => void;
+    onEnterSlug: (s: string) => void;
+  }) => (
+    <div data-testid="scout-browse-panel">
+      <button onClick={props.onBack}>back</button>
+      <button onClick={() => props.onSelectServer({ tenantId: "t1", name: "A", slug: "a" })}>
+        select-server
+      </button>
+      <button onClick={() => props.onSelectLocal({ tenantId: "t2", name: "B", slug: "b" })}>
+        select-local
+      </button>
+      <button onClick={() => props.onEnterSlug("my-slug")}>enter-slug</button>
+    </div>
+  ),
+}));
+
+vi.mock("#/components/block/loginSection/DeviceSetupAuthPanel", () => ({
+  DeviceSetupAuthPanel: (props: { onCancel: () => void }) => (
+    <div data-testid="device-setup-auth-panel">
+      <button onClick={props.onCancel}>cancel</button>
+    </div>
+  ),
+}));
+
+vi.mock("#/components/block/loginSection/DeviceRoleSelectionPanel", () => ({
+  DeviceRoleSelectionPanel: (props: { onBack: () => void; onSelectRole: (r: string) => void }) => (
+    <div data-testid="device-role-panel">
+      <button onClick={props.onBack}>back</button>
+      <button onClick={() => props.onSelectRole("gate")}>select-gate</button>
+    </div>
+  ),
+}));
+
+vi.mock("#/components/section/LocalSetupSection", () => ({
+  LocalSetupSection: (props: {
+    onBack: () => void;
+    onComplete: (id: string, role: string) => void;
+  }) => (
+    <div data-testid="local-setup-section">
+      <button onClick={props.onBack}>back</button>
+      <button onClick={() => props.onComplete("t1", "admin")}>complete</button>
     </div>
   ),
 }));
 
 import { LoginSection } from "../LoginSection";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockFlow.mode = "login";
+  mockFlow.setupStep = "auth";
+  mockFlow.deviceSetupLaunchContext = null;
+});
 
-function makeDefaultFlow(overrides: Record<string, unknown> = {}) {
-  return {
-    mode: "login",
-    setupStep: "auth",
-    pendingContext: null,
-    deviceSetupLaunchContext: null,
-    localTenants: [],
-    username: "",
-    password: "",
-    setUsername: vi.fn(),
-    setPassword: vi.fn(),
-    redirectToRole: vi.fn(),
-    enterDeviceSetup: vi.fn(),
-    exitDeviceSetup: vi.fn(),
-    enterServerBrowse: vi.fn(),
-    enterSetup: vi.fn(),
-    enterLogin: vi.fn(),
-    enterScoutBrowse: vi.fn(),
-    handleScoutSelectTenant: vi.fn(),
-    handlePickDeviceRole: vi.fn(),
-    advanceToPickRole: vi.fn(),
-    ...overrides,
-  };
-}
+afterEach(() => {
+  cleanup();
+});
 
-function makeDefaultAuth() {
-  return {
-    loading: false,
-    error: null,
-    handleUnifiedLogin: vi.fn(),
-    handleDeviceSetupAuth: vi.fn(),
-  };
-}
-
-function makeDefaultSearch() {
-  return {
-    query: "",
-    setQuery: vi.fn(),
-    results: [],
-    loading: false,
-    error: null,
-  };
-}
-
-function setupMocks(flowOverrides: Record<string, unknown> = {}) {
-  mockUseLoginFlow.mockReturnValue(makeDefaultFlow(flowOverrides));
-  mockUseLoginAuth.mockReturnValue(makeDefaultAuth());
-  mockUseServerTenantSearch.mockReturnValue(makeDefaultSearch());
-  mockUseOnlineStatus.mockReturnValue({ isOnline: true });
-}
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-describe("LoginSection", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
-
-  // ── Mode: detecting ─────────────────────────────────────────────────────────
-
-  it("renders LoadingState with page variant when mode is detecting", () => {
-    setupMocks({ mode: "detecting" });
+describe("LoginSection — mode rendering", () => {
+  it("shows loading state when mode=detecting", () => {
+    mockFlow.mode = "detecting";
     render(<LoginSection />);
-    const el = screen.getByTestId("loading-state");
-    expect(el).toBeDefined();
-    expect(el.getAttribute("data-variant")).toBe("page");
+    expect(screen.getByTestId("loading-page")).toBeDefined();
   });
 
-  // ── Mode: setup ─────────────────────────────────────────────────────────────
-
-  it("renders LocalSetupSection when mode is setup", () => {
-    setupMocks({ mode: "setup" });
-    render(<LoginSection />);
-    expect(screen.getByTestId("local-setup-section")).toBeDefined();
-  });
-
-  it("calls enterLogin when LocalSetupSection onBack is triggered", async () => {
-    const enterLogin = vi.fn();
-    setupMocks({ mode: "setup", enterLogin });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Back from Setup"));
-    expect(enterLogin).toHaveBeenCalled();
-  });
-
-  // ── Mode: server-browse ─────────────────────────────────────────────────────
-
-  it("renders ServerBrowsePanel when mode is server-browse", () => {
-    setupMocks({ mode: "server-browse" });
-    render(<LoginSection />);
-    expect(screen.getByTestId("server-browse-panel")).toBeDefined();
-  });
-
-  it("calls enterLogin when ServerBrowsePanel onBack is triggered", async () => {
-    const enterLogin = vi.fn();
-    setupMocks({ mode: "server-browse", enterLogin });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Back from Server Browse"));
-    expect(enterLogin).toHaveBeenCalled();
-  });
-
-  // ── Mode: scout-browse ──────────────────────────────────────────────────────
-
-  it("renders ScoutBrowsePanel when mode is scout-browse", () => {
-    setupMocks({ mode: "scout-browse" });
-    render(<LoginSection />);
-    expect(screen.getByTestId("scout-browse-panel")).toBeDefined();
-  });
-
-  it("calls enterLogin when ScoutBrowsePanel onBack is triggered", async () => {
-    const enterLogin = vi.fn();
-    setupMocks({ mode: "scout-browse", enterLogin });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Back from Scout Browse"));
-    expect(enterLogin).toHaveBeenCalled();
-  });
-
-  // ── Mode: device-setup / auth step ─────────────────────────────────────────
-
-  it("renders DeviceSetupAuthPanel when mode is device-setup and setupStep is auth", () => {
-    setupMocks({ mode: "device-setup", setupStep: "auth" });
-    render(<LoginSection />);
-    expect(screen.getByTestId("device-setup-auth-panel")).toBeDefined();
-  });
-
-  it("calls exitDeviceSetup when DeviceSetupAuthPanel onCancel is triggered", async () => {
-    const exitDeviceSetup = vi.fn();
-    setupMocks({ mode: "device-setup", setupStep: "auth", exitDeviceSetup });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Cancel Device Setup"));
-    expect(exitDeviceSetup).toHaveBeenCalled();
-  });
-
-  // ── Mode: device-setup / pick-role step ────────────────────────────────────
-
-  it("renders DeviceRoleSelectionPanel when mode is device-setup and setupStep is pick-role", () => {
-    setupMocks({ mode: "device-setup", setupStep: "pick-role" });
-    render(<LoginSection />);
-    expect(screen.getByTestId("device-role-selection-panel")).toBeDefined();
-  });
-
-  it("calls enterDeviceSetup when DeviceRoleSelectionPanel onBack is triggered (no launch context)", async () => {
-    const enterDeviceSetup = vi.fn();
-    setupMocks({
-      mode: "device-setup",
-      setupStep: "pick-role",
-      deviceSetupLaunchContext: null,
-      enterDeviceSetup,
-    });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Back from Role Selection"));
-    expect(enterDeviceSetup).toHaveBeenCalled();
-  });
-
-  it("calls exitDeviceSetup when DeviceRoleSelectionPanel onBack is triggered with launch context", async () => {
-    const exitDeviceSetup = vi.fn();
-    setupMocks({
-      mode: "device-setup",
-      setupStep: "pick-role",
-      deviceSetupLaunchContext: { returnTo: "/admin", returnLabel: "Admin" },
-      exitDeviceSetup,
-    });
-    render(<LoginSection />);
-    await userEvent.click(screen.getByText("Back from Role Selection"));
-    expect(exitDeviceSetup).toHaveBeenCalled();
-  });
-
-  // ── Mode: login (default) ───────────────────────────────────────────────────
-
-  it("renders LoginFormPanel when mode is login", () => {
-    setupMocks({ mode: "login" });
+  it("shows LoginFormPanel when mode=login", () => {
+    mockFlow.mode = "login";
     render(<LoginSection />);
     expect(screen.getByTestId("login-form-panel")).toBeDefined();
   });
 
-  it("calls enterSetup when LoginFormPanel onStartSetup is triggered", async () => {
-    const enterSetup = vi.fn();
-    setupMocks({ mode: "login", enterSetup });
+  it("shows LocalSetupSection when mode=setup", () => {
+    mockFlow.mode = "setup";
     render(<LoginSection />);
-    await userEvent.click(screen.getByText("Start Setup"));
-    expect(enterSetup).toHaveBeenCalled();
+    expect(screen.getByTestId("local-setup-section")).toBeDefined();
   });
 
-  it("calls enterServerBrowse when LoginFormPanel onOpenServerBrowse is triggered", async () => {
-    const enterServerBrowse = vi.fn();
-    setupMocks({ mode: "login", enterServerBrowse });
+  it("shows ServerBrowsePanel when mode=server-browse", () => {
+    mockFlow.mode = "server-browse";
     render(<LoginSection />);
-    await userEvent.click(screen.getByText("Open Server Browse"));
-    expect(enterServerBrowse).toHaveBeenCalled();
+    expect(screen.getByTestId("server-browse-panel")).toBeDefined();
   });
 
-  it("calls enterDeviceSetup when LoginFormPanel onStartDeviceSetup is triggered", async () => {
-    const enterDeviceSetup = vi.fn();
-    setupMocks({ mode: "login", enterDeviceSetup });
+  it("shows ScoutBrowsePanel when mode=scout-browse", () => {
+    mockFlow.mode = "scout-browse";
     render(<LoginSection />);
-    await userEvent.click(screen.getByText("Start Device Setup"));
-    expect(enterDeviceSetup).toHaveBeenCalled();
+    expect(screen.getByTestId("scout-browse-panel")).toBeDefined();
   });
 
-  it("calls enterScoutBrowse when LoginFormPanel onOpenScoutBrowse is triggered", async () => {
-    const enterScoutBrowse = vi.fn();
-    setupMocks({ mode: "login", enterScoutBrowse });
+  it("shows DeviceSetupAuthPanel when mode=device-setup and setupStep=auth", () => {
+    mockFlow.mode = "device-setup";
+    mockFlow.setupStep = "auth";
     render(<LoginSection />);
-    await userEvent.click(screen.getByText("Open Scout Browse"));
-    expect(enterScoutBrowse).toHaveBeenCalled();
+    expect(screen.getByTestId("device-setup-auth-panel")).toBeDefined();
+  });
+
+  it("shows DeviceRoleSelectionPanel when mode=device-setup and setupStep=pick-role", () => {
+    mockFlow.mode = "device-setup";
+    mockFlow.setupStep = "pick-role";
+    render(<LoginSection />);
+    expect(screen.getByTestId("device-role-panel")).toBeDefined();
+  });
+});
+
+describe("LoginSection — LoginFormPanel callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "login";
+  });
+
+  it("calls enterSetup when start-setup clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("start-setup"));
+    expect(mockFlow.enterSetup).toHaveBeenCalledOnce();
+  });
+
+  it("calls enterDeviceSetup when start-device-setup clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("start-device-setup"));
+    expect(mockFlow.enterDeviceSetup).toHaveBeenCalledOnce();
+  });
+
+  it("calls enterServerBrowse when open-server-browse clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("open-server-browse"));
+    expect(mockFlow.enterServerBrowse).toHaveBeenCalledOnce();
+  });
+
+  it("calls enterScoutBrowse when open-scout-browse clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("open-scout-browse"));
+    expect(mockFlow.enterScoutBrowse).toHaveBeenCalledOnce();
+  });
+
+  it("navigates to /devices when view-tenants clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("view-tenants"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/devices" });
+  });
+});
+
+describe("LoginSection — ServerBrowsePanel callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "server-browse";
+  });
+
+  it("calls enterLogin when back clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("back"));
+    expect(mockFlow.enterLogin).toHaveBeenCalledOnce();
+  });
+
+  it("calls enterLogin and sets tenant when select-tenant clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("select-tenant"));
+    expect(mockFlow.enterLogin).toHaveBeenCalledOnce();
+    expect(mockFlow.setUsername).toHaveBeenCalledWith("");
+    expect(mockFlow.setPassword).toHaveBeenCalledWith("");
+  });
+});
+
+describe("LoginSection — ScoutBrowsePanel callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "scout-browse";
+  });
+
+  it("calls enterLogin when back clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("back"));
+    expect(mockFlow.enterLogin).toHaveBeenCalledOnce();
+  });
+
+  it("calls handleScoutSelectTenant when select-server clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("select-server"));
+    expect(mockFlow.handleScoutSelectTenant).toHaveBeenCalledWith("t1", "a", "A");
+  });
+
+  it("calls handleScoutSelectTenant when select-local clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("select-local"));
+    expect(mockFlow.handleScoutSelectTenant).toHaveBeenCalledWith("t2", "b", "B");
+  });
+
+  it("calls handleScoutSelectTenant with slug when enter-slug clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("enter-slug"));
+    expect(mockFlow.handleScoutSelectTenant).toHaveBeenCalledWith("my-slug", "my-slug", "my-slug");
+  });
+});
+
+describe("LoginSection — DeviceSetupAuthPanel callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "device-setup";
+    mockFlow.setupStep = "auth";
+  });
+
+  it("calls exitDeviceSetup when cancel clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("cancel"));
+    expect(mockFlow.exitDeviceSetup).toHaveBeenCalledOnce();
+  });
+});
+
+describe("LoginSection — DeviceRoleSelectionPanel callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "device-setup";
+    mockFlow.setupStep = "pick-role";
+  });
+
+  it("calls handlePickDeviceRole when select-gate clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("select-gate"));
+    expect(mockFlow.handlePickDeviceRole).toHaveBeenCalledWith("gate");
+  });
+
+  it("calls exitDeviceSetup when back clicked and launchContext exists", async () => {
+    mockFlow.deviceSetupLaunchContext = { returnTo: "/admin", returnLabel: "Admin" };
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("back"));
+    expect(mockFlow.exitDeviceSetup).toHaveBeenCalledOnce();
+  });
+
+  it("calls enterDeviceSetup when back clicked and no launchContext", async () => {
+    mockFlow.deviceSetupLaunchContext = null;
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("back"));
+    expect(mockFlow.enterDeviceSetup).toHaveBeenCalledOnce();
+  });
+});
+
+describe("LoginSection — LocalSetupSection callbacks", () => {
+  beforeEach(() => {
+    mockFlow.mode = "setup";
+  });
+
+  it("calls enterLogin when back clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("back"));
+    expect(mockFlow.enterLogin).toHaveBeenCalledOnce();
+  });
+
+  it("calls redirectToRole when complete clicked", async () => {
+    render(<LoginSection />);
+    await userEvent.click(screen.getByText("complete"));
+    expect(mockFlow.redirectToRole).toHaveBeenCalledWith("t1", "admin");
   });
 });

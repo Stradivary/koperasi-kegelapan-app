@@ -5,12 +5,9 @@
  * export/import for backup and device migration.
  */
 
-import {
-  localAccountStore,
-  localTenantConfigStore,
-  type LocalAccount,
-  type LocalTenantConfig,
-} from "./indexeddb";
+import { API_BASE_URL } from "./api";
+import type { LocalAccount, LocalTenantConfig } from "./indexeddb";
+import { getIndexedDb } from "./indexeddb.lazy";
 import { createSlug, validateSlugFormat } from "./slugValidation";
 
 const PBKDF2_ITERATIONS = 100_000;
@@ -68,6 +65,7 @@ async function pbkdf2Verify(password: string, storedHash: string): Promise<boole
 
 /** Check if a slug is already used by an existing local tenant. */
 export async function isLocalSlugTaken(slug: string): Promise<boolean> {
+  const { localTenantConfigStore } = await getIndexedDb();
   const existingTenants = await localTenantConfigStore.getAll();
   return existingTenants.some((t) => t.slug === slug);
 }
@@ -79,7 +77,6 @@ export async function isLocalSlugTaken(slug: string): Promise<boolean> {
  */
 export async function isRemoteSlugTaken(slug: string): Promise<boolean> {
   try {
-    const { API_BASE_URL } = await import("./api");
     const res = await fetch(
       `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(slug)}&limit=10`,
     );
@@ -126,6 +123,8 @@ export async function setupLocalTenant(params: SetupLocalTenantParams): Promise<
   if (slugError) {
     throw new Error(slugError);
   }
+
+  const { localTenantConfigStore, localAccountStore } = await getIndexedDb();
 
   // Validate slug uniqueness among existing local tenants
   const existingTenants = await localTenantConfigStore.getAll();
@@ -212,6 +211,7 @@ export async function localLoginWithReason(
   password: string,
   tenantSlug?: string,
 ): Promise<LocalLoginOutcome> {
+  const { localAccountStore, localTenantConfigStore } = await getIndexedDb();
   const account = await localAccountStore.getByUsername(username);
 
   if (!account) {
@@ -251,6 +251,7 @@ export async function localLoginWithReason(
 
 /** Returns true if any local tenant exists (for first-run detection). */
 export async function hasLocalTenant(): Promise<boolean> {
+  const { localTenantConfigStore } = await getIndexedDb();
   const all = await localTenantConfigStore.getAll();
   return all.length > 0;
 }
@@ -284,6 +285,8 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const passwordHash = await pbkdf2Hash(password, salt);
 
+  const { localAccountStore, localTenantConfigStore } = await getIndexedDb();
+
   // Upsert local account — check if username already exists
   const existing = await localAccountStore.getByUsername(username);
   if (existing) {
@@ -310,7 +313,15 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
 
   // Ensure LocalTenantConfig exists for this tenant
   const existingConfig = await localTenantConfigStore.get(tenantId);
-  if (!existingConfig) {
+  if (existingConfig) {
+    // Update sync timestamp and name (may have changed on server)
+    await localTenantConfigStore.put({
+      ...existingConfig,
+      name: tenantName,
+      slug: tenantSlug,
+      syncedAt: Date.now(),
+    });
+  } else {
     await localTenantConfigStore.put({
       tenantId,
       slug: tenantSlug,
@@ -320,14 +331,6 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
       createdAt: Date.now(),
       syncedAt: Date.now(),
       serverTenantId: tenantId,
-    });
-  } else {
-    // Update sync timestamp and name (may have changed on server)
-    await localTenantConfigStore.put({
-      ...existingConfig,
-      name: tenantName,
-      slug: tenantSlug,
-      syncedAt: Date.now(),
     });
   }
 }
@@ -401,6 +404,7 @@ export interface ExportBundle {
  * @param passphrase - user-defined OR auto-derived from admin password hash
  */
 export async function exportTenant(tenantId: string, passphrase: string): Promise<string> {
+  const { localTenantConfigStore, localAccountStore } = await getIndexedDb();
   const cfg = await localTenantConfigStore.get(tenantId);
   if (!cfg) throw new Error("Tenant tidak ditemukan");
 
@@ -424,6 +428,7 @@ export async function deriveExportPassphrase(
   tenantId: string,
   adminPassword: string,
 ): Promise<string> {
+  const { localAccountStore } = await getIndexedDb();
   const accounts = await localAccountStore.getByTenant(tenantId);
   const admin = accounts.find((a) => a.role === "admin");
   if (!admin) throw new Error("Admin tidak ditemukan");
@@ -435,6 +440,7 @@ export async function importTenant(blob: string, passphrase: string): Promise<Lo
   const bundle = (await decryptJson(blob, passphrase)) as ExportBundle;
   const { tenantConfig, accounts } = bundle;
 
+  const { localTenantConfigStore, localAccountStore } = await getIndexedDb();
   await localTenantConfigStore.put(tenantConfig);
   for (const acct of accounts) {
     await localAccountStore.put(acct);

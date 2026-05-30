@@ -120,6 +120,52 @@ const ACTIVE_PHASES: ReadonlySet<NfcPhase> = new Set([
 ]);
 
 // ============================================================================
+// Reducer Helpers
+// ============================================================================
+
+/**
+ * Determine the next state for CLASSIFICATION_COMPLETE action.
+ */
+function applyClassificationComplete(
+  state: NfcState,
+  classification: CardClassification,
+): NfcState {
+  if (state.phase !== "classifying") return state;
+
+  if (classification === "valid_payload") {
+    return { ...state, phase: "validating", classification };
+  }
+  return { ...state, phase: "ready", classification };
+}
+
+/**
+ * Determine the next state for VALIDATION_COMPLETE action.
+ */
+function applyValidationComplete(state: NfcState, payload: CardPayload): NfcState {
+  if (state.phase !== "validating") return state;
+  const isCheckedIn = payload.wallet.state === 1; // CardState.CHECKED_IN
+  return { ...state, phase: "ready", payload, isCheckedIn };
+}
+
+/**
+ * Determine the next state for WRITE_COMPLETE action.
+ */
+function applyWriteComplete(state: NfcState, payload: CardPayload): NfcState {
+  if (state.phase !== "writing") return state;
+  const isCheckedIn = payload.wallet.state === 1; // CardState.CHECKED_IN
+  return { ...state, phase: "success", payload, isCheckedIn };
+}
+
+/**
+ * Determine the next state for ERROR action.
+ */
+function applyError(state: NfcState, error: NfcError | PayloadError): NfcState {
+  if (!ACTIVE_PHASES.has(state.phase)) return state;
+  const tamperDetected = "tamperDetected" in error && error.tamperDetected === true;
+  return { ...state, phase: "error", error, tamperDetected };
+}
+
+// ============================================================================
 // Reducer
 // ============================================================================
 
@@ -154,138 +200,44 @@ const ACTIVE_PHASES: ReadonlySet<NfcPhase> = new Set([
 export function nfcReducer(state: NfcState, action: NfcAction): NfcState {
   switch (action.type) {
     case "START_SCAN": {
-      // Can start scan from idle or error (retry)
-      if (state.phase !== "idle" && state.phase !== "error") {
-        return state;
-      }
-      return {
-        ...initialNfcState,
-        phase: "scanning",
-      };
+      if (state.phase !== "idle" && state.phase !== "error") return state;
+      return { ...initialNfcState, phase: "scanning" };
     }
 
     case "RAW_SCAN_COMPLETE": {
-      // Only valid from scanning phase
-      if (state.phase !== "scanning") {
-        return state;
-      }
-      return {
-        ...state,
-        phase: "classifying",
-        rawResult: action.result,
-      };
+      if (state.phase !== "scanning") return state;
+      return { ...state, phase: "classifying", rawResult: action.result };
     }
 
-    case "CLASSIFICATION_COMPLETE": {
-      // Only valid from classifying phase
-      if (state.phase !== "classifying") {
-        return state;
-      }
+    case "CLASSIFICATION_COMPLETE":
+      return applyClassificationComplete(state, action.classification);
 
-      if (action.classification === "valid_payload") {
-        // Valid payload cards need further validation (decryption, tamper check)
-        return {
-          ...state,
-          phase: "validating",
-          classification: action.classification,
-        };
-      }
-
-      // Non-payload cards go directly to ready
-      return {
-        ...state,
-        phase: "ready",
-        classification: action.classification,
-      };
-    }
-
-    case "VALIDATION_COMPLETE": {
-      // Only valid from validating phase
-      if (state.phase !== "validating") {
-        return state;
-      }
-
-      const isCheckedIn = action.payload.wallet.state === 1; // CardState.CHECKED_IN
-
-      return {
-        ...state,
-        phase: "ready",
-        payload: action.payload,
-        isCheckedIn,
-      };
-    }
+    case "VALIDATION_COMPLETE":
+      return applyValidationComplete(state, action.payload);
 
     case "START_WRITE": {
-      // Valid from ready phase or write_pending_retry (retry tap)
-      if (state.phase !== "ready" && state.phase !== "write_pending_retry") {
-        return state;
-      }
-      return {
-        ...state,
-        phase: "writing",
-      };
+      if (state.phase !== "ready" && state.phase !== "write_pending_retry") return state;
+      return { ...state, phase: "writing" };
     }
 
     case "WRITE_PENDING_RETRY": {
-      // Only valid from writing phase (write failed, waiting for re-tap)
-      if (state.phase !== "writing") {
-        return state;
-      }
-      return {
-        ...state,
-        phase: "write_pending_retry",
-      };
+      if (state.phase !== "writing") return state;
+      return { ...state, phase: "write_pending_retry" };
     }
 
-    case "WRITE_COMPLETE": {
-      // Only valid from writing phase
-      if (state.phase !== "writing") {
-        return state;
-      }
+    case "WRITE_COMPLETE":
+      return applyWriteComplete(state, action.payload);
 
-      const isCheckedIn = action.payload.wallet.state === 1; // CardState.CHECKED_IN
-
-      return {
-        ...state,
-        phase: "success",
-        payload: action.payload,
-        isCheckedIn,
-      };
-    }
-
-    case "ERROR": {
-      // Errors can occur from scanning, classifying, validating, or writing
-      if (!ACTIVE_PHASES.has(state.phase)) {
-        return state;
-      }
-
-      const tamperDetected =
-        "tamperDetected" in action.error && action.error.tamperDetected === true;
-
-      return {
-        ...state,
-        phase: "error",
-        error: action.error,
-        tamperDetected,
-      };
-    }
+    case "ERROR":
+      return applyError(state, action.error);
 
     case "CANCEL": {
-      // Cancel from any active phase returns to idle
-      if (!ACTIVE_PHASES.has(state.phase)) {
-        return state;
-      }
-      return {
-        ...initialNfcState,
-      };
+      if (!ACTIVE_PHASES.has(state.phase)) return state;
+      return { ...initialNfcState };
     }
 
-    case "RESET": {
-      // Reset from any phase returns to idle with cleared data
-      return {
-        ...initialNfcState,
-      };
-    }
+    case "RESET":
+      return { ...initialNfcState };
 
     default:
       return state;

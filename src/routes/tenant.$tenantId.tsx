@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SyncEngineProvider, useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { useHydrateCache } from "#/hooks/useHydrateCache";
-import { tenantContextStore } from "#/lib/indexeddb";
+import { getTenantContextStore } from "#/lib/indexeddb.lazy";
 
 export const Route = createFileRoute("/tenant/$tenantId")({
   component: TenantLayout,
@@ -15,11 +15,13 @@ function TenantLayout() {
   // Check if tenant context exists (authenticated) without triggering navigation
   useEffect(() => {
     let active = true;
-    tenantContextStore.get(tenantId).then((ctx) => {
-      if (active) {
-        setIsAuthenticated(!!ctx);
-      }
-    });
+    getTenantContextStore().then((tenantContextStore) =>
+      tenantContextStore.get(tenantId).then((ctx) => {
+        if (active) {
+          setIsAuthenticated(!!ctx);
+        }
+      }),
+    );
     return () => {
       active = false;
     };

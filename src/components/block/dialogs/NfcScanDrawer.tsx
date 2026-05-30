@@ -47,7 +47,6 @@ function formatRupiah(amount: number): string {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface DrawerBodyContentProps {
-  readonly phase: NfcCardPhase;
   readonly payload: CardPayload | null;
   readonly isCheckedIn: boolean;
   readonly error: string | null;
@@ -64,6 +63,12 @@ interface DrawerBodyContentProps {
   readonly isSuccess: boolean;
   readonly isError: boolean;
   readonly isBlocked: boolean;
+}
+
+function getWalletStateLabel(state: number): string {
+  if (state === 1) return "Checked-in";
+  if (state === 0) return "Idle";
+  return "Lainnya";
 }
 
 function DrawerBodyContent({
@@ -115,13 +120,7 @@ function DrawerBodyContent({
                 </div>
                 <div className="rounded-lg bg-muted/50 p-2 text-center">
                   <p className="text-xs text-muted-foreground">Status</p>
-                  <p className="font-medium">
-                    {payload.wallet.state === 1
-                      ? "Checked-in"
-                      : payload.wallet.state === 0
-                        ? "Idle"
-                        : "Lainnya"}
-                  </p>
+                  <p className="font-medium">{getWalletStateLabel(payload.wallet.state)}</p>
                 </div>
               </div>
             </div>
@@ -329,7 +328,6 @@ export function NfcScanDrawer({
         </div>
 
         <DrawerBodyContent
-          phase={phase}
           payload={payload}
           isCheckedIn={isCheckedIn}
           error={error}

@@ -178,6 +178,86 @@ async function markCardsSynced(tenantId: string, cardIds: string[]): Promise<voi
 
 // ── Push with retry ────────────────────────────────────────────────────
 
+/**
+ * Handle a successful (2xx) push response: log and return the parsed result.
+ */
+async function handlePushSuccess(response: Response): Promise<EntityPushResponse> {
+  const result = (await response.json()) as EntityPushResponse;
+  console.log(
+    `[SyncPushEntities] ✓ Accepted: members=${result.membersAccepted}, cards=${result.cardsAccepted}`,
+  );
+  if (result.membersRejected.length > 0) {
+    console.warn(`[SyncPushEntities] Rejected members:`, result.membersRejected);
+  }
+  if (result.cardsRejected.length > 0) {
+    console.warn(`[SyncPushEntities] Rejected cards:`, result.cardsRejected);
+  }
+  return result;
+}
+
+/**
+ * Handle a 4xx (non-429) push response: log, record sync log, and throw.
+ */
+async function handlePushClientError(response: Response, url: string): Promise<never> {
+  const errorBody = await response.text().catch(() => "(could not read body)");
+  const msg = `HTTP ${response.status}: ${errorBody}`;
+  console.error(`[SyncPushEntities] ✗ Non-retryable: ${msg}`);
+  addSyncLog(
+    "error",
+    `Entity push ditolak server (${response.status})`,
+    `${url} | ${errorBody.slice(0, 200)}`,
+  );
+  throw new Error(msg);
+}
+
+/**
+ * Handle a 429 rate-limited response: wait for Retry-After and continue.
+ */
+async function handlePushRateLimit(response: Response): Promise<void> {
+  const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
+  console.warn(`[SyncPushEntities] Rate limited, retry after ${retryAfter}s`);
+  await sleep(Math.min(retryAfter * 1000, 120_000));
+}
+
+/**
+ * Handle a non-2xx push response. Returns the error to set as lastError,
+ * or throws for non-retryable cases.
+ */
+async function handlePushNonOkResponse(
+  response: Response,
+  url: string,
+  attempt: number,
+): Promise<Error> {
+  const errorBody = await response.text().catch(() => "(could not read body)");
+
+  if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+    await handlePushClientError(response, url);
+  }
+
+  if (response.status === 429) {
+    await handlePushRateLimit(response);
+    return new Error(`HTTP 429: rate limited`);
+  }
+
+  // 5xx: retryable
+  const err = new Error(`HTTP ${response.status}: ${errorBody.slice(0, 200)}`);
+  console.warn(`[SyncPushEntities] Server error (attempt ${attempt + 1}): ${err.message}`);
+  return err;
+}
+
+/**
+ * Build a human-readable error message from the last error encountered.
+ */
+function buildPushErrorMessage(lastError: unknown): string {
+  if (lastError instanceof Error) {
+    return `${lastError.name}: ${lastError.message}`;
+  }
+  if (lastError && typeof lastError === "object" && Object.keys(lastError).length === 0) {
+    return "Network error (empty error object — likely CORS or DNS failure)";
+  }
+  return String(lastError);
+}
+
 async function pushEntitiesWithRetry(
   payload: EntityPushPayload,
   tenantId: string,
@@ -213,47 +293,10 @@ async function pushEntitiesWithRetry(
       console.log(`[SyncPushEntities] Response: ${response.status} ${response.statusText}`);
 
       if (response.ok) {
-        const result = (await response.json()) as EntityPushResponse;
-        console.log(
-          `[SyncPushEntities] ✓ Accepted: members=${result.membersAccepted}, cards=${result.cardsAccepted}`,
-        );
-        if (result.membersRejected.length > 0) {
-          console.warn(`[SyncPushEntities] Rejected members:`, result.membersRejected);
-        }
-        if (result.cardsRejected.length > 0) {
-          console.warn(`[SyncPushEntities] Rejected cards:`, result.cardsRejected);
-        }
-        return result;
+        return await handlePushSuccess(response);
       }
 
-      // Non-2xx response — read body for diagnostics
-      const errorBody = await response.text().catch(() => "(could not read body)");
-
-      // 4xx (except 429): not retryable — but now we THROW so the caller knows
-      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-        const msg = `HTTP ${response.status}: ${errorBody}`;
-        console.error(`[SyncPushEntities] ✗ Non-retryable: ${msg}`);
-        addSyncLog(
-          "error",
-          `Entity push ditolak server (${response.status})`,
-          `${url} | ${errorBody.slice(0, 200)}`,
-        );
-        throw new Error(msg);
-      }
-
-      // 429: rate limited
-      if (response.status === 429) {
-        const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
-        console.warn(`[SyncPushEntities] Rate limited, retry after ${retryAfter}s`);
-        await sleep(Math.min(retryAfter * 1000, 120_000));
-        continue;
-      }
-
-      // 5xx: retryable
-      lastError = new Error(`HTTP ${response.status}: ${errorBody.slice(0, 200)}`);
-      console.warn(
-        `[SyncPushEntities] Server error (attempt ${attempt + 1}): ${(lastError as Error).message}`,
-      );
+      lastError = await handlePushNonOkResponse(response, url, attempt);
     } catch (error: unknown) {
       if (error instanceof DeviceBlockedError) throw error;
       // If it's our own thrown error from 4xx, re-throw immediately
@@ -273,13 +316,7 @@ async function pushEntitiesWithRetry(
     }
   }
 
-  const errorMsg =
-    lastError instanceof Error
-      ? `${lastError.name}: ${lastError.message}`
-      : lastError && typeof lastError === "object" && Object.keys(lastError as object).length === 0
-        ? "Network error (empty error object — likely CORS or DNS failure)"
-        : String(lastError);
-
+  const errorMsg = buildPushErrorMessage(lastError);
   throw new Error(`Entity push failed after ${MAX_RETRY_ATTEMPTS} attempts: ${errorMsg}`);
 }
 

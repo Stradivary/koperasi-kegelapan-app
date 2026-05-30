@@ -43,7 +43,7 @@ function toHex(bytes: Uint8Array): string {
     .join(":");
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="flex justify-between gap-2 text-xs">
       <span className="text-muted-foreground shrink-0">{label}</span>
