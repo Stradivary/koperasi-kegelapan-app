@@ -318,6 +318,163 @@ describe("TerminalSection", () => {
     });
 
     // write should have been called by the auto-checkout effect
-    expect(write.mock.calls.length >= 0).toBe(true); // non-crashing assertion
+    expect(write).toHaveBeenCalled();
+  });
+
+  it("shows grant error message when grantError is set", () => {
+    setupMocks({ phase: "idle", grant: null, grantError: "Session expired" });
+    mockUseSessionGrant.mockReturnValue({ grant: null, loading: false, error: "Session expired" });
+    render(<TerminalSection {...defaultProps} />);
+    // The error message is rendered alongside the idle UI
+    expect(screen.getByText(/Session expired/)).toBeDefined();
+  });
+
+  it("shows validating UI when phase is validating", () => {
+    setupMocks({ phase: "validating" });
+    render(<TerminalSection {...defaultProps} />);
+    expect(screen.getByTestId("nfc-tap-validating")).toBeDefined();
+  });
+
+  it("shows writing UI when phase is writing", () => {
+    const payload = makePayload({ state: CardState.CHECKED_IN });
+    setupMocks({ phase: "writing", payload });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "writing",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write: vi.fn(),
+      reset: vi.fn(),
+      retryScan: vi.fn(),
+    });
+    render(<TerminalSection {...defaultProps} />);
+    expect(screen.getByTestId("nfc-tap-writing")).toBeDefined();
+  });
+
+  it("auto-resets after 3 seconds when card is not checked in", async () => {
+    const reset = vi.fn();
+    const payload = makePayload({ state: CardState.IDLE });
+    setupMocks({ phase: "ready", payload });
+    mockValidateTransition.mockReturnValue({ valid: false });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "ready",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write: vi.fn(),
+      reset,
+      retryScan: vi.fn(),
+    });
+
+    render(<TerminalSection {...defaultProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(3100);
+    });
+    expect(reset).toHaveBeenCalled();
+  });
+
+  it("auto-resets after 3 seconds when card is already checked out", async () => {
+    const reset = vi.fn();
+    const payload = makePayload({ state: CardState.CHECKED_OUT });
+    setupMocks({ phase: "ready", payload });
+    mockValidateTransition.mockReturnValue({ valid: false });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "ready",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write: vi.fn(),
+      reset,
+      retryScan: vi.fn(),
+    });
+
+    render(<TerminalSection {...defaultProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(3100);
+    });
+    expect(reset).toHaveBeenCalled();
+  });
+
+  it("writes blocked status to card when blocked check says blocked", async () => {
+    const write = vi.fn();
+    const payload = makePayload({ status: CardStatus.ACTIVE, state: CardState.CHECKED_IN });
+    setupMocks({ phase: "ready", payload, isBlocked: true, blockedReason: "Diblokir" });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "ready",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write,
+      reset: vi.fn(),
+      retryScan: vi.fn(),
+    });
+
+    render(<TerminalSection {...defaultProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(write).toHaveBeenCalled();
+  });
+
+  it("disables auto-scan when tamper is detected", async () => {
+    setupMocks({ phase: "error", error: "Tamper", tamperDetected: true });
+    render(<TerminalSection {...defaultProps} />);
+    // Verify useKioskAutoScan was called with enabled: false after tamper
+    expect(mockUseKioskAutoScan).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+  });
+
+  it("shows success with checkout details when lastTx is set", async () => {
+    const write = vi.fn();
+    const payload = makePayload({ state: CardState.CHECKED_IN, balance: 50000 });
+    setupMocks({ phase: "ready", payload });
+    mockValidateCheckoutBalance.mockReturnValue({ sufficient: true, fee: 5000, deficit: 0 });
+    mockApplyCheckout.mockReturnValue({
+      ...payload,
+      wallet: { ...payload.wallet, state: CardState.CHECKED_OUT },
+    });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "ready",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write,
+      reset: vi.fn(),
+      retryScan: vi.fn(),
+    });
+
+    render(<TerminalSection {...defaultProps} />);
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    // write should be called with the checkout payload
+    expect(write).toHaveBeenCalled();
   });
 });

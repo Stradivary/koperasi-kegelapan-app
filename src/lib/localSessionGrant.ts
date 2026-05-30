@@ -14,7 +14,8 @@
  */
 
 import type { SessionGrant } from "#/core/payload/types";
-import { sessionGrantCacheStore, type CachedSessionGrant } from "./indexeddb";
+import type { CachedSessionGrant } from "./indexeddb";
+import { getSessionGrantCacheStore } from "./indexeddb.lazy";
 import { roleToOps } from "./roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
@@ -112,6 +113,7 @@ export async function issueAndCacheLocalSessionGrant(
       signatureB64: bytesToBase64(grant.signature),
       cachedAt: Date.now(),
     };
+    const sessionGrantCacheStore = await getSessionGrantCacheStore();
     await sessionGrantCacheStore.put(cached);
   } catch {
     // Silently fail — caching is best-effort
@@ -132,6 +134,7 @@ export async function getOrIssueLocalSessionGrant(
 ): Promise<SessionGrant> {
   // Try cache first
   try {
+    const sessionGrantCacheStore = await getSessionGrantCacheStore();
     const cached = await sessionGrantCacheStore.get(tenantId, accountId, deviceId);
     if (cached && cached.expiresAt > Math.floor(Date.now() / 1000)) {
       return {

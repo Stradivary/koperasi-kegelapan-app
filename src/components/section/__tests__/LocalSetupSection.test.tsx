@@ -190,9 +190,38 @@ describe("LocalSetupSection — admin step", () => {
     expect(screen.getByText("Menyiapkan...")).toBeDefined();
   });
 
-  it("disables Selesaikan when adminUsername is empty", () => {
-    mockSetup.adminUsername = "";
-    mockSetup.adminPassword = "password123";
+  it("calls setAdminPassword when password input changes", () => {
+    mockSetup.step = "admin";
+    mockSetup.tenantName = "My Koperasi";
+    render(<LocalSetupSection {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText("Min. 6 karakter"), {
+      target: { value: "secret123" },
+    });
+    expect(mockSetup.setAdminPassword).toHaveBeenCalledWith("secret123");
+  });
+
+  it("calls setConfirmPassword when confirm password input changes", () => {
+    mockSetup.step = "admin";
+    mockSetup.tenantName = "My Koperasi";
+    render(<LocalSetupSection {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText("Ulangi password"), {
+      target: { value: "secret123" },
+    });
+    expect(mockSetup.setConfirmPassword).toHaveBeenCalledWith("secret123");
+  });
+
+  it("shows suggested username from tenantName when slug is empty", () => {
+    mockSetup.step = "admin";
+    mockSetup.tenantName = "My Koperasi";
+    mockSetup.tenantSlug = "";
+    render(<LocalSetupSection {...defaultProps} />);
+    expect(screen.getByText("my-koperasi-admin")).toBeDefined();
+  });
+
+  it("disables Selesaikan when adminPassword is empty", () => {
+    mockSetup.step = "admin";
+    mockSetup.adminUsername = "admin";
+    mockSetup.adminPassword = "";
     render(<LocalSetupSection {...defaultProps} />);
     const btn = screen.getByText("Selesaikan").closest("button")!;
     expect((btn as HTMLButtonElement).disabled).toBe(true);

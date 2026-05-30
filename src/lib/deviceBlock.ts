@@ -6,7 +6,7 @@
  * re-authentication when the block expires.
  */
 
-import { tenantContextStore } from "./indexeddb";
+import { getTenantContextStore } from "./indexeddb.lazy";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -146,6 +146,7 @@ function notifyListeners(): void {
 
 async function clearAuthState(tenantId?: string): Promise<void> {
   try {
+    const tenantContextStore = await getTenantContextStore();
     if (tenantId) {
       // Clear specific tenant context
       await tenantContextStore.delete(tenantId);

@@ -10,13 +10,8 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import {
-  tenantContextStore,
-  localTenantConfigStore,
-  reconciliationOutbox,
-  type TenantContext,
-  type LocalTenantConfig,
-} from "#/lib/indexeddb";
+import type { TenantContext, LocalTenantConfig } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { API_BASE_URL } from "#/lib/api";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
@@ -66,6 +61,8 @@ export function DevicesSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const { tenantContextStore, localTenantConfigStore, reconciliationOutbox } =
+        await getIndexedDb();
       const [contexts, configs] = await Promise.all([
         tenantContextStore.getAll(),
         localTenantConfigStore.getAll(),
@@ -99,6 +96,7 @@ export function DevicesSection() {
     if (!entry.context) return;
     setSyncing(entry.context.tenantId);
     try {
+      const { reconciliationOutbox } = await getIndexedDb();
       const pending = await reconciliationOutbox.getPending(entry.context.tenantId);
       if (pending.length === 0) {
         await load();
@@ -119,6 +117,7 @@ export function DevicesSection() {
   }
 
   async function handleRemove(tenantId: string) {
+    const { tenantContextStore } = await getIndexedDb();
     await tenantContextStore.delete(tenantId);
     await load();
   }

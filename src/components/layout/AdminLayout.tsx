@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { BRAND } from "#/lib/brand";
 import { useOnlineStatus } from "#/hooks/useOnlineStatus";
-import { tenantContextStore } from "#/lib/indexeddb";
+import { getTenantContextStore } from "#/lib/indexeddb.lazy";
 import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
@@ -106,6 +106,7 @@ export function AdminLayout({
   const [syncDrawerOpen, setSyncDrawerOpen] = useState(false);
 
   async function handleLogout() {
+    const tenantContextStore = await getTenantContextStore();
     await tenantContextStore.delete(tenantId);
     navigate({ to: "/" });
   }

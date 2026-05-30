@@ -14,10 +14,16 @@ import { renderHook, act } from "@testing-library/react";
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 const mockTenantContextStorePut = vi.fn();
-vi.mock("#/lib/indexeddb", () => ({
-  tenantContextStore: {
-    put: (...args: unknown[]) => mockTenantContextStorePut(...args),
-  },
+const mockLocalAccountStoreGetByTenant = vi.fn();
+vi.mock("#/lib/indexeddb.lazy", () => ({
+  getTenantContextStore: () =>
+    Promise.resolve({
+      put: (...args: unknown[]) => mockTenantContextStorePut(...args),
+    }),
+  getLocalAccountStore: () =>
+    Promise.resolve({
+      getByTenant: (...args: unknown[]) => mockLocalAccountStoreGetByTenant(...args),
+    }),
 }));
 
 const mockIsSlugTaken = vi.fn();
@@ -59,6 +65,7 @@ beforeEach(() => {
   mockTenantContextStorePut.mockResolvedValue(undefined);
   mockGetDeviceFingerprint.mockResolvedValue("fp-hash-123");
   mockSyncToServer.mockResolvedValue(undefined);
+  mockLocalAccountStoreGetByTenant.mockResolvedValue([{ role: "admin", passwordHash: "hash-abc" }]);
   mockValidateSlugFormat.mockReturnValue(null); // no format error by default
   mockCreateSlug.mockImplementation((name: string) => name.toLowerCase().replaceAll(/\s+/g, "-"));
 
@@ -339,22 +346,13 @@ describe("useLocalSetup — handleSetup: successful setup", () => {
     const { result } = await getHookReadyForSetup();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
 
-    // Mock dynamic import of localAccountStore
-    const mockGetByTenant = vi
-      .fn()
-      .mockResolvedValue([{ role: "admin", passwordHash: "hash-abc" }]);
-    vi.doMock("#/lib/indexeddb", () => ({
-      tenantContextStore: { put: mockTenantContextStorePut },
-      localTenantConfigStore: { get: vi.fn(), put: vi.fn() },
-      localAccountStore: { getByTenant: mockGetByTenant },
-    }));
-
     await act(async () => {
       await result.current.handleSetup();
     });
 
     // syncToServer is fire-and-forget; just verify setup completed
     expect(result.current.step).toBe("done");
+    expect(mockSyncToServer).toHaveBeenCalled();
   });
 });
 

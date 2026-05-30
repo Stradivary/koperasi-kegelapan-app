@@ -38,6 +38,7 @@ import {
 import { encodeTenantBind } from "#/core/payload/tenantBind";
 import { useNfcCard } from "#/hooks/nfc";
 import { getCardsWithUsers } from "#/lib/stationQueries";
+import { decodePayload } from "#/core/payload/engine";
 
 interface CardSectionProps {
   tenantId: string;
@@ -575,7 +576,6 @@ async function validateCardForRecovery(
   if (!cardBytes) return; // Blank or unreadable — allow recovery
 
   try {
-    const { decodePayload } = await import("#/core/payload/engine");
     const currentPayload = decodePayload(cardBytes);
     const cardCounter = Number(currentPayload.wallet.counter);
 

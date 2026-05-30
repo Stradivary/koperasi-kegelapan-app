@@ -299,4 +299,153 @@ describe("GateSection", () => {
     // reset may or may not be called depending on the blocked check state
     expect(reset.mock.calls.length >= 0).toBe(true);
   });
+
+  it("shows no session error when grant is null and loading is false", () => {
+    setupMocks({ phase: "idle", grant: null });
+    mockUseSessionGrant.mockReturnValue({ grant: null, loading: false });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByText("Tidak ada sesi aktif.")).toBeDefined();
+  });
+
+  it("shows simulation mode toggle", () => {
+    setupMocks({ phase: "idle" });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByText("Mode Simulasi")).toBeDefined();
+  });
+
+  it("toggles simulation mode when clicked", async () => {
+    setupMocks({ phase: "idle" });
+    render(<GateSection {...defaultProps} />);
+    const toggleBtn = screen.getByText("Mode Simulasi").closest("button")!;
+    await act(async () => {
+      toggleBtn.click();
+    });
+    expect(screen.getByText("Mode Simulasi Aktif")).toBeDefined();
+  });
+
+  it("shows datetime input when simulation mode is active", async () => {
+    setupMocks({ phase: "idle" });
+    render(<GateSection {...defaultProps} />);
+    const toggleBtn = screen.getByText("Mode Simulasi").closest("button")!;
+    await act(async () => {
+      toggleBtn.click();
+    });
+    expect(screen.getByLabelText("Waktu check-in:")).toBeDefined();
+  });
+
+  it("rejects card with BLOCKED_TAMPER status", () => {
+    const payload = makePayload({ status: CardStatus.BLOCKED_TAMPER });
+    setupMocks({ phase: "ready", payload });
+    render(<GateSection {...defaultProps} />);
+    // The card rejection sets a reason and shows blocked feedback
+    expect(screen.getByText("Akses Ditolak")).toBeDefined();
+  });
+
+  it("rejects card with BLOCKED_FRAUD status", () => {
+    const payload = makePayload({ status: CardStatus.BLOCKED_FRAUD });
+    setupMocks({ phase: "ready", payload });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByText("Akses Ditolak")).toBeDefined();
+  });
+
+  it("shows STATION_OPERATION as already checked in", () => {
+    const payload = makePayload({ state: CardState.STATION_OPERATION });
+    setupMocks({ phase: "ready", payload });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByText("Sudah Check-in")).toBeDefined();
+  });
+
+  it("shows validating UI when phase is validating", () => {
+    setupMocks({ phase: "validating" });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByTestId("nfc-tap-validating")).toBeDefined();
+  });
+
+  it("shows writing UI when phase is writing", () => {
+    const payload = makePayload();
+    setupMocks({ phase: "writing", payload });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "writing",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write: vi.fn(),
+      reset: vi.fn(),
+      retryScan: vi.fn(),
+    });
+    render(<GateSection {...defaultProps} />);
+    expect(screen.getByTestId("nfc-tap-writing")).toBeDefined();
+  });
+
+  it("auto-resets transient read error after 3 seconds", async () => {
+    const reset = vi.fn();
+    setupMocks({ phase: "error", error: "Lepas kartu sebentar lalu tempelkan kembali" });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "error",
+        payload: null,
+        serialNumber: null,
+        error: "Lepas kartu sebentar lalu tempelkan kembali",
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write: vi.fn(),
+      reset,
+      retryScan: vi.fn(),
+    });
+
+    render(<GateSection {...defaultProps} />);
+
+    act(() => {
+      vi.advanceTimersByTime(3100);
+    });
+    expect(reset).toHaveBeenCalled();
+  });
+
+  it("writes blocked status to card when blocked check says blocked", async () => {
+    const write = vi.fn();
+    const payload = makePayload({ status: CardStatus.ACTIVE });
+    setupMocks({ phase: "ready", payload, isBlocked: true, blockedReason: "Diblokir admin" });
+    mockUseNfcCard.mockReturnValue({
+      state: {
+        phase: "ready",
+        payload,
+        serialNumber: null,
+        error: null,
+        tamperDetected: false,
+        warning: null,
+      },
+      scan: vi.fn(),
+      write,
+      reset: vi.fn(),
+      retryScan: vi.fn(),
+    });
+
+    render(<GateSection {...defaultProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(write).toHaveBeenCalled();
+  });
+
+  it("shows rejection when validateTransition fails with insufficient balance", async () => {
+    const payload = makePayload({ state: CardState.IDLE, balance: 5000 });
+    setupMocks({ phase: "ready", payload });
+    mockValidateTransition.mockReturnValue({ valid: false, reason: "Insufficient balance" });
+
+    render(<GateSection {...defaultProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    // The component sets cardRejectionReason which shows Akses Ditolak
+    expect(screen.getByText("Akses Ditolak")).toBeDefined();
+  });
 });

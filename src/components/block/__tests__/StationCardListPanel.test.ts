@@ -1,8 +1,35 @@
 // @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { StationCardListPanel } from "../StationCardListPanel";
+
+// ── Mocks ─────────────────────────────────────────────────────────────────────
+
+// DropdownMenu mock: renders content immediately so tests can interact with items
+vi.mock("../../ui/dropdown-menu", () => {
+  const { createElement: h } = require("react");
+  return {
+    DropdownMenu: ({ children }: any) => h("div", undefined, children),
+    DropdownMenuTrigger: ({ children, asChild, ...props }: any) => {
+      // If asChild, render the child directly; otherwise wrap
+      if (asChild) return children;
+      return h("button", props, children);
+    },
+    DropdownMenuContent: ({ children }: any) => h("div", { "data-testid": "dropdown" }, children),
+    DropdownMenuItem: ({ children, onClick, disabled, ...props }: any) =>
+      h(
+        "div",
+        {
+          onClick: disabled ? undefined : onClick,
+          "data-disabled": disabled ? "" : undefined,
+          ...props,
+        },
+        children,
+      ),
+    DropdownMenuSeparator: () => h("hr"),
+  };
+});
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -94,8 +121,7 @@ describe("StationCardListPanel", () => {
   it("triggers recovery from the card actions menu", async () => {
     const onRecoverCard = vi.fn();
     render(createElement(StationCardListPanel, { ...defaultProps, onRecoverCard }));
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Pulihkan Kartu"));
+    fireEvent.click(screen.getAllByText("Pulihkan Kartu")[0]);
     expect(onRecoverCard).toHaveBeenCalledTimes(1);
     expect(onRecoverCard.mock.calls[0][0]).toMatchObject({ cardId: "04a2b3c4d5e6f7" });
   });
@@ -107,16 +133,14 @@ describe("StationCardListPanel", () => {
         cards: [{ ...defaultCard, syncStatus: "pending" }],
       }),
     );
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    const recoveryItem = await screen.findByText("Pulihkan Kartu");
+    const recoveryItem = screen.getAllByText("Pulihkan Kartu")[0];
     expect(recoveryItem.closest("div")?.dataset.disabled).toBe("");
   });
 
   it("triggers top-up from the card actions menu", async () => {
     const onTopupCard = vi.fn();
     render(createElement(StationCardListPanel, { ...defaultProps, onTopupCard }));
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Top-up"));
+    fireEvent.click(screen.getAllByText("Top-up")[0]);
     expect(onTopupCard).toHaveBeenCalledWith("04a2b3c4d5e6f7");
   });
 
@@ -127,8 +151,7 @@ describe("StationCardListPanel", () => {
         cards: [{ ...defaultCard, status: "blocked_tamper" }],
       }),
     );
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    const topupItem = await screen.findByText("Top-up");
+    const topupItem = screen.getAllByText("Top-up")[0];
     expect(topupItem.closest("div")?.dataset.disabled).toBe("");
   });
 
@@ -302,16 +325,13 @@ describe("StationCardListPanel", () => {
   it("actions column: topup from table row dropdown", async () => {
     const onTopupCard = vi.fn();
     render(createElement(StationCardListPanel, { ...defaultProps, onTopupCard }));
-    // Click the first dropdown trigger (table cell)
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Top-up"));
+    fireEvent.click(screen.getAllByText("Top-up")[0]);
     expect(onTopupCard).toHaveBeenCalledWith("04a2b3c4d5e6f7");
   });
 
   it("actions column: delete from table row sets deleteTarget", async () => {
     render(createElement(StationCardListPanel, { ...defaultProps }));
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Hapus Kartu"));
+    fireEvent.click(screen.getAllByText("Hapus Kartu")[0]);
     // Dialog should now be open
     expect(screen.getByTestId("confirm-dialog")).toBeDefined();
   });
@@ -346,8 +366,7 @@ describe("StationCardListPanel", () => {
     render(createElement(StationCardListPanel, { ...defaultProps, onDeleteCard }));
 
     // Open delete dialog
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Hapus Kartu"));
+    fireEvent.click(screen.getAllByText("Hapus Kartu")[0]);
     expect(screen.getByTestId("confirm-dialog")).toBeDefined();
 
     // Confirm deletion
@@ -361,8 +380,7 @@ describe("StationCardListPanel", () => {
     const onDeleteCard = vi.fn();
     render(createElement(StationCardListPanel, { ...defaultProps, onDeleteCard }));
 
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Hapus Kartu"));
+    fireEvent.click(screen.getAllByText("Hapus Kartu")[0]);
     expect(screen.getByTestId("confirm-dialog")).toBeDefined();
 
     fireEvent.click(screen.getByTestId("cancel-btn"));
@@ -373,8 +391,7 @@ describe("StationCardListPanel", () => {
   it("delete confirmation: onOpenChange(false) closes dialog", async () => {
     render(createElement(StationCardListPanel, { ...defaultProps }));
 
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Hapus Kartu"));
+    fireEvent.click(screen.getAllByText("Hapus Kartu")[0]);
     expect(screen.getByTestId("confirm-dialog")).toBeDefined();
 
     fireEvent.click(screen.getByTestId("close-btn"));
@@ -384,23 +401,20 @@ describe("StationCardListPanel", () => {
   it("delete confirmation: shows cardId in description", async () => {
     render(createElement(StationCardListPanel, { ...defaultProps }));
 
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    fireEvent.click(await screen.findByText("Hapus Kartu"));
+    fireEvent.click(screen.getAllByText("Hapus Kartu")[0]);
 
     expect(screen.getAllByText("04a2b3c4d5e6f7").length).toBeGreaterThan(0);
   });
 
   it("disables delete button when isDeleting is true", async () => {
     render(createElement(StationCardListPanel, { ...defaultProps, isDeleting: true }));
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    const deleteItem = await screen.findByText("Hapus Kartu");
+    const deleteItem = screen.getAllByText("Hapus Kartu")[0];
     expect(deleteItem.closest("div")?.dataset.disabled).toBe("");
   });
 
   it("disables recover button when isRecovering is true", async () => {
     render(createElement(StationCardListPanel, { ...defaultProps, isRecovering: true }));
-    fireEvent.pointerDown(screen.getAllByLabelText("Aksi kartu")[0]);
-    const recoverItem = await screen.findByText("Pulihkan Kartu");
+    const recoverItem = screen.getAllByText("Pulihkan Kartu")[0];
     expect(recoverItem.closest("div")?.dataset.disabled).toBe("");
   });
 });

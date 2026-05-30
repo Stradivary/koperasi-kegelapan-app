@@ -13,7 +13,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { localTenantConfigStore, localAccountStore, type LocalTenantConfig } from "#/lib/indexeddb";
+import type { LocalTenantConfig } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { useTenantSync, type SyncConflict } from "./useTenantSync";
 import { syncPushMembers, syncPushCards } from "#/lib/syncPushEntities";
 import { syncPush } from "#/lib/syncPush";
@@ -51,9 +52,11 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    localTenantConfigStore.get(tenantId).then((cfg) => {
-      setLocalConfig(cfg ?? null);
-    });
+    getIndexedDb().then(({ localTenantConfigStore }) =>
+      localTenantConfigStore.get(tenantId).then((cfg) => {
+        setLocalConfig(cfg ?? null);
+      }),
+    );
   }, [tenantId]);
 
   const handleSyncToServer = useCallback(async () => {
@@ -63,6 +66,7 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
     setSyncStep(null);
     setSyncError(null);
 
+    const { localAccountStore, localTenantConfigStore } = await getIndexedDb();
     // Get admin account's password hash for the sync request
     const accounts = await localAccountStore.getByTenant(tenantId);
     const admin = accounts.find((a) => a.role === "admin");

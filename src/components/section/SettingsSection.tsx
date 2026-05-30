@@ -19,12 +19,8 @@ import { localDb } from "#/db/local-db";
 import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { useAdminTenantSync } from "#/hooks/useAdminTenantSync";
 import { API_BASE_URL, apiFetch, getAccessToken } from "#/lib/api";
-import {
-  localTenantConfigStore,
-  tenantContextStore,
-  type LocalTenantConfig,
-  type TenantContext,
-} from "#/lib/indexeddb";
+import type { LocalTenantConfig, TenantContext } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -290,6 +286,7 @@ export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
 
   const loadTenantProfile = useCallback(async () => {
     try {
+      const { localTenantConfigStore, tenantContextStore } = await getIndexedDb();
       const [cfg, ctx] = await Promise.all([
         localTenantConfigStore.get(tenantId),
         tenantContextStore.get(tenantId),

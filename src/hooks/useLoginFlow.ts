@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  tenantContextStore,
-  localTenantConfigStore,
-  type LocalTenantConfig,
-} from "#/lib/indexeddb";
+import type { LocalTenantConfig } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
 import { setCurrentDeviceId, restoreAuthState } from "#/lib/api";
 import { issueAndCacheLocalSessionGrant } from "#/lib/localSessionGrant";
@@ -105,6 +102,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
       }
 
       // 2. Auto-boot: if this device already has an active session, redirect back
+      const { tenantContextStore } = await getIndexedDb();
       const contexts = await tenantContextStore.getAll();
       if (contexts.length > 0) {
         // Prefer no-auth roles (dedicated devices), then fall back to most recent context
@@ -194,6 +192,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
     setMode("scout-browse");
     // Load local tenants for the list
     try {
+      const { localTenantConfigStore } = await getIndexedDb();
       const configs = await localTenantConfigStore.getAll();
       setLocalTenants(configs);
     } catch {
@@ -204,6 +203,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
   // ── handleScoutSelectTenant ────────────────────────────────────────────────
 
   async function handleScoutSelectTenant(tenantId: string, tenantSlug: string, tenantName: string) {
+    const { tenantContextStore } = await getIndexedDb();
     const fingerprintId = await getDeviceFingerprint();
     await tenantContextStore.put({
       tenantId,
@@ -231,6 +231,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
 
   async function handlePickDeviceRole(role: "gate" | "terminal" | "scout") {
     if (!pendingContext) return;
+    const { tenantContextStore } = await getIndexedDb();
     const fingerprintId = await getDeviceFingerprint();
     await tenantContextStore.put({
       ...pendingContext,

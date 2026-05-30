@@ -2,7 +2,7 @@ import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Monitor, MonitorSmartphone, Search, DoorOpen, Check, LogOut } from "lucide-react";
 import { BRAND } from "#/lib/brand";
-import { tenantContextStore } from "#/lib/indexeddb";
+import { getTenantContextStore } from "#/lib/indexeddb.lazy";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Button } from "../ui/button";
 
@@ -82,6 +82,7 @@ export function KioskLayout({
 
   const handleSwitchMode = useCallback(
     async (mode: "terminal" | "kiosk" | "scout" | "gate" | "admin") => {
+      const tenantContextStore = await getTenantContextStore();
       const ctx = await tenantContextStore.get(tenantId);
       if (ctx) {
         await tenantContextStore.put({
@@ -99,6 +100,7 @@ export function KioskLayout({
   );
 
   const handleLogout = useCallback(async () => {
+    const tenantContextStore = await getTenantContextStore();
     await tenantContextStore.delete(tenantId);
     setShowModePicker(false);
     navigate({ to: "/" });

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "#/core/payload/types";
 import { API_BASE_URL } from "#/lib/api";
-import { sessionGrantCacheStore, type CachedSessionGrant } from "#/lib/indexeddb";
+import type { CachedSessionGrant } from "#/lib/indexeddb";
+import { getSessionGrantCacheStore } from "#/lib/indexeddb.lazy";
 import { issueAndCacheLocalSessionGrant } from "#/lib/localSessionGrant";
 
 const REFRESH_BUFFER_SECONDS = 300;
@@ -150,6 +151,7 @@ function fromCachedGrant(cached: CachedSessionGrant): SessionGrant {
 /** Write a session grant to IndexedDB cache. */
 async function writeGrantToCache(grant: SessionGrant): Promise<void> {
   try {
+    const sessionGrantCacheStore = await getSessionGrantCacheStore();
     await sessionGrantCacheStore.put(toCachedGrant(grant));
   } catch {
     // Silently fail — caching is best-effort
@@ -164,6 +166,7 @@ async function readGrantFromCache(
   deviceId: string,
 ): Promise<SessionGrant | null> {
   try {
+    const sessionGrantCacheStore = await getSessionGrantCacheStore();
     const cached = await sessionGrantCacheStore.get(tenantId, accountId, deviceId);
     if (!cached) return null;
     const nowSeconds = Math.floor(Date.now() / 1000);

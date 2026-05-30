@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { tenantContextStore, localTenantConfigStore } from "#/lib/indexeddb";
+import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { localLoginWithReason, cacheServerCredentials } from "#/lib/localTenant";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
 import { localDb } from "#/db/local-db";
@@ -69,6 +69,7 @@ async function tryLocalLogin(
   }
   if (!localOutcome.success) return null;
 
+  const { tenantContextStore } = await getIndexedDb();
   await tenantContextStore.put({
     tenantId: localOutcome.tenantId,
     tenantSlug: localOutcome.tenantSlug,
@@ -203,6 +204,7 @@ async function persistServerLoginData(
   data: Record<string, unknown>,
   deviceId: string,
 ): Promise<void> {
+  const { tenantContextStore, localTenantConfigStore } = await getIndexedDb();
   await tenantContextStore.put({
     tenantId: data.tenantId as string,
     tenantSlug: data.tenantSlug as string,

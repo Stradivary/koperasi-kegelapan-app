@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { getTransactions, type TransactionQuery } from "#/lib/transactionLogService";
-import { localAccountStore } from "#/lib/indexeddb";
+import { getLocalAccountStore } from "#/lib/indexeddb.lazy";
 import type { TransactionLog } from "#/db/local-db";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -250,6 +250,7 @@ export function TransactionsSection({ tenantId, accountId }: Readonly<Transactio
       dateTo,
     ],
     queryFn: async () => {
+      const localAccountStore = await getLocalAccountStore();
       const [transactions, accounts] = await Promise.all([
         getTransactions(query),
         localAccountStore.getByTenant(tenantId),

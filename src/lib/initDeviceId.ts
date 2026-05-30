@@ -9,13 +9,13 @@
  * or when useTenantContext loads.
  */
 
-import { tenantContextStore } from "./indexeddb";
+import { getTenantContextStore } from "./indexeddb.lazy";
 import { setCurrentDeviceId } from "./api";
 
 export function initDeviceIdFromStorage(): void {
   // Fire-and-forget: don't block app startup
-  tenantContextStore
-    .getAll()
+  getTenantContextStore()
+    .then((tenantContextStore) => tenantContextStore.getAll())
     .then((contexts) => {
       if (contexts.length === 0) return;
 
