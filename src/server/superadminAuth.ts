@@ -11,6 +11,10 @@ export interface SuperadminAccount {
 /**
  * Extracts and decodes the Bearer token from the Authorization header.
  * Returns the decoded payload or null if missing/invalid.
+ *
+ * Note: In the new architecture, the verifyToken middleware has already
+ * validated the token signature and expiry. This function only decodes
+ * the payload for extracting the accountId for the DB role check.
  */
 function extractTokenPayload(request: Request): Record<string, unknown> | null {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -22,7 +26,10 @@ function extractTokenPayload(request: Request): Record<string, unknown> | null {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1]));
+    // Decode base64url payload
+    const b64 = parts[1].replaceAll("-", "+").replaceAll("_", "/");
+    const pad = (4 - (b64.length % 4)) % 4;
+    const payload = JSON.parse(atob(b64 + "=".repeat(pad)));
     return payload;
   } catch {
     return null;
@@ -32,9 +39,14 @@ function extractTokenPayload(request: Request): Record<string, unknown> | null {
 /**
  * Authorization guard that verifies the request is from a superadmin account.
  *
- * - Returns 401 if authentication is missing or invalid
- * - Returns 403 if the authenticated account does not have the "superadmin" role
- * - Returns the authenticated account info on success
+ * The verifyToken middleware has already validated the JWT signature and expiry.
+ * This function performs the additional authorization check:
+ * - Extracts accountId from the (already verified) token
+ * - Looks up the account in the DB to confirm superadmin role
+ * - Returns 403 if the account doesn't have superadmin role
+ *
+ * This DB lookup is defense-in-depth: even if a token is valid, the account
+ * must still have the superadmin role in the database at request time.
  */
 export async function requireSuperadmin(request: Request): Promise<SuperadminAccount | Response> {
   const payload = extractTokenPayload(request);

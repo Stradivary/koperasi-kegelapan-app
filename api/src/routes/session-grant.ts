@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { issueSessionGrant } from "../../../src/server/sessionGrant";
+import type { JwtPayload } from "../lib/jwt";
 
 type Env = {
   DB: D1Database;
@@ -8,28 +9,26 @@ type Env = {
 
 export const sessionGrantRoute = new Hono<{ Bindings: Env }>();
 
-function decodeField(token: string, field: string): string {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1] ?? ""));
-    return payload[field] ?? (field === "role" ? "terminal" : "anonymous");
-  } catch {
-    return field === "role" ? "terminal" : "anonymous";
-  }
-}
-
 sessionGrantRoute.get("/", (c) => {
+  // Auth is guaranteed by the verifyToken middleware (applied in index.ts)
+  const auth = c.get("auth") as JwtPayload;
+
   const url = new URL(c.req.url);
   const tenantId = url.searchParams.get("tenantId");
-  const deviceId = url.searchParams.get("deviceId") ?? "unknown";
+  const deviceId = url.searchParams.get("deviceId") ?? auth.deviceId ?? "unknown";
 
   if (!tenantId) {
     return c.json({ error: "tenantId required" }, 400);
   }
 
-  const authHeader = c.req.header("authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const accountId = token ? decodeField(token, "accountId") : "anonymous";
-  const role = url.searchParams.get("role") ?? (token ? decodeField(token, "role") : "terminal");
+  // Enforce tenant isolation: only allow requesting grants for your own tenant
+  if (tenantId !== auth.tenantId) {
+    return c.json({ error: "Forbidden: tenant mismatch" }, 403);
+  }
+
+  // Use the role from the verified token (not from query params)
+  const role = auth.role;
+  const accountId = auth.accountId;
 
   const masterKey = Buffer.from(c.env.SESSION_MASTER_KEY, "utf8").subarray(0, 32);
   const grant = issueSessionGrant(masterKey, tenantId, accountId, deviceId, role);

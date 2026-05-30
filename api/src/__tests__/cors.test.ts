@@ -35,12 +35,19 @@ describe("CORS middleware — origin validation", () => {
     expect(await getOriginHeader("https://localhost:5173")).toBe("https://localhost:5173");
   });
 
-  it("allows *.pages.dev origins", async () => {
-    expect(await getOriginHeader("https://my-app.pages.dev")).toBe("https://my-app.pages.dev");
+  it("allows project-specific *.pages.dev origins", async () => {
+    expect(await getOriginHeader("https://koperasi-kegelapan.pages.dev")).toBe(
+      "https://koperasi-kegelapan.pages.dev",
+    );
+    // Preview deployments
+    expect(await getOriginHeader("https://abc123.koperasi-kegelapan.pages.dev")).toBe(
+      "https://abc123.koperasi-kegelapan.pages.dev",
+    );
   });
 
-  it("allows *.workers.dev origins", async () => {
-    expect(await getOriginHeader("https://my-api.workers.dev")).toBe("https://my-api.workers.dev");
+  it("rejects arbitrary *.pages.dev and *.workers.dev origins", async () => {
+    expect(await getOriginHeader("https://evil-app.pages.dev")).toBeNull();
+    expect(await getOriginHeader("https://my-api.workers.dev")).toBeNull();
   });
 
   it("allows https://ahmadmuzaki.my.id", async () => {

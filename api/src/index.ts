@@ -11,6 +11,8 @@ import { cardsRoutes } from "./routes/cards";
 import { clientErrorsRoute } from "./routes/client-errors";
 import { corsMiddleware } from "./middleware/cors";
 import { deviceBlockCheck } from "./middleware/deviceBlockCheck";
+import { verifyToken } from "./middleware/verifyToken";
+import { authRateLimit } from "./middleware/authRateLimit";
 import { syncRateLimit } from "./middleware/syncRateLimit";
 import { syncAnalytics } from "./middleware/syncAnalytics";
 
@@ -27,13 +29,29 @@ type Env = {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// ─── Global middleware (all routes) ──────────────────────────────────────────
+
 // CORS must be applied before all other middleware to handle OPTIONS preflight
 app.use("/api/*", corsMiddleware);
 
-// Apply device block enforcement middleware to all API routes.
-// The middleware itself skips requests without a device_id in the token
-// (backward compatibility), which covers unauthenticated routes like /api/auth/token.
+// Device block enforcement runs on all API routes.
+// Uses unsafe token decode (pre-auth) to extract deviceId.
+// Skips requests without a device_id in the token (backward compatibility).
 app.use("/api/*", deviceBlockCheck);
+
+// ─── Public routes (no token verification required) ──────────────────────────
+
+// Auth endpoints: login and refresh (rate-limited)
+app.use("/api/auth/*", authRateLimit);
+app.route("/api/auth", authRoutes);
+
+// Client error reporting (semi-public, best-effort token extraction)
+app.route("/api/client-errors", clientErrorsRoute);
+
+// ─── Protected routes (token verification required) ──────────────────────────
+
+// All routes below this middleware require a valid signed JWT
+app.use("/api/*", verifyToken);
 
 // Apply rate limiting only to sync endpoints (60 req/min per device_id)
 app.use("/api/sync/*", syncRateLimit);
@@ -41,7 +59,6 @@ app.use("/api/sync/*", syncRateLimit);
 // Apply analytics tracking to sync endpoints (Cloudflare Analytics Engine)
 app.use("/api/sync/*", syncAnalytics);
 
-app.route("/api/auth", authRoutes);
 app.route("/api/session-grant", sessionGrantRoute);
 app.route("/api/policy", policyRoute);
 app.route("/api/reconcile", reconcileRoute);
@@ -50,6 +67,5 @@ app.route("/api/superadmin", superadminRoutes);
 app.route("/api/accounts", accountsRoutes);
 app.route("/api/sync", syncRoutes);
 app.route("/api/cards", cardsRoutes);
-app.route("/api/client-errors", clientErrorsRoute);
 
 export default app;

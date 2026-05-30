@@ -1,38 +1,76 @@
 import { cors } from "hono/cors";
 
 /**
+ * Allowed origins for CORS.
+ *
+ * Restricted to specific project deployments rather than wildcards.
+ * Update this list when adding new deployment targets.
+ */
+const ALLOWED_ORIGINS = new Set([
+  // Local development
+  "http://localhost:3000",
+  "https://localhost:3000",
+  "http://localhost:5173",
+  "https://localhost:5173",
+  // Production domains
+  "https://ahmadmuzaki.my.id",
+  "https://ahmadmuzaki.biz.id",
+]);
+
+/**
+ * Allowed origin suffixes for subdomain matching.
+ * Only matches specific project subdomains, not all *.pages.dev.
+ */
+const ALLOWED_SUBDOMAIN_PATTERNS = [".ahmadmuzaki.my.id", ".ahmadmuzaki.biz.id"];
+
+/**
+ * Allowed Cloudflare Pages project prefixes.
+ * Matches preview deployments like `abc123.koperasi-kegelapan.pages.dev`.
+ */
+const ALLOWED_PAGES_PROJECTS = ["koperasi-kegelapan.pages.dev"];
+
+/**
+ * Check if an origin matches an allowed Cloudflare Pages project.
+ * Matches both the root project domain and preview deployment subdomains.
+ */
+function isAllowedPagesOrigin(origin: string): boolean {
+  for (const project of ALLOWED_PAGES_PROJECTS) {
+    // Exact match: https://koperasi-kegelapan.pages.dev
+    if (origin === `https://${project}`) return true;
+    // Preview deployment: https://<hash>.koperasi-kegelapan.pages.dev
+    if (origin.endsWith(`.${project}`) && origin.startsWith("https://")) return true;
+  }
+  return false;
+}
+
+/**
  * CORS middleware for the API.
- * Allows cross-origin requests from the frontend SPA (deployed on a different domain).
- * Uses a function-based origin check to support pattern matching.
+ *
+ * Security improvements over previous version:
+ * - No longer allows ALL *.pages.dev (any Cloudflare user's deployment)
+ * - No longer allows ALL *.workers.dev
+ * - Only allows specific project Pages deployments
+ * - Subdomain matching restricted to owned domains
  */
 export const corsMiddleware = cors({
   origin: (origin) => {
-    // Allow local development (http and https)
-    if (
-      origin === "http://localhost:3000" ||
-      origin === "https://localhost:3000" ||
-      origin === "http://localhost:5173" ||
-      origin === "https://localhost:5173"
-    ) {
+    // Exact match against allowed origins
+    if (ALLOWED_ORIGINS.has(origin)) {
       return origin;
     }
-    // Allow Cloudflare Pages deployments (preview and production)
-    if (origin.endsWith(".pages.dev")) {
+
+    // Check subdomain patterns (owned domains only)
+    for (const suffix of ALLOWED_SUBDOMAIN_PATTERNS) {
+      if (origin.endsWith(suffix) && origin.startsWith("https://")) {
+        return origin;
+      }
+    }
+
+    // Check Cloudflare Pages project deployments
+    if (isAllowedPagesOrigin(origin)) {
       return origin;
     }
-    // Allow Cloudflare Workers (for testing)
-    if (origin.endsWith(".workers.dev")) {
-      return origin;
-    }
-    // Allow custom production domain and subdomains
-    if (
-      origin === "https://ahmadmuzaki.my.id" ||
-      origin === "https://ahmadmuzaki.biz.id" ||
-      origin.endsWith(".ahmadmuzaki.my.id") ||
-      origin.endsWith(".ahmadmuzaki.biz.id")
-    ) {
-      return origin;
-    }
+
     return null;
   },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

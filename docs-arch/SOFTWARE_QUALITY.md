@@ -23,7 +23,7 @@ graph LR
     end
 
     subgraph Deploy["Deployment"]
-        Staging["Staging<br/>dev.ahmadmuzaki.my.id"]
+        Staging["Staging<br/>develop.koperasi-kegelapan-app.pages.dev"]
         Prod["Production<br/>ahmadmuzaki.my.id"]
     end
 

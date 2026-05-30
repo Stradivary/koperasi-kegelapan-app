@@ -1,35 +1,32 @@
 /**
  * Shared token extraction utilities for API middleware and routes.
  *
- * Parses Bearer JWT-like tokens (header.payload.signature) to extract
- * fields from the base64-encoded JSON payload.
+ * For pre-auth middleware (device block check, rate limiting) that needs to
+ * extract fields BEFORE full verification, uses unsafe decode.
+ * For post-auth usage, prefer `c.get("auth")` from the verifyToken middleware.
  */
+
+import { decodeTokenPayloadUnsafe } from "./jwt";
 
 /**
- * Parses the JSON payload from a Bearer JWT-like token.
- * Returns null if the Authorization header is missing, malformed, or unparseable.
+ * Extracts the raw Bearer token string from the Authorization header.
+ * Returns null if the header is missing or malformed.
  */
-function parseTokenPayload(request: Request): Record<string, unknown> | null {
+function extractRawToken(request: Request): string | null {
   const authHeader = request.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) return null;
-
   const token = authHeader.slice(7);
-  if (!token) return null;
-
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    return JSON.parse(atob(parts[1]));
-  } catch {
-    return null;
-  }
+  return token || null;
 }
 
 /**
- * Extracts the deviceId from the Bearer token payload.
+ * Extracts the deviceId from the Bearer token payload (unsafe decode).
+ * Used by pre-auth middleware (device block check) that runs before token verification.
  */
 export function extractDeviceIdFromToken(request: Request): string | null {
-  const payload = parseTokenPayload(request);
+  const token = extractRawToken(request);
+  if (!token) return null;
+  const payload = decodeTokenPayloadUnsafe(token);
   if (!payload) return null;
   return (payload.deviceId as string) ?? null;
 }
@@ -42,10 +39,15 @@ export interface TokenPayload {
 
 /**
  * Extracts tenantId, accountId, and optional deviceId from the Bearer token payload.
- * Returns null if the token is missing or malformed, or if tenantId/accountId are absent.
+ * Uses unsafe decode — for pre-auth contexts only.
+ * For authenticated routes, use `c.get("auth")` instead.
+ *
+ * @deprecated Prefer using `c.get("auth")` from the verifyToken middleware.
  */
 export function extractTokenPayload(request: Request): TokenPayload | null {
-  const payload = parseTokenPayload(request);
+  const token = extractRawToken(request);
+  if (!token) return null;
+  const payload = decodeTokenPayloadUnsafe(token);
   if (!payload) return null;
   if (!payload.tenantId || !payload.accountId) return null;
   return {

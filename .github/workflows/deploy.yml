@@ -26,7 +26,7 @@ jobs:
 
   # ─── Job 2: Build & Deploy (Staging — develop branch) ───────────────────
   deploy-staging:
-    name: Deploy to Staging (dev.ahmadmuzaki.my.id)
+    name: Deploy to Staging (develop.koperasi-kegelapan-app.pages.dev)
     runs-on: ubuntu-latest
     needs: ci
     if: >-
@@ -35,7 +35,7 @@ jobs:
 
     environment:
       name: staging
-      url: https://dev.ahmadmuzaki.my.id
+      url: https://develop.koperasi-kegelapan-app.pages.dev
 
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
           command: pages deploy dist --project-name=koperasi-kegelapan-app --branch=develop
 
       - name: Summary
-        run: echo "✅ Deployed to **staging** (dev.ahmadmuzaki.my.id) — ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "✅ Deployed to **staging** (develop.koperasi-kegelapan-app.pages.dev) — ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
 
   # ─── Job 3: Build & Deploy (Production — master branch) ─────────────────
   deploy-production:

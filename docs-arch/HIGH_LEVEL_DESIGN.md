@@ -121,7 +121,7 @@ graph TB
     end
 
     subgraph Staging
-        StagPages["Cloudflare Pages<br/>dev.ahmadmuzaki.my.id"]
+        StagPages["Cloudflare Pages<br/>develop.koperasi-kegelapan-app.pages.dev"]
         StagAPI["Cloudflare Workers<br/>API (wrangler.api.staging.jsonc)"]
         StagD1["D1 Staging"]
     end

@@ -3,7 +3,8 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
 import { accounts, tenants } from "#/db/schema";
 import { registerDevice } from "#/server/deviceRegistry";
-import { createSession } from "#/server/authSession";
+import { createSession, refreshSession, AuthSessionError } from "#/server/authSession";
+import { signAccessToken } from "../lib/jwt";
 
 type Env = {
   DB: D1Database;
@@ -91,27 +92,27 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 export const authRoutes = new Hono<{ Bindings: Env }>();
 
 /**
- * Build a simple JWT-like access token (header.payload.signature).
- * The payload is base64-encoded JSON containing accountId, tenantId, role, and deviceId.
- * Note: This is NOT cryptographically signed — it relies on HTTPS transport security.
- * For production, replace with proper HMAC-signed JWT using SESSION_MASTER_KEY.
+ * Build and sign a JWT access token using HMAC-SHA256.
+ * Token includes accountId, tenantId, role, deviceId, iat, and exp (1 hour).
  */
-function buildAccessToken(payload: {
-  accountId: string;
-  tenantId: string;
-  role: string;
-  deviceId?: string;
-}): string {
-  const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }));
-  const body = btoa(
-    JSON.stringify({
-      ...payload,
-      iat: Math.floor(Date.now() / 1000),
-    }),
+async function buildAccessToken(
+  payload: {
+    accountId: string;
+    tenantId: string;
+    role: string;
+    deviceId?: string;
+  },
+  masterKey: string,
+): Promise<string> {
+  return signAccessToken(
+    {
+      accountId: payload.accountId,
+      tenantId: payload.tenantId,
+      role: payload.role,
+      deviceId: payload.deviceId,
+    },
+    masterKey,
   );
-  // Placeholder signature — upgrade to HMAC-SHA256 with SESSION_MASTER_KEY for production
-  const sig = "unsigned";
-  return `${header}.${body}.${sig}`;
 }
 
 authRoutes.post("/token", async (c) => {
@@ -204,17 +205,80 @@ authRoutes.post("/token", async (c) => {
     tenantSlug: tenant.slug,
     tenantName: tenant.name,
     role: account.role,
-    // Simple base64-encoded access token for API authentication
-    // Format: header.payload.signature (JWT-like, payload is base64 JSON)
-    accessToken: buildAccessToken({
-      accountId: account.accountId,
-      tenantId: account.tenantId,
-      role: account.role,
-      deviceId,
-    }),
+    // HMAC-SHA256 signed access token (1 hour expiry)
+    accessToken: await buildAccessToken(
+      {
+        accountId: account.accountId,
+        tenantId: account.tenantId,
+        role: account.role,
+        deviceId,
+      },
+      c.env.SESSION_MASTER_KEY,
+    ),
     ...(deviceId && { deviceId }),
     ...(sessionId && { sessionId }),
     ...(refreshToken && { refreshToken }),
     ...(expiresAt && { expiresAt }),
   });
+});
+
+// ─── POST /refresh — Rotate refresh token and issue new access token ─────────
+
+authRoutes.post("/refresh", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  if (!json?.sessionId || !json?.refreshToken) {
+    return c.json({ error: "sessionId and refreshToken required" }, 400);
+  }
+
+  const db = drizzle(c.env.DB);
+
+  try {
+    const result = await refreshSession(db, json.sessionId, json.refreshToken);
+
+    // Look up the session's account to build a new access token
+    const { authSessions } = await import("#/db/schema");
+    const session = await db
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.sessionId, result.sessionId))
+      .get();
+
+    if (!session) {
+      return c.json({ error: "Session not found" }, 401);
+    }
+
+    const account = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.accountId, session.accountId))
+      .get();
+
+    if (!account || account.status !== "active") {
+      return c.json({ error: "Account inactive" }, 401);
+    }
+
+    const accessToken = await buildAccessToken(
+      {
+        accountId: account.accountId,
+        tenantId: session.tenantId,
+        role: account.role,
+        deviceId: session.deviceId,
+      },
+      c.env.SESSION_MASTER_KEY,
+    );
+
+    return c.json({
+      accessToken,
+      refreshToken: result.newRefreshToken,
+      sessionId: result.sessionId,
+      expiresAt: result.expiresAt,
+    });
+  } catch (e) {
+    if (e instanceof AuthSessionError) {
+      const status = e.code === "SESSION_NOT_FOUND" ? 404 : 401;
+      return c.json({ error: e.message, code: e.code }, status);
+    }
+    console.error("[auth/refresh] unexpected error:", e);
+    return c.json({ error: "Internal server error" }, 500);
+  }
 });
