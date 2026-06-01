@@ -467,11 +467,11 @@ describe("IssuanceTestSection - handleIssue", () => {
     });
     // Mock NDEFReader as a proper class so `new NDEFReader()` works
     const writeFn = mockNdefWrite;
-    global.NDEFReader = class {
+    (global as unknown as Record<string, unknown>).NDEFReader = class {
       write(...args: unknown[]) {
         return writeFn(...args);
       }
-    } as any;
+    };
   });
 
   it("opens drawer in writing phase when issue starts", async () => {
@@ -579,9 +579,9 @@ describe("IssuanceTestSection - handleRetry", () => {
     });
     // First call hangs (writing), second call also hangs
     mockPrepareWrite.mockReturnValue(new Promise(() => {}));
-    global.NDEFReader = class {
+    (global as unknown as Record<string, unknown>).NDEFReader = class {
       write() {}
-    } as any;
+    };
 
     render(<IssuanceTestSection />);
     // Trigger issue to set drawerMode = "write"

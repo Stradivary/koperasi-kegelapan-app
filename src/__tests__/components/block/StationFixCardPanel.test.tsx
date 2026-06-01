@@ -57,9 +57,11 @@ const cards: StationCardRow[] = [
   {
     cardId: "abc123",
     userId: "u-1",
+    userName: "Budi",
     balance: 50000,
     status: "active",
     syncStatus: "synced",
+    counter: 1,
     expiresAt: "2025-12-31",
   },
 ];
