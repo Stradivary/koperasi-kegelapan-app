@@ -187,9 +187,7 @@ describe("ScoutBrowsePanel", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  // The component renders local tenants in two blocks when offline+query="":
-  // one for filteredLocal (which equals localTenants when query="") and one for
-  // the unfiltered fallback. Use getAllByText to handle duplicates.
+  // Single list block renders all local tenants when offline
   it("renders local tenants list when offline and localTenants is non-empty", () => {
     const localTenants = [
       {
@@ -210,8 +208,8 @@ describe("ScoutBrowsePanel", () => {
       },
     ];
     render(createElement(ScoutBrowsePanel, makeDefaultProps({ isOnline: false, localTenants })));
-    expect(screen.getAllByText("Koperasi A").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Koperasi B").length).toBeGreaterThan(0);
+    expect(screen.getByText("Koperasi A")).toBeDefined();
+    expect(screen.getByText("Koperasi B")).toBeDefined();
   });
 
   it("calls onSelectLocal when a local tenant is clicked", async () => {
@@ -232,8 +230,7 @@ describe("ScoutBrowsePanel", () => {
         makeDefaultProps({ isOnline: false, localTenants, onSelectLocal }),
       ),
     );
-    // getAllByText because the component may render the tenant in multiple list blocks
-    await userEvent.click(screen.getAllByText("Koperasi A")[0].closest("button")!);
+    await userEvent.click(screen.getByText("Koperasi A").closest("button")!);
     expect(onSelectLocal).toHaveBeenCalledWith(localTenants[0]);
   });
 
@@ -325,6 +322,28 @@ describe("ScoutBrowsePanel", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("shows offline hint inside slugError alert when offline", () => {
+    render(
+      createElement(
+        ScoutBrowsePanel,
+        makeDefaultProps({ slugError: "koperasi-xyz", isOnline: false }),
+      ),
+    );
+    expect(screen.getByRole("alert")).toBeDefined();
+    expect(screen.getByText(/Sambungkan ke internet atau pilih dari daftar lokal/)).toBeDefined();
+  });
+
+  it("does not show offline hint inside slugError alert when online", () => {
+    render(
+      createElement(
+        ScoutBrowsePanel,
+        makeDefaultProps({ slugError: "koperasi-xyz", isOnline: true }),
+      ),
+    );
+    expect(screen.getByRole("alert")).toBeDefined();
+    expect(screen.queryByText(/Sambungkan ke internet atau pilih dari daftar lokal/)).toBeNull();
+  });
+
   it("shows local tenant slug below name when offline", () => {
     const localTenants = [
       {
@@ -337,8 +356,7 @@ describe("ScoutBrowsePanel", () => {
       },
     ];
     render(createElement(ScoutBrowsePanel, makeDefaultProps({ isOnline: false, localTenants })));
-    // getAllByText because the component may render the tenant in multiple list blocks
-    expect(screen.getAllByText("koperasi-a").length).toBeGreaterThan(0);
+    expect(screen.getByText("koperasi-a")).toBeDefined();
   });
 
   it("shows server result slug below name", () => {

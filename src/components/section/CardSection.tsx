@@ -925,20 +925,6 @@ export function CardSection({
     },
   });
 
-  // Mutations
-  const updateCardStatus = useMutation({
-    mutationFn: async ({ card, status }: { card: StationCardRow; status: string }) => {
-      await localDb.cards.update([tenantId, card.cardId], {
-        status: status as Card["status"],
-        syncStatus: "pending",
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
-      syncEngineCtx?.notifyMutation();
-    },
-  });
-
   const deleteCard = useMutation({
     mutationFn: async ({ card }: { card: StationCardRow }) => {
       await localDb.cards.update([tenantId, card.cardId], {
@@ -1209,16 +1195,6 @@ export function CardSection({
     [scan],
   );
 
-  // Reset card flow handler
-  const handleResetCard = useCallback(
-    (_card: StationCardRow) => {
-      setResetCardPending(true);
-      setIsDrawerOpen(true);
-      scan();
-    },
-    [scan],
-  );
-
   // Top-up: validate card/user status immediately after scan (before nominal input)
   useEffect(() => {
     if (state.phase !== "ready" || !topupDrawerOpen) return;
@@ -1307,20 +1283,12 @@ export function CardSection({
           isTopping={state.phase === "writing"}
           isIssuing={issueCard.isPending}
           isRecovering={recoverCard.isPending}
-          isUpdatingStatus={updateCardStatus.isPending}
           isDeleting={deleteCard.isPending}
-          isResetting={
-            resetCardPending && (state.phase === "scanning" || state.phase === "writing")
-          }
           hasGrant={!!grant}
           onTopupCard={handleTopupCard}
           onRecoverCard={(card) => startCardRecovery(card.cardId)}
           onIssueNew={handleIssueNew}
-          onUpdateCardStatus={(card: StationCardRow, newStatus: string) =>
-            updateCardStatus.mutate({ card, status: newStatus })
-          }
           onDeleteCard={(card) => deleteCard.mutate({ card })}
-          onResetCard={handleResetCard}
         />
       )}
 
