@@ -14,7 +14,7 @@ vi.mock("drizzle-orm/d1", () => ({
 }));
 
 vi.mock("#/server/reconcileCore", () => ({
-  processReconciliation: vi.fn((db, payload) => ({
+  processReconciliation: vi.fn((_db, payload) => ({
     accepted: payload.events.length,
     rejected: 0,
     flags: [],

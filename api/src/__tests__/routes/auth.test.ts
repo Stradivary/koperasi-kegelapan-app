@@ -288,7 +288,7 @@ describe("POST /refresh", () => {
   it("returns 404 when session not found", async () => {
     const { refreshSession, AuthSessionError } = await import("#/server/authSession");
     vi.mocked(refreshSession).mockRejectedValueOnce(
-      new AuthSessionError("Session not found", "SESSION_NOT_FOUND"),
+      new AuthSessionError("SESSION_NOT_FOUND", "SESSION_NOT_FOUND"),
     );
 
     const res = await req("POST", "/refresh", {
@@ -297,14 +297,14 @@ describe("POST /refresh", () => {
     });
     expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.error).toBe("Session not found");
+    expect(body.error).toBe("SESSION_NOT_FOUND");
     expect(body.code).toBe("SESSION_NOT_FOUND");
   });
 
   it("returns 401 when refresh token is invalid", async () => {
     const { refreshSession, AuthSessionError } = await import("#/server/authSession");
     vi.mocked(refreshSession).mockRejectedValueOnce(
-      new AuthSessionError("Invalid refresh token", "INVALID_TOKEN"),
+      new AuthSessionError("INVALID_REFRESH_TOKEN", "INVALID_TOKEN"),
     );
 
     const res = await req("POST", "/refresh", {
@@ -313,7 +313,7 @@ describe("POST /refresh", () => {
     });
     expect(res.status).toBe(401);
     const body = await res.json();
-    expect(body.error).toBe("Invalid refresh token");
+    expect(body.error).toBe("INVALID_REFRESH_TOKEN");
   });
 
   it("returns 401 when account is inactive", async () => {
