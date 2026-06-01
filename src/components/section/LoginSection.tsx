@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BRAND } from "#/lib/utils/brand";
-import { API_BASE_URL } from "#/lib/api";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
@@ -23,7 +22,6 @@ export function LoginSection() {
   // ── UI-only local state ────────────────────────────────────────────────────
   const [tenantSlug, setTenantSlug] = useState("");
   const [selectedServerTenant, setSelectedServerTenant] = useState<TenantSearchResult | null>(null);
-  const [slugNotFoundError, setSlugNotFoundError] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -104,7 +102,7 @@ export function LoginSection() {
         results={scoutTenantResults}
         loading={scoutTenantLoading}
         error={scoutTenantError}
-        slugError={slugNotFoundError}
+        slugError={flow.slugNotFoundError}
         isOnline={isOnline}
         localTenants={flow.localTenants}
         onQueryChange={setScoutTenantQuery}
@@ -114,42 +112,10 @@ export function LoginSection() {
         onSelectLocal={(tenant) => {
           flow.handleScoutSelectTenant(tenant.tenantId, tenant.slug, tenant.name);
         }}
-        onEnterSlug={async (slug) => {
-          // 1. Try local store first (works offline too)
-          const localMatch = flow.localTenants.find((t) => t.slug === slug);
-          if (localMatch) {
-            flow.handleScoutSelectTenant(localMatch.tenantId, localMatch.slug, localMatch.name);
-            return;
-          }
-          // 2. Online: resolve via server search (exact slug match)
-          if (isOnline) {
-            try {
-              const res = await fetch(
-                `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(slug)}&limit=10`,
-              );
-              if (res.ok) {
-                const data = await res.json();
-                const serverMatch = (
-                  data.tenants as { tenantId: string; slug: string; name: string }[]
-                ).find((t) => t.slug === slug);
-                if (serverMatch) {
-                  flow.handleScoutSelectTenant(
-                    serverMatch.tenantId,
-                    serverMatch.slug,
-                    serverMatch.name,
-                  );
-                  return;
-                }
-              }
-            } catch {
-              // Network error — fall through to error state
-            }
-          }
-          // 3. Cannot resolve — show error
-          setSlugNotFoundError(slug);
+        onEnterSlug={(slug) => {
+          void flow.handleScoutEnterSlug(slug, isOnline);
         }}
         onBack={() => {
-          setSlugNotFoundError(null);
           flow.enterLogin();
         }}
       />

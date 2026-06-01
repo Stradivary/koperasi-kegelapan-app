@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { LocalTenantConfig } from "#/lib/indexeddb";
 import { getIndexedDb } from "#/lib/indexeddb.lazy";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
-import { setCurrentDeviceId, restoreAuthState } from "#/lib/api";
+import { setCurrentDeviceId, restoreAuthState, API_BASE_URL } from "#/lib/api";
 import { issueAndCacheLocalSessionGrant } from "#/lib/localSessionGrant";
 import { consumeDeviceSetupLaunchContext, type DeviceSetupLaunchContext } from "#/lib/utils";
 import { hydrateQueryCache } from "#/hooks/useHydrateCache";
@@ -50,6 +50,7 @@ export interface UseLoginFlowReturn {
   pendingContext: PendingDeviceContext | null;
   deviceSetupLaunchContext: DeviceSetupLaunchContext | null;
   localTenants: LocalTenantConfig[];
+  slugNotFoundError: string | null;
   username: string;
   setUsername: (v: string) => void;
   password: string;
@@ -66,6 +67,7 @@ export interface UseLoginFlowReturn {
     tenantSlug: string,
     tenantName: string,
   ) => Promise<void>;
+  handleScoutEnterSlug: (slug: string, isOnline: boolean) => Promise<void>;
   handlePickDeviceRole: (role: "gate" | "terminal" | "scout") => Promise<void>;
   advanceToPickRole: (context: PendingDeviceContext) => void;
 }
@@ -82,6 +84,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
   const [deviceSetupLaunchContext, setDeviceSetupLaunchContext] =
     useState<DeviceSetupLaunchContext | null>(null);
   const [localTenants, setLocalTenants] = useState<LocalTenantConfig[]>([]);
+  const [slugNotFoundError, setSlugNotFoundError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -227,6 +230,39 @@ export function useLoginFlow(): UseLoginFlowReturn {
     navigate({ to: `/tenant/${tenantId}/scout` });
   }
 
+  // ── handleScoutEnterSlug ───────────────────────────────────────────────────
+
+  async function handleScoutEnterSlug(slug: string, isOnline: boolean) {
+    // 1. Try local store first (works offline too)
+    const localMatch = localTenants.find((t) => t.slug === slug);
+    if (localMatch) {
+      await handleScoutSelectTenant(localMatch.tenantId, localMatch.slug, localMatch.name);
+      return;
+    }
+    // 2. Online: resolve via server search (exact slug match)
+    if (isOnline) {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/tenants/search?q=${encodeURIComponent(slug)}&limit=10`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const serverMatch = (
+            data.tenants as { tenantId: string; slug: string; name: string }[]
+          ).find((t) => t.slug === slug);
+          if (serverMatch) {
+            await handleScoutSelectTenant(serverMatch.tenantId, serverMatch.slug, serverMatch.name);
+            return;
+          }
+        }
+      } catch {
+        // Network error — fall through to error state
+      }
+    }
+    // 3. Cannot resolve — show error
+    setSlugNotFoundError(slug);
+  }
+
   // ── handlePickDeviceRole ───────────────────────────────────────────────────
 
   async function handlePickDeviceRole(role: "gate" | "terminal" | "scout") {
@@ -268,6 +304,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
     pendingContext,
     deviceSetupLaunchContext,
     localTenants,
+    slugNotFoundError,
     username,
     setUsername,
     password,
@@ -280,6 +317,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
     enterLogin,
     enterScoutBrowse,
     handleScoutSelectTenant,
+    handleScoutEnterSlug,
     handlePickDeviceRole,
     advanceToPickRole,
   };

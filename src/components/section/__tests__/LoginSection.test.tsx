@@ -19,6 +19,7 @@ const mockFlow = {
   username: "",
   password: "",
   localTenants: [],
+  slugNotFoundError: null as string | null,
   deviceSetupLaunchContext: null as null | { returnLabel?: string; returnTo: string },
   pendingContext: null,
   setUsername: vi.fn(),
@@ -31,6 +32,7 @@ const mockFlow = {
   enterLogin: vi.fn(),
   enterScoutBrowse: vi.fn(),
   handleScoutSelectTenant: vi.fn(),
+  handleScoutEnterSlug: vi.fn(),
   handlePickDeviceRole: vi.fn(),
   advanceToPickRole: vi.fn(),
 };
@@ -283,10 +285,10 @@ describe("LoginSection - ScoutBrowsePanel callbacks", () => {
     expect(mockFlow.handleScoutSelectTenant).toHaveBeenCalledWith("t2", "b", "B");
   });
 
-  it("calls handleScoutSelectTenant with slug when enter-slug clicked", async () => {
+  it("calls handleScoutEnterSlug with slug when enter-slug clicked", async () => {
     render(<LoginSection />);
     await userEvent.click(screen.getByText("enter-slug"));
-    expect(mockFlow.handleScoutSelectTenant).toHaveBeenCalledWith("my-slug", "my-slug", "my-slug");
+    expect(mockFlow.handleScoutEnterSlug).toHaveBeenCalledWith("my-slug", true);
   });
 });
 
