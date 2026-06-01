@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { cardsRoutes } from "../cards";
+import { cardsRoutes } from "../../routes/cards";
 
 type Env = {
   DB: D1Database;

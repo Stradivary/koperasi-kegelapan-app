@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Koperasi Kegelapan — High-Level Design</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #0f172a;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 16px 64px;
+        color: #f1f5f9;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+        letter-spacing: 0.4px;
+      }
+      p.sub {
+        color: #94a3b8;
+        font-size: 13px;
+        margin: 0 0 32px;
+      }
+      .diagram-wrap {
+        width: 100%;
+        max-width: 1200px;
+      }
+      svg.arch {
+        width: 100%;
+        display: block;
+      }
+
+      /* ── Schema section ── */
+      .schema-section {
+        width: 100%;
+        max-width: 1200px;
+        margin-top: 48px;
+      }
+      .schema-section h2 {
+        font-size: 16px;
+        color: #94a3b8;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        margin: 0 0 20px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .schema-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .table-card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .table-card-header {
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .table-card-header .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .table-card table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      .table-card table th {
+        background: #0f172a;
+        color: #64748b;
+        font-weight: 600;
+        padding: 5px 12px;
+        text-align: left;
+        letter-spacing: 0.5px;
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+      .table-card table td {
+        padding: 5px 12px;
+        border-top: 1px solid #1e293b;
+        color: #cbd5e1;
+        vertical-align: top;
+      }
+      .table-card table tr:hover td {
+        background: #263348;
+      }
+      .col-name {
+        font-family: "Cascadia Code", "Fira Code", monospace;
+        color: #93c5fd;
+      }
+      .col-type {
+        color: #86efac;
+        font-family: monospace;
+      }
+      .col-note {
+        color: #64748b;
+        font-size: 10px;
+      }
+      .badge-pk {
+        background: #7c3aed;
+        color: white;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 700;
+      }
+      .badge-fk {
+        background: #0f766e;
+        color: white;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 700;
+      }
+      .badge-idx {
+        background: #1d4ed8;
+        color: white;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 700;
+      }
+      .badge-uni {
+        background: #b45309;
+        color: white;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      /* ── Lifecycle section ── */
+      .lifecycle-section {
+        width: 100%;
+        max-width: 1200px;
+        margin-top: 40px;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 20px 24px;
+      }
+      .lifecycle-section h2 {
+        font-size: 13px;
+        color: #94a3b8;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        margin: 0 0 16px;
+      }
+      .lifecycle-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .step {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .step-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
+        color: white;
+      }
+      .step-body {
+        flex: 1;
+      }
+      .step-title {
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+      .step-desc {
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Koperasi Kegelapan — High-Level Architecture</h1>
+    <p class="sub">Offline-first NFC cooperative payment system on Cloudflare edge</p>
+
+    <div class="diagram-wrap">
+      <svg class="arch" viewBox="0 0 1160 780" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
+          <linearGradient id="frontendGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#1d4ed8" />
+            <stop offset="100%" stop-color="#2563eb" />
+          </linearGradient>
+          <linearGradient id="backendGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#c2410c" />
+            <stop offset="100%" stop-color="#ea580c" />
+          </linearGradient>
+          <linearGradient id="nfcGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#6d28d9" />
+            <stop offset="100%" stop-color="#7c3aed" />
+          </linearGradient>
+          <linearGradient id="dbGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0f766e" />
+            <stop offset="100%" stop-color="#0d9488" />
+          </linearGradient>
+          <filter id="shadow">
+            <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.45" />
+          </filter>
+          <!-- Arrow markers -->
+          <marker id="mGray" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#475569" />
+          </marker>
+          <marker id="mGreen" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#22c55e" />
+          </marker>
+          <marker id="mBlue" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#60a5fa" />
+          </marker>
+          <marker id="mOrange" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#fb923c" />
+          </marker>
+          <marker id="mPurple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#a78bfa" />
+          </marker>
+          <marker id="mTeal" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0,8 3,0 6" fill="#14b8a6" />
+          </marker>
+          <marker id="mGrayR" markerWidth="8" markerHeight="6" refX="1" refY="3" orient="auto">
+            <polygon points="8 0,0 3,8 6" fill="#475569" />
+          </marker>
+          <marker id="mPurpleR" markerWidth="8" markerHeight="6" refX="1" refY="3" orient="auto">
+            <polygon points="8 0,0 3,8 6" fill="#a78bfa" />
+          </marker>
+        </defs>
+
+        <!-- ── Background ── -->
+        <rect width="1160" height="780" rx="16" fill="url(#bgGrad)" />
+
+        <!-- ── Zone: Android NFC Terminal (left) ── -->
+        <rect
+          x="18"
+          y="18"
+          width="340"
+          height="744"
+          rx="12"
+          fill="none"
+          stroke="#334155"
+          stroke-width="1.5"
+          stroke-dasharray="6,3"
+        />
+        <text
+          x="188"
+          y="38"
+          text-anchor="middle"
+          fill="#64748b"
+          font-size="10"
+          font-weight="700"
+          letter-spacing="2"
+        >
+          ANDROID NFC TERMINAL
+        </text>
+
+        <!-- ── Zone: Cloudflare Edge (right) ── -->
+        <rect
+          x="378"
+          y="18"
+          width="764"
+          height="744"
+          rx="12"
+          fill="none"
+          stroke="#334155"
+          stroke-width="1.5"
+          stroke-dasharray="6,3"
+        />
+        <text
+          x="760"
+          y="38"
+          text-anchor="middle"
+          fill="#64748b"
+          font-size="10"
+          font-weight="700"
+          letter-spacing="2"
+        >
+          CLOUDFLARE EDGE
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- NFC CARD -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="36"
+          y="50"
+          width="304"
+          height="196"
+          rx="12"
+          fill="url(#nfcGrad)"
+          filter="url(#shadow)"
+        />
+        <text x="188" y="74" text-anchor="middle" fill="white" font-size="12" font-weight="700">
+          📶 NFC Card (NTAG215)
+        </text>
+        <text x="188" y="90" text-anchor="middle" fill="#ddd6fe" font-size="9">
+          496-byte encrypted binary payload
+        </text>
+
+        <rect x="50" y="100" width="276" height="132" rx="8" fill="#4c1d95" fill-opacity="0.55" />
+        <text
+          x="188"
+          y="117"
+          text-anchor="middle"
+          fill="#c4b5fd"
+          font-size="9"
+          font-weight="700"
+          letter-spacing="1"
+        >
+          CARD MEMORY LAYOUT
+        </text>
+
+        <rect x="60" y="124" width="120" height="22" rx="4" fill="#6d28d9" />
+        <text x="120" y="139" text-anchor="middle" fill="white" font-size="9">Identity Block</text>
+        <rect x="188" y="124" width="128" height="22" rx="4" fill="#6d28d9" />
+        <text x="252" y="139" text-anchor="middle" fill="white" font-size="9">Wallet Balance</text>
+
+        <rect x="60" y="152" width="120" height="22" rx="4" fill="#5b21b6" />
+        <text x="120" y="167" text-anchor="middle" fill="white" font-size="9">
+          Tx Log A (buffer)
+        </text>
+        <rect x="188" y="152" width="128" height="22" rx="4" fill="#5b21b6" />
+        <text x="252" y="167" text-anchor="middle" fill="white" font-size="9">
+          Tx Log B (buffer)
+        </text>
+
+        <rect x="60" y="180" width="256" height="22" rx="4" fill="#4c1d95" />
+        <text x="188" y="195" text-anchor="middle" fill="#ddd6fe" font-size="9">
+          Trailer: HMAC-SHA256 + Chain Counter
+        </text>
+
+        <text x="188" y="220" text-anchor="middle" fill="#c4b5fd" font-size="9" font-style="italic">
+          Card = source of truth when offline
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- FRONTEND PWA -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="36"
+          y="268"
+          width="304"
+          height="296"
+          rx="12"
+          fill="url(#frontendGrad)"
+          filter="url(#shadow)"
+        />
+        <text x="188" y="290" text-anchor="middle" fill="white" font-size="12" font-weight="700">
+          ⚛ Frontend — React 19 PWA
+        </text>
+        <text x="188" y="306" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          Cloudflare Pages · Service Worker (Workbox)
+        </text>
+
+        <rect x="50" y="316" width="276" height="46" rx="7" fill="#1d4ed8" fill-opacity="0.65" />
+        <text x="188" y="334" text-anchor="middle" fill="white" font-size="10" font-weight="600">
+          TanStack Router (file-based)
+        </text>
+        <text x="188" y="350" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          TanStack Query · Tailwind 4 · Vite 8
+        </text>
+
+        <rect x="50" y="370" width="276" height="46" rx="7" fill="#1d4ed8" fill-opacity="0.65" />
+        <text x="188" y="388" text-anchor="middle" fill="white" font-size="10" font-weight="600">
+          Offline Layer
+        </text>
+        <text x="188" y="404" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          IndexedDB (Dexie) · Reconciliation Outbox
+        </text>
+
+        <rect x="50" y="424" width="276" height="46" rx="7" fill="#1d4ed8" fill-opacity="0.65" />
+        <text x="188" y="442" text-anchor="middle" fill="white" font-size="10" font-weight="600">
+          NFC Web API
+        </text>
+        <text x="188" y="458" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          Read · Validate HMAC · Write-back card
+        </text>
+
+        <rect x="50" y="478" width="276" height="46" rx="7" fill="#1d4ed8" fill-opacity="0.65" />
+        <text x="188" y="496" text-anchor="middle" fill="white" font-size="10" font-weight="600">
+          Session Grant Cache
+        </text>
+        <text x="188" y="512" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          Signed JWT · 24h TTL · offline-valid
+        </text>
+
+        <text x="188" y="552" text-anchor="middle" fill="#93c5fd" font-size="9" font-style="italic">
+          Works fully offline on Android NFC terminals
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- OUTBOX -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="36"
+          y="584"
+          width="304"
+          height="72"
+          rx="12"
+          fill="#0f1f3d"
+          stroke="#3b82f6"
+          stroke-width="1.5"
+          filter="url(#shadow)"
+        />
+        <text x="188" y="606" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700">
+          📤 Reconciliation Outbox
+        </text>
+        <text x="188" y="622" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          Queued transactions in IndexedDB
+        </text>
+        <text x="188" y="638" text-anchor="middle" fill="#bfdbfe" font-size="9">
+          Flushed to /sync when back online
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- BACKEND — Cloudflare Workers + Hono -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="396"
+          y="50"
+          width="456"
+          height="490"
+          rx="12"
+          fill="url(#backendGrad)"
+          filter="url(#shadow)"
+        />
+        <text x="624" y="74" text-anchor="middle" fill="white" font-size="12" font-weight="700">
+          ☁ Backend — Cloudflare Workers + Hono
+        </text>
+        <text x="624" y="90" text-anchor="middle" fill="#fed7aa" font-size="9">
+          Stateless API at the edge · No traditional server
+        </text>
+
+        <!-- Route modules -->
+        <text
+          x="624"
+          y="110"
+          text-anchor="middle"
+          fill="#ffedd5"
+          font-size="9"
+          font-weight="700"
+          letter-spacing="1"
+        >
+          11 ROUTE MODULES
+        </text>
+
+        <!-- Row 1 -->
+        <rect x="410" y="116" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="460" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /auth
+        </text>
+        <rect x="518" y="116" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="568" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /cards
+        </text>
+        <rect x="626" y="116" width="116" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="684" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /session-grant
+        </text>
+        <rect x="750" y="116" width="92" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="796" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /sync
+        </text>
+
+        <!-- Row 2 -->
+        <rect x="410" y="150" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="460" y="168" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /reconcile
+        </text>
+        <rect x="518" y="150" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="568" y="168" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /policy
+        </text>
+        <rect x="626" y="150" width="116" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="684" y="168" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /tenants
+        </text>
+        <rect x="750" y="150" width="92" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="796" y="168" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /members
+        </text>
+
+        <!-- Row 3 -->
+        <rect x="410" y="184" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="460" y="202" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /transactions
+        </text>
+        <rect x="518" y="184" width="100" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="568" y="202" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /reports
+        </text>
+        <rect x="626" y="184" width="216" height="28" rx="5" fill="#9a3412" fill-opacity="0.85" />
+        <text x="734" y="202" text-anchor="middle" fill="white" font-size="9" font-weight="600">
+          /admin (+ more)
+        </text>
+
+        <!-- Middleware -->
+        <rect x="410" y="224" width="432" height="56" rx="7" fill="#7c2d12" fill-opacity="0.7" />
+        <text x="626" y="243" text-anchor="middle" fill="#fed7aa" font-size="10" font-weight="700">
+          Middleware Stack
+        </text>
+        <text x="626" y="259" text-anchor="middle" fill="#ffedd5" font-size="9">
+          JWT Auth · CORS · Rate Limit · Tenant Resolver · Request Logger
+        </text>
+        <text x="626" y="273" text-anchor="middle" fill="#ffedd5" font-size="9">
+          Drizzle ORM → Cloudflare D1 (SQLite)
+        </text>
+
+        <!-- Crypto -->
+        <rect x="410" y="290" width="432" height="56" rx="7" fill="#7c2d12" fill-opacity="0.7" />
+        <text x="626" y="309" text-anchor="middle" fill="#fed7aa" font-size="10" font-weight="700">
+          Crypto / Security Layer
+        </text>
+        <text x="626" y="325" text-anchor="middle" fill="#ffedd5" font-size="9">
+          AES-256-GCM card encryption · HMAC-SHA256 chain validation
+        </text>
+        <text x="626" y="339" text-anchor="middle" fill="#ffedd5" font-size="9">
+          Ed25519 session signing · Replay-attack counter
+        </text>
+
+        <!-- Sync engine -->
+        <rect x="410" y="356" width="432" height="56" rx="7" fill="#7c2d12" fill-opacity="0.7" />
+        <text x="626" y="375" text-anchor="middle" fill="#fed7aa" font-size="10" font-weight="700">
+          Sync / Reconcile Engine
+        </text>
+        <text x="626" y="391" text-anchor="middle" fill="#ffedd5" font-size="9">
+          Idempotent outbox processing · Conflict detection
+        </text>
+        <text x="626" y="405" text-anchor="middle" fill="#ffedd5" font-size="9">
+          A/B double-buffer merge · Audit trail write
+        </text>
+
+        <!-- SSE / Events -->
+        <rect x="410" y="422" width="432" height="56" rx="7" fill="#7c2d12" fill-opacity="0.7" />
+        <text x="626" y="441" text-anchor="middle" fill="#fed7aa" font-size="10" font-weight="700">
+          SSE / Card Events
+        </text>
+        <text x="626" y="457" text-anchor="middle" fill="#ffedd5" font-size="9">
+          card_events table · real-time broadcast to terminals
+        </text>
+        <text x="626" y="471" text-anchor="middle" fill="#ffedd5" font-size="9">
+          card_status_change · transaction · checkin · checkout
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- D1 DATABASE -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="396"
+          y="560"
+          width="456"
+          height="186"
+          rx="12"
+          fill="url(#dbGrad)"
+          filter="url(#shadow)"
+        />
+        <text x="624" y="582" text-anchor="middle" fill="white" font-size="12" font-weight="700">
+          🗄 Cloudflare D1 — SQLite at the Edge
+        </text>
+        <text x="624" y="598" text-anchor="middle" fill="#ccfbf1" font-size="9">
+          Drizzle ORM · Persistent storage · Global replication
+        </text>
+
+        <!-- Table chips row 1 -->
+        <rect x="410" y="608" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="454" y="625" text-anchor="middle" fill="white" font-size="9">tenants</text>
+        <rect x="506" y="608" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="550" y="625" text-anchor="middle" fill="white" font-size="9">accounts</text>
+        <rect x="602" y="608" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="646" y="625" text-anchor="middle" fill="white" font-size="9">users</text>
+        <rect x="698" y="608" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="742" y="625" text-anchor="middle" fill="white" font-size="9">cards</text>
+
+        <!-- Table chips row 2 -->
+        <rect x="410" y="642" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="454" y="659" text-anchor="middle" fill="white" font-size="9">session_grants</text>
+        <rect x="506" y="642" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="550" y="659" text-anchor="middle" fill="white" font-size="9">devices</text>
+        <rect x="602" y="642" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="646" y="659" text-anchor="middle" fill="white" font-size="9">auth_sessions</text>
+        <rect x="698" y="642" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="742" y="659" text-anchor="middle" fill="white" font-size="9">transaction_log</text>
+
+        <!-- Table chips row 3 -->
+        <rect x="410" y="676" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="454" y="693" text-anchor="middle" fill="white" font-size="9">audit_log</text>
+        <rect x="506" y="676" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="550" y="693" text-anchor="middle" fill="white" font-size="9">sync_cursors</text>
+        <rect x="602" y="676" width="88" height="26" rx="5" fill="#0f766e" fill-opacity="0.85" />
+        <text x="646" y="693" text-anchor="middle" fill="white" font-size="9">card_events</text>
+
+        <text x="624" y="724" text-anchor="middle" fill="#99f6e4" font-size="9" font-style="italic">
+          Read replicas at edge PoPs · Migrations via Drizzle Kit · Wrangler deploy pipeline
+        </text>
+        <text x="624" y="738" text-anchor="middle" fill="#99f6e4" font-size="9" font-style="italic">
+          Idempotency keys on transaction_log · Composite PKs on cards, users, sync_cursors
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- CF KV + SECRETS -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="872"
+          y="50"
+          width="252"
+          height="196"
+          rx="12"
+          fill="#0f1f3d"
+          stroke="#3b82f6"
+          stroke-width="1.5"
+          filter="url(#shadow)"
+        />
+        <text x="998" y="72" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700">
+          🔐 CF KV + Secrets
+        </text>
+
+        <rect x="886" y="82" width="224" height="38" rx="6" fill="#1d4ed8" fill-opacity="0.4" />
+        <text x="998" y="98" text-anchor="middle" fill="#bfdbfe" font-size="9" font-weight="600">
+          Cloudflare KV
+        </text>
+        <text x="998" y="112" text-anchor="middle" fill="#93c5fd" font-size="8">
+          Session cache · Rate-limit counters
+        </text>
+
+        <rect x="886" y="128" width="224" height="38" rx="6" fill="#1d4ed8" fill-opacity="0.4" />
+        <text x="998" y="144" text-anchor="middle" fill="#bfdbfe" font-size="9" font-weight="600">
+          Wrangler Secrets
+        </text>
+        <text x="998" y="158" text-anchor="middle" fill="#93c5fd" font-size="8">
+          AES key · HMAC secret · JWT private key
+        </text>
+
+        <rect x="886" y="174" width="224" height="38" rx="6" fill="#1d4ed8" fill-opacity="0.4" />
+        <text x="998" y="190" text-anchor="middle" fill="#bfdbfe" font-size="9" font-weight="600">
+          Cloudflare Pages
+        </text>
+        <text x="998" y="204" text-anchor="middle" fill="#93c5fd" font-size="8">
+          PWA static assets · CDN global edge
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- CI/CD -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <rect
+          x="872"
+          y="266"
+          width="252"
+          height="130"
+          rx="12"
+          fill="#1e293b"
+          stroke="#475569"
+          stroke-width="1.5"
+          filter="url(#shadow)"
+        />
+        <text x="998" y="288" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="700">
+          🚀 CI / CD Pipeline
+        </text>
+        <rect x="886" y="298" width="224" height="26" rx="5" fill="#334155" />
+        <text x="998" y="315" text-anchor="middle" fill="#cbd5e1" font-size="9">
+          GitHub Actions · ci-test · deploy · static-analysis
+        </text>
+        <rect x="886" y="330" width="224" height="26" rx="5" fill="#334155" />
+        <text x="998" y="347" text-anchor="middle" fill="#cbd5e1" font-size="9">
+          Husky pre-commit · Oxlint · Prettier
+        </text>
+        <rect x="886" y="362" width="224" height="26" rx="5" fill="#334155" />
+        <text x="998" y="379" text-anchor="middle" fill="#cbd5e1" font-size="9">
+          Wrangler deploy → Workers + D1 migrations
+        </text>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ARROWS — all using path for clean routing -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- ① NFC Card ↔ PWA  (bidirectional, offset lines) -->
+        <!-- down: card bottom → PWA top -->
+        <path
+          d="M 178,246 L 178,266"
+          stroke="#a78bfa"
+          stroke-width="2"
+          fill="none"
+          marker-end="url(#mPurple)"
+        />
+        <!-- up: PWA top → card bottom -->
+        <path
+          d="M 198,266 L 198,246"
+          stroke="#a78bfa"
+          stroke-width="2"
+          fill="none"
+          marker-end="url(#mPurple)"
+        />
+        <text x="208" y="260" fill="#c4b5fd" font-size="8">NFC R/W</text>
+
+        <!-- ② PWA → Outbox (queue tx) -->
+        <path
+          d="M 188,564 L 188,582"
+          stroke="#60a5fa"
+          stroke-width="2"
+          fill="none"
+          marker-end="url(#mBlue)"
+        />
+        <text x="196" y="576" fill="#93c5fd" font-size="8">queue tx</text>
+
+        <!-- ③ PWA → Backend  (online HTTPS, horizontal with elbow) -->
+        <path
+          d="M 340,400 L 370,400 L 370,300 L 394,300"
+          stroke="#22c55e"
+          stroke-width="2"
+          stroke-dasharray="6,3"
+          fill="none"
+          marker-end="url(#mGreen)"
+        />
+        <text x="348" y="394" fill="#86efac" font-size="8">HTTPS</text>
+        <text x="348" y="405" fill="#86efac" font-size="8">(online)</text>
+
+        <!-- ④ Outbox → Backend /sync  (elbow route) -->
+        <path
+          d="M 340,620 L 370,620 L 370,490 L 394,490"
+          stroke="#fb923c"
+          stroke-width="2"
+          stroke-dasharray="5,3"
+          fill="none"
+          marker-end="url(#mOrange)"
+        />
+        <text x="348" y="614" fill="#fdba74" font-size="8">sync</text>
+        <text x="348" y="625" fill="#fdba74" font-size="8">outbox</text>
+
+        <!-- ⑤ Backend → D1  (straight down) -->
+        <path
+          d="M 624,542 L 624,558"
+          stroke="#14b8a6"
+          stroke-width="2.5"
+          fill="none"
+          marker-end="url(#mTeal)"
+        />
+        <text x="632" y="554" fill="#5eead4" font-size="8">Drizzle ORM</text>
+
+        <!-- ⑥ Backend ↔ KV/Secrets  (horizontal) -->
+        <path
+          d="M 854,160 L 870,160"
+          stroke="#60a5fa"
+          stroke-width="1.5"
+          stroke-dasharray="4,2"
+          fill="none"
+          marker-end="url(#mBlue)"
+        />
+
+        <!-- ⑦ CI/CD → Backend  (horizontal) -->
+        <path
+          d="M 870,380 L 854,380"
+          stroke="#64748b"
+          stroke-width="1.5"
+          stroke-dasharray="4,2"
+          fill="none"
+          marker-end="url(#mGray)"
+        />
+        <text x="856" y="374" text-anchor="end" fill="#94a3b8" font-size="8">wrangler deploy</text>
+
+        <!-- ⑧ Backend → CF Pages (KV box) vertical connector -->
+        <path
+          d="M 998,248 L 998,264"
+          stroke="#60a5fa"
+          stroke-width="1.5"
+          stroke-dasharray="4,2"
+          fill="none"
+          marker-end="url(#mBlue)"
+        />
+      </svg>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- KEY LIFECYCLE FLOW -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="lifecycle-section">
+      <h2>Key Lifecycle Flow</h2>
+      <div class="lifecycle-steps">
+        <div class="step">
+          <div class="step-badge" style="background: #1d4ed8">①</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #93c5fd">Login Online</div>
+            <div class="step-desc">
+              Terminal authenticates via <code>/auth</code>. Backend issues a signed session grant
+              (Ed25519, 24h TTL) with allowed ops and device binding. Grant is cached in IndexedDB.
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge" style="background: #7c3aed">②</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #c4b5fd">Go Offline — NFC Read</div>
+            <div class="step-desc">
+              Terminal reads NTAG215 card. Decrypts AES-256-GCM payload, validates HMAC-SHA256
+              trailer and chain counter. Rejects tampered or replayed cards.
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge" style="background: #0f766e">③</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #5eead4">Process Transaction</div>
+            <div class="step-desc">
+              Applies debit/credit/checkin/checkout to the active A/B buffer. Updates wallet
+              balance, increments chain counter, recomputes HMAC, writes back to card via NFC.
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge" style="background: #b45309">④</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #fcd34d">Queue to Outbox</div>
+            <div class="step-desc">
+              Transaction is appended to the reconciliation outbox in IndexedDB with an idempotency
+              key. Terminal continues operating fully offline.
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge" style="background: #f97316">⑤</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #fdba74">Back Online — Sync</div>
+            <div class="step-desc">
+              Service Worker detects connectivity. Outbox batch is POSTed to <code>/sync</code>.
+              Backend deduplicates via idempotency key, persists to D1, updates sync_cursors.
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge" style="background: #0f766e">⑥</div>
+          <div class="step-body">
+            <div class="step-title" style="color: #99f6e4">Reconcile &amp; Audit</div>
+            <div class="step-desc">
+              Reconcile engine merges A/B buffer, detects conflicts, writes final state to
+              transaction_log and audit_log. Broadcasts card_events via SSE to other terminals.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- DATABASE SCHEMA -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="schema-section">
+      <h2>Database Schema — Cloudflare D1 (SQLite via Drizzle ORM)</h2>
+      <div class="schema-grid">
+        <!-- tenants -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #134e4a; color: #99f6e4">
+            <span class="dot" style="background: #14b8a6"></span>tenants
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">slug</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-uni">UNIQUE</span> URL-safe identifier</td>
+            </tr>
+            <tr>
+              <td class="col-name">name</td>
+              <td class="col-type">text</td>
+              <td class="col-note">Display name</td>
+            </tr>
+            <tr>
+              <td class="col-name">status</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">active · suspended · archived</td>
+            </tr>
+            <tr>
+              <td class="col-name">timezone</td>
+              <td class="col-type">text</td>
+              <td class="col-note">default Asia/Jakarta</td>
+            </tr>
+            <tr>
+              <td class="col-name">created_at / updated_at</td>
+              <td class="col-type">timestamp</td>
+              <td class="col-note">unixepoch()</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- accounts -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #134e4a; color: #99f6e4">
+            <span class="dot" style="background: #14b8a6"></span>accounts
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">account_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">username</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-uni">UNIQUE</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">password_hash</td>
+              <td class="col-type">text</td>
+              <td class="col-note">bcrypt / argon2</td>
+            </tr>
+            <tr>
+              <td class="col-name">role</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">
+                admin · station · gate · terminal · scout · superadmin · kiosk
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">status</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">active · suspended</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- users -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #134e4a; color: #99f6e4">
+            <span class="dot" style="background: #14b8a6"></span>users
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id + user_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span> composite</td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">name</td>
+              <td class="col-type">text</td>
+              <td class="col-note">Member display name</td>
+            </tr>
+            <tr>
+              <td class="col-name">status</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">active · suspended · closed · deleted</td>
+            </tr>
+            <tr>
+              <td class="col-name">created_at / updated_at</td>
+              <td class="col-type">timestamp</td>
+              <td class="col-note"></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- cards -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #3b0764; color: #e9d5ff">
+            <span class="dot" style="background: #a78bfa"></span>cards
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id + card_id</td>
+              <td class="col-type">blob</td>
+              <td class="col-note"><span class="badge-pk">PK</span> composite</td>
+            </tr>
+            <tr>
+              <td class="col-name">user_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">nullable — unissued cards</td>
+            </tr>
+            <tr>
+              <td class="col-name">status</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">
+                active · BLOCKED_TAMPER · BLOCKED_FRAUD · BLOCKED_EXPIRED · BLOCKED_ADMIN
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">balance</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">in smallest currency unit</td>
+            </tr>
+            <tr>
+              <td class="col-name">counter</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">monotonic chain counter</td>
+            </tr>
+            <tr>
+              <td class="col-name">key_version</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">AES key rotation version</td>
+            </tr>
+            <tr>
+              <td class="col-name">expires_at</td>
+              <td class="col-type">timestamp</td>
+              <td class="col-note">nullable</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- session_grants -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #1e3a5f; color: #bfdbfe">
+            <span class="dot" style="background: #60a5fa"></span>session_grants
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">grant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">account_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → accounts</td>
+            </tr>
+            <tr>
+              <td class="col-name">device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">terminal device binding</td>
+            </tr>
+            <tr>
+              <td class="col-name">key_version</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">AES key version at issue time</td>
+            </tr>
+            <tr>
+              <td class="col-name">allowed_ops</td>
+              <td class="col-type">text</td>
+              <td class="col-note">JSON array of permitted operations</td>
+            </tr>
+            <tr>
+              <td class="col-name">expires_at / issued_at</td>
+              <td class="col-type">timestamp</td>
+              <td class="col-note">24h TTL</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- devices -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #1e3a5f; color: #bfdbfe">
+            <span class="dot" style="background: #60a5fa"></span>devices
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">account_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → accounts</td>
+            </tr>
+            <tr>
+              <td class="col-name">fingerprint_hash</td>
+              <td class="col-type">text</td>
+              <td class="col-note">browser fingerprint</td>
+            </tr>
+            <tr>
+              <td class="col-name">user_agent / platform</td>
+              <td class="col-type">text</td>
+              <td class="col-note"></td>
+            </tr>
+            <tr>
+              <td class="col-name">last_seen_at</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"><span class="badge-idx">IDX</span> tenant+account</td>
+            </tr>
+            <tr>
+              <td class="col-name">blocked_until</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">nullable — rate-limit block</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- auth_sessions -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #1e3a5f; color: #bfdbfe">
+            <span class="dot" style="background: #60a5fa"></span>auth_sessions
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">session_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span></td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id / account_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">
+                <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">
+                <span class="badge-fk">FK</span> → devices <span class="badge-idx">IDX</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">refresh_token_hash</td>
+              <td class="col-type">text</td>
+              <td class="col-note">hashed refresh token</td>
+            </tr>
+            <tr>
+              <td class="col-name">expires_at</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"></td>
+            </tr>
+            <tr>
+              <td class="col-name">revoked_at</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">nullable — soft revoke</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- transaction_log -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #422006; color: #fde68a">
+            <span class="dot" style="background: #f59e0b"></span>transaction_log
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">id</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"><span class="badge-pk">PK</span> autoincrement</td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id + card_id + counter</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-uni">UNIQUE</span> composite</td>
+            </tr>
+            <tr>
+              <td class="col-name">user_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">nullable</td>
+            </tr>
+            <tr>
+              <td class="col-name">type</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">debit · credit · checkin · checkout · topup · admin</td>
+            </tr>
+            <tr>
+              <td class="col-name">amount / balance_after</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"></td>
+            </tr>
+            <tr>
+              <td class="col-name">hash</td>
+              <td class="col-type">text</td>
+              <td class="col-note">chain hash from card</td>
+            </tr>
+            <tr>
+              <td class="col-name">idempotency_key</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-uni">UNIQUE</span> dedup on sync</td>
+            </tr>
+            <tr>
+              <td class="col-name">device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → devices</td>
+            </tr>
+            <tr>
+              <td class="col-name">flagged</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">fraud flag</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- audit_log -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #422006; color: #fde68a">
+            <span class="dot" style="background: #f59e0b"></span>audit_log
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">id</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"><span class="badge-pk">PK</span> autoincrement</td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">card_id</td>
+              <td class="col-type">blob</td>
+              <td class="col-note">raw NFC UID bytes</td>
+            </tr>
+            <tr>
+              <td class="col-name">counter</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">chain counter at event</td>
+            </tr>
+            <tr>
+              <td class="col-name">type / amount / balance_after</td>
+              <td class="col-type">mixed</td>
+              <td class="col-note"></td>
+            </tr>
+            <tr>
+              <td class="col-name">hash</td>
+              <td class="col-type">blob</td>
+              <td class="col-note">HMAC-SHA256 from card trailer</td>
+            </tr>
+            <tr>
+              <td class="col-name">flagged</td>
+              <td class="col-type">boolean</td>
+              <td class="col-note">tamper / fraud flag</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- sync_cursors -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #134e4a; color: #99f6e4">
+            <span class="dot" style="background: #14b8a6"></span>sync_cursors
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id + device_id + entity_type</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-pk">PK</span> composite</td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → tenants</td>
+            </tr>
+            <tr>
+              <td class="col-name">device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"><span class="badge-fk">FK</span> → devices</td>
+            </tr>
+            <tr>
+              <td class="col-name">entity_type</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">members · cards · transactions</td>
+            </tr>
+            <tr>
+              <td class="col-name">last_cursor</td>
+              <td class="col-type">text</td>
+              <td class="col-note">opaque pagination cursor</td>
+            </tr>
+            <tr>
+              <td class="col-name">updated_at</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- card_events -->
+        <div class="table-card">
+          <div class="table-card-header" style="background: #3b0764; color: #e9d5ff">
+            <span class="dot" style="background: #a78bfa"></span>card_events
+          </div>
+          <table>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Notes</th>
+            </tr>
+            <tr>
+              <td class="col-name">id</td>
+              <td class="col-type">integer</td>
+              <td class="col-note"><span class="badge-pk">PK</span> autoincrement</td>
+            </tr>
+            <tr>
+              <td class="col-name">tenant_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">
+                <span class="badge-fk">FK</span> → tenants
+                <span class="badge-idx">IDX</span> tenant+created
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">card_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note"></td>
+            </tr>
+            <tr>
+              <td class="col-name">event_type</td>
+              <td class="col-type">enum</td>
+              <td class="col-note">
+                card_status_change · member_update · transaction · checkin · checkout
+              </td>
+            </tr>
+            <tr>
+              <td class="col-name">payload</td>
+              <td class="col-type">text</td>
+              <td class="col-note">JSON-encoded event body</td>
+            </tr>
+            <tr>
+              <td class="col-name">source_device_id</td>
+              <td class="col-type">text</td>
+              <td class="col-note">nullable — originating terminal</td>
+            </tr>
+            <tr>
+              <td class="col-name">created_at</td>
+              <td class="col-type">integer</td>
+              <td class="col-note">SSE broadcast cursor</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <!-- /schema-grid -->
+    </div>
+    <!-- /schema-section -->
+  </body>
+</html>

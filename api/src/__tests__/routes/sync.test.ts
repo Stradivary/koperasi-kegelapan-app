@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { syncRoutes } from "../sync";
+import { syncRoutes } from "../../routes/sync";
 import { makeToken, createTestApp } from "./testHelpers";
 
 describe("sync routes", () => {

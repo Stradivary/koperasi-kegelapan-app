@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { pushEntitiesRoute } from "../push-entities";
+import { pushEntitiesRoute } from "../../routes/push-entities";
 import { makeToken, createTestApp, createMockD1 } from "./testHelpers";
 
 describe("POST /push-entities", () => {

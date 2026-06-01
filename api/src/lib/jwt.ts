@@ -133,7 +133,7 @@ export async function verifyAccessToken(token: string, secret: string): Promise<
   const [header, body, signature] = parts;
 
   // ── Grace period: accept unsigned tokens temporarily ──────────────────────
-  // TODO: Remove this block after migration grace period (48h post-deploy)
+  // Remove this block after migration grace period (48h post-deploy)
   if (signature === "unsigned") {
     try {
       const payload = JSON.parse(base64urlToStr(body));

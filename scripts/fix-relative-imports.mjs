@@ -16,8 +16,8 @@
  *   node scripts/fix-relative-imports.mjs [--dry-run]
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
-import { resolve, relative, dirname, join, posix } from "path";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -83,7 +83,6 @@ let totalReplacements = 0;
 
 for (const filePath of collectFiles(SRC)) {
   const original = readFileSync(filePath, "utf8");
-  let changed = false;
   let replacements = 0;
 
   const updated = original.replace(IMPORT_RE, (match, quote, specifier) => {

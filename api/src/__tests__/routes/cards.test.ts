@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { cardsRoutes } from "../cards";
+import { cardsRoutes } from "../../routes/cards";
 import { createMockD1, createTestApp } from "./testHelpers";
 
 describe("GET /api/cards/check-uid", () => {

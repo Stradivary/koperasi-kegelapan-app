@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractDeviceIdFromToken, extractTokenPayload } from "../tokenExtract";
+import { extractDeviceIdFromToken, extractTokenPayload } from "../../lib/tokenExtract";
 
 function makeRequest(authHeader?: string): Request {
   const headers: Record<string, string> = {};
