@@ -8,7 +8,7 @@
       "binding": "DB",
       "database_name": "koperasi-kegelapan-staging",
       "database_id": "ed8e0e45-f6be-4cbb-94a7-96600c4bc89e",
-      "migrations_dir": "drizzle"
+      "migrations_dir": "drizzle",
     },
   ],
   "analytics_engine_datasets": [

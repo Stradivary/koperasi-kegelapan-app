@@ -49,7 +49,7 @@ export function ScoutBrowsePanel({
 
   const showOfflineEmpty = !isOnline && query.length >= 2 && filteredLocal.length === 0;
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const slug = query.trim().toLowerCase();
     if (slug.length > 0) onEnterSlug(slug);
@@ -159,7 +159,7 @@ export function ScoutBrowsePanel({
       )}
 
       {/* Offline: local tenants (filtered by query if any, unfiltered when no query) */}
-      {!isOnline && filteredLocal.length > 0 && (
+      {!isOnline && filteredLocal?.length > 0 && (
         <div className="space-y-2">
           <p className="type-body2 text-muted-foreground">Koperasi Lokal</p>
           {filteredLocal.map((tenant) => (

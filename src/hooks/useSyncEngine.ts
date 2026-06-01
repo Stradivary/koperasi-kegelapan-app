@@ -27,7 +27,8 @@ function extractCauseDetail(cause: unknown): string {
   if (typeof cause === "string") return cause;
   if (typeof cause === "object") {
     try {
-      return JSON.stringify(cause).slice(0, 200);
+      const stringified = JSON.stringify(cause);
+      return stringified.slice(0, 200);
     } catch {
       return "[unparseable cause object]";
     }
@@ -43,7 +44,8 @@ function extractErrorDetail(err: unknown): string {
   if (err instanceof Error) {
     const parts = [err.message];
     if (err.cause) {
-      parts.push(`cause: ${extractCauseDetail(err.cause)}`);
+      const causeDetail = extractCauseDetail(err.cause);
+      parts.push(`cause: ${causeDetail}`);
     }
     if (err.stack) {
       // Extract first meaningful stack line (skip the error message line)
@@ -60,7 +62,8 @@ function extractErrorDetail(err: unknown): string {
     const keys = Object.keys(err);
     if (keys.length === 0) return "Empty error object ({})";
     try {
-      return JSON.stringify(err).slice(0, 300);
+      const stringified = JSON.stringify(err);
+      return stringified.slice(0, 300);
     } catch {
       return `[Object with keys: ${keys.join(", ")}]`;
     }

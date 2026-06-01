@@ -4,7 +4,6 @@ import { eq, and, gt, asc, sql } from "drizzle-orm";
 import { transactionLog, cards, users, devices } from "../../../src/db/schema";
 import { pushEntitiesRoute } from "./push-entities";
 import { logger } from "../lib/logger";
-import { extractTokenPayload } from "../lib/tokenExtract";
 
 type Env = {
   DB: D1Database;
@@ -106,7 +105,7 @@ async function processTransaction(
   tenantId: string,
   tx: PushTransaction,
   now: number,
-  tokenPayload: { deviceId?: string | null },
+  auth: { deviceId?: string | null },
 ): Promise<{ accepted: boolean; reason?: string }> {
   try {
     // Check idempotency: skip duplicates silently
@@ -144,7 +143,7 @@ async function processTransaction(
       timestamp: tx.timestamp,
       hash: tx.hash,
       terminalId: tx.terminalId ?? null,
-      deviceId: tx.deviceId ?? tokenPayload.deviceId ?? null,
+      deviceId: tx.deviceId ?? auth.deviceId ?? null,
       idempotencyKey: tx.idempotencyKey,
       flagged: 0,
       createdAt: now,
@@ -176,8 +175,8 @@ async function processTransaction(
 
 syncRoutes.post("/push", async (c) => {
   // 1. Authenticate: extract tenant_id from JWT token
-  const tokenPayload = extractTokenPayload(c.req.raw);
-  if (!tokenPayload) {
+  const auth = c.get("auth");
+  if (!auth) {
     return c.json({ error: "Authentication required" }, 401);
   }
 
@@ -190,7 +189,7 @@ syncRoutes.post("/push", async (c) => {
   const { tenantId: payloadTenantId, transactions } = body;
 
   // 3. Use token's tenantId as authoritative source
-  const tenantId = tokenPayload.tenantId;
+  const tenantId = auth.tenantId;
   if (payloadTenantId && payloadTenantId !== tenantId) {
     logger.warn("sync/push: tenantId mismatch", { payloadTenantId, tokenTenantId: tenantId });
   }
@@ -230,7 +229,7 @@ syncRoutes.post("/push", async (c) => {
       continue;
     }
 
-    const result = await processTransaction(db, tenantId, tx, now, tokenPayload);
+    const result = await processTransaction(db, tenantId, tx, now, auth);
     if (result.accepted) {
       accepted++;
     } else {
@@ -333,15 +332,15 @@ function parseCursor(cursor: string | undefined | null): number {
 
 syncRoutes.get("/pull", async (c) => {
   // 1. Authenticate: extract tenant_id from JWT token
-  const tokenPayload = extractTokenPayload(c.req.raw);
-  if (!tokenPayload) {
+  const auth = c.get("auth");
+  if (!auth) {
     return c.json({ error: "Authentication required" }, 401);
   }
 
   // 2. Validate tenant isolation: token tenant_id must match query param tenantId
   const queryTenantId = c.req.query("tenantId");
   // Use token's tenantId as authoritative - fall back to query param for backward compat
-  const tenantId = tokenPayload.tenantId;
+  const tenantId = auth.tenantId;
   if (queryTenantId && queryTenantId !== tenantId) {
     // Log mismatch but don't block - client may have stale local ID
     logger.warn("sync/pull: tenantId mismatch", { queryTenantId, tokenTenantId: tenantId });
@@ -408,33 +407,43 @@ syncRoutes.get("/pull", async (c) => {
     .all();
 
   const cardsHasMore = cardsResult.length >= PULL_LIMIT;
-  const cardsData: CardPullEntry[] = cardsResult.map((card) => ({
-    tenantId: card.tenantId,
-    cardId: bytesToHex(card.cardId),
-    userId: card.userId,
-    status: card.status,
-    balance: card.balance,
-    counter: card.counter,
-    keyVersion: card.keyVersion,
-    createdAt:
+  const cardsData: CardPullEntry[] = cardsResult.map((card) => {
+    const createdAtValue =
       card.createdAt instanceof Date
         ? Math.floor(card.createdAt.getTime() / 1000)
-        : Number(card.createdAt),
-    lastActivityAt:
-      card.lastActivityAt == null
-        ? null
-        : card.lastActivityAt instanceof Date
+        : Number(card.createdAt);
+
+    let lastActivityAtValue: number | null = null;
+    if (card.lastActivityAt != null) {
+      lastActivityAtValue =
+        card.lastActivityAt instanceof Date
           ? Math.floor(card.lastActivityAt.getTime() / 1000)
-          : Number(card.lastActivityAt),
-    expiresAt:
-      card.expiresAt == null
-        ? null
-        : card.expiresAt instanceof Date
+          : Number(card.lastActivityAt);
+    }
+
+    let expiresAtValue: number | null = null;
+    if (card.expiresAt != null) {
+      expiresAtValue =
+        card.expiresAt instanceof Date
           ? Math.floor(card.expiresAt.getTime() / 1000)
-          : Number(card.expiresAt),
-    notes: card.notes,
-    updatedAt: Number(card.updatedAt),
-  }));
+          : Number(card.expiresAt);
+    }
+
+    return {
+      tenantId: card.tenantId,
+      cardId: bytesToHex(card.cardId),
+      userId: card.userId,
+      status: card.status,
+      balance: card.balance,
+      counter: card.counter,
+      keyVersion: card.keyVersion,
+      createdAt: createdAtValue,
+      lastActivityAt: lastActivityAtValue,
+      expiresAt: expiresAtValue,
+      notes: card.notes,
+      updatedAt: Number(card.updatedAt),
+    };
+  });
   const newCardsCursor =
     cardsData.length > 0 ? String(cardsData.at(-1)!.updatedAt) : String(cardsCursor);
 
@@ -508,12 +517,12 @@ syncRoutes.get("/pull", async (c) => {
 // ─── GET /devices - List all devices for the authenticated tenant ────────────
 
 syncRoutes.get("/devices", async (c) => {
-  const tokenPayload = extractTokenPayload(c.req.raw);
-  if (!tokenPayload) {
+  const auth = c.get("auth");
+  if (!auth) {
     return c.json({ error: "Authentication required" }, 401);
   }
 
-  const { tenantId } = tokenPayload;
+  const { tenantId } = auth;
 
   try {
     const db = drizzle(c.env.DB);

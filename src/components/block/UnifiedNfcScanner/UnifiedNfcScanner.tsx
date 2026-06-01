@@ -15,11 +15,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, WifiOff, Wrench, XCircle } from "lucide-react";
 
-import type { NfcError } from "#/hooks/types.ts";
-import type { PayloadError, OperationHandler } from "#/hooks/types.ts";
-import type { NfcPhase } from "#/hooks/types.ts";
-import type { RawNfcResult, CardClassification } from "#/hooks/types.ts";
-import type { CardPayload, SessionGrant } from "#/hooks/types.ts";
+import type {
+  NfcError,
+  PayloadError,
+  OperationHandler,
+  NfcPhase,
+  RawNfcResult,
+  CardClassification,
+  CardPayload,
+  SessionGrant,
+} from "#/hooks/types.ts";
 import { useUnifiedNfc } from "#/hooks/useUnifiedNfc.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Drawer, DrawerContent } from "#/components/ui/drawer.tsx";

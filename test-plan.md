@@ -20,8 +20,16 @@ Files with 0% test coverage that need tests written.
 
 - [x] `api/src/index.ts` (17 uncovered statements)
 - [x] `api/src/routes/accounts.ts` (36 uncovered statements)
+- [x] `api/src/routes/auth.ts` (250 uncovered statements)
+- [x] `api/src/routes/cards.ts` (20 uncovered statements)
 - [x] `api/src/routes/client-errors.ts` (26 uncovered statements)
 - [x] `api/src/routes/policy.ts` (8 uncovered statements)
+- [ ] `api/src/routes/push-entities.ts` (450 uncovered statements)
+- [x] `api/src/routes/reconcile.ts` (20 uncovered statements)
+- [x] `api/src/routes/session-grant.ts` (80 uncovered statements)
+- [x] `api/src/routes/superadmin.ts` (60 uncovered statements)
+- [ ] `api/src/routes/sync.ts` (380 uncovered statements)
+- [x] `api/src/routes/tenants.ts` (230 uncovered statements)
 
 ## API Middleware
 
@@ -85,7 +93,9 @@ Files with 0% test coverage that need tests written.
 
 ## Sections / Blocks
 
+- [ ] `src/components/section/CardSection.tsx` (188 uncovered statements, 1.3% coverage)
 - [x] `src/components/section/MemberSection.tsx` (45 uncovered statements)
+- [ ] `src/components/section/SuperadminSection.tsx` (146 uncovered statements, 16.7% coverage)
 - [x] `src/components/block/CheckoutConfirmCard.tsx` (2 uncovered statements)
 - [x] `src/components/block/data-table/DataTablePagination.tsx` (7 uncovered statements)
 - [x] `src/components/block/DeviceBlockListener.tsx` (2 uncovered statements)
@@ -112,6 +122,10 @@ Files with 0% test coverage that need tests written.
 
 - [x] `src/__mocks__/cloudflare-workers.ts` (1 uncovered statement)
 
+## Server
+
+- [x] `src/server/superadminAccounts.ts` (24 uncovered statements)
+
 ---
 
 ## Summary
@@ -119,7 +133,7 @@ Files with 0% test coverage that need tests written.
 | Category                 | Files  | Total Uncovered Statements | Status         |
 | ------------------------ | ------ | -------------------------- | -------------- |
 | Root / App Shell         | 3      | 8                          | 2/3 done       |
-| API Routes               | 4      | 87                         | ✅ All done    |
+| API Routes               | 12     | 1,577                      | 9/12 done      |
 | API Middleware           | 2      | 67                         | ✅ All done    |
 | Dialogs / Drawers        | 5      | 78                         | ✅ All done    |
 | NFC / Card Components    | 4      | 181                        | ✅ All done    |
@@ -129,12 +143,13 @@ Files with 0% test coverage that need tests written.
 | Tenant Routes (Kiosk)    | 5      | 42                         | ✅ All done    |
 | Tenant Routes (Other)    | 2      | 16                         | ✅ All done    |
 | Dev Routes               | 3      | 120                        | ✅ All done    |
-| Sections / Blocks        | 6      | 92                         | ✅ All done    |
+| Sections / Blocks        | 8      | 426                        | 5/8 done       |
 | Device / Auth            | 3      | 32                         | ✅ All done    |
 | Hooks / Context          | 2      | 47                         | ✅ All done    |
 | Libraries / Repositories | 2      | 7                          | ✅ All done    |
 | Mocks                    | 1      | 1                          | ✅ All done    |
-| **Total**                | **54** | **951**                    | **53/54 done** |
+| Server                   | 1      | 24                         | 1/1 done       |
+| **Total**                | **65** | **2,799**                  | **58/65 done** |
 
 ### Remaining
 

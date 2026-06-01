@@ -159,7 +159,10 @@ authRoutes.post("/token", async (c) => {
       .get();
   }
 
-  if (!account || !(await verifyPassword(json.password, account.passwordHash))) {
+  const isPasswordValid = account
+    ? await verifyPassword(json.password, account.passwordHash)
+    : false;
+  if (!account || !isPasswordValid) {
     return c.json({ error: "Invalid credentials" }, 401);
   }
 

@@ -10,8 +10,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 // Mock dependencies
+const mockApiFetch = vi.fn();
 vi.mock("#/lib/api", () => ({
   API_BASE_URL: "https://test-api.example.com",
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
 const mockCacheGet = vi.fn();
@@ -74,19 +76,16 @@ describe("useSessionGrant - online fetch success (lines 201-210)", () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
     const fetchedGrant = makeGrant();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          keyVersion: 1,
-          sessionKey: btoa(String.fromCodePoint(...new Uint8Array(32))),
-          expiresAt: fetchedGrant.expiresAt,
-          allowedOps: ["read", "debit"],
-          signature: btoa(String.fromCodePoint(...new Uint8Array(32))),
-        }),
+    mockApiFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        keyVersion: 1,
+        sessionKey: btoa(String.fromCodePoint(...new Uint8Array(32))),
+        expiresAt: fetchedGrant.expiresAt,
+        allowedOps: ["read", "debit"],
+        signature: btoa(String.fromCodePoint(...new Uint8Array(32))),
       }),
-    );
+    });
 
     const { result } = renderHook(() => useSessionGrant("t-1", "a-1", "d-1"));
 
@@ -96,7 +95,6 @@ describe("useSessionGrant - online fetch success (lines 201-210)", () => {
 
     expect(result.current.grant).not.toBeNull();
     expect(result.current.error).toBeNull();
-    vi.unstubAllGlobals();
   });
 });
 
@@ -109,14 +107,13 @@ describe("useSessionGrant - online fetch fails, cached grant available (lines 21
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 
   it("falls back to cached grant when fetch fails", async () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
     mockCacheGet.mockResolvedValue(makeCachedGrant());
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    mockApiFetch.mockRejectedValue(new Error("Network error"));
 
     const { result } = renderHook(() => useSessionGrant("t-1", "a-1", "d-1"));
 
@@ -138,13 +135,12 @@ describe("useSessionGrant - online fetch fails, no cache, local grant (lines 222
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 
   it("issues local grant when fetch fails and no cache", async () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    mockApiFetch.mockRejectedValue(new Error("Network error"));
     mockIssueAndCache.mockResolvedValue(makeGrant());
 
     const { result } = renderHook(() => useSessionGrant("t-1", "a-1", "d-1"));
@@ -159,7 +155,7 @@ describe("useSessionGrant - online fetch fails, no cache, local grant (lines 222
   it("sets error when fetch fails, no cache, and local grant also fails", async () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    mockApiFetch.mockRejectedValue(new Error("Network error"));
     mockIssueAndCache.mockRejectedValue(new Error("Local grant failed"));
 
     const { result } = renderHook(() => useSessionGrant("t-1", "a-1", "d-1"));
@@ -366,14 +362,13 @@ describe("useSessionGrant - scout role uses server endpoint without auth", () =>
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 
   it("fetches session grant from server for scout role without auth token", async () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
     const scoutGrant = makeGrant({ accountId: "scout-anonymous", allowedOps: ["read"] });
-    const mockFetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -383,7 +378,6 @@ describe("useSessionGrant - scout role uses server endpoint without auth", () =>
         signature: btoa(String.fromCodePoint(...new Uint8Array(32))),
       }),
     });
-    vi.stubGlobal("fetch", mockFetch);
 
     const { result } = renderHook(() => useSessionGrant("t-1", "scout-anonymous", "d-1", "scout"));
 
@@ -391,10 +385,13 @@ describe("useSessionGrant - scout role uses server endpoint without auth", () =>
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    // Should call fetch with role=scout parameter
-    expect(mockFetch).toHaveBeenCalledWith(
+    // Should call apiFetch with role=scout parameter
+    expect(mockApiFetch).toHaveBeenCalledWith(
       expect.stringContaining("role=scout"),
-      expect.any(Object),
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" },
+      }),
+      "t-1",
     );
 
     // Should have a valid grant from server
@@ -405,9 +402,7 @@ describe("useSessionGrant - scout role uses server endpoint without auth", () =>
   it("falls back to local grant when server fetch fails for scout", async () => {
     const { useSessionGrant } = await import("../useSessionGrant");
 
-    const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
-    vi.stubGlobal("fetch", mockFetch);
-
+    mockApiFetch.mockRejectedValue(new Error("Network error"));
     mockIssueAndCache.mockResolvedValue(makeGrant({ accountId: "scout-anonymous" }));
 
     const { result } = renderHook(() => useSessionGrant("t-1", "scout-anonymous", "d-1", "scout"));
@@ -417,7 +412,7 @@ describe("useSessionGrant - scout role uses server endpoint without auth", () =>
     });
 
     // Should try to fetch first
-    expect(mockFetch).toHaveBeenCalled();
+    expect(mockApiFetch).toHaveBeenCalled();
 
     // Should fall back to local grant
     expect(mockIssueAndCache).toHaveBeenCalledWith("t-1", "scout-anonymous", "d-1", "scout");

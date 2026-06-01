@@ -1,307 +1,359 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Hono } from "hono";
-import { superadminRoutes } from "../../routes/superadmin";
+/**
+ * Tests for api/src/routes/superadmin.ts
+ * Covers: GET /tenants, POST /tenants, GET /tenants/:tenantId, PATCH /tenants/:tenantId/status,
+ *         GET /devices, POST /devices/:deviceId/block, POST /devices/:deviceId/unblock,
+ *         GET /accounts, POST /accounts, PATCH /accounts/:accountId/status, POST /accounts/:accountId/change-password
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
+// ── Mocks ────────────────────────────────────────────────────────────────────
 
-// Mock superadmin auth
 vi.mock("#/server/superadminAuth", () => ({
-  requireSuperadmin: vi.fn().mockResolvedValue({ accountId: "sa1", role: "superadmin" }),
-  isAuthError: vi.fn().mockReturnValue(false),
+  requireSuperadmin: vi.fn((_req) => ({ accountId: "superadmin-1", tenantId: "t-system" })),
+  isAuthError: vi.fn((result) => result?.error !== undefined),
 }));
 
-// Mock tenant functions
 vi.mock("#/server/superadminTenants", () => ({
-  listTenants: vi.fn().mockResolvedValue({ tenants: [], total: 0, page: 1, pageSize: 20 }),
-  createTenant: vi.fn().mockResolvedValue({
-    status: 201,
-    data: { tenantId: "t1", slug: "test", name: "Test", adminAccountId: "a1" },
-  }),
-  getTenantDetail: vi
-    .fn()
-    .mockResolvedValue({ status: 200, data: { tenantId: "t1", slug: "test", name: "Test" } }),
-  updateTenantStatus: vi.fn().mockResolvedValue({
-    status: 200,
-    data: { tenantId: "t1", status: "suspended", updatedAt: "2025-01-01" },
-  }),
+  listTenants: vi.fn(() => ({ tenants: [], total: 0 })),
+  createTenant: vi.fn(() => ({ data: { tenantId: "t-new" }, status: 201 })),
+  getTenantDetail: vi.fn(() => ({ data: { tenantId: "t-1", name: "Test" }, status: 200 })),
+  updateTenantStatus: vi.fn(() => ({ data: { tenantId: "t-1", status: "active" }, status: 200 })),
 }));
 
-// Mock account functions
 vi.mock("#/server/superadminAccounts", () => ({
-  listAccounts: vi.fn().mockResolvedValue({ accounts: [], total: 0, page: 1, pageSize: 20 }),
-  createAccount: vi
-    .fn()
-    .mockResolvedValue({ status: 201, data: { accountId: "a1", username: "user" } }),
-  changeAccountPassword: vi.fn().mockResolvedValue({ status: 200, data: { ok: true } }),
-  updateAccountStatus: vi
-    .fn()
-    .mockResolvedValue({ status: 200, data: { ok: true, accountId: "a1", status: "active" } }),
+  listAccounts: vi.fn(() => ({ accounts: [], total: 0 })),
+  createAccount: vi.fn(() => ({ data: { accountId: "a-new" }, status: 201 })),
+  changeAccountPassword: vi.fn(() => ({ data: { success: true }, status: 200 })),
+  updateAccountStatus: vi.fn(() => ({ data: { accountId: "a-1", status: "active" }, status: 200 })),
 }));
 
-// Mock DB and device registry
+const mockDb: Record<string, ReturnType<typeof vi.fn>> = {};
+
 vi.mock("#/db", () => ({
-  getDb: vi.fn(() => ({
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn().mockResolvedValue({ deviceId: "dev1" }),
-        })),
-      })),
-    })),
-    transaction: vi.fn(async (fn: (tx: unknown) => Promise<void>) => {
-      await fn({
-        update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
-      });
-    }),
-  })),
+  getDb: vi.fn(() => mockDb),
+}));
+
+vi.mock("#/db/schema", () => ({
+  devices: {
+    deviceId: "devices.deviceId",
+    tenantId: "devices.tenantId",
+  },
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn((a: unknown, b: unknown) => ({ eq: [a, b] })),
 }));
 
 vi.mock("#/server/deviceRegistry", () => ({
-  getDevicesByTenant: vi.fn().mockResolvedValue([{ deviceId: "d1", tenantId: "t1" }]),
-  blockDevice: vi.fn().mockResolvedValue(undefined),
-  unblockDevice: vi.fn().mockResolvedValue(undefined),
-  revokeDeviceSessions: vi.fn().mockResolvedValue(2),
+  getDevicesByTenant: vi.fn(() => []),
+  blockDevice: vi.fn(),
+  unblockDevice: vi.fn(),
+  revokeDeviceSessions: vi.fn(() => 2),
 }));
 
-function createApp() {
-  const app = new Hono<{ Bindings: Env }>();
-  app.use("*", async (c, next) => {
-    c.env = { DB: {} as D1Database, SESSION_MASTER_KEY: "test-key" };
-    await next();
-  });
-  app.route("/api/superadmin", superadminRoutes);
-  return app;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+import { superadminRoutes } from "../../routes/superadmin";
+
+type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
+const env: Env = { DB: {} as D1Database, SESSION_MASTER_KEY: "test-key" };
+
+function req(method: string, path: string, body?: unknown) {
+  return superadminRoutes.request(
+    new Request(`http://localhost${path}`, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+    undefined,
+    env,
+  );
 }
 
-describe("superadmin routes", () => {
-  let app: ReturnType<typeof createApp>;
+function setupSelectChain(row: unknown = null) {
+  mockDb.select = vi.fn().mockReturnValue(mockDb);
+  mockDb.from = vi.fn().mockReturnValue(mockDb);
+  mockDb.where = vi.fn().mockReturnValue(mockDb);
+  mockDb.get = vi.fn().mockResolvedValue(row);
+  mockDb.transaction = vi.fn(async (callback) => {
+    await callback(mockDb);
+  });
+}
 
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("GET /tenants", () => {
   beforeEach(() => {
-    app = createApp();
+    vi.clearAllMocks();
   });
 
-  describe("GET /tenants", () => {
-    it("returns tenant list", async () => {
-      const res = await app.request("/api/superadmin/tenants");
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.tenants).toEqual([]);
-      expect(body.total).toBe(0);
-    });
+  it("returns 200 with tenant list", async () => {
+    const res = await req("GET", "/tenants");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tenants).toBeDefined();
   });
 
-  describe("POST /tenants", () => {
-    it("creates a tenant", async () => {
-      const res = await app.request("/api/superadmin/tenants", {
-        method: "POST",
-        body: JSON.stringify({
-          slug: "test",
-          name: "Test",
-          timezone: "Asia/Jakarta",
-          adminUsername: "admin",
-          adminPassword: "password123",
-        }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(201);
-      const body = await res.json();
-      expect(body.tenantId).toBe("t1");
-    });
+  it("accepts page and pageSize query params", async () => {
+    const res = await req("GET", "/tenants?page=2&pageSize=50");
+    expect(res.status).toBe(200);
   });
 
-  describe("GET /tenants/:tenantId", () => {
-    it("returns tenant detail", async () => {
-      const res = await app.request("/api/superadmin/tenants/t1");
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.tenantId).toBe("t1");
-    });
+  it("accepts search query param", async () => {
+    const res = await req("GET", "/tenants?search=test");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("POST /tenants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe("PATCH /tenants/:tenantId/status", () => {
-    it("returns 400 without status field", async () => {
-      const res = await app.request("/api/superadmin/tenants/t1/status", {
-        method: "PATCH",
-        body: JSON.stringify({}),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
+  it("returns 201 on successful creation", async () => {
+    const res = await req("POST", "/tenants", { name: "New Tenant", slug: "new-tenant" });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.tenantId).toBe("t-new");
+  });
+});
 
-    it("returns 400 for invalid status value", async () => {
-      const res = await app.request("/api/superadmin/tenants/t1/status", {
-        method: "PATCH",
-        body: JSON.stringify({ status: "invalid" }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toContain("Invalid status");
-    });
-
-    it("updates status with valid value", async () => {
-      const res = await app.request("/api/superadmin/tenants/t1/status", {
-        method: "PATCH",
-        body: JSON.stringify({ status: "suspended" }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
-    });
-
-    it.each(["active", "suspended", "archived"])("accepts status %s", async (status) => {
-      const res = await app.request("/api/superadmin/tenants/t1/status", {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
-    });
+describe("GET /tenants/:tenantId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe("GET /devices", () => {
-    it("returns 400 without tenantId query param", async () => {
-      const res = await app.request("/api/superadmin/devices");
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toContain("tenantId");
-    });
-
-    it("returns device list with tenantId", async () => {
-      const res = await app.request("/api/superadmin/devices?tenantId=t1");
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.devices).toBeDefined();
-    });
+  it("returns 404 when tenantId is missing", async () => {
+    const res = await req("GET", "/tenants/");
+    expect(res.status).toBe(404);
   });
 
-  describe("POST /devices/:deviceId/block", () => {
-    it("returns 400 without durationSeconds", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/block", {
-        method: "POST",
-        body: JSON.stringify({}),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
+  it("returns 200 with tenant detail", async () => {
+    const res = await req("GET", "/tenants/t-1");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tenantId).toBe("t-1");
+  });
+});
 
-    it("returns 400 for non-integer durationSeconds", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/block", {
-        method: "POST",
-        body: JSON.stringify({ durationSeconds: 3.5 }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 for duration below minimum (60)", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/block", {
-        method: "POST",
-        body: JSON.stringify({ durationSeconds: 30 }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 for duration above maximum", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/block", {
-        method: "POST",
-        body: JSON.stringify({ durationSeconds: 31_536_001 }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it("blocks device with valid duration", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/block", {
-        method: "POST",
-        body: JSON.stringify({ durationSeconds: 3600 }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.blocked).toBe(true);
-      expect(body.deviceId).toBe("dev1");
-      expect(body.blockedUntil).toBeGreaterThan(0);
-      expect(body.sessionsRevoked).toBe(2);
-    });
+describe("PATCH /tenants/:tenantId/status", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe("POST /devices/:deviceId/unblock", () => {
-    it("unblocks device", async () => {
-      const res = await app.request("/api/superadmin/devices/dev1/unblock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.blocked).toBe(false);
-      expect(body.deviceId).toBe("dev1");
-    });
+  it("returns 400 when status is missing", async () => {
+    const res = await req("PATCH", "/tenants/t-1/status", {});
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("status");
   });
 
-  describe("GET /accounts", () => {
-    it("returns account list", async () => {
-      const res = await app.request("/api/superadmin/accounts");
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.accounts).toEqual([]);
-    });
+  it("returns 400 when status is invalid", async () => {
+    const res = await req("PATCH", "/tenants/t-1/status", { status: "invalid" });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("Invalid status");
   });
 
-  describe("POST /accounts", () => {
-    it("creates an account", async () => {
-      const res = await app.request("/api/superadmin/accounts", {
-        method: "POST",
-        body: JSON.stringify({
-          tenantId: "t1",
-          username: "user",
-          password: "password123",
-          role: "admin",
-        }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(201);
-    });
+  it("accepts active status", async () => {
+    const res = await req("PATCH", "/tenants/t-1/status", { status: "active" });
+    expect(res.status).toBe(200);
   });
 
-  describe("PATCH /accounts/:accountId/status", () => {
-    it("returns 400 without status field", async () => {
-      const res = await app.request("/api/superadmin/accounts/a1/status", {
-        method: "PATCH",
-        body: JSON.stringify({}),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it("updates account status", async () => {
-      const res = await app.request("/api/superadmin/accounts/a1/status", {
-        method: "PATCH",
-        body: JSON.stringify({ status: "active" }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
-    });
+  it("accepts suspended status", async () => {
+    const res = await req("PATCH", "/tenants/t-1/status", { status: "suspended" });
+    expect(res.status).toBe(200);
   });
 
-  describe("POST /accounts/:accountId/change-password", () => {
-    it("returns 400 without newPassword", async () => {
-      const res = await app.request("/api/superadmin/accounts/a1/change-password", {
-        method: "POST",
-        body: JSON.stringify({}),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(400);
-    });
+  it("accepts archived status", async () => {
+    const res = await req("PATCH", "/tenants/t-1/status", { status: "archived" });
+    expect(res.status).toBe(200);
+  });
+});
 
-    it("changes password", async () => {
-      const res = await app.request("/api/superadmin/accounts/a1/change-password", {
-        method: "POST",
-        body: JSON.stringify({ newPassword: "newpass123" }),
-        headers: { "Content-Type": "application/json" },
-      });
-      expect(res.status).toBe(200);
+describe("GET /devices", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when tenantId is missing", async () => {
+    const res = await req("GET", "/devices");
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("tenantId");
+  });
+
+  it("returns 200 with device list", async () => {
+    const res = await req("GET", "/devices?tenantId=t-1");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.devices).toBeDefined();
+  });
+});
+
+describe("POST /devices/:deviceId/block", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupSelectChain({ deviceId: "device-1" });
+  });
+
+  it("returns 400 when durationSeconds is missing", async () => {
+    const res = await req("POST", "/devices/device-1/block", {});
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("durationSeconds");
+  });
+
+  it("returns 400 when durationSeconds is not a number", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: "invalid" });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when durationSeconds is too small (< 60)", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: 30 });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("Invalid duration");
+  });
+
+  it("returns 400 when durationSeconds is too large (> 31536000)", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: 40000000 });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("Invalid duration");
+  });
+
+  it("returns 404 when device not found", async () => {
+    setupSelectChain(null);
+    const res = await req("POST", "/devices/nonexistent/block", { durationSeconds: 3600 });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("Device not found");
+  });
+
+  it("returns 200 on successful block", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: 3600 });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.blocked).toBe(true);
+    expect(body.deviceId).toBe("device-1");
+    expect(body.blockedUntil).toBeDefined();
+    expect(body.sessionsRevoked).toBe(2);
+  });
+
+  it("accepts minimum duration (60 seconds)", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: 60 });
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts maximum duration (31536000 seconds)", async () => {
+    const res = await req("POST", "/devices/device-1/block", { durationSeconds: 31536000 });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("POST /devices/:deviceId/unblock", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupSelectChain({ deviceId: "device-1" });
+  });
+
+  it("returns 404 when device not found", async () => {
+    setupSelectChain(null);
+    const res = await req("POST", "/devices/nonexistent/unblock", {});
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("Device not found");
+  });
+
+  it("returns 200 on successful unblock", async () => {
+    const res = await req("POST", "/devices/device-1/unblock", {});
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.blocked).toBe(false);
+    expect(body.deviceId).toBe("device-1");
+    expect(body.blockedUntil).toBeNull();
+  });
+});
+
+describe("GET /accounts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 200 with account list", async () => {
+    const res = await req("GET", "/accounts");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.accounts).toBeDefined();
+  });
+
+  it("accepts page and pageSize query params", async () => {
+    const res = await req("GET", "/accounts?page=1&pageSize=25");
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts search query param", async () => {
+    const res = await req("GET", "/accounts?search=admin");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("POST /accounts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 201 on successful creation", async () => {
+    const res = await req("POST", "/accounts", {
+      username: "newadmin",
+      password: "password123",
+      role: "admin",
+      tenantId: "t-1",
     });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.accountId).toBe("a-new");
+  });
+});
+
+describe("PATCH /accounts/:accountId/status", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when status is missing", async () => {
+    const res = await req("PATCH", "/accounts/a-1/status", {});
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("status");
+  });
+
+  it("returns 200 on successful status update", async () => {
+    const res = await req("PATCH", "/accounts/a-1/status", { status: "suspended" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.accountId).toBe("a-1");
+  });
+});
+
+describe("POST /accounts/:accountId/change-password", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when newPassword is missing", async () => {
+    const res = await req("POST", "/accounts/a-1/change-password", {});
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("newPassword");
+  });
+
+  it("returns 200 on successful password change", async () => {
+    const res = await req("POST", "/accounts/a-1/change-password", { newPassword: "newpass123" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
   });
 });

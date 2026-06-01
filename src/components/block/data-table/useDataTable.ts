@@ -51,12 +51,11 @@ export function useDataTable<TData>({
 
   // Reset to page 0 when pageSize changes (e.g. mobile ↔ desktop)
   useEffect(() => {
-    if (isServer) {
-      return;
+    if (!isServer) {
+      setInternalPagination((prev) =>
+        prev.pageSize !== pageSize ? { pageIndex: 0, pageSize } : prev,
+      );
     }
-    setInternalPagination((prev) =>
-      prev.pageSize !== pageSize ? { pageIndex: 0, pageSize } : prev,
-    );
   }, [pageSize, isServer]);
 
   const pagination = useMemo(() => {

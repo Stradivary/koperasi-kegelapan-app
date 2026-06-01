@@ -67,12 +67,40 @@ export function createMockD1(options: MockD1Options = {}): D1Database {
 /**
  * Creates a Hono app with the given route mounted and DB/env injected.
  * The route is mounted at the provided path prefix.
+ * Includes mock auth middleware that decodes Bearer tokens.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createTestApp(route: Hono<any>, mountPath: string, db?: D1Database) {
   const app = new Hono<{ Bindings: Env }>();
   app.use("*", async (c, next) => {
     c.env = { DB: db ?? createMockD1(), SESSION_MASTER_KEY: "test-key" };
+    await next();
+  });
+  // Mock auth middleware - sets auth context from token payload
+  app.use("*", async (c, next) => {
+    const authHeader = c.req.header("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(parts[1]));
+          // Only set auth if required fields are present
+          if (payload.accountId && payload.tenantId) {
+            c.set("auth", {
+              accountId: payload.accountId,
+              tenantId: payload.tenantId,
+              role: payload.role ?? "terminal",
+              deviceId: payload.deviceId,
+              iat: payload.iat ?? Math.floor(Date.now() / 1000),
+              exp: payload.exp ?? Math.floor(Date.now() / 1000) + 3600,
+            });
+          }
+        } catch {
+          // Invalid token format
+        }
+      }
+    }
     await next();
   });
   app.route(mountPath, route);
