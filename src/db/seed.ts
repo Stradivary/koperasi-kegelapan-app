@@ -7,8 +7,20 @@ import { hashPassword, generateId } from "#/server/auth";
 config({ path: [".env.local", ".env"] });
 
 async function seed() {
+  // Check for environment flags
+  const isRemote = process.argv.includes("--remote");
+  const isRemoteStage = process.argv.includes("--remote-stage");
+
+  // Determine which config to use
+  const configPath = isRemoteStage ? "wrangler.api.staging.jsonc" : "wrangler.api.jsonc";
+
+  const environment = isRemoteStage ? "staging" : isRemote ? "production" : "local";
+
+  console.log(`🌱 Seeding ${environment} D1 database...`);
+
   const { env, dispose } = await getPlatformProxy<CloudflareEnv>({
-    configPath: "wrangler.api.jsonc",
+    configPath,
+    ...(isRemote || isRemoteStage ? { persist: true } : {}),
   });
   const db = drizzle(env.DB, { schema });
 
@@ -88,7 +100,7 @@ async function seed() {
   console.log('✓ Admin: username "admin-a", password "password" (Koperasi A)');
 
   // ── Summary ────────────────────────────────────────────────────────────────
-  console.log("\n✅ D1 seed complete.");
+  console.log(`\n✅ D1 seed complete (${environment}).`);
   console.log("Accounts:");
   console.log('  superadmin  - username: "superadmin", password: "superadmin"');
   console.log('  admin-a     - username: "admin-a", password: "password" (Koperasi A)');

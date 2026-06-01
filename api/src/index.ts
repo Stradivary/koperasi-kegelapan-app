@@ -49,6 +49,10 @@ app.route("/api/auth", authRoutes);
 // Registered before verifyToken so no token is required.
 app.route("/api/tenants", tenantsRoutes);
 
+// Session grant endpoint - public for scout role, protected for others
+// Must be registered before verifyToken to allow conditional auth
+app.route("/api/session-grant", sessionGrantRoute);
+
 // Client error reporting (semi-public, best-effort token extraction)
 app.route("/api/client-errors", clientErrorsRoute);
 

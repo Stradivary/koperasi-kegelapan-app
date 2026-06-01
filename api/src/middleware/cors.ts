@@ -20,6 +20,8 @@ const ALLOWED_ORIGINS = new Set([
   // Production domains
   "https://ahmadmuzaki.my.id",
   "https://ahmadmuzaki.biz.id",
+  "https://develop.koperasi-kegelapan-app.pages.dev",
+  "https://koperasi-kegelapan-app.pages.dev",
 ]);
 
 /**

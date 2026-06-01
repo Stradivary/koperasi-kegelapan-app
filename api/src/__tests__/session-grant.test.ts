@@ -190,3 +190,56 @@ describe("GET /session-grant", () => {
     expect(masterKeyArg.length).toBe(32);
   });
 });
+
+describe("GET /session-grant - scout role (unauthenticated)", () => {
+  it("allows unauthenticated access when role=scout", async () => {
+    const app = createApp();
+    const req = new Request(makeUrl({ tenantId: "t1", deviceId: "d1", role: "scout" }));
+    const res = await app.request(req, undefined, ENV);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sessionKey).toBe("base64key");
+  });
+
+  it("uses scout-anonymous as accountId for scout role", async () => {
+    const app = createApp();
+    const req = new Request(makeUrl({ tenantId: "t1", deviceId: "d1", role: "scout" }));
+    await app.request(req, undefined, ENV);
+    expect(mockIssueSessionGrant).toHaveBeenCalledWith(
+      expect.anything(),
+      "t1",
+      "scout-anonymous",
+      "d1",
+      "scout",
+    );
+  });
+
+  it("uses 'unknown' as deviceId when not provided for scout", async () => {
+    const app = createApp();
+    const req = new Request(makeUrl({ tenantId: "t1", role: "scout" }));
+    await app.request(req, undefined, ENV);
+    expect(mockIssueSessionGrant).toHaveBeenCalledWith(
+      expect.anything(),
+      "t1",
+      "scout-anonymous",
+      "unknown",
+      "scout",
+    );
+  });
+
+  it("returns 400 when tenantId is missing even for scout", async () => {
+    const app = createApp();
+    const req = new Request(makeUrl({ role: "scout", deviceId: "d1" }));
+    const res = await app.request(req, undefined, ENV);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("tenantId");
+  });
+
+  it("requires authentication for non-scout roles even with role param", async () => {
+    const app = createApp();
+    const req = new Request(makeUrl({ tenantId: "t1", deviceId: "d1", role: "admin" }));
+    const res = await app.request(req, undefined, ENV);
+    expect(res.status).toBe(401);
+  });
+});

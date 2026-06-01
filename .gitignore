@@ -13,3 +13,4 @@ __unconfig*
 todos.json
 coverage
 .sonar-compact
+.seed-temp.sql

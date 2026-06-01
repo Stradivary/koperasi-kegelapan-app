@@ -151,9 +151,16 @@ describe("api/src/index.ts - route mounting", () => {
     expect(verifyToken).toHaveBeenCalled();
   });
 
-  it("handles /api/tenants/* paths (verifyToken applied)", async () => {
+  it("handles /api/tenants/* paths (no verifyToken - public)", async () => {
+    vi.clearAllMocks();
     await req("GET", "/api/tenants/");
-    expect(verifyToken).toHaveBeenCalled();
+    expect(verifyToken).not.toHaveBeenCalled();
+  });
+
+  it("handles /api/session-grant/* paths (no verifyToken - public for scout)", async () => {
+    vi.clearAllMocks();
+    await req("GET", "/api/session-grant/");
+    expect(verifyToken).not.toHaveBeenCalled();
   });
 
   it("handles /api/superadmin/* paths (verifyToken applied)", async () => {
@@ -163,11 +170,6 @@ describe("api/src/index.ts - route mounting", () => {
 
   it("handles /api/reconcile/* paths (verifyToken applied)", async () => {
     await req("GET", "/api/reconcile/");
-    expect(verifyToken).toHaveBeenCalled();
-  });
-
-  it("handles /api/session-grant/* paths (verifyToken applied)", async () => {
-    await req("GET", "/api/session-grant/");
     expect(verifyToken).toHaveBeenCalled();
   });
 

@@ -221,6 +221,7 @@ async function handleOnlineRefresh(
   callbacks: OnlineRefreshCallbacks,
 ): Promise<void> {
   const { setGrant, scheduleRefreshFn, setError } = callbacks;
+
   try {
     const newGrant = await fetchSessionGrant(tenantId, accountId, deviceId, role);
     setGrant(newGrant);
