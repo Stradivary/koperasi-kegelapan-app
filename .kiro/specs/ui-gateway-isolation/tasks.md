@@ -145,8 +145,8 @@ Resolve all 38 UI→Gateways boundary violations using two strategies: (1) reloc
     - Replace import from `#/lib/indexeddb.lazy` with `#/hooks/useIndexedDbStores`
     - _Requirements: 4.1, 11.3_
 
-- [ ] 3. Final verification
-  - [-] 3.1 Verify zero violations and type correctness
+- [x] 3. Final verification
+  - [x] 3.1 Verify zero violations and type correctness
     - Run `pnpm tsc --noEmit` to verify zero type errors
     - Run `pnpm check:boundaries` to verify zero boundary violations
     - Run `pnpm vitest --run src/__tests__/architecture/ui-domain-isolation.test.ts` to verify the architecture test passes
@@ -162,7 +162,7 @@ Resolve all 38 UI→Gateways boundary violations using two strategies: (1) reloc
     - Verify that `createSlug(input)` via `#/lib/utils/slugValidation` produces a slug consistent with `validateSlugFormat` expectations
     - **Validates: Requirements 1.4, 1.5**
 
-  - [-] 3.4 Run full test suite to confirm behavioral equivalence
+  - [x] 3.4 Run full test suite to confirm behavioral equivalence
     - Run `pnpm vitest --run` to verify all existing tests pass without assertion changes
     - Ensure all tests pass, ask the user if questions arise.
     - _Requirements: 12.4, 13.1, 13.2_
