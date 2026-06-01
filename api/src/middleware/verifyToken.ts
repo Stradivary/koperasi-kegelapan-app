@@ -31,8 +31,28 @@ declare module "hono" {
  * - Token format is invalid
  * - Signature verification fails
  * - Token is expired
+ *
+ * Skips verification for:
+ * - /api/tenants (public tenant directory)
+ * - /api/session-grant?role=scout (scout anonymous browsing)
+ * - /api/client-errors (best-effort error reporting)
  */
 export const verifyToken = createMiddleware<{ Bindings: Env }>(async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+
+  // Skip verification for public routes
+  if (path.startsWith("/api/tenants") || path.startsWith("/api/client-errors")) {
+    return next();
+  }
+
+  // Skip verification for session-grant with role=scout
+  if (path.startsWith("/api/session-grant")) {
+    const url = new URL(c.req.url);
+    if (url.searchParams.get("role") === "scout") {
+      return next();
+    }
+  }
+
   const authHeader = c.req.header("authorization") ?? "";
 
   if (!authHeader.startsWith("Bearer ")) {

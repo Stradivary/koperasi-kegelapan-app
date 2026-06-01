@@ -31,8 +31,16 @@ import { verifyToken } from "../middleware/verifyToken";
 
 const ENV = { DB: {}, SESSION_MASTER_KEY: "abcdefghijklmnopqrstuvwxyz123456" };
 
-// Build a test app with verifyToken middleware (mirrors production setup)
+// Build a test app WITHOUT verifyToken middleware for session-grant
+// (mirrors production setup where session-grant is public for scout role)
 function createApp() {
+  const app = new Hono();
+  app.route("/session-grant", sessionGrantRoute);
+  return app;
+}
+
+// Build a test app WITH verifyToken middleware for testing authenticated access
+function createAppWithAuth() {
   const app = new Hono();
   app.use("/session-grant/*", verifyToken);
   app.route("/session-grant", sessionGrantRoute);
@@ -68,14 +76,14 @@ beforeEach(() => {
 });
 
 describe("GET /session-grant", () => {
-  it("returns 401 when no token is provided", async () => {
-    const app = createApp();
+  it("returns 401 when no token is provided for authenticated roles", async () => {
+    const app = createAppWithAuth();
     const res = await app.request(makeUrl({ tenantId: "t1", deviceId: "d1" }), undefined, ENV);
     expect(res.status).toBe(401);
   });
 
   it("returns 401 when token is invalid", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const req = new Request(makeUrl({ tenantId: "t1", deviceId: "d1" }), {
       headers: { Authorization: "Bearer not-a-valid-token" },
     });
@@ -84,7 +92,7 @@ describe("GET /session-grant", () => {
   });
 
   it("returns 400 when tenantId is missing", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken();
     const req = new Request(makeUrl({ deviceId: "d1" }), {
       headers: { Authorization: `Bearer ${token}` },
@@ -96,7 +104,7 @@ describe("GET /session-grant", () => {
   });
 
   it("returns 403 when requesting grant for a different tenant", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken({ tenantId: "t1" });
     const req = new Request(makeUrl({ tenantId: "t2", deviceId: "d1" }), {
       headers: { Authorization: `Bearer ${token}` },
@@ -106,7 +114,7 @@ describe("GET /session-grant", () => {
   });
 
   it("returns grant when authenticated with matching tenantId", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken({
       tenantId: "t1",
       accountId: "acc-1",
@@ -123,7 +131,7 @@ describe("GET /session-grant", () => {
   });
 
   it("uses accountId and role from verified token", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken({
       tenantId: "t1",
       accountId: "acc-456",
@@ -144,7 +152,7 @@ describe("GET /session-grant", () => {
   });
 
   it("uses deviceId from query params when provided", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken({ tenantId: "t1", deviceId: "token-device" });
     const req = new Request(makeUrl({ tenantId: "t1", deviceId: "query-device" }), {
       headers: { Authorization: `Bearer ${token}` },
@@ -160,7 +168,7 @@ describe("GET /session-grant", () => {
   });
 
   it("falls back to token deviceId when query deviceId is not provided", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const token = await makeToken({ tenantId: "t1", deviceId: "token-device" });
     const req = new Request(makeUrl({ tenantId: "t1" }), {
       headers: { Authorization: `Bearer ${token}` },
@@ -176,7 +184,7 @@ describe("GET /session-grant", () => {
   });
 
   it("passes first 32 bytes of SESSION_MASTER_KEY as masterKey", async () => {
-    const app = createApp();
+    const app = createAppWithAuth();
     const key = "abcdefghijklmnopqrstuvwxyz123456extra";
     const token = await signAccessToken(
       { accountId: "a1", tenantId: "t1", role: "admin", deviceId: "d1" },

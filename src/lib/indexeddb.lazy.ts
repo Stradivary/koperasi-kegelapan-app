@@ -11,9 +11,7 @@
 let _mod: typeof import("./indexeddb") | null = null;
 
 async function load() {
-  if (!_mod) {
-    _mod = await import("./indexeddb");
-  }
+  _mod ??= await import("./indexeddb");
   return _mod;
 }
 

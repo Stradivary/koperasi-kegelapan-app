@@ -51,6 +51,33 @@ function createMockD1(): D1Database {
 
 function createApp() {
   const app = new Hono<{ Bindings: Env }>();
+  // Mock auth middleware - sets auth context from token payload
+  app.use("/api/sync/*", async (c, next) => {
+    const authHeader = c.req.header("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(parts[1]));
+          // Only set auth if required fields are present
+          if (payload.accountId && payload.tenantId) {
+            c.set("auth", {
+              accountId: payload.accountId,
+              tenantId: payload.tenantId,
+              role: payload.role ?? "terminal",
+              deviceId: payload.deviceId,
+              iat: payload.iat ?? Math.floor(Date.now() / 1000),
+              exp: payload.exp ?? Math.floor(Date.now() / 1000) + 3600,
+            });
+          }
+        } catch {
+          // Invalid token format
+        }
+      }
+    }
+    await next();
+  });
   app.route("/api/sync", syncRoutes);
   return app;
 }

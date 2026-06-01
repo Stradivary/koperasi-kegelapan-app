@@ -69,7 +69,7 @@ export function validateTransition(
     };
   }
 
-  const cardState: CardState = state as CardState;
+  const cardState = state as CardState;
   const nextState = VALID_TRANSITIONS[cardState]?.[trigger];
   if (nextState === undefined) {
     return {

@@ -33,8 +33,10 @@ vi.mock("#/hooks/types", () => ({
   CardStatus: { ACTIVE: 0 },
 }));
 
-vi.mock("#/hooks/useApi", () => ({
+const mockApiFetch = vi.fn();
+vi.mock("#/lib/api", () => ({
   API_BASE_URL: "http://localhost:8787",
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
 vi.mock("#/components/ui/button", () => ({
@@ -304,7 +306,7 @@ describe("IssuanceTestSection - handleDrawerClose", () => {
   it("aborts and closes when closed during writing phase", async () => {
     // Make prepareWrite hang so phase stays at "writing"
     vi.mocked(isNfcSupported).mockReturnValue(true);
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -378,7 +380,7 @@ describe("IssuanceTestSection - handleRead", () => {
   it("decrypts v2 card and sets done phase", async () => {
     const raw = makeRawCard(2); // version >= 2, triggers decrypt path
     mockReadCard.mockResolvedValue({ ok: true, raw, serialNumber: "SN-002" });
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -406,7 +408,7 @@ describe("IssuanceTestSection - handleRead", () => {
   it("falls back to plaintext decode when v2 decryption throws", async () => {
     const raw = makeRawCard(2);
     mockReadCard.mockResolvedValue({ ok: true, raw, serialNumber: "SN-003" });
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -455,7 +457,7 @@ describe("IssuanceTestSection - handleIssue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(isNfcSupported).mockReturnValue(true);
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -528,7 +530,7 @@ describe("IssuanceTestSection - handleIssue", () => {
   });
 
   it("sets error phase when fetch for grant fails", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    mockApiFetch.mockResolvedValue({ ok: false, status: 401 });
 
     render(<IssuanceTestSection />);
     await act(async () => {
@@ -567,7 +569,7 @@ describe("IssuanceTestSection - handleRetry", () => {
   });
 
   it("retries issue when drawerMode is 'write'", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 1,
@@ -609,7 +611,7 @@ describe("IssuanceTestSection - fetchDevGrant via handleRead", () => {
   it("correctly decodes URL-safe base64 session key from grant response", async () => {
     // Use a URL-safe base64 string with - and _ chars to exercise b64ToBytes
     const urlSafeB64 = "AAEC_-AB"; // contains _ and -
-    global.fetch = vi.fn().mockResolvedValue({
+    mockApiFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         keyVersion: 2,
@@ -631,7 +633,13 @@ describe("IssuanceTestSection - fetchDevGrant via handleRead", () => {
     await waitFor(() =>
       expect(screen.getByTestId("issuance-scan-drawer").getAttribute("data-phase")).toBe("done"),
     );
-    // fetchDevGrant was called — verify fetch was called with correct URL
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/session-grant"));
+    // fetchDevGrant was called — verify apiFetch was called with correct URL
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/session-grant"),
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" },
+      }),
+      "dev",
+    );
   });
 });

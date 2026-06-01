@@ -92,7 +92,7 @@ export function SyncStatusIndicator({
   const Icon = config.icon;
 
   // Re-render periodically to keep relative time fresh
-  const [_tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   useEffect(() => {
     if (!lastSyncedAt) return;
     const interval = setInterval(() => setTick((t) => t + 1), 30_000);

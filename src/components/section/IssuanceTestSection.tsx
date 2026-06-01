@@ -16,7 +16,7 @@ import {
   CardStatus,
 } from "#/hooks/types";
 import type { CardPayload, SessionGrant } from "#/hooks/types";
-import { API_BASE_URL } from "#/hooks/useApi";
+import { API_BASE_URL, apiFetch } from "#/hooks/useApi";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -84,7 +84,13 @@ async function fetchDevGrant(tenantId: string): Promise<SessionGrant> {
   // Fetch a session grant using the specified tenant ID
   const params = new URLSearchParams({ tenantId, deviceId: "dev-issuance" });
   params.set("role", "station");
-  const res = await fetch(`${API_BASE_URL}/api/session-grant?${params}`);
+  const res = await apiFetch(
+    `${API_BASE_URL}/api/session-grant?${params}`,
+    {
+      headers: { "Content-Type": "application/json" },
+    },
+    tenantId,
+  );
   if (!res.ok) throw new Error(`Failed to fetch dev grant: ${res.status}`);
   const data = await res.json();
   const b64ToBytes = (b64: string): Uint8Array => {

@@ -2,10 +2,12 @@ import { LogIn, LogOut, CreditCard } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { CardStatus } from "#/hooks/types.ts";
-import type { CardPayload } from "#/hooks/types.ts";
-import type { NfcPhase } from "#/hooks/types.ts";
-import type { CardClassification } from "#/hooks/types.ts";
+import {
+  CardStatus,
+  type CardPayload,
+  type NfcPhase,
+  type CardClassification,
+} from "#/hooks/types.ts";
 
 // ============================================================================
 // Types

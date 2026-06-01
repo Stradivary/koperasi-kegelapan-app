@@ -7,7 +7,7 @@ import { Separator } from "#/components/ui/separator";
 import { makeFreshCard } from "#/components/section/IssuanceTestSection";
 import { prepareWrite, encodePayloadWire } from "#/hooks/domain";
 import type { SessionGrant } from "#/hooks/types";
-import { API_BASE_URL } from "#/hooks/useApi";
+import { API_BASE_URL, apiFetch } from "#/hooks/useApi";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,
@@ -186,7 +186,13 @@ function NfcTestPage() {
           deviceId: "dev-nfc-test",
           role: "station",
         });
-        const res = await fetch(`${API_BASE_URL}/api/session-grant?${params}`);
+        const res = await apiFetch(
+          `${API_BASE_URL}/api/session-grant?${params}`,
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+          payloadTenantId,
+        );
         if (res.ok) {
           const data = await res.json();
           const b64ToBytes = (b64: string): Uint8Array => {
