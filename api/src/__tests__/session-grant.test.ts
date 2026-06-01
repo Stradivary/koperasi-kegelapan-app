@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for api/src/routes/session-grant.ts
  * Covers: GET /session-grant endpoint with authenticated access

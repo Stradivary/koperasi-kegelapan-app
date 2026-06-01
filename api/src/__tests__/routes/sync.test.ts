@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { syncRoutes } from "../../routes/sync";
 import { makeToken, createTestApp } from "./testHelpers";

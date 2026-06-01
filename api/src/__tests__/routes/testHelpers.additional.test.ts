@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for testHelpers.ts covering uncovered lines 52-63:
  * The prepare().raw(), prepare().first(), prepare().all(), prepare().run()

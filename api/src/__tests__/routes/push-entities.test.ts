@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { pushEntitiesRoute } from "../../routes/push-entities";
 import { makeToken, createTestApp, createMockD1 } from "./testHelpers";

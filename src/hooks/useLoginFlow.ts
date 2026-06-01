@@ -206,8 +206,23 @@ export function useLoginFlow(): UseLoginFlowReturn {
   // ── handleScoutSelectTenant ────────────────────────────────────────────────
 
   async function handleScoutSelectTenant(tenantId: string, tenantSlug: string, tenantName: string) {
-    const { tenantContextStore } = await getIndexedDb();
+    const { tenantContextStore, localTenantConfigStore } = await getIndexedDb();
     const fingerprintId = await getDeviceFingerprint();
+
+    // Persist the selected tenant locally so it appears in future scout listings
+    // (both offline and as a quick-pick when online). Uses mode "synced" to
+    // indicate it originated from the server rather than a local-only setup.
+    const existing = await localTenantConfigStore.get(tenantId);
+    if (!existing) {
+      await localTenantConfigStore.put({
+        tenantId,
+        slug: tenantSlug,
+        name: tenantName,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        mode: "synced",
+        createdAt: Date.now(),
+      });
+    }
     await tenantContextStore.put({
       tenantId,
       tenantSlug,

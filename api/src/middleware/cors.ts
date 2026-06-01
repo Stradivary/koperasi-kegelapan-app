@@ -12,6 +12,11 @@ const ALLOWED_ORIGINS = new Set([
   "https://localhost:3000",
   "http://localhost:5173",
   "https://localhost:5173",
+  "http://127.0.0.1:3000",
+  "https://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "https://127.0.0.1:5173",
+  "https://192.168.100.196:3000",
   // Production domains
   "https://ahmadmuzaki.my.id",
   "https://ahmadmuzaki.biz.id",
@@ -70,7 +75,7 @@ export const corsMiddleware = cors({
     if (isAllowedPagesOrigin(origin)) {
       return origin;
     }
-
+    console.log("cross site invalid:" + origin);
     return null;
   },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

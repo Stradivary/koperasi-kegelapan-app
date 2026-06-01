@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for api/src/routes/sync.ts - validateTransaction and push endpoint
  * Covers: validation rules, type checking, range checking, batch limits

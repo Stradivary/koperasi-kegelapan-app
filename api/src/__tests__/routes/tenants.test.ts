@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for api/src/routes/tenants.ts
  * Tests the Hono tenants route handlers (search + sync).
