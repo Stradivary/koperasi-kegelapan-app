@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for api/src/routes/reconcile.ts
  * Tests the Hono reconcile route handler.

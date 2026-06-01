@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Additional tests for superadmin.ts covering uncovered lines:
  * - Error paths (500 responses) for all routes

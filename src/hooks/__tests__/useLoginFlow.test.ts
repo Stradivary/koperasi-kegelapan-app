@@ -28,6 +28,8 @@ vi.mock("@tanstack/react-query", () => ({
 const mockTenantContextStoreGetAll = vi.fn();
 const mockTenantContextStorePut = vi.fn();
 const mockLocalTenantConfigStoreGetAll = vi.fn();
+const mockLocalTenantConfigStoreGet = vi.fn();
+const mockLocalTenantConfigStorePut = vi.fn();
 
 vi.mock("#/lib/indexeddb", () => ({
   tenantContextStore: {
@@ -36,6 +38,8 @@ vi.mock("#/lib/indexeddb", () => ({
   },
   localTenantConfigStore: {
     getAll: () => mockLocalTenantConfigStoreGetAll(),
+    get: (...args: unknown[]) => mockLocalTenantConfigStoreGet(...args),
+    put: (...args: unknown[]) => mockLocalTenantConfigStorePut(...args),
   },
 }));
 
@@ -75,6 +79,8 @@ beforeEach(() => {
   mockConsumeDeviceSetupLaunchContext.mockReturnValue(null);
   mockTenantContextStoreGetAll.mockResolvedValue([]);
   mockLocalTenantConfigStoreGetAll.mockResolvedValue([]);
+  mockLocalTenantConfigStoreGet.mockResolvedValue(undefined);
+  mockLocalTenantConfigStorePut.mockResolvedValue(undefined);
   mockGetDeviceFingerprint.mockResolvedValue("fp-hash-123");
   mockTenantContextStorePut.mockResolvedValue(undefined);
   mockSetCurrentDeviceId.mockReturnValue(undefined);

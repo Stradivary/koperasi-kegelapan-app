@@ -144,10 +144,18 @@ authRoutes.post("/token", async (c) => {
       )
       .get();
   } else {
+    // No tenantSlug: only superadmin accounts are allowed to log in without
+    // a tenant scope. Regular accounts must always provide a tenantSlug.
     account = await db
       .select()
       .from(accounts)
-      .where(and(eq(accounts.username, json.username), eq(accounts.status, "active")))
+      .where(
+        and(
+          eq(accounts.username, json.username),
+          eq(accounts.status, "active"),
+          eq(accounts.role, "superadmin"),
+        ),
+      )
       .get();
   }
 
@@ -161,7 +169,9 @@ authRoutes.post("/token", async (c) => {
     .where(eq(tenants.tenantId, account.tenantId))
     .get();
 
-  if (tenant?.status !== "active") {
+  // Superadmin accounts bypass the tenant active check — they must always be
+  // able to log in regardless of their tenant's status (e.g. to reactivate it).
+  if (account.role !== "superadmin" && tenant?.status !== "active") {
     return c.json({ error: "Tenant inactive" }, 401);
   }
 
@@ -202,8 +212,8 @@ authRoutes.post("/token", async (c) => {
   return c.json({
     accountId: account.accountId,
     tenantId: account.tenantId,
-    tenantSlug: tenant.slug,
-    tenantName: tenant.name,
+    tenantSlug: tenant?.slug,
+    tenantName: tenant?.name,
     role: account.role,
     // HMAC-SHA256 signed access token (1 hour expiry)
     accessToken: await buildAccessToken(

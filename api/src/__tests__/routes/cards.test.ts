@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { cardsRoutes } from "../../routes/cards";
 import { createMockD1, createTestApp } from "./testHelpers";

@@ -168,6 +168,9 @@ export function SuperadminSection() {
       }
 
       setIsAuthenticated(true);
+      // Invalidate all superadmin queries so they re-fetch with the new token
+      queryClient.invalidateQueries({ queryKey: ["superadmin-tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["superadmin-accounts"] });
     } catch {
       setLoginError("Gagal terhubung ke server");
     } finally {
@@ -199,6 +202,7 @@ export function SuperadminSection() {
 
       return handled.json();
     },
+    enabled: isAuthenticated,
     staleTime: STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -382,7 +386,7 @@ export function SuperadminSection() {
 
       return handled.json();
     },
-    enabled: activeSection === "accounts",
+    enabled: isAuthenticated && activeSection === "accounts",
     staleTime: STALE_TIME,
     placeholderData: (previousData) => previousData,
   });

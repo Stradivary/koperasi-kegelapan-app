@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Additional tests for cards.ts covering uncovered lines:
  * - Line 56: check-uid returns exists:true when rawRows has data (already covered)

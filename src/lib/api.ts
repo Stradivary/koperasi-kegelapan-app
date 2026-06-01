@@ -1,8 +1,7 @@
 import { checkDeviceBlockResponse, isDeviceBlocked } from "./deviceBlock";
 import { getAuthTokenCacheStore } from "./indexeddb.lazy";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "https://koperasi-kegelapan-api.ahmad-muzaki-st.workers.dev";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 // ── localStorage keys ──────────────────────────────────────────────────
 

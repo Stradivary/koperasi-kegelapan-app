@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for api/src/middleware/syncAnalytics.ts
  */
