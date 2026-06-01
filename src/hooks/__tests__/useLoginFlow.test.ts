@@ -49,6 +49,7 @@ const mockRestoreAuthState = vi.fn();
 vi.mock("#/lib/api", () => ({
   setCurrentDeviceId: (...args: unknown[]) => mockSetCurrentDeviceId(...args),
   restoreAuthState: (...args: unknown[]) => mockRestoreAuthState(...args),
+  API_BASE_URL: "http://localhost:8787",
 }));
 
 const mockIssueAndCacheLocalSessionGrant = vi.fn();
@@ -462,5 +463,366 @@ describe("useLoginFlow - redirectToRole", () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/" }));
+  });
+});
+
+// ── setUsername / setPassword ─────────────────────────────────────────────────
+
+describe("useLoginFlow - setUsername / setPassword", () => {
+  async function getHookInLoginMode() {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    return result;
+  }
+
+  it("setUsername updates username", async () => {
+    const result = await getHookInLoginMode();
+    act(() => {
+      result.current.setUsername("budi");
+    });
+    expect(result.current.username).toBe("budi");
+  });
+
+  it("setPassword updates password", async () => {
+    const result = await getHookInLoginMode();
+    act(() => {
+      result.current.setPassword("secret");
+    });
+    expect(result.current.password).toBe("secret");
+  });
+});
+
+// ── auto-boot details ─────────────────────────────────────────────────────────
+
+describe("useLoginFlow - auto-boot details", () => {
+  it("calls restoreAuthState with deviceId when present", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    mockTenantContextStoreGetAll.mockResolvedValue([
+      { tenantId: "t-1", role: "admin", deviceId: "d-abc", updatedAt: Date.now() },
+    ]);
+
+    renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(mockRestoreAuthState).toHaveBeenCalledWith("d-abc");
+  });
+
+  it("skips restoreAuthState when deviceId is absent", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    mockTenantContextStoreGetAll.mockResolvedValue([
+      { tenantId: "t-1", role: "admin", updatedAt: Date.now() },
+    ]);
+
+    renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(mockRestoreAuthState).not.toHaveBeenCalled();
+  });
+
+  it("picks most-recent context when no no-auth role exists", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    mockTenantContextStoreGetAll.mockResolvedValue([
+      { tenantId: "t-old", role: "admin", deviceId: "d-1", updatedAt: 1000 },
+      { tenantId: "t-new", role: "station", deviceId: "d-2", updatedAt: 9000 },
+    ]);
+
+    renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/tenant/t-new/station" }),
+    );
+  });
+});
+
+// ── handleScoutSelectTenant details ──────────────────────────────────────────
+
+describe("useLoginFlow - handleScoutSelectTenant details", () => {
+  it("calls setCurrentDeviceId with fingerprint", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    await act(async () => {
+      await result.current.handleScoutSelectTenant("t-1", "koperasi-a", "Koperasi A");
+    });
+
+    expect(mockSetCurrentDeviceId).toHaveBeenCalledWith("fp-hash-123");
+  });
+
+  it("calls issueAndCacheLocalSessionGrant for scout role", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    await act(async () => {
+      await result.current.handleScoutSelectTenant("t-1", "koperasi-a", "Koperasi A");
+    });
+
+    expect(mockIssueAndCacheLocalSessionGrant).toHaveBeenCalledWith(
+      "t-1",
+      "scout-anonymous",
+      "fp-hash-123",
+      "scout",
+    );
+  });
+
+  it("stores correct tenantSlug and tenantName in context", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    await act(async () => {
+      await result.current.handleScoutSelectTenant("t-99", "slug-xyz", "Nama Koperasi");
+    });
+
+    expect(mockTenantContextStorePut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantSlug: "slug-xyz",
+        tenantName: "Nama Koperasi",
+        terminalId: 0,
+      }),
+    );
+  });
+});
+
+// ── handleScoutEnterSlug ──────────────────────────────────────────────────────
+
+describe("useLoginFlow - handleScoutEnterSlug", () => {
+  async function getHookWithLocalTenants(
+    localTenants: { tenantId: string; slug: string; name: string }[] = [],
+  ) {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    mockLocalTenantConfigStoreGetAll.mockResolvedValue(localTenants);
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    // Load local tenants into state
+    await act(async () => {
+      await result.current.enterScoutBrowse();
+    });
+    return result;
+  }
+
+  it("resolves from local tenants when slug matches", async () => {
+    const result = await getHookWithLocalTenants([
+      { tenantId: "t-local", slug: "koperasi-lokal", name: "Koperasi Lokal" },
+    ]);
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-lokal", false);
+    });
+
+    expect(mockTenantContextStorePut).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "t-local" }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/tenant/t-local/scout" }),
+    );
+  });
+
+  it("does not set slugNotFoundError when local match found", async () => {
+    const result = await getHookWithLocalTenants([
+      { tenantId: "t-local", slug: "koperasi-lokal", name: "Koperasi Lokal" },
+    ]);
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-lokal", false);
+    });
+
+    expect(result.current.slugNotFoundError).toBeNull();
+  });
+
+  it("resolves from server when online and server returns a match", async () => {
+    const result = await getHookWithLocalTenants([]);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tenants: [{ tenantId: "t-server", slug: "koperasi-server", name: "Koperasi Server" }],
+      }),
+    });
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-server", true);
+    });
+
+    expect(mockTenantContextStorePut).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "t-server" }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/tenant/t-server/scout" }),
+    );
+  });
+
+  it("fetches with correct URL including encoded slug", async () => {
+    const result = await getHookWithLocalTenants([]);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tenants: [] }),
+    });
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-maju", true);
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/tenants/search?q=koperasi-maju"),
+    );
+  });
+
+  it("sets slugNotFoundError when online but server returns no match", async () => {
+    const result = await getHookWithLocalTenants([]);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tenants: [] }),
+    });
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("tidak-ada", true);
+    });
+
+    expect(result.current.slugNotFoundError).toBe("tidak-ada");
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: expect.stringContaining("/scout") }),
+    );
+  });
+
+  it("sets slugNotFoundError when online but fetch response is not ok", async () => {
+    const result = await getHookWithLocalTenants([]);
+
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-x", true);
+    });
+
+    expect(result.current.slugNotFoundError).toBe("koperasi-x");
+  });
+
+  it("sets slugNotFoundError when online but fetch throws (network error)", async () => {
+    const result = await getHookWithLocalTenants([]);
+
+    global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-y", true);
+    });
+
+    expect(result.current.slugNotFoundError).toBe("koperasi-y");
+  });
+
+  it("sets slugNotFoundError when offline and no local match", async () => {
+    const result = await getHookWithLocalTenants([
+      { tenantId: "t-1", slug: "koperasi-a", name: "Koperasi A" },
+    ]);
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-tidak-ada", false);
+    });
+
+    expect(result.current.slugNotFoundError).toBe("koperasi-tidak-ada");
+    expect(mockTenantContextStorePut).not.toHaveBeenCalled();
+  });
+
+  it("does not call fetch when offline", async () => {
+    const result = await getHookWithLocalTenants([]);
+    global.fetch = vi.fn();
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-z", false);
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("prefers local match over server even when online", async () => {
+    const result = await getHookWithLocalTenants([
+      { tenantId: "t-local", slug: "koperasi-sama", name: "Koperasi Lokal" },
+    ]);
+    global.fetch = vi.fn();
+
+    await act(async () => {
+      await result.current.handleScoutEnterSlug("koperasi-sama", true);
+    });
+
+    // fetch should not be called — local match short-circuits
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(mockTenantContextStorePut).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "t-local" }),
+    );
+  });
+});
+
+// ── handlePickDeviceRole details ──────────────────────────────────────────────
+
+describe("useLoginFlow - handlePickDeviceRole details", () => {
+  it("calls issueAndCacheLocalSessionGrant with selected role", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    act(() => {
+      result.current.advanceToPickRole({
+        tenantId: "t-1",
+        tenantSlug: "koperasi-a",
+        tenantName: "Koperasi A",
+        accountId: "acc-1",
+      });
+    });
+
+    await act(async () => {
+      await result.current.handlePickDeviceRole("terminal");
+    });
+
+    expect(mockIssueAndCacheLocalSessionGrant).toHaveBeenCalledWith(
+      "t-1",
+      "acc-1",
+      "fp-hash-123",
+      "terminal",
+    );
+  });
+
+  it("calls setCurrentDeviceId with fingerprint", async () => {
+    const { useLoginFlow } = await import("../useLoginFlow");
+    const { result } = renderHook(() => useLoginFlow());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    act(() => {
+      result.current.advanceToPickRole({
+        tenantId: "t-1",
+        tenantSlug: "koperasi-a",
+        tenantName: "Koperasi A",
+        accountId: "acc-1",
+      });
+    });
+
+    await act(async () => {
+      await result.current.handlePickDeviceRole("scout");
+    });
+
+    expect(mockSetCurrentDeviceId).toHaveBeenCalledWith("fp-hash-123");
   });
 });

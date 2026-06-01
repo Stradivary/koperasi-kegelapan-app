@@ -168,21 +168,8 @@ vi.mock("../../block/StationCardsPanel", () => ({
       ),
       createElement(
         "button",
-        { "data-testid": "reset-btn", onClick: () => props.onResetCard({ cardId: "card-1" }) },
-        "Reset",
-      ),
-      createElement(
-        "button",
         { "data-testid": "delete-btn", onClick: () => props.onDeleteCard({ cardId: "card-1" }) },
         "Delete",
-      ),
-      createElement(
-        "button",
-        {
-          "data-testid": "status-btn",
-          onClick: () => props.onUpdateCardStatus({ cardId: "card-1" }, "blocked_admin"),
-        },
-        "Block",
       ),
     );
   }),
@@ -527,19 +514,6 @@ describe("CardSection - topup flow", () => {
   });
 });
 
-describe("CardSection - reset card flow", () => {
-  it("opens NfcScanDrawer and triggers scan when reset clicked", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("reset-btn").click();
-    });
-    expect(screen.getByTestId("nfc-scan-drawer")).toBeDefined();
-    expect(mockScan).toHaveBeenCalled();
-  });
-});
-
 describe("CardSection - delete card", () => {
   it("calls delete mutation when delete clicked", async () => {
     await act(async () => {
@@ -558,9 +532,6 @@ describe("CardSection - update card status", () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
     });
-    await act(async () => {
-      screen.getByTestId("status-btn").click();
-    });
     expect(screen.getByTestId("station-cards-panel")).toBeDefined();
   });
 });
@@ -577,10 +548,6 @@ describe("CardSection - fix card panel", () => {
     };
     await act(async () => {
       render(createElement(CardSection, defaultProps));
-    });
-    // Open the NFC drawer first
-    await act(async () => {
-      screen.getByTestId("reset-btn").click();
     });
     // Call onFixCard from the NFC drawer
     await act(async () => {
@@ -600,9 +567,6 @@ describe("CardSection - fix card panel", () => {
     };
     await act(async () => {
       render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("reset-btn").click();
     });
     await act(async () => {
       mockNfcDrawerOnFixCard?.();
@@ -714,10 +678,6 @@ describe("CardSection - NFC drawer close during scanning", () => {
     };
     await act(async () => {
       render(createElement(CardSection, defaultProps));
-    });
-    // Open the drawer
-    await act(async () => {
-      screen.getByTestId("reset-btn").click();
     });
     // Close it
     await act(async () => {

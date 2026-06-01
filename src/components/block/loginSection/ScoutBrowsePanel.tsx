@@ -158,34 +158,11 @@ export function ScoutBrowsePanel({
         </>
       )}
 
-      {/* Offline: local tenants (filtered by query if any) */}
+      {/* Offline: local tenants (filtered by query if any, unfiltered when no query) */}
       {!isOnline && filteredLocal.length > 0 && (
         <div className="space-y-2">
           <p className="type-body2 text-muted-foreground">Koperasi Lokal</p>
           {filteredLocal.map((tenant) => (
-            <button
-              key={tenant.tenantId}
-              type="button"
-              onClick={() => onSelectLocal(tenant)}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border border-border hover:bg-accent active:scale-[0.98] transition-all text-left"
-            >
-              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <BookOpen size={18} className="text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="type-body1-bold text-foreground truncate">{tenant.name}</p>
-                <p className="type-body2 text-muted-foreground truncate">{tenant.slug}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Offline: local tenants shown unfiltered when no query */}
-      {!isOnline && query.length === 0 && localTenants.length > 0 && (
-        <div className="space-y-2">
-          <p className="type-body2 text-muted-foreground">Koperasi Lokal</p>
-          {localTenants.map((tenant) => (
             <button
               key={tenant.tenantId}
               type="button"
