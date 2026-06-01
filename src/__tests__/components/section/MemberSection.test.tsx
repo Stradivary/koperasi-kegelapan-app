@@ -48,7 +48,19 @@ vi.mock("#/hooks/useLocalDb", () => ({
 }));
 
 // Resolved after mock is registered
-import { localDb as mockLocalDb } from "#/hooks/useLocalDb";
+import { localDb as _localDb } from "#/hooks/useLocalDb";
+
+// Cast to mock type so vi.fn() methods are accessible without TS errors
+const mockLocalDb = _localDb as unknown as {
+  users: {
+    where: ReturnType<typeof vi.fn>;
+    add: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+  cards: {
+    where: ReturnType<typeof vi.fn>;
+  };
+};
 
 // ── Mock SyncEngineContext ────────────────────────────────────────────────────
 

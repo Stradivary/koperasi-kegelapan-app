@@ -5,7 +5,6 @@
  */
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import React from "react";
 
 const mockUseSyncEngine = vi.fn();
 const mockRegisterTriggerSync = vi.fn();

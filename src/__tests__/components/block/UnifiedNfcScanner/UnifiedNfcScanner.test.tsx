@@ -97,9 +97,19 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeState(overrides: Partial<ReturnType<typeof makeState>> = {}) {
+interface NfcState {
+  phase: string;
+  payload: unknown;
+  rawResult: unknown;
+  classification: string | null;
+  isCheckedIn: boolean;
+  tamperDetected: boolean;
+  error: unknown;
+}
+
+function makeState(overrides: Partial<NfcState> = {}): NfcState {
   return {
-    phase: "idle" as const,
+    phase: "idle",
     payload: null,
     rawResult: null,
     classification: null,

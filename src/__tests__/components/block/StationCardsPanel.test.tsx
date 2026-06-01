@@ -29,7 +29,16 @@ import { StationCardsPanel } from "#/components/block/StationCardsPanel";
 import type { StationCardRow, StationUserRow } from "#/components/block/StationCardsPanel";
 
 const cards: StationCardRow[] = [
-  { cardId: "abc", userId: "u-1", balance: 10000, status: "active", syncStatus: "synced" },
+  {
+    cardId: "abc",
+    userId: "u-1",
+    userName: "Budi",
+    balance: 10000,
+    status: "active",
+    syncStatus: "synced",
+    counter: 1,
+    expiresAt: null,
+  },
 ];
 const members: StationUserRow[] = [
   { userId: "u-1", name: "Budi", status: "active", syncStatus: "synced" },
