@@ -290,7 +290,7 @@ tenantsRoutes.post("/sync", async (c) => {
     const conflictResponse = await handleConflictResponse(c, existingBySlug, existingByAdmin, db);
     if (conflictResponse) return conflictResponse;
 
-    // Step 6: No conflict — create tenant + admin account atomically via D1 batch
+    // Step 6: No conflict - create tenant + admin account atomically via D1 batch
     // Use the client's localTenantId if provided so local and server IDs match
     const tenantId = req.localTenantId ?? crypto.randomUUID();
     const accountId = crypto.randomUUID();
@@ -319,11 +319,11 @@ tenantsRoutes.post("/sync", async (c) => {
       if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
         return handleRaceConditionConflict(c, db, req.slug, req.adminUsername);
       }
-      // Non-constraint error — rethrow
+      // Non-constraint error - rethrow
       throw e;
     }
 
-    // Step 7: Success — return 201 with access token for immediate use
+    // Step 7: Success - return 201 with access token for immediate use
     const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" }));
     const body = btoa(
       JSON.stringify({

@@ -26,7 +26,7 @@ export interface BaseDialogDrawerProps {
   icon?: React.ReactNode;
   /** Main body content rendered between the header and footer */
   children?: React.ReactNode;
-  /** Footer content (buttons, etc.) — rendered inside DrawerFooter / DialogFooter */
+  /** Footer content (buttons, etc.) - rendered inside DrawerFooter / DialogFooter */
   footer?: React.ReactNode;
   /** Extra className applied to the Dialog content (desktop only) */
   dialogClassName?: string;

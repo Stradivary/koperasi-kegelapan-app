@@ -18,7 +18,7 @@ export interface DeviceFingerprint {
   timezone: string;
   language: string;
   platform: string;
-  /** SHA-256 hash of pipe-delimited attributes — deterministic 64-char hex string */
+  /** SHA-256 hash of pipe-delimited attributes - deterministic 64-char hex string */
   hash: string;
 }
 

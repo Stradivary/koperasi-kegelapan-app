@@ -297,7 +297,7 @@ async function pushBatchWithRetry(
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     // Check device block before each request
     if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked — sync push aborted");
+      throw new DeviceBlockedError("Device is blocked - sync push aborted");
     }
 
     try {
@@ -314,7 +314,7 @@ async function pushBatchWithRetry(
       const result = await processPushHttpResponse(response);
       if (result !== null) return result;
 
-      // null means retryable (429 already slept — just continue; 5xx sets lastError)
+      // null means retryable (429 already slept - just continue; 5xx sets lastError)
       if (response.status === 429) {
         continue;
       }
@@ -389,7 +389,7 @@ async function processSingleBatch(
  * Execute the full sync push cycle for a tenant.
  *
  * 1. Gets pending entries from transactionLogService.getSyncableEntries(tenantId)
- * 2. Validates entries — marks corrupt ones as "failed" and removes from batch
+ * 2. Validates entries - marks corrupt ones as "failed" and removes from batch
  * 3. Batches valid entries into groups of max 500
  * 4. Sends each batch to POST /api/sync/push using apiFetch
  * 5. On success: marks accepted entries as "synced" via updateSyncStatus
@@ -402,10 +402,10 @@ async function processSingleBatch(
 export async function syncPush(tenantId: string): Promise<SyncPushResult> {
   // Check device block before starting
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — sync push aborted");
+    throw new DeviceBlockedError("Device is blocked - sync push aborted");
   }
 
-  // Skip if no auth token — means this is a local-only tenant not registered on server
+  // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
     return {
@@ -430,7 +430,7 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
     };
   }
 
-  // Step 2: Validate entries — isolate corrupt ones before push
+  // Step 2: Validate entries - isolate corrupt ones before push
   const { valid: validEntries, corrupt: corruptEntries } = partitionEntries(pendingEntries);
 
   let failedCount = await markCorruptEntriesFailed(corruptEntries);
@@ -458,7 +458,7 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
   for (const batch of batches) {
     // Check device block before each batch
     if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked — sync push aborted");
+      throw new DeviceBlockedError("Device is blocked - sync push aborted");
     }
 
     const batchResult = await processSingleBatch(batch, tenantId);

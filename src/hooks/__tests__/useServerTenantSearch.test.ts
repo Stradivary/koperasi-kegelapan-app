@@ -186,7 +186,7 @@ describe("useServerTenantSearch", () => {
 
     const callCount = mockFetch.mock.calls.length;
 
-    // Same query again — should use cache
+    // Same query again - should use cache
     act(() => {
       result.current.setQuery("");
     });

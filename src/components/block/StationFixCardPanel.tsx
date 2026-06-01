@@ -182,7 +182,7 @@ export function StationFixCardPanel({
           aria-label="Anggota"
           className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="">— Tanpa anggota —</option>
+          <option value="">- Tanpa anggota -</option>
           {activeMembers.map((m) => (
             <option key={m.userId} value={m.userId}>
               {m.name} (#{m.userId})
@@ -218,7 +218,7 @@ export function StationFixCardPanel({
 
       {!hasGrant && (
         <p className="text-xs text-destructive">
-          Sesi tidak aktif — muat ulang halaman untuk memperbarui.
+          Sesi tidak aktif - muat ulang halaman untuk memperbarui.
         </p>
       )}
 

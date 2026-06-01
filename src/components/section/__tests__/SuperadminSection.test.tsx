@@ -252,7 +252,7 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("SuperadminSection — login gate", () => {
+describe("SuperadminSection - login gate", () => {
   it("renders login form when not authenticated", () => {
     render(createElement(SuperadminSection));
     expect(screen.getByText("Superadmin Login")).toBeDefined();
@@ -327,7 +327,7 @@ describe("SuperadminSection — login gate", () => {
   });
 });
 
-describe("SuperadminSection — authenticated view", () => {
+describe("SuperadminSection - authenticated view", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -348,7 +348,7 @@ describe("SuperadminSection — authenticated view", () => {
   });
 });
 
-describe("SuperadminSection — tenant operations", () => {
+describe("SuperadminSection - tenant operations", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -373,7 +373,7 @@ describe("SuperadminSection — tenant operations", () => {
   });
 });
 
-describe("SuperadminSection — section switching", () => {
+describe("SuperadminSection - section switching", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -392,7 +392,7 @@ describe("SuperadminSection — section switching", () => {
   });
 });
 
-describe("SuperadminSection — account operations", () => {
+describe("SuperadminSection - account operations", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -427,7 +427,7 @@ describe("SuperadminSection — account operations", () => {
   });
 });
 
-describe("SuperadminSection — search", () => {
+describe("SuperadminSection - search", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -441,7 +441,7 @@ describe("SuperadminSection — search", () => {
   });
 });
 
-describe("SuperadminSection — tenant detail status change", () => {
+describe("SuperadminSection - tenant detail status change", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -456,12 +456,12 @@ describe("SuperadminSection — tenant detail status change", () => {
     render(createElement(SuperadminSection));
     fireEvent.click(screen.getByTestId("select-tenant-btn"));
     fireEvent.click(screen.getByTestId("status-change-btn"));
-    // Should not crash — mutation is called
+    // Should not crash - mutation is called
     expect(screen.getByTestId("tenant-detail-panel")).toBeDefined();
   });
 });
 
-describe("SuperadminSection — account status toggle confirm", () => {
+describe("SuperadminSection - account status toggle confirm", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -480,7 +480,7 @@ describe("SuperadminSection — account status toggle confirm", () => {
   });
 });
 
-describe("SuperadminSection — create tenant dialog close", () => {
+describe("SuperadminSection - create tenant dialog close", () => {
   beforeEach(() => {
     localStorage.setItem("superadmin-token", "valid-token");
   });
@@ -494,7 +494,7 @@ describe("SuperadminSection — create tenant dialog close", () => {
   });
 });
 
-describe("SuperadminSection — login loading state", () => {
+describe("SuperadminSection - login loading state", () => {
   it("shows Masuk... when login is in progress", async () => {
     // Create a never-resolving fetch to keep loading state
     global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));

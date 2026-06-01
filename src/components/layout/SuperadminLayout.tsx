@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Building2, Leaf, LogOut, Menu, Users } from "lucide-react";
 import { useState } from "react";
-import { BRAND } from "#/lib/brand";
+import { BRAND } from "#/lib/utils/brand";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { MobileBottomNav, type MobileNavItem } from "./MobileBottomNav";

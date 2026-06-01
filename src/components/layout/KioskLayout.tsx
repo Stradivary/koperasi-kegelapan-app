@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Monitor, MonitorSmartphone, Search, DoorOpen, Check, LogOut } from "lucide-react";
-import { BRAND } from "#/lib/brand";
-import { getTenantContextStore } from "#/lib/indexeddb.lazy";
+import { BRAND } from "#/lib/utils/brand";
+import { getTenantContextStore } from "#/hooks/useIndexedDbStores";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { Button } from "../ui/button";
 
@@ -14,7 +14,7 @@ interface KioskLayoutProps {
   tenantId: string;
   currentMode: "terminal" | "kiosk" | "scout" | "gate" | "station";
   canAccessStation?: boolean;
-  /** The stored device role — used to restrict mode switching for dedicated devices */
+  /** The stored device role - used to restrict mode switching for dedicated devices */
   deviceRole?: string;
   trailing?: React.ReactNode;
 }

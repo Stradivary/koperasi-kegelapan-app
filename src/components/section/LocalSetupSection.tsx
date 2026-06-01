@@ -1,7 +1,7 @@
 import successHumanImg from "#/assets/images/success_human.svg";
-import { BRAND } from "#/lib/brand";
+import { BRAND } from "#/lib/utils/brand";
 import { useLocalSetup } from "#/hooks/useLocalSetup";
-import { createSlug } from "#/lib/slugValidation";
+import { createSlug } from "#/lib/utils/slugValidation";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

@@ -1,5 +1,5 @@
 /**
- * UnifiedNfcScanner — Main NFC scanning component.
+ * UnifiedNfcScanner - Main NFC scanning component.
  *
  * Consolidates multiple NFC implementations into a single, flexible component
  * that supports both drawer (modal) and inline display modes.
@@ -15,11 +15,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, WifiOff, Wrench, XCircle } from "lucide-react";
 
-import type { NfcError } from "#/core/nfc/adapters/types.ts";
-import type { PayloadError, OperationHandler } from "#/core/nfc/payloadTypes.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
-import type { RawNfcResult, CardClassification } from "#/core/nfc/types.ts";
-import type { CardPayload, SessionGrant } from "#/core/payload/types.ts";
+import type { NfcError } from "#/hooks/types.ts";
+import type { PayloadError, OperationHandler } from "#/hooks/types.ts";
+import type { NfcPhase } from "#/hooks/types.ts";
+import type { RawNfcResult, CardClassification } from "#/hooks/types.ts";
+import type { CardPayload, SessionGrant } from "#/hooks/types.ts";
 import { useUnifiedNfc } from "#/hooks/useUnifiedNfc.ts";
 import { Button } from "#/components/ui/button.tsx";
 import { Drawer, DrawerContent } from "#/components/ui/drawer.tsx";
@@ -168,7 +168,7 @@ export interface ScannerRenderContext {
 }
 
 /**
- * Props passed to renderReady — shown when a card is scanned and ready for action.
+ * Props passed to renderReady - shown when a card is scanned and ready for action.
  * Use this to render custom card info, balance displays, amount inputs, etc.
  */
 export interface ReadyRenderProps extends ScannerRenderContext {
@@ -179,7 +179,7 @@ export interface ReadyRenderProps extends ScannerRenderContext {
 }
 
 /**
- * Props passed to renderSuccess — shown after a successful operation.
+ * Props passed to renderSuccess - shown after a successful operation.
  * Use this to render custom success messages, card details, sync status, etc.
  */
 export interface SuccessRenderProps extends ScannerRenderContext {
@@ -188,7 +188,7 @@ export interface SuccessRenderProps extends ScannerRenderContext {
 }
 
 /**
- * Props passed to renderError — shown when an error occurs.
+ * Props passed to renderError - shown when an error occurs.
  * Use this to render custom error UI, recovery options, etc.
  */
 export interface ErrorRenderProps extends ScannerRenderContext {
@@ -203,7 +203,7 @@ export interface ErrorRenderProps extends ScannerRenderContext {
 }
 
 /**
- * Props passed to renderHeader — shown at the top of the drawer.
+ * Props passed to renderHeader - shown at the top of the drawer.
  * Use this to render custom titles, descriptions, badges, etc.
  */
 export interface HeaderRenderProps extends ScannerRenderContext {
@@ -212,7 +212,7 @@ export interface HeaderRenderProps extends ScannerRenderContext {
 }
 
 /**
- * Props passed to renderFooter — shown at the bottom of the drawer.
+ * Props passed to renderFooter - shown at the bottom of the drawer.
  * Use this to render custom footer buttons (cancel, close, retry, etc.)
  */
 export interface FooterRenderProps extends ScannerRenderContext {
@@ -462,7 +462,7 @@ function ScannerContent({
   };
 
   // ============================================================================
-  // Shared render context — passed to all render prop functions
+  // Shared render context - passed to all render prop functions
   // ============================================================================
 
   const renderContext: ScannerRenderContext = {
@@ -480,7 +480,7 @@ function ScannerContent({
   };
 
   // ============================================================================
-  // Continuous Scan Mode — countdown and auto-reset
+  // Continuous Scan Mode - countdown and auto-reset
   // @see Requirements 24.1, 24.2, 24.3, 24.4
   // ============================================================================
 
@@ -572,7 +572,7 @@ function ScannerContent({
         />
       )}
 
-      {/* NFC Tap Area — shown during scanning-related phases */}
+      {/* NFC Tap Area - shown during scanning-related phases */}
       {TAP_AREA_PHASES.has(phase) && (
         <NfcTapArea
           phase={phase}
@@ -586,19 +586,19 @@ function ScannerContent({
         />
       )}
 
-      {/* Cancel button — shown during active phases (scanning, classifying, validating, writing) */}
+      {/* Cancel button - shown during active phases (scanning, classifying, validating, writing) */}
       {CANCEL_PHASES.has(phase) && phase !== "write_pending_retry" && (
         <Button variant="ghost" onClick={handleCancel} aria-label={mergedLabels.cancel}>
           {mergedLabels.cancel}
         </Button>
       )}
 
-      {/* Write Pending Retry — shown when write failed and waiting for re-tap */}
+      {/* Write Pending Retry - shown when write failed and waiting for re-tap */}
       {phase === "write_pending_retry" && (
         <div className="flex flex-col items-center gap-3 py-4" role="alert" aria-live="assertive">
           <AlertTriangle className="h-12 w-12 text-signal-warning" aria-hidden="true" />
           <span className="type-body1-bold text-signal-warning text-center">
-            Penulisan gagal — kartu dipindahkan terlalu cepat
+            Penulisan gagal - kartu dipindahkan terlalu cepat
           </span>
           <span className="type-body2 text-muted-foreground text-center">
             Tempelkan kartu lagi untuk menyelesaikan penulisan
@@ -622,7 +622,7 @@ function ScannerContent({
         </div>
       )}
 
-      {/* Success State — shown during success phase */}
+      {/* Success State - shown during success phase */}
       {phase === "success" &&
         (() => {
           const defaultContent = (
@@ -667,7 +667,7 @@ function ScannerContent({
           return defaultContent;
         })()}
 
-      {/* Error State — shown during error phase */}
+      {/* Error State - shown during error phase */}
       {phase === "error" &&
         (() => {
           const defaultContent = (
@@ -695,21 +695,21 @@ function ScannerContent({
 
               {/* Action buttons for error recovery */}
               <div className="flex gap-2">
-                {/* Retry button — only for recoverable errors */}
+                {/* Retry button - only for recoverable errors */}
                 {error?.recoverable && (
                   <Button variant="outline" onClick={handleRetry} aria-label={mergedLabels.retry}>
                     {mergedLabels.retry}
                   </Button>
                 )}
 
-                {/* Skip button — shown when allowSkip is enabled */}
+                {/* Skip button - shown when allowSkip is enabled */}
                 {allowSkip && (
                   <Button variant="ghost" onClick={handleSkip} aria-label={mergedLabels.skip}>
                     {mergedLabels.skip}
                   </Button>
                 )}
 
-                {/* Fix card button — shown when tamper detected and onFixCard provided */}
+                {/* Fix card button - shown when tamper detected and onFixCard provided */}
                 {tamperDetected && onFixCard && (
                   <Button
                     variant="default"
@@ -736,7 +736,7 @@ function ScannerContent({
           return defaultContent;
         })()}
 
-      {/* Card Info + Actions — shown during ready phase */}
+      {/* Card Info + Actions - shown during ready phase */}
       {CARD_INFO_PHASES.has(phase) &&
         (() => {
           const defaultCardInfo = (
@@ -787,7 +787,7 @@ function ScannerContent({
           );
         })()}
 
-      {/* Raw Data Inspector — shown when enabled and raw result exists */}
+      {/* Raw Data Inspector - shown when enabled and raw result exists */}
       {showRawData && rawResult && (
         <RawDataInspector
           rawResult={rawResult}
@@ -805,7 +805,7 @@ function ScannerContent({
 // ============================================================================
 
 /**
- * UnifiedNfcScanner — Main NFC scanning component.
+ * UnifiedNfcScanner - Main NFC scanning component.
  *
  * Integrates the useUnifiedNfc hook with sub-components to provide
  * a complete NFC scanning experience. Supports drawer and inline display modes.

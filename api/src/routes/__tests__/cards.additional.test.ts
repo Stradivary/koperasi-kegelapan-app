@@ -1,7 +1,7 @@
 /**
  * Additional tests for cards.ts covering uncovered lines:
  * - Line 56: check-uid returns exists:true when rawRows has data (already covered)
- * - Line 118: POST /:cardId/block — card not found (404)
+ * - Line 118: POST /:cardId/block - card not found (404)
  * Also covers the full block endpoint happy path and validation paths.
  */
 import { describe, it, expect, beforeEach } from "vitest";
@@ -88,7 +88,7 @@ describe("POST /api/cards/:cardId/block", () => {
   });
 });
 
-describe("GET /api/cards/check-uid — additional coverage (line 56)", () => {
+describe("GET /api/cards/check-uid - additional coverage (line 56)", () => {
   it("returns exists:true when rawRows has tenant data", async () => {
     const localApp = createTestApp(
       cardsRoutes,

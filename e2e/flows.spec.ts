@@ -47,7 +47,7 @@ test.describe("Tenant isolation", () => {
     await login(page, `${TENANT_A}-admin`);
     await expect(page).toHaveURL(new RegExp(`/tenant/${TENANT_A}/`));
 
-    // Navigate directly to tenant B admin — should redirect to login
+    // Navigate directly to tenant B admin - should redirect to login
     await page.goto(`/tenant/${TENANT_B}/admin`);
     await expect(page).toHaveURL("/");
   });
@@ -76,7 +76,7 @@ test.describe("Admin dashboard", () => {
   });
 });
 
-test.describe("Station — card management", () => {
+test.describe("Station - card management", () => {
   test.beforeEach(async ({ page }: any) => {
     await login(page, `${TENANT_A}-station`);
     await expect(page).toHaveURL(/\/station/);
@@ -120,7 +120,7 @@ test.describe("Station — card management", () => {
   });
 });
 
-test.describe("Scout — balance check (no NFC on desktop)", () => {
+test.describe("Scout - balance check (no NFC on desktop)", () => {
   test("scout page shows scan button", async ({ page }: any) => {
     await login(page, `${TENANT_A}-station`); // station can access scout-like views
     await page.goto(page.url().replaceAll("/station", "/scout"));

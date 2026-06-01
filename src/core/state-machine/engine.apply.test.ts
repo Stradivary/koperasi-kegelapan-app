@@ -284,7 +284,7 @@ describe("validateTopup", () => {
 
 // ── VALID_TRANSITIONS additional paths ───────────────────────────────────────
 
-describe("validateTransition — additional VALID_TRANSITIONS paths", () => {
+describe("validateTransition - additional VALID_TRANSITIONS paths", () => {
   it("CHECKED_OUT → admin_reset → IDLE", () => {
     const r = validateTransition(makePayload(CardState.CHECKED_OUT, 50_000), "admin_reset", NOW);
     expect(r.valid).toBe(true);

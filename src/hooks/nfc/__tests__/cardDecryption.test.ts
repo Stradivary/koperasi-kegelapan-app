@@ -91,7 +91,7 @@ describe("decodeCardPayloadForVerification", () => {
   it("decrypts and decodes the payload", async () => {
     const { decodeCardPayloadForVerification } = await import("../cardDecryption");
     const raw = new Uint8Array(80);
-    raw[4] = 1; // version 1 — no decryption needed
+    raw[4] = 1; // version 1 - no decryption needed
 
     const fakePayload = { identity: { name: "Test" } };
     mockDecodePayload.mockReturnValue(fakePayload);

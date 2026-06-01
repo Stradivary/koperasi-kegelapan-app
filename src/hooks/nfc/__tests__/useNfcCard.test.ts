@@ -412,7 +412,7 @@ describe("useNfcCard", () => {
     });
     expect(result.current.state.phase).toBe("ready");
 
-    // Immediately scan again — should be debounced (phase stays ready, no re-validation)
+    // Immediately scan again - should be debounced (phase stays ready, no re-validation)
     mockDecodeAndValidateCard.mockClear();
     await act(async () => {
       reader.emit("reading", makeReadingEvent());
@@ -478,7 +478,7 @@ describe("useNfcCard", () => {
   it("ignores readingerror when not in scanning/validating phase", async () => {
     const { useNfcCard } = await import("../useNfcCard");
     const { result } = renderHook(() => useNfcCard(mockGrant, "t-1", 1));
-    // Don't scan — stays idle
+    // Don't scan - stays idle
     const reader = MockNDEFReader.instances[0];
     if (reader) {
       await act(async () => {
@@ -523,7 +523,7 @@ describe("useNfcCard", () => {
     mockGetPendingJournal.mockResolvedValue(journal);
     mockDecodeAndValidateCard.mockResolvedValue({
       phase: "ready",
-      payload: makePayload(2), // counter === expectedCounter — write already landed
+      payload: makePayload(2), // counter === expectedCounter - write already landed
       error: null,
       tamperDetected: false,
       warning: null,
@@ -713,7 +713,7 @@ describe("useNfcCard", () => {
     expect(result.current.state.phase).toBe("ready");
 
     // Abort the current signal by calling scan() again (aborts previous AbortController)
-    // but don't wait for a reading event — payload stays from previous ready state
+    // but don't wait for a reading event - payload stays from previous ready state
     // Actually we need to abort the signal without clearing payload.
     // We do this by calling scan() which aborts the old signal, then immediately
     // calling write() before a new reading event sets a new reader.
@@ -755,14 +755,14 @@ describe("useNfcCard", () => {
     });
     expect(result.current.state.phase).toBe("ready");
 
-    // Trigger write — make inline write fail so it falls back to pending
+    // Trigger write - make inline write fail so it falls back to pending
     reader.writeMock.mockRejectedValueOnce(Object.assign(new DOMException("I/O", "NetworkError")));
     await act(async () => {
       await result.current.write(makePayload(2), "debit");
     });
     expect(result.current.state.phase).toBe("writing");
 
-    // Re-tap with same serial after >1s — should complete the pending write
+    // Re-tap with same serial after >1s - should complete the pending write
     reader.writeMock.mockResolvedValue(undefined);
     await act(async () => {
       // Wait >1s so debounce passes (real timers)
@@ -973,7 +973,7 @@ describe("useNfcCard", () => {
       await result.current.retryScan();
     });
 
-    // Tap card with same serial as journal — completePendingWrite runs
+    // Tap card with same serial as journal - completePendingWrite runs
     const newReader = MockNDEFReader.instances.at(-1);
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1100)); // past debounce
@@ -981,7 +981,7 @@ describe("useNfcCard", () => {
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    // completePendingWrite ran — write + verify + record should have been called
+    // completePendingWrite ran - write + verify + record should have been called
     expect(result.current.state.phase).toBe("success");
   });
 
@@ -1102,7 +1102,7 @@ describe("useNfcCard", () => {
 
     // Journal recovery should have succeeded
     expect(result.current.state.phase).toBe("success");
-    // scheduleAutoReset was called — after 5s it would reset to idle
+    // scheduleAutoReset was called - after 5s it would reset to idle
     // We just verify success state here; the timer behavior is tested separately
   });
 

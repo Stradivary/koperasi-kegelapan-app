@@ -24,7 +24,7 @@ export interface PromptDialogDrawerProps {
   processingLabel?: string;
   /** Icon or media element displayed above the title */
   icon?: React.ReactNode;
-  /** Validate input — return error message or undefined if valid */
+  /** Validate input - return error message or undefined if valid */
   validate?: (value: string) => string | undefined;
 }
 

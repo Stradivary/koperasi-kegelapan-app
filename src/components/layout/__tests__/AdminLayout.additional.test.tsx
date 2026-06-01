@@ -20,7 +20,7 @@ vi.mock("#/hooks/useOnlineStatus", () => ({ useOnlineStatus: () => mockIsOnline(
 vi.mock("#/lib/indexeddb", () => ({
   tenantContextStore: { delete: (...a: unknown[]) => mockTenantContextStoreDelete(...a) },
 }));
-vi.mock("#/lib/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" } }));
+vi.mock("#/lib/utils/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" } }));
 vi.mock("../../block/SyncStatusIndicator", () => ({
   SyncStatusIndicator: () => <div data-testid="sync-status-indicator" />,
 }));
@@ -110,7 +110,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe("AdminLayout — sync drawer content", () => {
+describe("AdminLayout - sync drawer content", () => {
   it("shows SyncStatusIndicator in drawer when syncStatus and online", async () => {
     render(
       <AdminLayout
@@ -179,7 +179,7 @@ describe("AdminLayout — sync drawer content", () => {
   });
 });
 
-describe("AdminLayout — section labels", () => {
+describe("AdminLayout - section labels", () => {
   it.each([
     ["members", "Anggota"],
     ["transactions", "Transaksi"],
@@ -192,7 +192,7 @@ describe("AdminLayout — section labels", () => {
   });
 });
 
-describe("AdminLayout — mobile menu navigation", () => {
+describe("AdminLayout - mobile menu navigation", () => {
   it("navigates to cards route when Kartu clicked in mobile menu", async () => {
     render(<AdminLayout {...defaultProps} />);
     await userEvent.click(screen.getByTestId("menu-icon").closest("button")!);
@@ -209,7 +209,7 @@ describe("AdminLayout — mobile menu navigation", () => {
     await userEvent.click(screen.getByTestId("menu-icon").closest("button")!);
     const memberBtns = screen.getAllByText("Anggota");
     await userEvent.click(memberBtns[memberBtns.length - 1]);
-    // Mobile menu should close — X button no longer visible
+    // Mobile menu should close - X button no longer visible
     expect(screen.queryByLabelText("Tutup menu")).toBeNull();
   });
 
@@ -222,7 +222,7 @@ describe("AdminLayout — mobile menu navigation", () => {
   });
 });
 
-describe("AdminLayout — getSyncDotColor", () => {
+describe("AdminLayout - getSyncDotColor", () => {
   it("shows red dot when offline", () => {
     mockIsOnline.mockReturnValue({ isOnline: false });
     render(<AdminLayout {...defaultProps} />);

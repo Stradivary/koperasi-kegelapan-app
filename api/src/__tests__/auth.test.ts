@@ -60,7 +60,7 @@ function createApp() {
   const app = new Hono<{ Bindings: Env }>();
   // Provide mock env bindings
   app.use("*", async (c, next) => {
-    // @ts-expect-error — mock env
+    // @ts-expect-error - mock env
     c.env = { DB: {}, SESSION_MASTER_KEY: "test-key" };
     await next();
   });
@@ -68,7 +68,7 @@ function createApp() {
   return app;
 }
 
-describe("auth routes — POST /token", () => {
+describe("auth routes - POST /token", () => {
   let app: ReturnType<typeof createApp>;
 
   beforeEach(() => {
@@ -244,8 +244,8 @@ describe("auth routes — POST /token", () => {
 
   it("returns 401 when tenant is inactive", async () => {
     // Account found, password matches (we'll use a format that returns false)
-    // Actually we need password to match for this test — let's just test the flow
-    // by having password not match (simpler) — the tenant inactive check comes after
+    // Actually we need password to match for this test - let's just test the flow
+    // by having password not match (simpler) - the tenant inactive check comes after
     pushDbResult({
       accountId: "a-1",
       username: "user",

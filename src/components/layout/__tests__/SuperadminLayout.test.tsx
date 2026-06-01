@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mockNavigate }));
-vi.mock("#/lib/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test" } }));
+vi.mock("#/lib/utils/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test" } }));
 vi.mock("#/components/ui/button", () => ({
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
@@ -64,7 +64,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe("SuperadminLayout — rendering", () => {
+describe("SuperadminLayout - rendering", () => {
   it("renders children", () => {
     render(<SuperadminLayout {...defaultProps} />);
     expect(screen.getByTestId("content")).toBeDefined();
@@ -95,7 +95,7 @@ describe("SuperadminLayout — rendering", () => {
   });
 });
 
-describe("SuperadminLayout — navigation", () => {
+describe("SuperadminLayout - navigation", () => {
   it("calls onSectionChange when bottom nav item clicked", async () => {
     render(<SuperadminLayout {...defaultProps} />);
     // Use the mobile bottom nav mock which has unique buttons
@@ -112,7 +112,7 @@ describe("SuperadminLayout — navigation", () => {
   });
 });
 
-describe("SuperadminLayout — mobile drawer", () => {
+describe("SuperadminLayout - mobile drawer", () => {
   it("opens drawer when menu button clicked", async () => {
     render(<SuperadminLayout {...defaultProps} />);
     const menuBtn = screen.getByTestId("menu-icon").closest("button")!;
@@ -133,7 +133,7 @@ describe("SuperadminLayout — mobile drawer", () => {
   });
 });
 
-describe("SuperadminLayout — logout", () => {
+describe("SuperadminLayout - logout", () => {
   it("navigates to / when Logout clicked in sidebar", async () => {
     render(<SuperadminLayout {...defaultProps} />);
     const logoutBtns = screen.getAllByText("Logout");

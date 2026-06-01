@@ -141,7 +141,7 @@ afterEach(() => {
 
 // ── Cell components (lines 45-94) ─────────────────────────────────────────────
 
-describe("StationMembersPanel — cell components", () => {
+describe("StationMembersPanel - cell components", () => {
   it("MemberNameCell renders name in bold", () => {
     render(createElement(StationMembersPanel, defaultProps));
     expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
@@ -175,7 +175,7 @@ describe("StationMembersPanel — cell components", () => {
 
 // ── Mobile item rendering (lines 170-210) ─────────────────────────────────────
 
-describe("StationMembersPanel — mobile item rendering", () => {
+describe("StationMembersPanel - mobile item rendering", () => {
   it("renders member name in mobile item", () => {
     render(createElement(StationMembersPanel, defaultProps));
     // Mobile items also render the name
@@ -212,7 +212,7 @@ describe("StationMembersPanel — mobile item rendering", () => {
 
 // ── Actions dropdown (lines 240-292) ──────────────────────────────────────────
 
-describe("StationMembersPanel — actions dropdown", () => {
+describe("StationMembersPanel - actions dropdown", () => {
   it("shows 'Tangguhkan' for active members", () => {
     render(createElement(StationMembersPanel, defaultProps));
     expect(screen.getAllByText("Tangguhkan").length).toBeGreaterThan(0);
@@ -268,7 +268,7 @@ describe("StationMembersPanel — actions dropdown", () => {
 
 // ── Add member dialog (lines 121-140) ─────────────────────────────────────────
 
-describe("StationMembersPanel — add member dialog", () => {
+describe("StationMembersPanel - add member dialog", () => {
   it("opens prompt dialog when Tambah Anggota clicked", () => {
     render(createElement(StationMembersPanel, defaultProps));
     fireEvent.click(screen.getByText("Tambah Anggota"));
@@ -291,7 +291,7 @@ describe("StationMembersPanel — add member dialog", () => {
 
 // ── Delete member dialog (lines 215-240) ──────────────────────────────────────
 
-describe("StationMembersPanel — delete member dialog", () => {
+describe("StationMembersPanel - delete member dialog", () => {
   it("opens delete dialog when Hapus Member clicked", () => {
     const onDeleteMember = vi.fn();
     render(createElement(StationMembersPanel, { ...defaultProps, onDeleteMember }));
@@ -339,7 +339,7 @@ describe("StationMembersPanel — delete member dialog", () => {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-describe("StationMembersPanel — empty state", () => {
+describe("StationMembersPanel - empty state", () => {
   it("shows empty state when no members", () => {
     render(createElement(StationMembersPanel, { ...defaultProps, members: [] }));
     expect(screen.getByText("Belum ada anggota terdaftar")).toBeDefined();

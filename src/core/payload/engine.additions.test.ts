@@ -1,5 +1,5 @@
 /**
- * Additional tests for payload/engine — covering gaps in the existing suite:
+ * Additional tests for payload/engine - covering gaps in the existing suite:
  * - buildHmacInput structure and field placement
  * - validateMagic (unit-tested directly, not just mocked)
  * - getActiveBufferOffset / getInactiveBufferOffset
@@ -239,7 +239,7 @@ describe("buildHmacInput", () => {
 // Wire-format decode branch (raw.length < CARD_SIZE)
 // ---------------------------------------------------------------------------
 
-describe("decodePayload — wire format (WIRE_SIZE bytes)", () => {
+describe("decodePayload - wire format (WIRE_SIZE bytes)", () => {
   it("decodes a WIRE_SIZE buffer using the wire-format branch", () => {
     const wire = makeWireCard();
     expect(wire.length).toBe(WIRE_SIZE);
@@ -268,7 +268,7 @@ describe("decodePayload — wire format (WIRE_SIZE bytes)", () => {
 // Log entry early-exit on all-zero hash
 // ---------------------------------------------------------------------------
 
-describe("decodePayload — log entry early-exit", () => {
+describe("decodePayload - log entry early-exit", () => {
   it("stops reading log entries when a hash is all zeros", () => {
     const raw = makeMinimalCard(0);
     const view = new DataView(raw.buffer);
@@ -282,7 +282,7 @@ describe("decodePayload — log entry early-exit", () => {
     raw[LOG_OFFSET + 12] = 0x01; // non-zero hash byte → entry is valid
 
     // Entry 1 has all-zero hash (default) → should stop here
-    // Entry 2 also has non-zero hash — should NOT be read
+    // Entry 2 also has non-zero hash - should NOT be read
     const entry2Base = LOG_OFFSET + 2 * LOG_ENTRY_SIZE;
     raw[entry2Base + 12] = 0x02; // non-zero hash in entry 2
 
@@ -340,7 +340,7 @@ describe("tenantBind round-trip through encode/decode", () => {
 // encodePayload places buffer in correct slot for activePtr=1
 // ---------------------------------------------------------------------------
 
-describe("encodePayload — activePtr=1 places buffer in slot B", () => {
+describe("encodePayload - activePtr=1 places buffer in slot B", () => {
   it("writes buffer data at offset BUFFER_SIZE (216) when activePtr=1", () => {
     const raw = makeMinimalCard(0);
     const decoded = decodePayload(raw);

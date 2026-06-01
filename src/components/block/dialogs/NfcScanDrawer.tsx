@@ -3,9 +3,8 @@ import successPhoneImg from "#/assets/images/landing/success_phone.png";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import tamperImg from "#/assets/images/nfc/tamper.svg";
 import type { NfcCardPhase } from "#/hooks/nfc/useNfcCard";
-import type { CardPayload } from "#/core/payload/types";
-import { CardStatus } from "#/core/payload/types";
-import type { NfcPhase } from "#/core/nfc/stateMachine";
+import type { CardPayload, NfcPhase } from "#/hooks/types";
+import { CardStatus } from "#/hooks/types";
 import {
   Drawer,
   DrawerContent,
@@ -91,7 +90,7 @@ function DrawerBodyContent({
 }: DrawerBodyContentProps) {
   return (
     <div className="px-4">
-      {/* Scanning / Validating / Writing — uses shared NfcTapArea */}
+      {/* Scanning / Validating / Writing - uses shared NfcTapArea */}
       {(isScanning || isWriting) && (
         <div className="flex flex-col items-center justify-center py-8 gap-6">
           <NfcTapArea phase={nfcPhase} />
@@ -322,7 +321,7 @@ export function NfcScanDrawer({
           )}
         </DrawerHeader>
 
-        {/* Step Indicator — uses shared sub-component */}
+        {/* Step Indicator - uses shared sub-component */}
         <div className="px-4 py-2">
           <StepIndicator phase={nfcPhase} />
         </div>

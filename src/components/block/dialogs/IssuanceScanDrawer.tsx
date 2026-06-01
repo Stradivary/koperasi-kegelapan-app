@@ -1,8 +1,7 @@
 import { CheckCircle2 } from "lucide-react";
 import failedImg from "#/assets/images/nfc/failed.svg";
-import type { CardPayload } from "#/core/payload/types";
-import { CardState, CardStatus } from "#/core/payload/types";
-import type { NfcPhase } from "#/core/nfc/stateMachine";
+import type { CardPayload, NfcPhase } from "#/hooks/types";
+import { CardState, CardStatus } from "#/hooks/types";
 import {
   Drawer,
   DrawerContent,
@@ -124,13 +123,13 @@ export function IssuanceScanDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        {/* Step Indicator — uses shared sub-component */}
+        {/* Step Indicator - uses shared sub-component */}
         <div className="px-4 py-2">
           <StepIndicator phase={nfcPhase} labels={getStepLabels(mode)} />
         </div>
 
         <div className="px-4 overflow-y-auto max-h-[60vh]">
-          {/* Scanning / Writing — uses shared NfcTapArea */}
+          {/* Scanning / Writing - uses shared NfcTapArea */}
           {(isScanning || isWriting) && (
             <div className="flex flex-col items-center justify-center py-8 gap-6">
               <NfcTapArea phase={nfcPhase} />
@@ -186,7 +185,7 @@ export function IssuanceScanDrawer({
                   {serialNumber && <InfoRow label="Serial number" value={serialNumber} />}
                   <InfoRow label="Card ID" value={toHex(payload.header.cardId)} />
                   <InfoRow label="Version" value={String(payload.header.version)} />
-                  <InfoRow label="User ID" value={payload.identity.userId || "—"} />
+                  <InfoRow label="User ID" value={payload.identity.userId || "-"} />
                   <InfoRow
                     label="Dibuat"
                     value={new Date(payload.identity.createdAt * 1000).toLocaleString("id-ID")}

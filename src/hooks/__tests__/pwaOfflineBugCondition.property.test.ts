@@ -5,7 +5,7 @@
  *
  * Property 1: Bug Condition - Offline Login Completes Without Network
  *
- * These tests are EXPECTED TO FAIL on unfixed code — failure confirms the bug exists.
+ * These tests are EXPECTED TO FAIL on unfixed code - failure confirms the bug exists.
  * They encode the expected behavior that the fix should produce.
  *
  * Bug Condition: isBugCondition(input) where isOffline AND (localAccountExists OR cachedGrantExists)
@@ -22,7 +22,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 // ============================================================================
-// Test Helpers — Simulate the handleUnifiedLogin logic
+// Test Helpers - Simulate the handleUnifiedLogin logic
 // ============================================================================
 
 /**
@@ -52,7 +52,7 @@ async function simulateHandleUnifiedLogin(params: {
 
   // 1. Try local login first
   if (localLoginResult) {
-    // Local login succeeded — redirect
+    // Local login succeeded - redirect
     return { error: null, redirected: true, networkFetchAttempted: false };
   }
 
@@ -125,7 +125,7 @@ async function simulateUseSessionGrantRefresh(params: {
 }
 
 // ============================================================================
-// Property 1: Bug Condition — Offline Login with Invalid Credentials
+// Property 1: Bug Condition - Offline Login with Invalid Credentials
 // ============================================================================
 
 describe("Property 1: Bug Condition - Offline Login Completes Without Network", () => {
@@ -155,7 +155,7 @@ describe("Property 1: Bug Condition - Offline Login Completes Without Network", 
             const result = await simulateHandleUnifiedLogin({
               username,
               password,
-              localLoginResult: null, // Invalid credentials — localLogin returns null
+              localLoginResult: null, // Invalid credentials - localLogin returns null
               isOnline: false, // Device is offline
             });
 

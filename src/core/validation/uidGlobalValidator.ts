@@ -1,5 +1,6 @@
-import { localDb } from "#/db/local-db";
-import { API_BASE_URL, apiFetch } from "#/lib/api";
+import type { CardRepository } from "../interfaces/CardRepository";
+import type { UIDRemoteValidator } from "../interfaces/UIDRemoteValidator";
+import type { OnlineStatusProvider } from "../interfaces/OnlineStatusProvider";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ function validateFormat(normalizedUID: string): UIDValidationResult | null {
 export async function validateUIDLocal(
   serialNumber: string,
   currentTenantId: string,
+  deps: { cardRepo: CardRepository },
 ): Promise<UIDValidationResult> {
   const normalizedUID = normalizeUID(serialNumber);
 
@@ -51,21 +53,26 @@ export async function validateUIDLocal(
   const formatError = validateFormat(normalizedUID);
   if (formatError) return formatError;
 
-  // Check local DB — query by cardId across all cached tenants
-  const localResult = await checkLocalDB(normalizedUID, currentTenantId);
+  // Check local DB - query by cardId across all cached tenants
+  const localResult = await checkLocalDB(normalizedUID, currentTenantId, deps.cardRepo);
   if (localResult) return localResult;
 
   return { valid: true };
 }
 
 /**
- * Validate UID globally — checks local IndexedDB first, then cloud API.
+ * Validate UID globally - checks local IndexedDB first, then cloud API.
  * Implements fail-closed behavior: rejects on network error.
  * Falls back to local-only validation when offline.
  */
 export async function validateUID(
   serialNumber: string,
   currentTenantId: string,
+  deps: {
+    cardRepo: CardRepository;
+    remoteValidator: UIDRemoteValidator;
+    onlineStatus: OnlineStatusProvider;
+  },
 ): Promise<UIDValidationResult> {
   const normalizedUID = normalizeUID(serialNumber);
 
@@ -74,14 +81,13 @@ export async function validateUID(
   if (formatError) return formatError;
 
   // Step 1: Check local DB first (skip cloud if found locally)
-  const localResult = await checkLocalDB(normalizedUID, currentTenantId);
+  const localResult = await checkLocalDB(normalizedUID, currentTenantId, deps.cardRepo);
   if (localResult) return localResult;
 
   // Step 2: Check cloud API (global cross-tenant check)
-  if (navigator.onLine) {
+  if (deps.onlineStatus.isOnline()) {
     try {
-      const response = await apiFetch(`${API_BASE_URL}/api/cards/check-uid?uid=${normalizedUID}`);
-      const data = await response.json();
+      const data = await deps.remoteValidator.checkUIDExists(normalizedUID);
 
       if (data.exists) {
         return {
@@ -94,9 +100,6 @@ export async function validateUID(
       // Fail-closed: reject binding if we can't verify
       return { valid: false, reason: "NETWORK_ERROR" };
     }
-  } else {
-    // Offline: local-only check passed, allow
-    return { valid: true };
   }
 
   return { valid: true };
@@ -111,10 +114,9 @@ export async function validateUID(
 async function checkLocalDB(
   normalizedUID: string,
   currentTenantId: string,
+  cardRepo: CardRepository,
 ): Promise<UIDValidationResult | null> {
-  const localCards = await localDb.cards
-    .filter((card) => card.cardId === normalizedUID && card.status !== "deleted")
-    .toArray();
+  const localCards = await cardRepo.filterByCardIdExcludingDeleted(normalizedUID);
 
   if (localCards.length > 0) {
     const existingCard = localCards[0];
@@ -124,13 +126,12 @@ async function checkLocalDB(
         reason: "UID_ALREADY_REGISTERED",
         existingCardId: normalizedUID,
       };
-    } else {
-      return {
-        valid: false,
-        reason: "UID_REGISTERED_OTHER_TENANT",
-        existingTenantId: existingCard.tenantId,
-      };
     }
+    return {
+      valid: false,
+      reason: "UID_REGISTERED_OTHER_TENANT",
+      existingTenantId: existingCard.tenantId,
+    };
   }
 
   return null;

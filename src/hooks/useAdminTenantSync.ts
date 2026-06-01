@@ -28,7 +28,7 @@ export type SyncStep =
   | "complete";
 
 export interface UseAdminTenantSyncReturn {
-  /** Callback to trigger sync — undefined if tenant is already synced */
+  /** Callback to trigger sync - undefined if tenant is already synced */
   onSyncToServer: (() => void) | undefined;
   /** Whether the sync is currently in progress */
   isSyncingToServer: boolean;
@@ -83,7 +83,7 @@ export function useAdminTenantSync(tenantId: string): UseAdminTenantSyncReturn {
         setSyncStep("syncing-tenant");
         const result = await syncToServer(localConfig, admin.passwordHash);
 
-        // Verify we got an access token back — required for subsequent push calls
+        // Verify we got an access token back - required for subsequent push calls
         if (!result.accessToken) {
           // syncToServer handles conflict/error states internally via useTenantSync
           // If no token returned, it means sync didn't succeed (conflict, error, etc.)

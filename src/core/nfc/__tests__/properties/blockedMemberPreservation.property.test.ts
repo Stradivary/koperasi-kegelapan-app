@@ -26,7 +26,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 // ============================================================================
-// Test Helpers — Simulate the checkLocalBlockedStatus logic
+// Test Helpers - Simulate the checkLocalBlockedStatus logic
 // ============================================================================
 
 /** Represents a card record in localDb.cards (keyed by [tenantId, cardId] where cardId = hardware serial) */
@@ -106,7 +106,7 @@ const formattedSerialArb = hardwareSerialArb.chain((serial) =>
 const userIdArb = fc.integer({ min: 1, max: 99999 });
 
 // ============================================================================
-// Property 2: Preservation — Active Card/Member Operations
+// Property 2: Preservation - Active Card/Member Operations
 // ============================================================================
 
 describe("Property 2: Preservation - Active Card/Member Operations", () => {
@@ -179,11 +179,11 @@ describe("Property 2: Preservation - Active Card/Member Operations", () => {
           hardwareSerialArb,
           userIdArb,
           (tenantId, hardwareSerial, userId) => {
-            // Empty databases — card not found
+            // Empty databases - card not found
             const cardsDb = new Map<string, CardRecord>();
             const usersDb = new Map<string, UserRecord>();
 
-            // Member is active (or could also be missing — tested separately)
+            // Member is active (or could also be missing - tested separately)
             usersDb.set(`${tenantId},${userId}`, {
               tenantId,
               userId,
@@ -259,7 +259,7 @@ describe("Property 2: Preservation - Active Card/Member Operations", () => {
     });
   });
 
-  describe("3.4: userId=0 edge case — only card-level check applies, no member lookup", () => {
+  describe("3.4: userId=0 edge case - only card-level check applies, no member lookup", () => {
     it("for userId=0 with active card, checkLocalBlockedStatus returns not-blocked without member lookup", () => {
       /**
        * **Validates: Requirements 3.4, 3.5**
@@ -326,7 +326,7 @@ describe("Property 2: Preservation - Active Card/Member Operations", () => {
           hardwareSerialArb,
           userIdArb,
           (tenantId, hardwareSerial, userId) => {
-            // Completely empty databases — nothing found
+            // Completely empty databases - nothing found
             const cardsDb = new Map<string, CardRecord>();
             const usersDb = new Map<string, UserRecord>();
 

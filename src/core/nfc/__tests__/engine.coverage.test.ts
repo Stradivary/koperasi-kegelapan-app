@@ -1,5 +1,5 @@
 /**
- * Coverage tests for nfc/engine.ts — readCard, writeCard,
+ * Coverage tests for nfc/engine.ts - readCard, writeCard,
  * checkNfcAvailability, and enforceBlock* functions.
  */
 
@@ -20,10 +20,19 @@ import {
 } from "../engine";
 import type { CardPayload } from "../../payload/types";
 import { WIRE_SIZE, CARD_SIZE, MAGIC } from "../../payload/types";
+import type { CardRepository } from "../../interfaces/CardRepository";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Creates a mock CardRepository for test injection */
+const mockCardRepo: CardRepository = {
+  getByTenantAndCardId: vi.fn().mockResolvedValue(undefined),
+  filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
+  updateStatus: vi.fn().mockResolvedValue(undefined),
+  put: vi.fn().mockResolvedValue(undefined),
+};
 
 function makePayload(statusOverride = 0): CardPayload {
   return {
@@ -191,7 +200,7 @@ describe("readCard", () => {
   it("resolves ok=false when scan() rejects", async () => {
     class MockNDEFReader {
       addEventListener(_type: string, _handler: Function) {
-        // No-op mock — tests that don't need reading events use this
+        // No-op mock - tests that don't need reading events use this
       }
       scan() {
         return Promise.reject(new Error("Permission denied"));
@@ -280,7 +289,9 @@ describe("enforceBlockOnCheckin", () => {
     // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: false, errorCode: "ACTIVE" });
 
-    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload());
+    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(), {
+      cardRepo: mockCardRepo,
+    });
     expect(result.allowed).toBe(true);
   });
 
@@ -293,7 +304,9 @@ describe("enforceBlockOnCheckin", () => {
       errorCode: "BLOCKED_TAMPER",
     });
 
-    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(1));
+    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(1), {
+      cardRepo: mockCardRepo,
+    });
     expect(result.allowed).toBe(false);
     if (!result.allowed) {
       expect(result.error).toBe("Kartu diblokir karena tamper");
@@ -306,7 +319,9 @@ describe("enforceBlockOnCheckin", () => {
     // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: true, errorCode: "BLOCKED_ADMIN" });
 
-    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(4));
+    const result = await enforceBlockOnCheckin("tenant-1", "card-1", makePayload(4), {
+      cardRepo: mockCardRepo,
+    });
     if (!result.allowed) {
       expect(result.error).toBe("Akses Ditolak: Kartu Diblokir");
     }
@@ -323,7 +338,9 @@ describe("enforceBlockOnCheckout", () => {
     // @ts-expect-error expected for test purposes
     vi.mocked(checkBlocked).mockResolvedValue({ blocked: false, errorCode: "ACTIVE" });
 
-    const result = await enforceBlockOnCheckout("tenant-1", "card-1", makePayload());
+    const result = await enforceBlockOnCheckout("tenant-1", "card-1", makePayload(), {
+      cardRepo: mockCardRepo,
+    });
     expect(result.allowed).toBe(true);
   });
 
@@ -336,7 +353,9 @@ describe("enforceBlockOnCheckout", () => {
       errorCode: "BLOCKED_FRAUD",
     });
 
-    const result = await enforceBlockOnCheckout("tenant-1", "card-1", makePayload(2));
+    const result = await enforceBlockOnCheckout("tenant-1", "card-1", makePayload(2), {
+      cardRepo: mockCardRepo,
+    });
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.errorCode).toBe("BLOCKED_FRAUD");
   });

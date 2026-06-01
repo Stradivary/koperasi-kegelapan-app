@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SyncEngineProvider, useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { useHydrateCache } from "#/hooks/useHydrateCache";
-import { getTenantContextStore } from "#/lib/indexeddb.lazy";
+import { getTenantContextStore } from "#/hooks/useIndexedDbStores";
 
 export const Route = createFileRoute("/tenant/$tenantId")({
   component: TenantLayout,

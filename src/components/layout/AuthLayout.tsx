@@ -1,4 +1,4 @@
-import { BRAND } from "#/lib/brand";
+import { BRAND } from "#/lib/utils/brand";
 
 interface AuthLayoutProps {
   children: React.ReactNode;

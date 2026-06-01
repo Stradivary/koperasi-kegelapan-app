@@ -29,7 +29,7 @@ export function issueSessionGrant(
   role: string,
   keyVersion = 1,
 ): GrantPayload & { signature: string } {
-  // Session key is deterministic — derived from tenant key so all devices
+  // Session key is deterministic - derived from tenant key so all devices
   // in the same tenant can read/write cards encrypted with this key.
   const tenantKey = deriveTenantKey(masterKey, tenantId, keyVersion);
   const sessionKey = createHmac("sha256", tenantKey).update("session-key").digest();

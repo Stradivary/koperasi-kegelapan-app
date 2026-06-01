@@ -1,5 +1,5 @@
 /**
- * Coverage tests for tenantSync.ts — processTenantSync and its conflict/race paths.
+ * Coverage tests for tenantSync.ts - processTenantSync and its conflict/race paths.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -90,7 +90,7 @@ describe("processTenantSync", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — slug race condition", async () => {
+  it("handles UNIQUE constraint error - slug race condition", async () => {
     mockGet.mockResolvedValue(undefined); // pre-checks pass
     mockBatch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: tenants.slug"));
     // recheck: slug found, admin not found
@@ -103,7 +103,7 @@ describe("processTenantSync", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — both race condition", async () => {
+  it("handles UNIQUE constraint error - both race condition", async () => {
     mockGet.mockResolvedValue(undefined);
     mockBatch.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
     mockGet
@@ -115,7 +115,7 @@ describe("processTenantSync", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — admin race condition", async () => {
+  it("handles UNIQUE constraint error - admin race condition", async () => {
     mockGet.mockResolvedValue(undefined);
     mockBatch.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
     mockGet
@@ -128,7 +128,7 @@ describe("processTenantSync", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — fallback when recheck finds nothing", async () => {
+  it("handles UNIQUE constraint error - fallback when recheck finds nothing", async () => {
     mockGet.mockResolvedValue(undefined);
     mockBatch.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
     mockGet.mockResolvedValue(undefined); // recheck also finds nothing

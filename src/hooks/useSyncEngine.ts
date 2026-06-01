@@ -184,7 +184,7 @@ async function pushEntitiesBestEffort(tid: string): Promise<void> {
   try {
     await syncPushEntities(tid);
   } catch (entityErr) {
-    // Log but don't abort — entity push is best-effort
+    // Log but don't abort - entity push is best-effort
     console.warn(
       "[SyncEngine] Entity push failed, continuing with transactions:",
       entityErr instanceof Error ? entityErr.message : entityErr,
@@ -243,7 +243,7 @@ export function useSyncEngine(
         setPendingCount(txEntries.length + entityCount);
       }
     } catch {
-      // Non-critical — don't break the hook if IndexedDB read fails
+      // Non-critical - don't break the hook if IndexedDB read fails
     }
   }, []);
 
@@ -266,7 +266,7 @@ export function useSyncEngine(
     let pushSucceeded = false;
 
     try {
-      // Phase 1: Push entities (members + cards) — best-effort, non-blocking
+      // Phase 1: Push entities (members + cards) - best-effort, non-blocking
       if (mountedRef.current) setSyncStatus("pushing");
       await pushEntitiesBestEffort(tid);
 
@@ -417,7 +417,7 @@ export function useSyncEngine(
     function handleOffline() {
       if (mountedRef.current) {
         setSyncStatus("offline");
-        // Clear any pending timers — no point syncing while offline
+        // Clear any pending timers - no point syncing while offline
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
           debounceTimerRef.current = null;

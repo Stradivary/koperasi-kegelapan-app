@@ -59,7 +59,7 @@ function makeEntry(overrides: Partial<TransactionLog> = {}): TransactionLog {
   };
 }
 
-describe("getTransactions — deduplication", () => {
+describe("getTransactions - deduplication", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -148,7 +148,7 @@ describe("getTransactions — deduplication", () => {
   });
 });
 
-describe("getTransactions — pagination offset", () => {
+describe("getTransactions - pagination offset", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

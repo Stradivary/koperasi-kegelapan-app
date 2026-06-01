@@ -1,5 +1,5 @@
 /**
- * Coverage tests for deviceBlock.ts — clearSessionGrantCache paths
+ * Coverage tests for deviceBlock.ts - clearSessionGrantCache paths
  * and scheduleUnblock timer replacement.
  */
 
@@ -20,7 +20,7 @@ import {
 } from "../deviceBlock";
 
 // ---------------------------------------------------------------------------
-// Helpers — build a minimal fake IndexedDB
+// Helpers - build a minimal fake IndexedDB
 // ---------------------------------------------------------------------------
 
 /**
@@ -129,7 +129,7 @@ function makeFakeIdb(
 // clearSessionGrantCache via handleDeviceBlocked
 // ---------------------------------------------------------------------------
 
-describe("handleDeviceBlocked — clearSessionGrantCache paths", () => {
+describe("handleDeviceBlocked - clearSessionGrantCache paths", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     clearBlockState();
@@ -198,10 +198,10 @@ describe("handleDeviceBlocked — clearSessionGrantCache paths", () => {
 });
 
 // ---------------------------------------------------------------------------
-// scheduleUnblock — timer replacement
+// scheduleUnblock - timer replacement
 // ---------------------------------------------------------------------------
 
-describe("scheduleUnblock — timer replacement", () => {
+describe("scheduleUnblock - timer replacement", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     clearBlockState();
@@ -221,7 +221,7 @@ describe("scheduleUnblock — timer replacement", () => {
     await handleDeviceBlocked(now + 60);
     expect(isDeviceBlocked()).toBe(true);
 
-    // Second block — should replace the first timer
+    // Second block - should replace the first timer
     await handleDeviceBlocked(now + 120);
     expect(getDeviceBlockState().blockedUntil).toBe(now + 120);
 
@@ -244,10 +244,10 @@ describe("scheduleUnblock — timer replacement", () => {
 });
 
 // ---------------------------------------------------------------------------
-// clearAuthState — tenantContextStore paths
+// clearAuthState - tenantContextStore paths
 // ---------------------------------------------------------------------------
 
-describe("handleDeviceBlocked — clearAuthState paths", () => {
+describe("handleDeviceBlocked - clearAuthState paths", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     clearBlockState();

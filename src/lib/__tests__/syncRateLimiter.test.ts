@@ -167,7 +167,7 @@ describe("syncRateLimiter", () => {
       activateRateLimit(10);
       clearRateLimitState();
 
-      // Advance past original expiry — resume callback should NOT fire
+      // Advance past original expiry - resume callback should NOT fire
       vi.advanceTimersByTime(15_000);
       expect(resumeCallback).not.toHaveBeenCalled();
     });
@@ -311,13 +311,13 @@ describe("syncRateLimiter", () => {
   });
 
   describe("outbox retention during pause", () => {
-    it("does not modify any external state — outbox entries stay pending", () => {
+    it("does not modify any external state - outbox entries stay pending", () => {
       // This test documents the design: activating rate limit only sets
       // internal state. It does NOT touch the outbox or any IndexedDB data.
       // Outbox entries remain "pending" because nothing modifies them.
       activateRateLimit(60);
 
-      // The module has no side effects on outbox — verify by checking
+      // The module has no side effects on outbox - verify by checking
       // that only internal state changed
       const state = getRateLimitState();
       expect(state.rateLimited).toBe(true);

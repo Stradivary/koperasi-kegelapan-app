@@ -295,7 +295,7 @@ async function pullWithRetry(
   for (let attempt = 0; attempt < MAX_PULL_RETRY_ATTEMPTS; attempt++) {
     // Check device block before each request
     if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked — sync pull aborted");
+      throw new DeviceBlockedError("Device is blocked - sync pull aborted");
     }
 
     try {
@@ -312,7 +312,7 @@ async function pullWithRetry(
         throw new SyncPullAuthError();
       }
 
-      // 429: rate limited — respect Retry-After header
+      // 429: rate limited - respect Retry-After header
       if (response.status === 429) {
         const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
         const pauseMs = Math.min(retryAfter * 1000, 120_000);
@@ -484,10 +484,10 @@ async function mergePullResponse(
 export async function syncPull(tenantId: string): Promise<SyncPullResult> {
   // Check device block before starting
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — sync pull aborted");
+    throw new DeviceBlockedError("Device is blocked - sync pull aborted");
   }
 
-  // Skip if no auth token — means this is a local-only tenant not registered on server
+  // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
     return {
@@ -515,7 +515,7 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
   while (hasMore) {
     // Check device block before each page request
     if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked — sync pull aborted");
+      throw new DeviceBlockedError("Device is blocked - sync pull aborted");
     }
 
     // Fetch one page

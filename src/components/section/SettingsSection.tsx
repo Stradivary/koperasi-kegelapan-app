@@ -15,12 +15,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { localDb } from "#/db/local-db";
+import { localDb } from "#/hooks/useLocalDb";
 import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { useAdminTenantSync } from "#/hooks/useAdminTenantSync";
-import { API_BASE_URL, apiFetch, getAccessToken } from "#/lib/api";
-import type { LocalTenantConfig, TenantContext } from "#/lib/indexeddb";
-import { getIndexedDb } from "#/lib/indexeddb.lazy";
+import { API_BASE_URL, apiFetch, getAccessToken } from "#/hooks/useApi";
+import type { LocalTenantConfig, TenantContext } from "#/hooks/types";
+import { getIndexedDb } from "#/hooks/useIndexedDbStores";
 import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -378,14 +378,14 @@ export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
               <div className="rounded-lg border divide-y">
                 <ProfileRow
                   label="Nama Tenant"
-                  value={tenantConfig?.name ?? tenantContext?.tenantName ?? "—"}
+                  value={tenantConfig?.name ?? tenantContext?.tenantName ?? "-"}
                 />
                 <ProfileRow
                   label="Slug"
-                  value={tenantConfig?.slug ?? tenantContext?.tenantSlug ?? "—"}
+                  value={tenantConfig?.slug ?? tenantContext?.tenantSlug ?? "-"}
                   mono
                 />
-                <ProfileRow label="Timezone" value={tenantConfig?.timezone ?? "—"} />
+                <ProfileRow label="Timezone" value={tenantConfig?.timezone ?? "-"} />
                 {tenantContext && (
                   <ProfileRow label="Device ID" value={tenantContext.deviceId} mono truncate />
                 )}

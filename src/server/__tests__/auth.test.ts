@@ -84,7 +84,7 @@ describe("auth", () => {
       const salt = Buffer.from("abcdef0123456789", "hex");
       // Compute with capped iterations (100000)
       const hash = pbkdf2Sync("mypass", salt, 100000, 32, "sha256").toString("hex");
-      // Store with higher iterations value — should be capped to 100000
+      // Store with higher iterations value - should be capped to 100000
       const stored = `200000:abcdef0123456789:${hash}`;
       expect(verifyPassword("mypass", stored)).toBe(true);
     });

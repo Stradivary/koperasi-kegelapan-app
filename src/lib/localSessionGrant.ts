@@ -116,7 +116,7 @@ export async function issueAndCacheLocalSessionGrant(
     const sessionGrantCacheStore = await getSessionGrantCacheStore();
     await sessionGrantCacheStore.put(cached);
   } catch {
-    // Silently fail — caching is best-effort
+    // Silently fail - caching is best-effort
   }
 
   return grant;
@@ -149,7 +149,7 @@ export async function getOrIssueLocalSessionGrant(
       };
     }
   } catch {
-    // Cache read failed — proceed to issue fresh
+    // Cache read failed - proceed to issue fresh
   }
 
   return issueAndCacheLocalSessionGrant(tenantId, accountId, deviceId, role);

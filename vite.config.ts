@@ -26,7 +26,7 @@ const config = defineConfig({
         id: "/",
         name: "Koperasi Kegelapan (Stradivary)",
         short_name: "KK Wallet",
-        description: "Dompet NFC Koperasi — Stradivary",
+        description: "Dompet NFC Koperasi - Stradivary",
 
         start_url: "/",
         display: "standalone",
@@ -108,12 +108,12 @@ const config = defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
 
         runtimeCaching: [
-          // Critical wallet actions — never cache
+          // Critical wallet actions - never cache
           {
             urlPattern: /^https?:\/\/.*\/api\/(transaction|balance|tap|sync).*/i,
             handler: "NetworkOnly",
           },
-          // Non-critical API — allow fallback
+          // Non-critical API - allow fallback
           {
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
             handler: "NetworkFirst",

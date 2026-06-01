@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { localDb, type Card } from "#/db/local-db";
-import { syncPull } from "#/lib/syncPull";
+import { localDb, type Card } from "#/hooks/useLocalDb";
+import { syncPull } from "#/hooks/useSyncPull";
 import { useSessionGrant } from "#/hooks/useSessionGrant";
 import { useTenantSync } from "#/hooks/useTenantSync";
 import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
-import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
-import { validateUID } from "#/core/validation/uidGlobalValidator";
-import { trackError } from "#/lib/errorTracker";
+import { checkLocalBlockedStatus, validateUID } from "#/hooks/domain";
+import { cardRepo, userRepo, uidRemoteValidator, onlineStatus } from "#/hooks/useRepositories";
+import { trackError } from "#/hooks/useErrorTracker";
 import {
   StationCardsPanel,
   type StationCardRow,
@@ -24,9 +24,16 @@ import { NfcScanDrawer } from "../block/dialogs/NfcScanDrawer";
 import { IssuanceScanDrawer } from "../block/dialogs/IssuanceScanDrawer";
 import { IssueCardDrawer } from "../block/dialogs/IssueCardDrawer";
 import { TopupDrawer } from "../block/dialogs/TopupDrawer";
-import { applyTopup, applyResetState, validateTopup } from "#/core/state-machine/engine";
-import { prepareWrite } from "#/core/nfc/pipelineEngine";
-import { extractCardBytes, isNfcSupported } from "#/core/nfc/engine";
+import {
+  applyTopup,
+  applyResetState,
+  validateTopup,
+  prepareWrite,
+  extractCardBytes,
+  isNfcSupported,
+  encodeTenantBind,
+  decodePayload,
+} from "#/hooks/domain";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -34,11 +41,9 @@ import {
   CardStatus,
   type CardPayload,
   type SessionGrant,
-} from "#/core/payload/types";
-import { encodeTenantBind } from "#/core/payload/tenantBind";
+} from "#/hooks/types";
 import { useNfcCard } from "#/hooks/nfc";
-import { getCardsWithUsers } from "#/lib/stationQueries";
-import { decodePayload } from "#/core/payload/engine";
+import { getCardsWithUsers } from "#/hooks/useStationData";
 
 interface CardSectionProps {
   tenantId: string;
@@ -221,7 +226,7 @@ async function handleForceOverwrite({
   const abort = issuanceAbortRef.current;
 
   if (!reader || !abort || abort.signal.aborted) {
-    // Session expired or card removed — start a fresh NFC session instead of failing
+    // Session expired or card removed - start a fresh NFC session instead of failing
     trackError({
       category: "nfc_session_expired",
       message: "NFC session expired during forceOverwrite, starting fresh scan",
@@ -316,7 +321,11 @@ async function validateUIDForIssuance(
   abort: AbortController,
   issuancePreparedRef: IssuanceRefs["issuancePreparedRef"],
 ): Promise<void> {
-  const uidResult = await validateUID(capturedSerial, tenantId);
+  const uidResult = await validateUID(capturedSerial, tenantId, {
+    cardRepo,
+    remoteValidator: uidRemoteValidator,
+    onlineStatus,
+  });
   if (!uidResult.valid) {
     const isRegisteredSameTenant = uidResult.reason === "UID_ALREADY_REGISTERED";
     const isRegisteredOtherTenant = uidResult.reason === "UID_REGISTERED_OTHER_TENANT";
@@ -481,7 +490,7 @@ async function handleFreshNfcSession({
       throw new CardNotBlankError(capturedSerial);
     }
 
-    // Keep the NFC session alive during UID validation — issuancePreparedRef is already set
+    // Keep the NFC session alive during UID validation - issuancePreparedRef is already set
     await validateUIDForIssuance(
       capturedSerial,
       tenantId,
@@ -494,7 +503,7 @@ async function handleFreshNfcSession({
       await checkLocalCardConflict(capturedSerial, tenantId);
     }
 
-    // ── All checks passed — write to card ──
+    // ── All checks passed - write to card ──
     setIssuancePhase("writing");
     await reader.write(
       {
@@ -573,7 +582,7 @@ async function validateCardForRecovery(
   serverCounter: number,
   serverBalance: number,
 ): Promise<void> {
-  if (!cardBytes) return; // Blank or unreadable — allow recovery
+  if (!cardBytes) return; // Blank or unreadable - allow recovery
 
   try {
     const currentPayload = decodePayload(cardBytes);
@@ -597,7 +606,7 @@ async function validateCardForRecovery(
     ) {
       throw decodeErr;
     }
-    // Card data is corrupted/unreadable — allow recovery
+    // Card data is corrupted/unreadable - allow recovery
   }
 }
 
@@ -766,7 +775,7 @@ export function CardSection({
     };
   } | null>(null);
 
-  // Refs for the issuance NFC session — kept alive across conflict dialogs
+  // Refs for the issuance NFC session - kept alive across conflict dialogs
   const issuanceAbortRef = useRef<AbortController | null>(null);
   const issuanceReaderRef = useRef<NDEFReader | null>(null);
   const issuanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1023,10 +1032,10 @@ export function CardSection({
           await new Promise((r) => setTimeout(r, 1500));
           return;
         }
-        // Session was dead — fall through to fresh NFC scan
+        // Session was dead - fall through to fresh NFC scan
       }
 
-      // ── Fresh NFC session — open drawer and scan ──
+      // ── Fresh NFC session - open drawer and scan ──
       await handleFreshNfcSession({
         bytes,
         payload,
@@ -1225,12 +1234,14 @@ export function CardSection({
 
     // Check if card/user is blocked
     if (state.serialNumber) {
-      checkLocalBlockedStatus(tenantId, state.serialNumber).then((statusResult) => {
-        if (statusResult.blocked) {
-          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
-          handleDrawerClose();
-        }
-      });
+      checkLocalBlockedStatus(tenantId, state.serialNumber, { cardRepo, userRepo }).then(
+        (statusResult) => {
+          if (statusResult.blocked) {
+            toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
+            handleDrawerClose();
+          }
+        },
+      );
     }
   }, [
     state.phase,
@@ -1421,7 +1432,7 @@ export function CardSection({
         newUserId={overwriteDialog?.pendingIssue.userId ?? null}
         isProcessing={issuancePhase === "writing"}
         onCancel={() => {
-          // Guard: if onConfirm is in progress, the drawer is closing programmatically — skip cleanup
+          // Guard: if onConfirm is in progress, the drawer is closing programmatically - skip cleanup
           if (isConfirmingOverwriteRef.current) return;
           setOverwriteDialog(null);
           cleanupIssuanceSession();
@@ -1457,7 +1468,7 @@ export function CardSection({
         cardSerial={notBlankDialog?.cardSerial ?? null}
         isProcessing={issuancePhase === "writing"}
         onCancel={() => {
-          // Guard: if onConfirm is in progress, the drawer is closing programmatically — skip cleanup
+          // Guard: if onConfirm is in progress, the drawer is closing programmatically - skip cleanup
           if (isConfirmingNotBlankRef.current) return;
           setNotBlankDialog(null);
           cleanupIssuanceSession();

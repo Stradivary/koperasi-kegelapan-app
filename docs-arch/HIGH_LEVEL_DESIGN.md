@@ -55,7 +55,7 @@ graph LR
 | **Layout**  | `src/components/layout/`  | Define slot structure (children, named slots) |
 | **UI**      | `src/components/ui/`      | Primitive atoms (Button, Input, Badge, …)     |
 
-## Data Flow — Online vs Offline
+## Data Flow - Online vs Offline
 
 ```mermaid
 sequenceDiagram

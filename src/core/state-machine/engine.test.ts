@@ -239,7 +239,7 @@ describe("absolute timestamp in log entries", () => {
     // But we now use absolute timestamp, not delta
     const updated = applyDebit(payload, 5000, NOW);
     expect(updated.logEntries[0].timestamp).toBe(NOW);
-    // Verify there is no deltaTime field — only absolute timestamp
+    // Verify there is no deltaTime field - only absolute timestamp
     expect((updated.logEntries[0] as unknown as Record<string, unknown>).deltaTime).toBeUndefined();
   });
 });

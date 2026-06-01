@@ -26,7 +26,7 @@ function makeApp(_analyticsBinding?: { writeDataPoint: ReturnType<typeof vi.fn> 
   return app;
 }
 
-describe("syncAnalytics middleware — no binding", () => {
+describe("syncAnalytics middleware - no binding", () => {
   it("no-ops when SYNC_ANALYTICS binding is not configured", async () => {
     const app = makeApp();
     const res = await app.request(
@@ -38,7 +38,7 @@ describe("syncAnalytics middleware — no binding", () => {
   });
 });
 
-describe("syncAnalytics middleware — with binding", () => {
+describe("syncAnalytics middleware - with binding", () => {
   let writeDataPoint: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {

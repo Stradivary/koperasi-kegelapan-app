@@ -222,7 +222,7 @@ authRoutes.post("/token", async (c) => {
   });
 });
 
-// ─── POST /refresh — Rotate refresh token and issue new access token ─────────
+// ─── POST /refresh - Rotate refresh token and issue new access token ─────────
 
 authRoutes.post("/refresh", async (c) => {
   const json = await c.req.json().catch(() => null);

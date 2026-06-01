@@ -111,7 +111,7 @@ export async function resolveMemberConflicts(
     const localMember = await localDb.users.get([tenantId, serverMember.userId]);
 
     if (!localMember) {
-      // No local version — just apply server version (no conflict)
+      // No local version - just apply server version (no conflict)
       continue;
     }
 
@@ -122,7 +122,7 @@ export async function resolveMemberConflicts(
     // Check if local has unsynchronized modifications (local updatedAt differs from what we last synced)
     // If local was modified after last sync, there's a potential conflict
     if (shouldServerWin(localUpdatedAt, serverUpdatedAt, isAdminAction)) {
-      // Server wins — apply server version
+      // Server wins - apply server version
       const updatedUser: User = {
         tenantId: serverMember.tenantId,
         userId: serverMember.userId,
@@ -168,7 +168,7 @@ export async function resolveCardConflicts(
     const localCard = await localDb.cards.get([tenantId, serverCard.cardId]);
 
     if (!localCard) {
-      // No local version — just apply server version (no conflict)
+      // No local version - just apply server version (no conflict)
       continue;
     }
 
@@ -189,7 +189,7 @@ export async function resolveCardConflicts(
     const hasPendingEdits = pendingEntries.length > 0;
 
     if (hasPendingEdits && shouldServerWin(localUpdatedAt, serverUpdatedAt, isAdminAction)) {
-      // Server wins — discard local outbox entries for this card (Req 12.3, 12.7)
+      // Server wins - discard local outbox entries for this card (Req 12.3, 12.7)
       for (const entry of pendingEntries) {
         if (entry.id != null) {
           await localDb.transactionLog.delete(entry.id);
@@ -218,7 +218,7 @@ export async function resolveCardConflicts(
       // Show toast notification (Req 12.2)
       showConflictToast("card", serverCard.cardId);
     } else if (!hasPendingEdits) {
-      // No pending edits — just apply server version (standard merge, no conflict)
+      // No pending edits - just apply server version (standard merge, no conflict)
       // This is handled by the normal pull merge logic in syncPull.ts
     }
   }
@@ -256,7 +256,7 @@ export async function resolveStaleCounterConflicts(
   } catch (error: unknown) {
     // On network failure: retain "conflict" status, retry on next sync cycle (Req 12.5)
     if (error instanceof SyncPullError || error instanceof TypeError) {
-      // Network failure — retain conflict status, will retry next cycle
+      // Network failure - retain conflict status, will retry next cycle
       return { pullAttempted: true, pullSucceeded: false };
     }
     // Re-throw non-network errors (auth errors, device blocked, etc.)

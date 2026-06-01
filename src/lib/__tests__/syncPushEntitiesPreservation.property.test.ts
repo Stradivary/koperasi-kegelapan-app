@@ -5,7 +5,7 @@
  *
  * Property 2: Preservation - Existing Synced Tenant Behavior
  *
- * These tests MUST PASS on unfixed code — they establish the regression baseline.
+ * These tests MUST PASS on unfixed code - they establish the regression baseline.
  * They verify that existing behavior for synced tenants, empty pushes, device-blocked
  * scenarios, batch splitting, and no-token scenarios is correct and must remain unchanged.
  *
@@ -23,7 +23,7 @@ import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
 
 // ============================================================================
-// Simulation Helpers — Replicate current (unfixed) syncPushEntities logic
+// Simulation Helpers - Replicate current (unfixed) syncPushEntities logic
 // ============================================================================
 
 /**
@@ -130,7 +130,7 @@ function simulateSyncPushEntities(params: {
   if (isDeviceBlocked) {
     return {
       result: null,
-      error: new DeviceBlockedError("Device is blocked — entity push aborted"),
+      error: new DeviceBlockedError("Device is blocked - entity push aborted"),
       batchCalls: [],
       skipped: true,
       skipReason: "device_blocked",
@@ -263,7 +263,7 @@ describe("Property 2: Preservation - Existing Synced Tenant Behavior", () => {
             // Batch calls are made (entities are pushed)
             expect(sim.batchCalls.length).toBeGreaterThan(0);
 
-            // No tenant sync is involved — the function only pushes entities
+            // No tenant sync is involved - the function only pushes entities
             // (syncPushEntities never calls syncToServer, it just uses existing token)
             expect(sim.skipReason).toBeNull();
           },

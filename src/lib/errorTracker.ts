@@ -1,5 +1,5 @@
 /**
- * Client-side error tracker — sends structured error events to the backend
+ * Client-side error tracker - sends structured error events to the backend
  * for monitoring NFC write failures and other critical client errors.
  *
  * Fire-and-forget: never throws, never blocks the UI.
@@ -18,7 +18,7 @@ export interface ErrorEvent {
 
 /**
  * Report a client error event to the backend tracker endpoint.
- * This is fire-and-forget — it will never throw or block the caller.
+ * This is fire-and-forget - it will never throw or block the caller.
  */
 export function trackError(event: ErrorEvent): void {
   try {
@@ -44,13 +44,13 @@ export function trackError(event: ErrorEvent): void {
       headers["X-Device-Id"] = deviceId;
     }
 
-    // Fire-and-forget — no await, no .catch that rethrows
+    // Fire-and-forget - no await, no .catch that rethrows
     fetch(`${API_BASE_URL}/api/client-errors`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
     }).catch(() => {
-      // Silently ignore — error tracking must never break the app
+      // Silently ignore - error tracking must never break the app
     });
   } catch {
     // Silently ignore

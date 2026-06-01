@@ -1,6 +1,6 @@
 import { useImperativeHandle, forwardRef } from "react";
 import { StationCardListPanel } from "./StationCardListPanel";
-import type { StationCardRow, StationUserRow } from "#/lib/stationQueries";
+import type { StationCardRow, StationUserRow } from "#/hooks/useStationData";
 
 export type { StationCardRow, StationUserRow };
 
@@ -21,13 +21,13 @@ interface StationCardsPanelProps {
   onRecoverCard: (card: StationCardRow) => void;
   onIssueNew: () => void;
   onDeleteCard: (card: StationCardRow) => void;
-  /** @deprecated Not used — kept for API compatibility */
+  /** @deprecated Not used - kept for API compatibility */
   isUpdatingStatus?: boolean;
-  /** @deprecated Not used — kept for API compatibility */
+  /** @deprecated Not used - kept for API compatibility */
   isResetting?: boolean;
-  /** @deprecated Not used — kept for API compatibility */
+  /** @deprecated Not used - kept for API compatibility */
   onUpdateCardStatus?: (card: StationCardRow, status: string) => void;
-  /** @deprecated Not used — kept for API compatibility */
+  /** @deprecated Not used - kept for API compatibility */
   onResetCard?: (card: StationCardRow) => void;
 }
 

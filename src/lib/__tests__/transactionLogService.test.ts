@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { TransactionLog } from "#/db/local-db";
 
-// Mock the local-db module — factory must not reference outer variables
+// Mock the local-db module - factory must not reference outer variables
 vi.mock("#/db/local-db", () => {
   const mockAdd = vi.fn();
   const mockUpdate = vi.fn();

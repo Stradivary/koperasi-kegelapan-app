@@ -114,14 +114,14 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("NfcScanDrawer — closed state", () => {
+describe("NfcScanDrawer - closed state", () => {
   it("does not render when open=false", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, open: false }));
     expect(screen.queryByTestId("drawer")).toBeNull();
   });
 });
 
-describe("NfcScanDrawer — scanning phase", () => {
+describe("NfcScanDrawer - scanning phase", () => {
   it("renders drawer title 'Scan Kartu NFC'", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "scanning" }));
     expect(screen.getByText("Scan Kartu NFC")).toBeDefined();
@@ -150,14 +150,14 @@ describe("NfcScanDrawer — scanning phase", () => {
   });
 });
 
-describe("NfcScanDrawer — validating phase", () => {
+describe("NfcScanDrawer - validating phase", () => {
   it("renders NfcTapArea (same as scanning)", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "validating" }));
     expect(screen.getByTestId("nfc-tap-area")).toBeDefined();
   });
 });
 
-describe("NfcScanDrawer — ready phase", () => {
+describe("NfcScanDrawer - ready phase", () => {
   it("renders card name as title", () => {
     const payload = makePayload();
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "ready", payload }));
@@ -269,7 +269,7 @@ describe("NfcScanDrawer — ready phase", () => {
   });
 });
 
-describe("NfcScanDrawer — ready phase (sync mode)", () => {
+describe("NfcScanDrawer - ready phase (sync mode)", () => {
   it("renders sync info instead of check-in/out buttons", () => {
     const payload = makePayload();
     render(
@@ -310,7 +310,7 @@ describe("NfcScanDrawer — ready phase (sync mode)", () => {
   });
 });
 
-describe("NfcScanDrawer — writing phase", () => {
+describe("NfcScanDrawer - writing phase", () => {
   it("renders title 'Tulis Kartu'", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "writing" }));
     expect(screen.getByText("Tulis Kartu")).toBeDefined();
@@ -327,7 +327,7 @@ describe("NfcScanDrawer — writing phase", () => {
   });
 });
 
-describe("NfcScanDrawer — success phase", () => {
+describe("NfcScanDrawer - success phase", () => {
   it("renders title 'Berhasil!'", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "success" }));
     const title = screen.getByTestId("drawer-title");
@@ -362,7 +362,7 @@ describe("NfcScanDrawer — success phase", () => {
   });
 });
 
-describe("NfcScanDrawer — error phase", () => {
+describe("NfcScanDrawer - error phase", () => {
   it("renders title 'Gagal'", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "error" }));
     const title = screen.getByTestId("drawer-title");
@@ -392,7 +392,7 @@ describe("NfcScanDrawer — error phase", () => {
   });
 });
 
-describe("NfcScanDrawer — tamper detection", () => {
+describe("NfcScanDrawer - tamper detection", () => {
   it("renders tamper image", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "error", tamperDetected: true }));
     const img = screen.getByAltText("Kartu rusak");
@@ -442,7 +442,7 @@ describe("NfcScanDrawer — tamper detection", () => {
   });
 });
 
-describe("NfcScanDrawer — step indicator", () => {
+describe("NfcScanDrawer - step indicator", () => {
   it("renders StepIndicator with current phase", () => {
     render(createElement(NfcScanDrawer, { ...defaultProps, phase: "scanning" }));
     const indicator = screen.getByTestId("step-indicator");

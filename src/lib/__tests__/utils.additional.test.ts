@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { setDeviceSetupLaunchContext, consumeDeviceSetupLaunchContext } from "../utils";
 
-describe("utils — window undefined guard (lines 17-22)", () => {
+describe("utils - window undefined guard (lines 17-22)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });

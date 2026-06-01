@@ -5,7 +5,7 @@
  *
  * Property 2: Preservation - Online Operations Unchanged
  *
- * These tests MUST PASS on unfixed code — they encode existing correct behavior
+ * These tests MUST PASS on unfixed code - they encode existing correct behavior
  * that must not regress after the fix is applied.
  *
  * Preservation Goal:
@@ -19,7 +19,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 // ============================================================================
-// Test Helpers — Simulate existing CORRECT online behavior
+// Test Helpers - Simulate existing CORRECT online behavior
 // ============================================================================
 
 /**
@@ -48,7 +48,7 @@ async function simulateOnlineCreateMember(params: {
   // Calculate nextId (same logic as StationSection.tsx)
   const nextId = existingUserIds.length > 0 ? Math.max(...existingUserIds) + 1 : 1001;
 
-  // Simulate localDb.users.add() — always succeeds online
+  // Simulate localDb.users.add() - always succeeds online
   const savedToLocalDb = name.trim().length > 0;
 
   return {
@@ -227,7 +227,7 @@ async function simulateSyncCycle(params: {
   const { pendingEntries, serverAcceptsAll, pullSucceeds } = params;
 
   if (pendingEntries.length === 0) {
-    // No entries to push — still do pull, then idle
+    // No entries to push - still do pull, then idle
     return {
       finalStatus: pullSucceeds ? "idle" : "error",
       entriesMarkedSynced: 0,
@@ -345,7 +345,7 @@ async function simulateOnlineDeviceSetup(params: {
 
   // Step 1: Try local login
   if (localLoginResult) {
-    // Local login succeeded — check role
+    // Local login succeeded - check role
     if (!["admin", "station"].includes(localLoginResult.role)) {
       return {
         authenticated: false,
@@ -372,7 +372,7 @@ async function simulateOnlineDeviceSetup(params: {
     };
   }
 
-  // Step 3: Server auth succeeded — check role
+  // Step 3: Server auth succeeded - check role
   if (!["admin", "station"].includes(serverResult.role)) {
     return {
       authenticated: false,

@@ -1,12 +1,12 @@
 /**
- * Sync Rate Limiter — client-side rate limit state management.
+ * Sync Rate Limiter - client-side rate limit state management.
  *
  * Tracks when the sync engine is paused due to a 429 response,
  * exposes query functions for the sync orchestrator to check before
  * starting a new cycle, and automatically clears the rate limit state
  * when the pause expires.
  *
- * Outbox entries remain "pending" during the pause — no modifications needed.
+ * Outbox entries remain "pending" during the pause - no modifications needed.
  * The actual 429 handling in individual requests is done in syncPush.ts and syncPull.ts;
  * this module provides higher-level coordination so the orchestrator can skip
  * triggering new sync cycles while rate-limited.

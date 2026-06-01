@@ -72,7 +72,7 @@ export async function updateLocalCardRecord(tenantId: string, payload: CardPaylo
       });
     }
   } catch {
-    // Non-fatal — local DB update is best-effort
+    // Non-fatal - local DB update is best-effort
   }
 }
 
@@ -101,6 +101,6 @@ export async function updateLocalUserFromCard(
       await localDb.users.update([tenantId, userId], updates);
     }
   } catch {
-    // Non-fatal — local DB update is best-effort
+    // Non-fatal - local DB update is best-effort
   }
 }

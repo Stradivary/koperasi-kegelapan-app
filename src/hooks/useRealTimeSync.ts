@@ -1,5 +1,5 @@
 /**
- * useRealTimeSync — manages the RealTimeSyncManager lifecycle within
+ * useRealTimeSync - manages the RealTimeSyncManager lifecycle within
  * the authenticated tenant layout.
  *
  * Responsibilities:
@@ -100,7 +100,7 @@ export function useRealTimeSync({ tenantId, enabled = true }: UseRealTimeSyncOpt
           // This handler is a hook point for future UI notifications (e.g., toast).
         });
       } catch {
-        // fullSyncOnLogin failed after all retries — SSE won't be established.
+        // fullSyncOnLogin failed after all retries - SSE won't be established.
         // The periodic pull fallback in RealTimeSyncManager won't activate
         // since connect() was never called. The standard sync engine (useSyncEngine)
         // will continue to handle push/pull cycles independently.

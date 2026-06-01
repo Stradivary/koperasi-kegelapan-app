@@ -82,7 +82,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe("DevicesSection — loading and empty state", () => {
+describe("DevicesSection - loading and empty state", () => {
   it("shows empty state when no tenants registered", async () => {
     render(<DevicesSection />);
     await act(async () => {
@@ -109,7 +109,7 @@ describe("DevicesSection — loading and empty state", () => {
   });
 });
 
-describe("DevicesSection — tenant list", () => {
+describe("DevicesSection - tenant list", () => {
   it("renders tenant name and slug", async () => {
     mockTenantContextStoreGetAll.mockResolvedValue([
       {
@@ -197,7 +197,7 @@ describe("DevicesSection — tenant list", () => {
   });
 });
 
-describe("DevicesSection — actions", () => {
+describe("DevicesSection - actions", () => {
   it("navigates to tenant route when Buka clicked", async () => {
     mockTenantContextStoreGetAll.mockResolvedValue([
       { tenantId: "t1", tenantName: "A", tenantSlug: "a", role: "admin", updatedAt: Date.now() },
@@ -314,7 +314,7 @@ describe("DevicesSection — actions", () => {
   });
 });
 
-describe("DevicesSection — sync flow", () => {
+describe("DevicesSection - sync flow", () => {
   it("shows Sinkron button when there are pending entries", async () => {
     mockTenantContextStoreGetAll.mockResolvedValue([
       { tenantId: "t1", tenantName: "A", tenantSlug: "a", role: "admin", updatedAt: Date.now() },
@@ -415,7 +415,7 @@ describe("DevicesSection — sync flow", () => {
   });
 });
 
-describe("DevicesSection — formatRelativeTime", () => {
+describe("DevicesSection - formatRelativeTime", () => {
   it("shows 'baru saja' for recent timestamps", async () => {
     mockTenantContextStoreGetAll.mockResolvedValue([
       { tenantId: "t1", tenantName: "A", tenantSlug: "a", role: "admin", updatedAt: Date.now() },

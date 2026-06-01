@@ -45,7 +45,7 @@ export function ScoutSection({
 
   // Update local card and user records when a card is successfully read.
   // This ensures the local DB reflects the latest physical card state (balance,
-  // counter, status) even from a read-only scout operation — enabling accurate
+  // counter, status) even from a read-only scout operation - enabling accurate
   // blocked-status checks and data recovery from card history without server sync.
   useEffect(() => {
     if (state.phase === "ready" && state.payload) {
@@ -72,7 +72,7 @@ export function ScoutSection({
         </div>
       )}
 
-      {/* Idle — waiting for auto-scan */}
+      {/* Idle - waiting for auto-scan */}
       {state.phase === "idle" && (
         <div className="flex flex-col items-center gap-4">
           <NfcTapArea phase="scanning" />
@@ -98,7 +98,7 @@ export function ScoutSection({
         />
       )}
 
-      {/* Ready — blocked check in progress */}
+      {/* Ready - blocked check in progress */}
       {state.phase === "ready" && state.payload && blockedCheck.isChecking && (
         <div className="flex flex-col items-center gap-4 w-full max-w-xs">
           <NfcTapArea phase="validating" />
@@ -106,7 +106,7 @@ export function ScoutSection({
         </div>
       )}
 
-      {/* Ready — card info display (after blocked check completes) */}
+      {/* Ready - card info display (after blocked check completes) */}
       {state.phase === "ready" && state.payload && !blockedCheck.isChecking && (
         <div className="w-full max-w-xs space-y-4">
           {/* Blocked reason warning */}
@@ -120,7 +120,7 @@ export function ScoutSection({
 
           {/* Not in local DB warning */}
 
-          {/* Card info — always shown regardless of blocked status */}
+          {/* Card info - always shown regardless of blocked status */}
           <div className="bg-white rounded-2xl border p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="type-title-bold text-foreground text-lg">

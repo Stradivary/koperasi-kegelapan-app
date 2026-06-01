@@ -18,7 +18,7 @@ async function getAdminToken(request: any): Promise<string> {
   return body.accessToken;
 }
 
-test.describe("API — Sync endpoints", () => {
+test.describe("API - Sync endpoints", () => {
   let token: string;
 
   test.beforeAll(async ({ request }) => {
@@ -120,7 +120,7 @@ test.describe("API — Sync endpoints", () => {
   });
 });
 
-test.describe("API — Sync rate limiting", () => {
+test.describe("API - Sync rate limiting", () => {
   let token: string;
 
   test.beforeAll(async ({ request }) => {
@@ -128,7 +128,7 @@ test.describe("API — Sync rate limiting", () => {
   });
 
   test("rapid sync requests are handled gracefully", async ({ request }) => {
-    // Send multiple rapid requests — should not crash
+    // Send multiple rapid requests - should not crash
     const promises = Array.from({ length: 5 }, () =>
       request.get(`${API_BASE}/api/sync/pull`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -144,7 +144,7 @@ test.describe("API — Sync rate limiting", () => {
   });
 });
 
-test.describe("API — Client errors endpoint", () => {
+test.describe("API - Client errors endpoint", () => {
   test("POST /api/client-errors accepts error reports", async ({ request }) => {
     const response = await request.post(`${API_BASE}/api/client-errors`, {
       data: {

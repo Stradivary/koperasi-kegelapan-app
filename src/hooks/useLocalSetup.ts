@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTenantContextStore, getLocalAccountStore } from "#/lib/indexeddb.lazy";
 import { isSlugTaken, setupLocalTenant } from "#/lib/localTenant";
-import { createSlug, validateSlugFormat } from "#/lib/slugValidation";
+import { createSlug, validateSlugFormat } from "#/lib/utils/slugValidation";
 import { getDeviceFingerprint } from "#/lib/getOrCreateDeviceId";
 import { useTenantSync } from "#/hooks/useTenantSync";
 
@@ -154,7 +154,7 @@ export function useLocalSetup(options: UseLocalSetupOptions): UseLocalSetupRetur
         const admin = accounts.find((a) => a.role === "admin");
         if (admin) {
           syncToServer(cfg, admin.passwordHash).catch(() => {
-            // Sync failed silently — user can retry from admin panel
+            // Sync failed silently - user can retry from admin panel
           });
         }
       }

@@ -40,7 +40,7 @@ vi.mock("./auth", () => ({
 
 import { createAccount } from "../superadminAccounts";
 
-describe("createAccount — rethrows non-UNIQUE errors (line 202)", () => {
+describe("createAccount - rethrows non-UNIQUE errors (line 202)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue({ tenantId: "t1" });

@@ -47,7 +47,7 @@ export function StationCardIssuePanel({
         balance: Number.parseInt(issueBalance, 10) || 0,
         expiresAt: issueExpiry ? Math.floor(new Date(issueExpiry).getTime() / 1000) : null,
       });
-      // Reset form on success — parent handles navigation
+      // Reset form on success - parent handles navigation
       setIssueName("");
       setIssueUserId(null);
       setIssueBalance("");
@@ -84,7 +84,7 @@ export function StationCardIssuePanel({
               aria-label="Anggota"
               className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">— Tanpa anggota —</option>
+              <option value="">- Tanpa anggota -</option>
               {activeMembers.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name} (#{m.userId})

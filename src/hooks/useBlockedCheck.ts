@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
+import { cardRepo, userRepo } from "#/lib/repositories";
 import type { NfcCardPhase } from "./nfc/useNfcCard";
 import type { CardPayload } from "#/core/payload/types";
 
@@ -66,7 +67,7 @@ export function useBlockedCheck(options: UseBlockedCheckOptions): BlockedCheckRe
 
     setState((s) => ({ ...s, isChecking: true, isReady: false }));
 
-    checkLocalBlockedStatus(tenantId, serialNumber)
+    checkLocalBlockedStatus(tenantId, serialNumber, { cardRepo, userRepo })
       .then((result) => {
         // Discard stale results if phase or serialNumber changed during the async check
         const current = invocationRef.current;

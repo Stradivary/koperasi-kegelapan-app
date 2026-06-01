@@ -13,9 +13,9 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { BRAND } from "#/lib/brand";
+import { BRAND } from "#/lib/utils/brand";
 import { useOnlineStatus } from "#/hooks/useOnlineStatus";
-import { getTenantContextStore } from "#/lib/indexeddb.lazy";
+import { getTenantContextStore } from "#/hooks/useIndexedDbStores";
 import { Button } from "../ui/button";
 import type { SyncEngineStatus } from "#/hooks/useSyncEngine";
 import { SyncStatusIndicator } from "../block/SyncStatusIndicator";
@@ -255,7 +255,7 @@ export function AdminLayout({
             </p>
             <p className="type-body2 text-muted-foreground truncate">{tenantName}</p>
           </div>
-          {/* Compact sync status dot — opens drawer on click */}
+          {/* Compact sync status dot - opens drawer on click */}
           <button
             type="button"
             onClick={() => setSyncDrawerOpen(true)}
@@ -317,7 +317,7 @@ export function AdminLayout({
                 </div>
               )}
 
-              {/* Sync to Server button — shown when tenant is local-only and online */}
+              {/* Sync to Server button - shown when tenant is local-only and online */}
               {onSyncToServer && isOnline && (
                 <Button
                   size="sm"

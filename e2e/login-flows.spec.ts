@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Login page — UI and interactions", () => {
+test.describe("Login page - UI and interactions", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
   });
@@ -57,7 +57,7 @@ test.describe("Login page — UI and interactions", () => {
   });
 });
 
-test.describe("Login — error handling", () => {
+test.describe("Login - error handling", () => {
   test("shows error for non-existent user", async ({ page }) => {
     await page.goto("/");
     await page.fill('[name="username"]', "nonexistent-user-xyz");
@@ -88,7 +88,7 @@ test.describe("Login — error handling", () => {
   });
 });
 
-test.describe("Login — successful flows", () => {
+test.describe("Login - successful flows", () => {
   test("admin login redirects to admin cards page", async ({ page }) => {
     await page.goto("/");
     await page.fill('[name="username"]', "admin-a");

@@ -22,7 +22,7 @@ export interface UseKioskAutoScanOptions {
  *
  * After at least one scan cycle completes (reaches "success" or "error"),
  * the hook will automatically invoke `scan()` whenever the phase transitions
- * back to "idle" — provided `enabled` is true, `grant` is non-null, and
+ * back to "idle" - provided `enabled` is true, `grant` is non-null, and
  * the grant is not still loading.
  *
  * When `autoStart` is true, the hook will also trigger the first scan

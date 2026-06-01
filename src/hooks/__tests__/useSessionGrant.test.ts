@@ -58,7 +58,7 @@ function makeCachedGrant(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("useSessionGrant — online fetch success (lines 201-210)", () => {
+describe("useSessionGrant - online fetch success (lines 201-210)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
@@ -100,7 +100,7 @@ describe("useSessionGrant — online fetch success (lines 201-210)", () => {
   });
 });
 
-describe("useSessionGrant — online fetch fails, cached grant available (lines 215-220)", () => {
+describe("useSessionGrant - online fetch fails, cached grant available (lines 215-220)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
@@ -128,7 +128,7 @@ describe("useSessionGrant — online fetch fails, cached grant available (lines 
   });
 });
 
-describe("useSessionGrant — online fetch fails, no cache, local grant (lines 222-232)", () => {
+describe("useSessionGrant - online fetch fails, no cache, local grant (lines 222-232)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
@@ -172,7 +172,7 @@ describe("useSessionGrant — online fetch fails, no cache, local grant (lines 2
   });
 });
 
-describe("useSessionGrant — offline with cached grant (lines 272)", () => {
+describe("useSessionGrant - offline with cached grant (lines 272)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
@@ -199,7 +199,7 @@ describe("useSessionGrant — offline with cached grant (lines 272)", () => {
   });
 });
 
-describe("useSessionGrant — offline, no cache, local grant (lines 280-309)", () => {
+describe("useSessionGrant - offline, no cache, local grant (lines 280-309)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
@@ -272,7 +272,7 @@ describe("useSessionGrant — offline, no cache, local grant (lines 280-309)", (
   });
 });
 
-describe("useSessionGrant — offline grace period (lines 307-309)", () => {
+describe("useSessionGrant - offline grace period (lines 307-309)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCachePut.mockResolvedValue(undefined);
@@ -324,12 +324,12 @@ describe("useSessionGrant — offline grace period (lines 307-309)", () => {
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    // Expired beyond grace period — should have tried to get a new grant
+    // Expired beyond grace period - should have tried to get a new grant
     expect(mockIssueAndCache).toHaveBeenCalled();
   });
 });
 
-describe("useSessionGrant — isValid with offline expired grant (lines 332-333)", () => {
+describe("useSessionGrant - isValid with offline expired grant (lines 332-333)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });

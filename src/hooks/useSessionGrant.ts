@@ -154,7 +154,7 @@ async function writeGrantToCache(grant: SessionGrant): Promise<void> {
     const sessionGrantCacheStore = await getSessionGrantCacheStore();
     await sessionGrantCacheStore.put(toCachedGrant(grant));
   } catch {
-    // Silently fail — caching is best-effort
+    // Silently fail - caching is best-effort
   }
 }
 
@@ -173,7 +173,7 @@ async function readGrantFromCache(
     const isOffline = typeof navigator === "undefined" ? false : !navigator.onLine;
 
     if (cached.expiresAt <= nowSeconds) {
-      // Grant is expired — allow it if offline and within grace period
+      // Grant is expired - allow it if offline and within grace period
       if (isOffline && cached.expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS) {
         return fromCachedGrant(cached);
       }
@@ -190,7 +190,7 @@ async function readGrantFromCache(
  * Previously gated on LocalTenantConfig existence, but that caused failures
  * on devices that hadn't completed local setup (e.g., second device login
  * where config wasn't cached yet). The grant derivation only needs tenantId,
- * accountId, and deviceId — no config dependency required.
+ * accountId, and deviceId - no config dependency required.
  */
 async function tryLocalGrant(
   tenantId: string,
@@ -228,7 +228,7 @@ async function handleOnlineRefresh(
     // Write-through: cache the fresh grant for future offline use
     writeGrantToCache(newGrant);
   } catch (e) {
-    // Network fetch failed even though online — use cached grant if available
+    // Network fetch failed even though online - use cached grant if available
     if (cachedGrant) {
       setGrant(cachedGrant);
       scheduleRefreshFn(cachedGrant);
@@ -262,9 +262,9 @@ async function handleOfflineRefresh(
 ): Promise<void> {
   if (cachedGrant) {
     setGrant(cachedGrant);
-    // Don't schedule refresh when offline — it would just loop since we can't fetch
+    // Don't schedule refresh when offline - it would just loop since we can't fetch
   } else {
-    // No cached grant while offline — issue locally so NFC operations can proceed
+    // No cached grant while offline - issue locally so NFC operations can proceed
     try {
       const localGrant = await issueAndCacheLocalSessionGrant(
         tenantId,
@@ -274,7 +274,7 @@ async function handleOfflineRefresh(
       );
       setGrant(localGrant);
     } catch {
-      // Offline with no cache — generate locally for local-only tenants
+      // Offline with no cache - generate locally for local-only tenants
       const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
       if (localGrant) {
         setGrant(localGrant);

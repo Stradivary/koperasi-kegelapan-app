@@ -134,7 +134,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
     // Hydrate React Query cache from IndexedDB before navigating
     // so the destination page has data immediately available
     hydrateQueryCache(queryClient, tenantId).catch(() => {
-      // Non-critical — the destination page will hydrate via useHydrateCache
+      // Non-critical - the destination page will hydrate via useHydrateCache
     });
     navigate({ to: getRoleRoute(tenantId, role) });
   }
@@ -220,7 +220,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
     // Issue a local session grant for scout role (no password needed)
     issueAndCacheLocalSessionGrant(tenantId, "scout-anonymous", fingerprintId, "scout").catch(
       () => {
-        // Non-critical — useSessionGrant will handle fallback
+        // Non-critical - useSessionGrant will handle fallback
       },
     );
 
@@ -249,7 +249,7 @@ export function useLoginFlow(): UseLoginFlowReturn {
       fingerprintId,
       role,
     ).catch(() => {
-      // Non-critical — useSessionGrant will handle fallback
+      // Non-critical - useSessionGrant will handle fallback
     });
 
     redirectToRole(pendingContext.tenantId, role);

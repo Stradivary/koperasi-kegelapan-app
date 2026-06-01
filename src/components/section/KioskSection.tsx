@@ -5,9 +5,9 @@ import { CardStatusBadge } from "../block/CardStatusBadge";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
-import { applyDebit, isWriteEligible } from "#/core/state-machine/engine";
-import { CardStatus } from "#/core/payload/types";
-import { localDb } from "#/db/local-db";
+import { applyDebit, isWriteEligible } from "#/hooks/domain";
+import { CardStatus } from "#/hooks/types";
+import { localDb } from "#/hooks/useLocalDb";
 import { useState } from "react";
 
 interface KioskSectionProps {
@@ -158,7 +158,7 @@ export function KioskSection({
         </div>
       )}
 
-      {/* Card ready — choose amount */}
+      {/* Card ready - choose amount */}
       {(state.phase === "ready" || state.phase === "writing") &&
         state.payload &&
         step !== "done" && (
@@ -213,7 +213,7 @@ export function KioskSection({
                     OK
                   </Button>
                 </div>
-                {/* Register action — does not require amount selection */}
+                {/* Register action - does not require amount selection */}
                 <div className="border-t pt-3 mt-2">
                   <Button
                     variant="outline"
@@ -254,7 +254,7 @@ export function KioskSection({
               </div>
             )}
 
-            {/* Register — independent of amount selection */}
+            {/* Register - independent of amount selection */}
             {step === "register" && (
               <div className="space-y-3">
                 <div className="rounded-2xl bg-brand/5 border border-brand/20 p-5 text-center">

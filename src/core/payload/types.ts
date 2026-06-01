@@ -4,7 +4,7 @@ export const CARD_SCHEMA_VERSION = 4;
 export const BUFFER_SIZE = 216;
 export const TRAILER_SIZE = 64;
 export const CARD_SIZE = BUFFER_SIZE * 2 + TRAILER_SIZE; // 496
-export const WIRE_SIZE = BUFFER_SIZE + TRAILER_SIZE; // 280 — compact NFC write format (active buffer + trailer only)
+export const WIRE_SIZE = BUFFER_SIZE + TRAILER_SIZE; // 280 - compact NFC write format (active buffer + trailer only)
 
 export const BUFFER_A_OFFSET = 0;
 export const BUFFER_B_OFFSET = BUFFER_SIZE;
@@ -55,11 +55,11 @@ export enum TxType {
 }
 
 export interface LogEntry {
-  timestamp: number; // uint32 — absolute Unix seconds
-  amount: number; // uint24 — transaction amount (max 16,777,215)
-  balanceAfter: number; // uint32 — balance after transaction
-  flags: number; // uint8  — TxType enum
-  hash: Uint8Array; // 4 bytes — truncated SHA-256 chain hash
+  timestamp: number; // uint32 - absolute Unix seconds
+  amount: number; // uint24 - transaction amount (max 16,777,215)
+  balanceAfter: number; // uint32 - balance after transaction
+  flags: number; // uint8  - TxType enum
+  hash: Uint8Array; // 4 bytes - truncated SHA-256 chain hash
 }
 
 export interface CardPayload {

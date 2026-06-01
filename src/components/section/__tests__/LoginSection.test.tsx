@@ -56,7 +56,7 @@ vi.mock("#/hooks/useServerTenantSearch", () => ({
 }));
 
 vi.mock("#/hooks/useOnlineStatus", () => ({ useOnlineStatus: () => ({ isOnline: true }) }));
-vi.mock("#/lib/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" } }));
+vi.mock("#/lib/utils/brand", () => ({ BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" } }));
 
 vi.mock("#/components/block/LoadingState", () => ({
   LoadingState: ({ variant }: { variant?: string }) => <div data-testid={`loading-${variant}`} />,
@@ -158,7 +158,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe("LoginSection — mode rendering", () => {
+describe("LoginSection - mode rendering", () => {
   it("shows loading state when mode=detecting", () => {
     mockFlow.mode = "detecting";
     render(<LoginSection />);
@@ -204,7 +204,7 @@ describe("LoginSection — mode rendering", () => {
   });
 });
 
-describe("LoginSection — LoginFormPanel callbacks", () => {
+describe("LoginSection - LoginFormPanel callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "login";
   });
@@ -240,7 +240,7 @@ describe("LoginSection — LoginFormPanel callbacks", () => {
   });
 });
 
-describe("LoginSection — ServerBrowsePanel callbacks", () => {
+describe("LoginSection - ServerBrowsePanel callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "server-browse";
   });
@@ -260,7 +260,7 @@ describe("LoginSection — ServerBrowsePanel callbacks", () => {
   });
 });
 
-describe("LoginSection — ScoutBrowsePanel callbacks", () => {
+describe("LoginSection - ScoutBrowsePanel callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "scout-browse";
   });
@@ -290,7 +290,7 @@ describe("LoginSection — ScoutBrowsePanel callbacks", () => {
   });
 });
 
-describe("LoginSection — DeviceSetupAuthPanel callbacks", () => {
+describe("LoginSection - DeviceSetupAuthPanel callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "device-setup";
     mockFlow.setupStep = "auth";
@@ -303,7 +303,7 @@ describe("LoginSection — DeviceSetupAuthPanel callbacks", () => {
   });
 });
 
-describe("LoginSection — DeviceRoleSelectionPanel callbacks", () => {
+describe("LoginSection - DeviceRoleSelectionPanel callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "device-setup";
     mockFlow.setupStep = "pick-role";
@@ -330,7 +330,7 @@ describe("LoginSection — DeviceRoleSelectionPanel callbacks", () => {
   });
 });
 
-describe("LoginSection — LocalSetupSection callbacks", () => {
+describe("LoginSection - LocalSetupSection callbacks", () => {
   beforeEach(() => {
     mockFlow.mode = "setup";
   });

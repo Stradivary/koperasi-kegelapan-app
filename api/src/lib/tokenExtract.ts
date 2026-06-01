@@ -39,7 +39,7 @@ export interface TokenPayload {
 
 /**
  * Extracts tenantId, accountId, and optional deviceId from the Bearer token payload.
- * Uses unsafe decode — for pre-auth contexts only.
+ * Uses unsafe decode - for pre-auth contexts only.
  * For authenticated routes, use `c.get("auth")` instead.
  *
  * @deprecated Prefer using `c.get("auth")` from the verifyToken middleware.

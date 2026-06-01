@@ -5,7 +5,7 @@
  *
  * Property 2: Preservation - Online Login and Session Grant Behavior Unchanged
  *
- * These tests MUST PASS on unfixed code — they establish the regression baseline.
+ * These tests MUST PASS on unfixed code - they establish the regression baseline.
  * They verify that online behavior is correct as-is and must remain unchanged after the fix.
  *
  * Preservation Scope:
@@ -20,7 +20,7 @@ import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
 
 // ============================================================================
-// Simulation Helpers — Replicate current (unfixed) handleUnifiedLogin logic
+// Simulation Helpers - Replicate current (unfixed) handleUnifiedLogin logic
 // ============================================================================
 
 /**
@@ -69,7 +69,7 @@ async function simulateHandleUnifiedLoginOnline(params: {
 
   // 1. Try local login first
   if (localLoginResult) {
-    // Local login succeeded — store context, redirect, return immediately
+    // Local login succeeded - store context, redirect, return immediately
     return {
       error: null,
       redirected: true,
@@ -80,7 +80,7 @@ async function simulateHandleUnifiedLoginOnline(params: {
     };
   }
 
-  // 2. Local login returned null — try server login as fallback (online)
+  // 2. Local login returned null - try server login as fallback (online)
   if (serverResponse === null) {
     // Server fetch threw (shouldn't happen when online, but simulate)
     return {
@@ -328,7 +328,7 @@ describe("Property 2: Preservation - Online Login and Session Grant Behavior Unc
                 accountId: localAccountId,
                 role: localRole,
               },
-              // Server response doesn't matter — should never be reached
+              // Server response doesn't matter - should never be reached
               serverResponse: {
                 ok: true,
                 data: {
@@ -341,7 +341,7 @@ describe("Property 2: Preservation - Online Login and Session Grant Behavior Unc
               },
             });
 
-            // Local login takes priority — no network fetch attempted
+            // Local login takes priority - no network fetch attempted
             expect(result.networkFetchAttempted).toBe(false);
             expect(result.source).toBe("local");
             expect(result.redirected).toBe(true);

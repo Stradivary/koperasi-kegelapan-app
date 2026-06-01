@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("#/lib/brand", () => ({
+vi.mock("#/lib/utils/brand", () => ({
   BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" },
 }));
 
@@ -67,7 +67,7 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("KioskLayout — rendering", () => {
+describe("KioskLayout - rendering", () => {
   it("renders children", () => {
     render(createElement(KioskLayout, defaultProps));
     expect(screen.getByTestId("content")).toBeDefined();
@@ -110,7 +110,7 @@ describe("KioskLayout — rendering", () => {
   });
 });
 
-describe("KioskLayout — mode picker (long press)", () => {
+describe("KioskLayout - mode picker (long press)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -173,7 +173,7 @@ describe("KioskLayout — mode picker (long press)", () => {
   });
 });
 
-describe("KioskLayout — mode options (admin/station role)", () => {
+describe("KioskLayout - mode options (admin/station role)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -246,7 +246,7 @@ describe("KioskLayout — mode options (admin/station role)", () => {
   });
 });
 
-describe("KioskLayout — mode switching", () => {
+describe("KioskLayout - mode switching", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockTenantContextStoreGet.mockResolvedValue({
@@ -303,7 +303,7 @@ describe("KioskLayout — mode switching", () => {
   });
 });
 
-describe("KioskLayout — logout", () => {
+describe("KioskLayout - logout", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockTenantContextStoreDelete.mockResolvedValue(undefined);
@@ -337,7 +337,7 @@ describe("KioskLayout — logout", () => {
   });
 });
 
-describe("KioskLayout — dialog content", () => {
+describe("KioskLayout - dialog content", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

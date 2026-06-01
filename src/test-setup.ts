@@ -11,7 +11,7 @@ import { cleanup } from "@testing-library/react";
 
 // Tell React 19 that we're in a test environment so act() works correctly
 // and the scheduler doesn't fire setImmediate callbacks outside test scope.
-// @ts-expect-error — IS_REACT_ACT_ENVIRONMENT is a React internal global
+// @ts-expect-error - IS_REACT_ACT_ENVIRONMENT is a React internal global
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 // Auto-cleanup rendered components after each test to prevent state leakage

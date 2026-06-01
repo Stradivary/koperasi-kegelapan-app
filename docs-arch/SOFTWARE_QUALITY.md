@@ -52,7 +52,7 @@ graph LR
 
 ### What it does:
 
-1. **Oxlint** — Fast Rust-based linter with auto-fix
+1. **Oxlint** - Fast Rust-based linter with auto-fix
    - Plugins: `react`, `typescript`, `unicorn`
    - Key rules enforced:
      - `no-unused-vars` (error)
@@ -60,7 +60,7 @@ graph LR
      - `typescript/no-unused-vars` (error)
      - `react/rules-of-hooks` (error)
      - `react/no-array-index-key` (warn)
-2. **Oxfmt** — Rust-based formatter (Prettier-compatible)
+2. **Oxfmt** - Rust-based formatter (Prettier-compatible)
    - No semicolons, single quotes, 2-space indent, trailing comma (ES5), 100 char width
 
 ### Flow:
@@ -79,9 +79,9 @@ sequenceDiagram
     LS->>LS: Run oxlint --fix on *.ts,*.tsx
     LS->>LS: Run oxfmt on all matched files
     alt Lint errors (unfixable)
-        LS-->>Git: EXIT 1 — commit blocked
+        LS-->>Git: EXIT 1 - commit blocked
     else All pass
-        LS-->>Git: EXIT 0 — commit proceeds
+        LS-->>Git: EXIT 0 - commit proceeds
     end
 ```
 
@@ -156,10 +156,10 @@ sequenceDiagram
     Husky->>CL: pnpm commitlint --edit $1
     CL->>CL: Parse message against conventional-commits rules
     alt Invalid format
-        CL-->>Git: EXIT 1 — commit rejected
+        CL-->>Git: EXIT 1 - commit rejected
         Note over Dev: Error: subject must not be empty, type must be one of [...]
     else Valid format
-        CL-->>Git: EXIT 0 — commit saved
+        CL-->>Git: EXIT 0 - commit saved
     end
 ```
 
@@ -200,14 +200,14 @@ sequenceDiagram
     Git->>Husky: pre-push hook
     Husky->>TSC: pnpm typecheck (tsc --noEmit)
     alt Type errors found
-        TSC-->>Git: EXIT 1 — push blocked
+        TSC-->>Git: EXIT 1 - push blocked
     else Types OK
         TSC-->>Husky: EXIT 0
         Husky->>Vitest: pnpm test (vitest run)
         alt Tests fail
-            Vitest-->>Git: EXIT 1 — push blocked
+            Vitest-->>Git: EXIT 1 - push blocked
         else All tests pass
-            Vitest-->>Git: EXIT 0 — push proceeds
+            Vitest-->>Git: EXIT 0 - push proceeds
         end
     end
 ```

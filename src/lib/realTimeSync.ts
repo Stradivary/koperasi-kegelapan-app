@@ -1,5 +1,5 @@
 /**
- * RealTimeSyncManager — manages real-time data synchronization between devices
+ * RealTimeSyncManager - manages real-time data synchronization between devices
  * via Server-Sent Events (SSE) with fallback to periodic pull.
  *
  * Responsibilities:
@@ -136,12 +136,12 @@ async function handleCardStatusChange(payload: Readonly<CardStatusChangePayload>
     const existingCard = await localDb.cards.get([tenantId, cardId]);
 
     if (existingCard) {
-      // Card exists — update status
+      // Card exists - update status
       await localDb.cards.update([tenantId, cardId], {
         status: newStatus,
       });
     } else {
-      // Card not in local cache — create a minimal record with block status
+      // Card not in local cache - create a minimal record with block status
       await localDb.cards.put({
         tenantId,
         cardId,
@@ -162,14 +162,14 @@ async function handleCardStatusChange(payload: Readonly<CardStatusChangePayload>
   for (let attempt = 0; attempt <= MAX_IDB_WRITE_RETRIES; attempt++) {
     try {
       await writeToDb();
-      // Success — invalidate caches and return
+      // Success - invalidate caches and return
       invalidateCardCaches(cardId, tenantId);
       // Remove from re-sync set if it was there
       _cardsNeedingResync.delete(`${tenantId}:${cardId}`);
       return;
     } catch {
       if (attempt >= MAX_IDB_WRITE_RETRIES) {
-        // All retries exhausted — mark for re-sync on next pull
+        // All retries exhausted - mark for re-sync on next pull
         _cardsNeedingResync.add(`${tenantId}:${cardId}`);
         // eslint-disable-next-line no-console
         console.warn(
@@ -233,7 +233,7 @@ function startPeriodicPull(): void {
     try {
       await syncPull(tenantId);
     } catch {
-      // Non-critical — periodic pull failure is expected when offline
+      // Non-critical - periodic pull failure is expected when offline
     }
   }, PERIODIC_PULL_INTERVAL_MS);
 }
@@ -275,13 +275,13 @@ function establishSseConnection(): void {
       _connected = true;
       _reconnectAttempts = 0;
 
-      // Stop periodic pull — SSE is active
+      // Stop periodic pull - SSE is active
       stopPeriodicPull();
 
       // Perform catch-up pull to get any missed updates during disconnection
       if (_config) {
         syncPull(_config.tenantId).catch(() => {
-          // Non-critical — catch-up pull failure will be retried on next periodic pull
+          // Non-critical - catch-up pull failure will be retried on next periodic pull
         });
       }
     };
@@ -326,7 +326,7 @@ function scheduleReconnect(): void {
 
   // Check if we've exhausted reconnection attempts
   if (_reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    // Stay in periodic pull mode — don't attempt further reconnections
+    // Stay in periodic pull mode - don't attempt further reconnections
     addSyncLog(
       "error",
       "SSE reconnect gagal",

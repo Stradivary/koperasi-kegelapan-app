@@ -1,7 +1,7 @@
 /**
  * Server-side endpoint for receiving pushed members and cards from clients.
  *
- * POST /push-entities — accepts batches of members and cards, upserts them
+ * POST /push-entities - accepts batches of members and cards, upserts them
  * into the D1 database with tenant isolation enforced via JWT token.
  */
 
@@ -167,7 +167,7 @@ async function processMember(
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
-      return { accepted: true }; // Race condition — treat as accepted
+      return { accepted: true }; // Race condition - treat as accepted
     }
     logger.error("push-entities: member insert failed", {
       userId: member.userId,
@@ -301,7 +301,7 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
   let cardsAccepted = 0;
   const cardsRejected: CardRejection[] = [];
 
-  // 4. Process members — upsert (insert or update if newer)
+  // 4. Process members - upsert (insert or update if newer)
   for (const member of members) {
     const result = await processMember(db, tenantId, member);
     if (result.accepted) {
@@ -311,7 +311,7 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
     }
   }
 
-  // 5. Process cards — upsert (insert or update based on counter/updatedAt)
+  // 5. Process cards - upsert (insert or update based on counter/updatedAt)
   for (const card of cardEntries) {
     const result = await processCard(db, tenantId, card, now);
     if (result.accepted) {

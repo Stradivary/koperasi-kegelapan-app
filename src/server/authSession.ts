@@ -171,7 +171,7 @@ export async function refreshSession(
   // Verify the refresh token hash
   const providedHash = await hashRefreshToken(currentRefreshToken);
   if (providedHash !== session.refreshTokenHash) {
-    // Hash mismatch — potential token compromise. Revoke all device sessions.
+    // Hash mismatch - potential token compromise. Revoke all device sessions.
     await revokeAllDeviceSessions(db, session.deviceId);
     throw new AuthSessionError(
       "INVALID_REFRESH_TOKEN",

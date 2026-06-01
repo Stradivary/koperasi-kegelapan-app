@@ -18,7 +18,7 @@ async function getOriginHeader(origin: string): Promise<string | null> {
   return res.headers.get("Access-Control-Allow-Origin");
 }
 
-describe("CORS middleware — origin validation", () => {
+describe("CORS middleware - origin validation", () => {
   it("allows http://localhost:3000", async () => {
     expect(await getOriginHeader("http://localhost:3000")).toBe("http://localhost:3000");
   });
@@ -88,7 +88,7 @@ describe("CORS middleware — origin validation", () => {
   });
 });
 
-describe("CORS middleware — preflight", () => {
+describe("CORS middleware - preflight", () => {
   it("responds to OPTIONS with correct headers", async () => {
     const res = await app.request("/test", {
       method: "OPTIONS",

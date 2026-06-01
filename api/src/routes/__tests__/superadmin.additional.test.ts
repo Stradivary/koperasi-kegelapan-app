@@ -18,7 +18,7 @@ vi.mock("#/server/superadminAuth", () => ({
   isAuthError: vi.fn().mockReturnValue(false),
 }));
 
-// Mock tenant functions — default success, can be overridden per test
+// Mock tenant functions - default success, can be overridden per test
 const mockListTenants = vi.fn().mockResolvedValue({ tenants: [], total: 0, page: 1, pageSize: 20 });
 const mockCreateTenant = vi.fn().mockResolvedValue({ status: 201, data: { tenantId: "t1" } });
 const mockGetTenantDetail = vi.fn().mockResolvedValue({ status: 200, data: { tenantId: "t1" } });
@@ -44,7 +44,7 @@ vi.mock("#/server/superadminAccounts", () => ({
   updateAccountStatus: (...args: unknown[]) => mockUpdateAccountStatus(...args),
 }));
 
-// Mock DB — device not found by default
+// Mock DB - device not found by default
 const mockDeviceGet = vi.fn().mockResolvedValue(null);
 vi.mock("#/db", () => ({
   getDb: vi.fn(() => ({
@@ -85,7 +85,7 @@ function createApp() {
   return app;
 }
 
-describe("superadmin routes — error paths and additional coverage", () => {
+describe("superadmin routes - error paths and additional coverage", () => {
   let app: ReturnType<typeof createApp>;
 
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     mockRevokeDeviceSessions.mockResolvedValue(0);
   });
 
-  describe("GET /tenants — error path", () => {
+  describe("GET /tenants - error path", () => {
     it("returns 500 when listTenants throws", async () => {
       mockListTenants.mockRejectedValueOnce(new Error("DB error"));
       const res = await app.request("/api/superadmin/tenants");
@@ -123,7 +123,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("POST /tenants — error path", () => {
+  describe("POST /tenants - error path", () => {
     it("returns 500 when createTenant throws", async () => {
       mockCreateTenant.mockRejectedValueOnce(new Error("Insert failed"));
       const res = await app.request("/api/superadmin/tenants", {
@@ -135,7 +135,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("GET /tenants/:tenantId — error path", () => {
+  describe("GET /tenants/:tenantId - error path", () => {
     it("returns 500 when getTenantDetail throws", async () => {
       mockGetTenantDetail.mockRejectedValueOnce(new Error("Not found"));
       const res = await app.request("/api/superadmin/tenants/t1");
@@ -143,7 +143,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("PATCH /tenants/:tenantId/status — error path", () => {
+  describe("PATCH /tenants/:tenantId/status - error path", () => {
     it("returns 500 when updateTenantStatus throws", async () => {
       mockUpdateTenantStatus.mockRejectedValueOnce(new Error("Update failed"));
       const res = await app.request("/api/superadmin/tenants/t1/status", {
@@ -155,7 +155,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("GET /devices — error path", () => {
+  describe("GET /devices - error path", () => {
     it("returns 500 when getDevicesByTenant throws", async () => {
       mockGetDevicesByTenant.mockRejectedValueOnce(new Error("DB error"));
       const res = await app.request("/api/superadmin/devices?tenantId=t1");
@@ -163,7 +163,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("POST /devices/:deviceId/block — device not found", () => {
+  describe("POST /devices/:deviceId/block - device not found", () => {
     it("returns 404 when device does not exist", async () => {
       mockDeviceGet.mockResolvedValueOnce(null);
       const res = await app.request("/api/superadmin/devices/nonexistent/block", {
@@ -188,7 +188,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("POST /devices/:deviceId/unblock — device not found", () => {
+  describe("POST /devices/:deviceId/unblock - device not found", () => {
     it("returns 404 when device does not exist", async () => {
       mockDeviceGet.mockResolvedValueOnce(null);
       const res = await app.request("/api/superadmin/devices/nonexistent/unblock", {
@@ -209,7 +209,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("GET /accounts — error path", () => {
+  describe("GET /accounts - error path", () => {
     it("returns 500 when listAccounts throws", async () => {
       mockListAccounts.mockRejectedValueOnce(new Error("DB error"));
       const res = await app.request("/api/superadmin/accounts");
@@ -225,7 +225,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("POST /accounts — error path", () => {
+  describe("POST /accounts - error path", () => {
     it("returns 500 when createAccount throws", async () => {
       mockCreateAccount.mockRejectedValueOnce(new Error("Insert failed"));
       const res = await app.request("/api/superadmin/accounts", {
@@ -237,7 +237,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("PATCH /accounts/:accountId/status — error path", () => {
+  describe("PATCH /accounts/:accountId/status - error path", () => {
     it("returns 500 when updateAccountStatus throws", async () => {
       mockUpdateAccountStatus.mockRejectedValueOnce(new Error("Update failed"));
       const res = await app.request("/api/superadmin/accounts/a1/status", {
@@ -249,7 +249,7 @@ describe("superadmin routes — error paths and additional coverage", () => {
     });
   });
 
-  describe("POST /accounts/:accountId/change-password — error path", () => {
+  describe("POST /accounts/:accountId/change-password - error path", () => {
     it("returns 500 when changeAccountPassword throws", async () => {
       mockChangeAccountPassword.mockRejectedValueOnce(new Error("Hash failed"));
       const res = await app.request("/api/superadmin/accounts/a1/change-password", {

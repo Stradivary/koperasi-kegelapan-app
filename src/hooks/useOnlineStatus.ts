@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
  * Uses `navigator.onLine` for initial value and listens to window
  * `online`/`offline` events for real-time updates.
  *
- * @returns `{ isOnline }` — `true` when the browser reports connectivity,
+ * @returns `{ isOnline }` - `true` when the browser reports connectivity,
  * `false` when offline.
  */
 export function useOnlineStatus() {

@@ -48,6 +48,6 @@ export const deviceBlockCheck = createMiddleware<{ Bindings: Env }>(async (c, ne
     return c.json({ error: "device_blocked", blockedUntil: device.blockedUntil }, 403);
   }
 
-  // Device is not blocked (or block has expired) — proceed
+  // Device is not blocked (or block has expired) - proceed
   await next();
 });

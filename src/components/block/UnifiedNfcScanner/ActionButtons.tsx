@@ -2,10 +2,10 @@ import { LogIn, LogOut, CreditCard } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
 import { Button } from "#/components/ui/button.tsx";
-import { CardStatus } from "#/core/payload/types.ts";
-import type { CardPayload } from "#/core/payload/types.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
-import type { CardClassification } from "#/core/nfc/types.ts";
+import { CardStatus } from "#/hooks/types.ts";
+import type { CardPayload } from "#/hooks/types.ts";
+import type { NfcPhase } from "#/hooks/types.ts";
+import type { CardClassification } from "#/hooks/types.ts";
 
 // ============================================================================
 // Types
@@ -60,7 +60,7 @@ const DEFAULT_LABELS = {
 // ============================================================================
 
 /**
- * ActionButtons — Contextual action buttons for the Unified NFC Scanner.
+ * ActionButtons - Contextual action buttons for the Unified NFC Scanner.
  *
  * Displays check-in/check-out buttons for valid payload cards,
  * or initialization actions for empty cards.

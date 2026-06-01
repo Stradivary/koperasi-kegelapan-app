@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CardState, CardStatus } from "#/core/payload/types";
+import { CardState, CardStatus } from "#/hooks/types";
 import {
   applyBlockStatus,
   applyCheckout,
   PARKING_RATE_PER_HOUR,
   validateCheckoutBalance,
   validateTransition,
-} from "#/core/state-machine/engine";
+} from "#/hooks/domain";
 import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
 import { useBlockedCheck } from "#/hooks/useBlockedCheck";
 import { useKioskAutoScan } from "#/hooks/useKioskAutoScan";
 import { useNfcCard } from "#/hooks/nfc/useNfcCard";
 import { updateLocalCardRecord } from "#/hooks/nfc/updateLocalCardRecord";
 import { useSessionGrant } from "#/hooks/useSessionGrant";
-import { formatDuration } from "#/lib/formatters";
+import { formatDuration } from "#/lib/utils/formatters";
 import { FeedbackCard } from "../block/FeedbackCard";
 import { LoadingState } from "../block/LoadingState";
 import { NfcStatusLabel, NfcTapArea } from "../block/NfcTapArea";
-import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/hooks/types";
 import type { BlockedCheckResult } from "#/hooks/useBlockedCheck";
 
 interface TerminalSectionProps {
@@ -118,10 +118,10 @@ export function TerminalSection({
     const nowSeconds = getNowSeconds();
     const cardState = payload.wallet.state;
 
-    // Card not checked in — nothing to checkout
+    // Card not checked in - nothing to checkout
     if (cardState !== CardState.CHECKED_IN && cardState !== CardState.STATION_OPERATION) {
       autoCheckoutTriggered.current = true;
-      // IDLE or CHECKED_OUT — no action needed, render handles the message
+      // IDLE or CHECKED_OUT - no action needed, render handles the message
       return;
     }
 
@@ -304,7 +304,7 @@ export function TerminalSection({
         </div>
       )}
 
-      {/* Idle — waiting for auto-scan */}
+      {/* Idle - waiting for auto-scan */}
       {state.phase === "idle" && (
         <div className="flex flex-col items-center gap-4">
           <NfcTapArea phase="scanning" />
@@ -320,7 +320,7 @@ export function TerminalSection({
         </div>
       )}
 
-      {/* Ready — auto-checkout in progress or blocked */}
+      {/* Ready - auto-checkout in progress or blocked */}
       {(state.phase === "ready" || state.phase === "writing") && state.payload && (
         <div className="flex flex-col items-center gap-4 w-full max-w-xs">
           <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />

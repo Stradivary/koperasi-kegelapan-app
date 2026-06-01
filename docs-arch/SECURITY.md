@@ -41,7 +41,7 @@ sequenceDiagram
     Client->>API: POST /api/auth/refresh {invalid token}
     API->>API: Hash mismatch detected
     API->>DB: Revoke ALL sessions for device
-    API-->>Client: 401 — Re-authentication required
+    API-->>Client: 401 - Re-authentication required
 ```
 
 ## Offline Security Flow
@@ -58,7 +58,7 @@ sequenceDiagram
     Terminal->>Terminal: Check allowedOps for role
     Terminal->>Terminal: Check device binding (deviceId match)
     alt Grant expired or invalid
-        Terminal-->>Terminal: REJECT — require online re-auth
+        Terminal-->>Terminal: REJECT - require online re-auth
     end
 
     Note over Terminal,Card: 2. Card Read & Validation

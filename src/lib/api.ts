@@ -87,7 +87,7 @@ export function setAccessToken(token: string | null, expiresAt?: number): void {
       localStorage.removeItem(ACCESS_TOKEN_LS_KEY);
     }
   } catch {
-    // localStorage unavailable — continue with in-memory only
+    // localStorage unavailable - continue with in-memory only
   }
 
   // Also persist to IndexedDB (async, best-effort, survives storage clearing)
@@ -103,7 +103,7 @@ export function setAccessToken(token: string | null, expiresAt?: number): void {
         }),
       )
       .catch(() => {
-        // Silently fail — persistence is best-effort
+        // Silently fail - persistence is best-effort
       });
   } else if (!token && _cachedDeviceId) {
     getAuthTokenCacheStore()
@@ -154,7 +154,7 @@ export async function restoreAuthState(deviceId: string): Promise<boolean> {
       return true;
     }
   } catch {
-    // IndexedDB unavailable — continue without token
+    // IndexedDB unavailable - continue without token
   }
   return false;
 }
@@ -178,7 +178,7 @@ export async function apiFetch(
 ): Promise<Response> {
   // Suppress outbound requests while device is blocked
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — request suppressed");
+    throw new DeviceBlockedError("Device is blocked - request suppressed");
   }
 
   // Inject X-Device-Id and Authorization headers if cached

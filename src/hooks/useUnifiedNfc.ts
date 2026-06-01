@@ -297,11 +297,11 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
         if (signal.aborted) return false;
 
         if (!writeResult.ok) {
-          // Write failed (likely card moved too fast) — transition to retry state
+          // Write failed (likely card moved too fast) - transition to retry state
           // The prepared bytes are still valid in memory, user can tap again
           dispatch({ type: "WRITE_PENDING_RETRY" });
 
-          // Start 30-second timeout — after which we discard and go to error
+          // Start 30-second timeout - after which we discard and go to error
           clearPendingWriteTimeout();
           pendingWriteTimeoutRef.current = setTimeout(() => {
             pendingWriteRef.current = null;
@@ -318,7 +318,7 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
           return false;
         }
 
-        // Write succeeded — clear pending write
+        // Write succeeded - clear pending write
         pendingWriteRef.current = null;
         clearPendingWriteTimeout();
 
@@ -344,7 +344,7 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
   );
 
   // ============================================================================
-  // retryWrite() — retry a failed write by tapping the card again
+  // retryWrite() - retry a failed write by tapping the card again
   // ============================================================================
 
   const retryWrite = useCallback(async (): Promise<boolean> => {
@@ -369,7 +369,7 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
       if (signal.aborted) return false;
 
       if (!writeResult.ok) {
-        // Still failing — go back to retry state with a fresh timeout
+        // Still failing - go back to retry state with a fresh timeout
         dispatch({ type: "WRITE_PENDING_RETRY" });
         pendingWriteTimeoutRef.current = setTimeout(() => {
           pendingWriteRef.current = null;
@@ -385,7 +385,7 @@ export function useUnifiedNfc(options: UseUnifiedNfcOptions): UseUnifiedNfcRetur
         return false;
       }
 
-      // Write succeeded — clear pending write
+      // Write succeeded - clear pending write
       pendingWriteRef.current = null;
 
       // Dispatch WRITE_COMPLETE

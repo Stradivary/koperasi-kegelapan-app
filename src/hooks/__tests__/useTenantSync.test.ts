@@ -77,7 +77,7 @@ afterEach(() => {
 
 // ── syncToServer ──────────────────────────────────────────────────────────────
 
-describe("useTenantSync — syncToServer: 201 success", () => {
+describe("useTenantSync - syncToServer: 201 success", () => {
   it("sets status to success and returns accessToken on 201", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 
@@ -142,12 +142,12 @@ describe("useTenantSync — syncToServer: 201 success", () => {
       await result.current.syncToServer(makeLocalConfig(), "pbkdf2hash");
     });
 
-    // Admin username matches — no update needed
+    // Admin username matches - no update needed
     expect(mockLocalAccountStorePut).not.toHaveBeenCalled();
   });
 });
 
-describe("useTenantSync — syncToServer: 409 conflict", () => {
+describe("useTenantSync - syncToServer: 409 conflict", () => {
   it("sets status to conflict and stores conflict data", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 
@@ -205,7 +205,7 @@ describe("useTenantSync — syncToServer: 409 conflict", () => {
   });
 });
 
-describe("useTenantSync — syncToServer: 400 validation error", () => {
+describe("useTenantSync - syncToServer: 400 validation error", () => {
   it("sets status to error with field messages on 400", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 
@@ -255,7 +255,7 @@ describe("useTenantSync — syncToServer: 400 validation error", () => {
   });
 });
 
-describe("useTenantSync — syncToServer: other errors", () => {
+describe("useTenantSync - syncToServer: other errors", () => {
   it("sets error on non-201/200/409/400 status", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 
@@ -333,7 +333,7 @@ describe("useTenantSync — syncToServer: other errors", () => {
 
 // ── retryWithChanges ──────────────────────────────────────────────────────────
 
-describe("useTenantSync — retryWithChanges", () => {
+describe("useTenantSync - retryWithChanges", () => {
   it("retries sync with new slug and admin username", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 
@@ -356,7 +356,7 @@ describe("useTenantSync — retryWithChanges", () => {
 
     const { result } = renderHook(() => useTenantSync());
 
-    // First sync — gets conflict
+    // First sync - gets conflict
     await act(async () => {
       await result.current.syncToServer(makeLocalConfig(), "pbkdf2hash");
     });
@@ -388,7 +388,7 @@ describe("useTenantSync — retryWithChanges", () => {
 
 // ── reset ─────────────────────────────────────────────────────────────────────
 
-describe("useTenantSync — reset", () => {
+describe("useTenantSync - reset", () => {
   it("resets status, conflict, and error to initial state", async () => {
     const { useTenantSync } = await import("../useTenantSync");
 

@@ -19,38 +19,35 @@
  */
 
 import * as fc from "fast-check";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { checkLocalBlockedStatus } from "../../localStatusCheck";
+import type { CardRepository } from "../../../interfaces/CardRepository";
+import type { UserRepository } from "../../../interfaces/UserRepository";
+import type { CardRecord } from "../../../interfaces/types";
+import type { UserRecord } from "../../../interfaces/types";
 
-// Mock the local-db module
-vi.mock("#/db/local-db", () => {
-  const cardsStore = new Map<string, any>();
-  const usersStore = new Map<string, any>();
+// ============================================================================
+// Helpers - create mock repositories backed by in-memory maps
+// ============================================================================
 
+function createMockCardRepo(cards: Map<string, CardRecord>): CardRepository {
   return {
-    localDb: {
-      cards: {
-        get: vi.fn(async (key: [string, string]) => {
-          return cardsStore.get(`${key[0]},${key[1]}`);
-        }),
-      },
-      users: {
-        get: vi.fn(async (key: [string, number]) => {
-          return usersStore.get(`${key[0]},${key[1]}`);
-        }),
-      },
-      // Expose stores for test setup
-      __cardsStore: cardsStore,
-      __usersStore: usersStore,
+    getByTenantAndCardId: async (tenantId: string, cardId: string) => {
+      return cards.get(`${tenantId},${cardId}`);
+    },
+    filterByCardIdExcludingDeleted: async () => [],
+    updateStatus: async () => {},
+    put: async () => {},
+  };
+}
+
+function createMockUserRepo(users: Map<string, UserRecord>): UserRepository {
+  return {
+    getByTenantAndUserId: async (tenantId: string, userId: string) => {
+      return users.get(`${tenantId},${userId}`);
     },
   };
-});
-
-// Import the mocked module to access test stores
-import { localDb } from "#/db/local-db";
-
-const cardsStore = (localDb as any).__cardsStore as Map<string, any>;
-const usersStore = (localDb as any).__usersStore as Map<string, any>;
+}
 
 // ============================================================================
 // Generators
@@ -70,24 +67,14 @@ const blockedCardStatusArb = fc.constantFrom(
   "blocked_admin" as const,
 );
 
-const userIdArb = fc.integer({ min: 1, max: 99999 });
+const userIdArb = fc.string({ minLength: 1, maxLength: 10 });
 
 // ============================================================================
-// Property 1: Expected Behavior — Blocked Card/Member Rejection (Post-Fix)
+// Property 1: Expected Behavior - Blocked Card/Member Rejection (Post-Fix)
 // ============================================================================
 
 describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => {
-  beforeEach(() => {
-    cardsStore.clear();
-    usersStore.clear();
-  });
-
-  afterEach(() => {
-    cardsStore.clear();
-    usersStore.clear();
-  });
-
-  describe("Req 2.1: GateSection uses hardware serial for card lookup — blocked cards ARE found", () => {
+  describe("Req 2.1: GateSection uses hardware serial for card lookup - blocked cards ARE found", () => {
     it("checkLocalBlockedStatus correctly detects blocked cards using hardware serial number", async () => {
       /**
        * **Validates: Requirements 2.1**
@@ -106,20 +93,32 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           blockedCardStatusArb,
           userIdArb,
           async (tenantId, hardwareSerial, blockedStatus, userId) => {
-            // Clear stores for each run
-            cardsStore.clear();
-            usersStore.clear();
+            const cards = new Map<string, CardRecord>();
+            const users = new Map<string, UserRecord>();
 
             // Set up local DB with a blocked card keyed by hardware serial
-            cardsStore.set(`${tenantId},${hardwareSerial}`, {
+            cards.set(`${tenantId},${hardwareSerial}`, {
               tenantId,
               cardId: hardwareSerial,
               userId,
               status: blockedStatus,
+              balance: 0,
+              counter: 0,
+              keyVersion: 1,
+              createdAt: 0,
+              lastActivityAt: null,
+              expiresAt: null,
+              notes: null,
             });
 
+            const cardRepo = createMockCardRepo(cards);
+            const userRepo = createMockUserRepo(users);
+
             // The fixed checkLocalBlockedStatus uses hardware serial (correct key)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, {
+              cardRepo,
+              userRepo,
+            });
 
             // Verify the fix correctly detects the blocked card
             expect(result.blocked).toBe(true);
@@ -131,18 +130,18 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
     });
   });
 
-  describe("Req 2.3: userId=0 — card-level check still catches blocked cards", () => {
-    it("checkLocalBlockedStatus detects blocked card even with userId=0 (unlinked card)", async () => {
+  describe("Req 2.3: userId=0 - card-level check still catches blocked cards", () => {
+    it("checkLocalBlockedStatus detects blocked card even with userId=null (unlinked card)", async () => {
       /**
        * **Validates: Requirements 2.3**
        *
-       * For any blocked card with userId=0 (unlinked card):
+       * For any blocked card with userId=null (unlinked card):
        * - The card-level block check catches it using the correct key
-       * - userId=0 correctly skips the member check (userId > 0 comparison)
+       * - userId=null correctly skips the member check
        * - But the card-level check still works
        *
        * This test PASSES after the fix because checkLocalBlockedStatus uses
-       * userId > 0 (numeric comparison) and still performs the card lookup.
+       * userId check and still performs the card lookup.
        */
       await fc.assert(
         fc.asyncProperty(
@@ -150,24 +149,34 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           hardwareSerialArb,
           blockedCardStatusArb,
           async (tenantId, hardwareSerial, blockedStatus) => {
-            // userId=0 means unlinked card — no member lookup needed
-
-            // Clear stores for each run
-            cardsStore.clear();
-            usersStore.clear();
+            const cards = new Map<string, CardRecord>();
+            const users = new Map<string, UserRecord>();
 
             // Set up local DB with a blocked card keyed by hardware serial
-            cardsStore.set(`${tenantId},${hardwareSerial}`, {
+            cards.set(`${tenantId},${hardwareSerial}`, {
               tenantId,
               cardId: hardwareSerial,
               userId: null,
               status: blockedStatus,
+              balance: 0,
+              counter: 0,
+              keyVersion: 1,
+              createdAt: 0,
+              lastActivityAt: null,
+              expiresAt: null,
+              notes: null,
             });
 
-            // The fixed checkLocalBlockedStatus with userId=0
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
+            const cardRepo = createMockCardRepo(cards);
+            const userRepo = createMockUserRepo(users);
 
-            // Verify card-level check works even with userId=0
+            // The fixed checkLocalBlockedStatus with userId=null
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, {
+              cardRepo,
+              userRepo,
+            });
+
+            // Verify card-level check works even with userId=null
             expect(result.blocked).toBe(true);
             expect(result.reason).toContain("Kartu diblokir");
           },
@@ -196,20 +205,32 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           blockedCardStatusArb,
           userIdArb,
           async (tenantId, hardwareSerial, blockedStatus, userId) => {
-            // Clear stores for each run
-            cardsStore.clear();
-            usersStore.clear();
+            const cards = new Map<string, CardRecord>();
+            const users = new Map<string, UserRecord>();
 
             // Set up local DB with a blocked card
-            cardsStore.set(`${tenantId},${hardwareSerial}`, {
+            cards.set(`${tenantId},${hardwareSerial}`, {
               tenantId,
               cardId: hardwareSerial,
               userId,
               status: blockedStatus,
+              balance: 0,
+              counter: 0,
+              keyVersion: 1,
+              createdAt: 0,
+              lastActivityAt: null,
+              expiresAt: null,
+              notes: null,
             });
 
+            const cardRepo = createMockCardRepo(cards);
+            const userRepo = createMockUserRepo(users);
+
             // The shared checkLocalBlockedStatus (now used by TerminalSection)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, {
+              cardRepo,
+              userRepo,
+            });
 
             // Verify blocked card is detected
             expect(result.blocked).toBe(true);
@@ -238,26 +259,39 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           hardwareSerialArb,
           userIdArb,
           async (tenantId, hardwareSerial, userId) => {
-            // Clear stores for each run
-            cardsStore.clear();
-            usersStore.clear();
+            const cards = new Map<string, CardRecord>();
+            const users = new Map<string, UserRecord>();
 
             // Card is active but member is suspended
-            cardsStore.set(`${tenantId},${hardwareSerial}`, {
+            cards.set(`${tenantId},${hardwareSerial}`, {
               tenantId,
               cardId: hardwareSerial,
               userId,
               status: "active",
+              balance: 0,
+              counter: 0,
+              keyVersion: 1,
+              createdAt: 0,
+              lastActivityAt: null,
+              expiresAt: null,
+              notes: null,
             });
 
-            usersStore.set(`${tenantId},${userId}`, {
+            users.set(`${tenantId},${userId}`, {
               tenantId,
               userId,
+              name: "Test User",
               status: "suspended",
             });
 
+            const cardRepo = createMockCardRepo(cards);
+            const userRepo = createMockUserRepo(users);
+
             // The shared checkLocalBlockedStatus (now used by StationSection)
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, {
+              cardRepo,
+              userRepo,
+            });
 
             // Verify suspended member is detected
             expect(result.blocked).toBe(true);
@@ -269,13 +303,13 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
     });
   });
 
-  describe("Req 2.2: Member suspension check with userId > 0", () => {
-    it("checkLocalBlockedStatus detects suspended member when userId > 0", async () => {
+  describe("Req 2.2: Member suspension check with userId", () => {
+    it("checkLocalBlockedStatus detects suspended member when userId is set", async () => {
       /**
        * **Validates: Requirements 2.2**
        *
-       * For any card linked to a member (userId > 0) where the member is suspended:
-       * - checkLocalBlockedStatus looks up the member in localDb.users
+       * For any card linked to a member (userId is non-null) where the member is suspended:
+       * - checkLocalBlockedStatus looks up the member in userRepo
        * - Returns { blocked: true, reason: "Akun anggota ditangguhkan..." }
        */
       await fc.assert(
@@ -284,25 +318,38 @@ describe("Property 1: Expected Behavior - Blocked Card/Member Rejection", () => 
           hardwareSerialArb,
           userIdArb,
           async (tenantId, hardwareSerial, userId) => {
-            // Clear stores for each run
-            cardsStore.clear();
-            usersStore.clear();
+            const cards = new Map<string, CardRecord>();
+            const users = new Map<string, UserRecord>();
 
             // Card is active, member is suspended
-            cardsStore.set(`${tenantId},${hardwareSerial}`, {
+            cards.set(`${tenantId},${hardwareSerial}`, {
               tenantId,
               cardId: hardwareSerial,
               userId,
               status: "active",
+              balance: 0,
+              counter: 0,
+              keyVersion: 1,
+              createdAt: 0,
+              lastActivityAt: null,
+              expiresAt: null,
+              notes: null,
             });
 
-            usersStore.set(`${tenantId},${userId}`, {
+            users.set(`${tenantId},${userId}`, {
               tenantId,
               userId,
+              name: "Test User",
               status: "suspended",
             });
 
-            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial);
+            const cardRepo = createMockCardRepo(cards);
+            const userRepo = createMockUserRepo(users);
+
+            const result = await checkLocalBlockedStatus(tenantId, hardwareSerial, {
+              cardRepo,
+              userRepo,
+            });
 
             expect(result.blocked).toBe(true);
             expect(result.reason).toContain("Akun anggota ditangguhkan");

@@ -44,7 +44,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
- * Extract tenantId from the event — either from the explicit field
+ * Extract tenantId from the event - either from the explicit field
  * or parsed from the idempotencyKey (format: "tenantId:cardIdHex:counter")
  */
 export function extractTenantId(event: ReconcileEvent): string | null {

@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
+import type { NfcPhase } from "#/hooks/types.ts";
 
 // ============================================================================
 // Types

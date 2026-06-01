@@ -53,7 +53,7 @@ const devTools: DevTool[] = [
     to: "/dev/nfc-test",
     icon: <Wifi size={24} className="text-muted-foreground" />,
     title: "NFC Raw Test",
-    description: "Direct NDEFReader API — scan, write, format without payload",
+    description: "Direct NDEFReader API - scan, write, format without payload",
   },
 ];
 
@@ -63,7 +63,7 @@ function DevIndexPage() {
     <div className="min-h-screen bg-white p-6 max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Dev Tools</h1>
-        <p className="text-sm text-muted-foreground mt-1">Internal tools — LAN/dev use only</p>
+        <p className="text-sm text-muted-foreground mt-1">Internal tools - LAN/dev use only</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {devTools.map((tool) => (
@@ -92,7 +92,7 @@ describe("DevIndexPage (/dev/)", () => {
 
   it("renders the subtitle", () => {
     render(<DevIndexPage />);
-    expect(screen.getByText("Internal tools — LAN/dev use only")).toBeDefined();
+    expect(screen.getByText("Internal tools - LAN/dev use only")).toBeDefined();
   });
 
   it("renders Issuance Test link", () => {
@@ -111,7 +111,7 @@ describe("DevIndexPage (/dev/)", () => {
     render(<DevIndexPage />);
     expect(screen.getByText("Read & write NFC card payload, no auth required")).toBeDefined();
     expect(
-      screen.getByText("Direct NDEFReader API — scan, write, format without payload"),
+      screen.getByText("Direct NDEFReader API - scan, write, format without payload"),
     ).toBeDefined();
   });
 

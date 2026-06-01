@@ -106,12 +106,12 @@ export const authRateLimit = createMiddleware<{ Bindings: Env }>(async (c, next)
   // After the response: record failed attempts, clear on success
   const status = c.res.status;
   if (status === 401) {
-    // Failed login — record the attempt
+    // Failed login - record the attempt
     record.timestamps.push(now);
     record.blocked = false;
     attemptLog.set(username, record);
   } else if (status === 200) {
-    // Successful login — reset the counter
+    // Successful login - reset the counter
     attemptLog.delete(username);
   }
 });

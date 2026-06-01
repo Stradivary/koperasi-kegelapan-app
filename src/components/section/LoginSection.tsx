@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { BRAND } from "#/lib/brand";
+import { BRAND } from "#/lib/utils/brand";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";
 import { DeviceSetupAuthPanel } from "../block/loginSection/DeviceSetupAuthPanel";
 import { LoginFormPanel } from "../block/loginSection/LoginFormPanel";
@@ -132,7 +132,7 @@ export function LoginSection() {
               flow.exitDeviceSetup();
               return;
             }
-            // Go back to auth step — enterDeviceSetup resets setupStep to "auth"
+            // Go back to auth step - enterDeviceSetup resets setupStep to "auth"
             flow.enterDeviceSetup();
           }}
         />

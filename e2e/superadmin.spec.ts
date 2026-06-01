@@ -7,7 +7,7 @@ async function loginAsSuperadmin(page: Page) {
   await page.click('button[type="submit"]');
 }
 
-test.describe("Superadmin — authentication", () => {
+test.describe("Superadmin - authentication", () => {
   test("shows login gate when not authenticated", async ({ page }) => {
     await page.goto("/superadmin");
     await expect(page.getByRole("heading", { name: /Superadmin Login/i })).toBeVisible();
@@ -44,7 +44,7 @@ test.describe("Superadmin — authentication", () => {
   });
 });
 
-test.describe("Superadmin — tenant management", () => {
+test.describe("Superadmin - tenant management", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsSuperadmin(page);
     // Wait for tenant list to load
@@ -94,7 +94,7 @@ test.describe("Superadmin — tenant management", () => {
   });
 });
 
-test.describe("Superadmin — account management", () => {
+test.describe("Superadmin - account management", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsSuperadmin(page);
     await expect(page.getByText(/Koperasi A|Tenant/i).first()).toBeVisible({ timeout: 5000 });

@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import { createMockD1, makeToken, createTestApp } from "./testHelpers";
 import { Hono } from "hono";
 
-describe("createMockD1 — prepare() without bind() (lines 52-63)", () => {
+describe("createMockD1 - prepare() without bind() (lines 52-63)", () => {
   it("prepare().raw() returns rawRows", async () => {
     const db = createMockD1({ rawRows: [["row1"], ["row2"]] });
     const stmt = db.prepare("SELECT 1");

@@ -1,6 +1,7 @@
 import { CARD_SIZE, WIRE_SIZE } from "../payload/types";
 import type { CardPayload } from "../payload/types";
 import { checkBlocked, checkBlockedSync, type BlockCheckResult } from "../validation/blockEnforcer";
+import type { CardRepository } from "../interfaces/CardRepository";
 
 export type NfcReadResult =
   | { ok: true; raw: Uint8Array; serialNumber: string }
@@ -186,9 +187,10 @@ async function enforceBlockOnOperation(
   tenantId: string,
   cardId: string,
   payload: CardPayload,
+  deps: { cardRepo: CardRepository },
 ): Promise<BlockGuardResult> {
   const onCardStatus = payload.identity.status;
-  const result = await checkBlocked(tenantId, cardId, onCardStatus);
+  const result = await checkBlocked(tenantId, cardId, deps, onCardStatus);
 
   if (result.blocked) {
     return {
@@ -224,8 +226,9 @@ export async function enforceBlockOnCheckin(
   tenantId: string,
   cardId: string,
   payload: CardPayload,
+  deps: { cardRepo: CardRepository },
 ): Promise<BlockGuardResult> {
-  return enforceBlockOnOperation(tenantId, cardId, payload);
+  return enforceBlockOnOperation(tenantId, cardId, payload, deps);
 }
 
 /**
@@ -251,8 +254,9 @@ export async function enforceBlockOnCheckout(
   tenantId: string,
   cardId: string,
   payload: CardPayload,
+  deps: { cardRepo: CardRepository },
 ): Promise<BlockGuardResult> {
-  return enforceBlockOnOperation(tenantId, cardId, payload);
+  return enforceBlockOnOperation(tenantId, cardId, payload, deps);
 }
 
 /**

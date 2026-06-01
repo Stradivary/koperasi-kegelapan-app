@@ -41,7 +41,7 @@ export function useTenantContext(tenantId: string, allowedRoles?: readonly strin
         return;
       }
 
-      // Validate device fingerprint — reject if context was copied from another device
+      // Validate device fingerprint - reject if context was copied from another device
       const runtimeFp = await getDeviceFingerprint();
       if (!active) return;
       if (context.deviceId !== runtimeFp) {

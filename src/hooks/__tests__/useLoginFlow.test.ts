@@ -88,7 +88,7 @@ afterEach(() => {
 
 // ── Initial mode detection ────────────────────────────────────────────────────
 
-describe("useLoginFlow — initial mode detection", () => {
+describe("useLoginFlow - initial mode detection", () => {
   it("starts in detecting mode before effect runs", async () => {
     const { useLoginFlow } = await import("../useLoginFlow");
     const { result } = renderHook(() => useLoginFlow());
@@ -183,7 +183,7 @@ describe("useLoginFlow — initial mode detection", () => {
 
 // ── Mode transitions ──────────────────────────────────────────────────────────
 
-describe("useLoginFlow — mode transitions", () => {
+describe("useLoginFlow - mode transitions", () => {
   async function getHookInLoginMode() {
     const { useLoginFlow } = await import("../useLoginFlow");
     const { result } = renderHook(() => useLoginFlow());
@@ -291,7 +291,7 @@ describe("useLoginFlow — mode transitions", () => {
 
 // ── Scout browse ──────────────────────────────────────────────────────────────
 
-describe("useLoginFlow — enterScoutBrowse", () => {
+describe("useLoginFlow - enterScoutBrowse", () => {
   it("sets mode to scout-browse and loads local tenants", async () => {
     const { useLoginFlow } = await import("../useLoginFlow");
     const localTenants = [
@@ -330,7 +330,7 @@ describe("useLoginFlow — enterScoutBrowse", () => {
   });
 });
 
-describe("useLoginFlow — handleScoutSelectTenant", () => {
+describe("useLoginFlow - handleScoutSelectTenant", () => {
   it("stores scout context and navigates to scout route", async () => {
     const { useLoginFlow } = await import("../useLoginFlow");
     const { result } = renderHook(() => useLoginFlow());
@@ -355,7 +355,7 @@ describe("useLoginFlow — handleScoutSelectTenant", () => {
 
 // ── Device role ───────────────────────────────────────────────────────────────
 
-describe("useLoginFlow — advanceToPickRole and handlePickDeviceRole", () => {
+describe("useLoginFlow - advanceToPickRole and handlePickDeviceRole", () => {
   it("advanceToPickRole sets pendingContext and setupStep to pick-role", async () => {
     const { useLoginFlow } = await import("../useLoginFlow");
     const { result } = renderHook(() => useLoginFlow());
@@ -425,7 +425,7 @@ describe("useLoginFlow — advanceToPickRole and handlePickDeviceRole", () => {
 
 // ── redirectToRole ────────────────────────────────────────────────────────────
 
-describe("useLoginFlow — redirectToRole", () => {
+describe("useLoginFlow - redirectToRole", () => {
   const roleRoutes: Array<[string, string]> = [
     ["admin", "/tenant/t-1/admin"],
     ["station", "/tenant/t-1/station"],

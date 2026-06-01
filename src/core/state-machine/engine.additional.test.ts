@@ -55,7 +55,7 @@ function makePayload(
 
 const NOW = 1700010000;
 
-describe("validateTransition — additional coverage", () => {
+describe("validateTransition - additional coverage", () => {
   it("rejects gate_checkin when balance is below minimum", () => {
     // Balance below MIN_BALANCE_BEFORE_CHECKIN (10,000)
     const payload = makePayload(CardState.IDLE, CardStatus.ACTIVE, 5000);
@@ -77,13 +77,13 @@ describe("validateTransition — additional coverage", () => {
     expect(r.valid).toBe(true);
   });
 
-  it("rejects invalid transition (nextState undefined) — CHECKED_OUT via terminal_start", () => {
+  it("rejects invalid transition (nextState undefined) - CHECKED_OUT via terminal_start", () => {
     const r = validateTransition(makePayload(CardState.CHECKED_OUT), "terminal_start", NOW);
     expect(r.valid).toBe(false);
     expect(r.reason).toContain("Invalid transition");
   });
 
-  it("rejects invalid transition — IDLE via gate_checkout", () => {
+  it("rejects invalid transition - IDLE via gate_checkout", () => {
     const r = validateTransition(makePayload(CardState.IDLE), "gate_checkout", NOW);
     expect(r.valid).toBe(false);
     expect(r.reason).toContain("Invalid transition");

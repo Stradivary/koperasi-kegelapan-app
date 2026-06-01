@@ -1,5 +1,5 @@
 /**
- * Unit tests for tenantBind — FNV-32a hash and tenant binding validation.
+ * Unit tests for tenantBind - FNV-32a hash and tenant binding validation.
  *
  * Security-critical: the tenantBind === 0 legacy bypass allows any card with
  * a zero binding to pass tenant validation. This must be explicitly tested.
@@ -60,7 +60,7 @@ describe("fnv32a", () => {
   });
 
   it("known vector: 'foobar' produces a stable hash", () => {
-    // FNV-32a("foobar") = 0xbf9cf968 — computed from the spec
+    // FNV-32a("foobar") = 0xbf9cf968 - computed from the spec
     expect(fnv32a("foobar")).toBe(0xbf9cf968);
   });
 });

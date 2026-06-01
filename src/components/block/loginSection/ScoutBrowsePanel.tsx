@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, BookOpen, Search, WifiOff } from "lucide-react";
 import type { TenantSearchResult } from "#/hooks/useServerTenantSearch";
-import type { LocalTenantConfig } from "#/lib/indexeddb";
+import type { LocalTenantConfig } from "#/hooks/types";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
 import { Button } from "../../ui/button";

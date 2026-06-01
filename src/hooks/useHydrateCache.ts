@@ -1,5 +1,5 @@
 /**
- * useHydrateCache — Populates React Query cache from IndexedDB (Dexie)
+ * useHydrateCache - Populates React Query cache from IndexedDB (Dexie)
  * on login and on every page navigation.
  *
  * This ensures the UI always has fresh data from the local DB without
@@ -30,7 +30,7 @@ export async function hydrateQueryCache(
     getUserRows(tenantId),
   ]);
 
-  // Set cache directly — this populates the queries without triggering a refetch
+  // Set cache directly - this populates the queries without triggering a refetch
   queryClient.setQueryData(["station-cards", tenantId], stationCards);
   queryClient.setQueryData(["users", tenantId], filteredUsers);
 }
@@ -58,7 +58,7 @@ export function useHydrateCache(tenantId: string | null | undefined, lastSyncedA
         if (cancelled) return;
         await hydrateQueryCache(queryClient, tenantId!);
       } catch (err) {
-        // Non-critical — queries will still work via their own queryFn
+        // Non-critical - queries will still work via their own queryFn
         console.warn("[useHydrateCache] Failed to hydrate cache:", err);
       } finally {
         isHydratingRef.current = false;

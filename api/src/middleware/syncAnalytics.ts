@@ -1,5 +1,5 @@
 /**
- * Sync Analytics Middleware — writes structured events to Cloudflare Analytics Engine.
+ * Sync Analytics Middleware - writes structured events to Cloudflare Analytics Engine.
  *
  * Captures sync endpoint metrics: latency, status codes, batch sizes, tenant/device context.
  * Data is queryable via Cloudflare Analytics Engine SQL API or the dashboard.
@@ -108,7 +108,7 @@ async function extractPushCounts(
 
     return { acceptedCount, rejectedCount, responseSize, errorReason };
   } catch {
-    // Non-critical — skip body parsing
+    // Non-critical - skip body parsing
     return { acceptedCount: 0, rejectedCount: 0, responseSize: 0, errorReason: "" };
   }
 }

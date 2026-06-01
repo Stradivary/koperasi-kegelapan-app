@@ -23,7 +23,7 @@ vi.mock("#/lib/indexeddb", () => ({
   },
 }));
 
-vi.mock("#/lib/brand", () => ({
+vi.mock("#/lib/utils/brand", () => ({
   BRAND: { APP_NAME: "TestApp", BYLINE: "Test Byline" },
 }));
 
@@ -165,7 +165,7 @@ describe("AdminLayout", () => {
     render(<AdminLayout {...defaultProps} />);
     const menuBtn = screen.getByTestId("menu-icon").closest("button")!;
     await userEvent.click(menuBtn);
-    // Mobile drawer opens — "Keluar" text should now be visible
+    // Mobile drawer opens - "Keluar" text should now be visible
     expect(screen.getByText("Keluar")).toBeDefined();
   });
 

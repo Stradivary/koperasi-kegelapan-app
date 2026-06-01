@@ -354,7 +354,7 @@ function resolveTimestamp(nowSeconds: number): number {
   if (nowSeconds === 0) {
     const fallback = Math.floor(Date.now() / 1000);
     console.warn(
-      `[state-machine] nowSeconds is 0 — substituting wall-clock time (${fallback}). This indicates a programming error.`,
+      `[state-machine] nowSeconds is 0 - substituting wall-clock time (${fallback}). This indicates a programming error.`,
     );
     return fallback;
   }

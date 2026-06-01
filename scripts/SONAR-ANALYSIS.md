@@ -16,7 +16,7 @@ node scripts/compact-sonar.mjs --mode=by-file     --out=.sonar-compact/by-file
 node scripts/compact-sonar.mjs --mode=by-severity --out=.sonar-compact/by-severity
 ```
 
-Output lands in `.sonar-compact/` (already gitignored — regenerate any time).
+Output lands in `.sonar-compact/` (already gitignored - regenerate any time).
 
 ---
 
@@ -33,7 +33,7 @@ Output lands in `.sonar-compact/` (already gitignored — regenerate any time).
 
 ## Recommended AI workflow
 
-### 1. Triage — start here
+### 1. Triage - start here
 
 Feed `summary.json` to get the lay of the land:
 
@@ -44,7 +44,7 @@ Analyze .sonar-compact/summary.json and tell me:
 - What should I fix first?
 ```
 
-### 2. Fix by rule — highest ROI
+### 2. Fix by rule - highest ROI
 
 Each rule file contains every occurrence across the codebase with file + line.
 Fix one rule type in a single focused pass.
@@ -68,7 +68,7 @@ Here are all occurrences of nested ternaries in the codebase:
 Fix each one. Prefer early returns or extracted variables over nested ternaries.
 ```
 
-### 3. Fix by file — clean up a file completely
+### 3. Fix by file - clean up a file completely
 
 Each file chunk lists every issue in that file sorted by line number.
 
@@ -78,7 +78,7 @@ Fix all sonar issues in this file:
 #file:src/components/layout/AdminLayout.tsx
 ```
 
-### 4. Fix by severity — prioritize CRITICAL
+### 4. Fix by severity - prioritize CRITICAL
 
 ```
 Fix all CRITICAL issues:

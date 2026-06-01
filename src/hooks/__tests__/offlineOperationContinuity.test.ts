@@ -325,7 +325,7 @@ describe("Offline Operation Continuity", () => {
 
   describe("Req 12.7: Indexed keys for blocked check lookups", () => {
     it("localDb.cards uses compound index [tenantId+cardId] for O(1) lookup", async () => {
-      // This is a structural verification — the Dexie schema defines:
+      // This is a structural verification - the Dexie schema defines:
       // cards: "[tenantId+cardId], tenantId, userId, [tenantId+syncStatus]"
       // The primary key [tenantId+cardId] ensures indexed lookups.
       // checkLocalBlockedStatus uses localDb.cards.get([tenantId, normalizedSerial])
@@ -333,9 +333,9 @@ describe("Offline Operation Continuity", () => {
 
       const { checkLocalBlockedStatus } = await import("#/core/nfc/localStatusCheck");
 
-      // The function signature accepts tenantId and serialNumber
+      // The function signature accepts tenantId, serialNumber, and deps
       expect(typeof checkLocalBlockedStatus).toBe("function");
-      expect(checkLocalBlockedStatus.length).toBe(2); // 2 parameters: tenantId, serialNumber
+      expect(checkLocalBlockedStatus.length).toBe(3); // 3 parameters: tenantId, serialNumber, deps
     });
   });
 });

@@ -142,7 +142,7 @@ function makeTxEntry(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("syncPull — additional coverage", () => {
+describe("syncPull - additional coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsDeviceBlocked.mockReturnValue(false);

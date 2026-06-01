@@ -80,7 +80,7 @@ afterEach(() => {
 
 // ── connect / SSE lifecycle ───────────────────────────────────────────────────
 
-describe("connect — SSE lifecycle", () => {
+describe("connect - SSE lifecycle", () => {
   it("creates an EventSource on connect", async () => {
     const { connect, disconnect } = await import("../realTimeSync");
     connect({ tenantId: "t1", deviceId: "d1", sseUrl: "https://api.test/sse" });
@@ -161,7 +161,7 @@ describe("connect — SSE lifecycle", () => {
 
 // ── scheduleReconnect / exponential backoff ───────────────────────────────────
 
-describe("scheduleReconnect — exponential backoff", () => {
+describe("scheduleReconnect - exponential backoff", () => {
   it("logs error after SSE error exhausts MAX_RECONNECT_ATTEMPTS", async () => {
     const { connect, disconnect } = await import("../realTimeSync");
     vi.useFakeTimers();
@@ -190,7 +190,7 @@ describe("scheduleReconnect — exponential backoff", () => {
 
 // ── handleSseMessage / parseSseMessage ────────────────────────────────────────
 
-describe("handleSseMessage — message parsing and routing", () => {
+describe("handleSseMessage - message parsing and routing", () => {
   it("ignores messages from own device", async () => {
     const { connect, disconnect, onEvent } = await import("../realTimeSync");
     connect({ tenantId: "t1", deviceId: "my-device", sseUrl: "https://api.test/sse" });
@@ -284,7 +284,7 @@ describe("handleSseMessage — message parsing and routing", () => {
 
 // ── handleCardStatusChange ────────────────────────────────────────────────────
 
-describe("handleCardStatusChange — IndexedDB writes", () => {
+describe("handleCardStatusChange - IndexedDB writes", () => {
   it("updates existing card status when card is found in DB", async () => {
     const { connect, disconnect } = await import("../realTimeSync");
     mockCardsGet.mockResolvedValue({ tenantId: "t1", cardId: "abc", status: "active" });
@@ -405,7 +405,7 @@ describe("handleCardStatusChange — IndexedDB writes", () => {
     MockEventSource.instances[0].triggerMessage(msg);
     await vi.waitFor(() => expect(getCardsNeedingResync().has("t1:retry-card")).toBe(true));
 
-    // Now succeed — reset mock to succeed
+    // Now succeed - reset mock to succeed
     mockCardsGet.mockResolvedValue({ tenantId: "t1", cardId: "retry-card", status: "active" });
     mockCardsUpdate.mockResolvedValue(undefined);
     MockEventSource.instances[0].triggerMessage(msg);
@@ -450,9 +450,9 @@ describe("fullSyncOnLogin", () => {
   });
 });
 
-// ── onEvent — handler lifecycle ───────────────────────────────────────────────
+// ── onEvent - handler lifecycle ───────────────────────────────────────────────
 
-describe("onEvent — handler lifecycle", () => {
+describe("onEvent - handler lifecycle", () => {
   it("unsubscribing last handler removes the event type from map", async () => {
     const { onEvent, disconnect } = await import("../realTimeSync");
     const h = vi.fn();
@@ -488,7 +488,7 @@ describe("onEvent — handler lifecycle", () => {
 
 // ── EventSource constructor throws ───────────────────────────────────────────
 
-describe("connect — EventSource constructor failure", () => {
+describe("connect - EventSource constructor failure", () => {
   it("falls back to periodic pull when EventSource throws", async () => {
     vi.stubGlobal("EventSource", () => {
       throw new Error("Not supported");

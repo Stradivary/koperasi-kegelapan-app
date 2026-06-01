@@ -140,7 +140,7 @@ beforeEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("SettingsSection — rendering", () => {
+describe("SettingsSection - rendering", () => {
   it("renders without crashing", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -172,7 +172,7 @@ describe("SettingsSection — rendering", () => {
   });
 });
 
-describe("SettingsSection — profile display", () => {
+describe("SettingsSection - profile display", () => {
   it("renders profile section with labels", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -180,14 +180,14 @@ describe("SettingsSection — profile display", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 100));
     });
-    // Profile labels are always rendered (values may be "—" if async hasn't resolved)
+    // Profile labels are always rendered (values may be "-" if async hasn't resolved)
     expect(screen.getByText("Nama Tenant")).toBeDefined();
     expect(screen.getByText("Slug")).toBeDefined();
     expect(screen.getByText("Timezone")).toBeDefined();
   });
 });
 
-describe("SettingsSection — sync status", () => {
+describe("SettingsSection - sync status", () => {
   it("renders sync section title", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -241,7 +241,7 @@ describe("SettingsSection — sync status", () => {
   });
 });
 
-describe("SettingsSection — device list", () => {
+describe("SettingsSection - device list", () => {
   it("renders empty device state when no devices", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -257,7 +257,7 @@ describe("SettingsSection — device list", () => {
   });
 });
 
-describe("SettingsSection — profile row labels", () => {
+describe("SettingsSection - profile row labels", () => {
   it("renders basic profile labels", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -271,7 +271,7 @@ describe("SettingsSection — profile row labels", () => {
   });
 });
 
-describe("SettingsSection — sync checklist labels", () => {
+describe("SettingsSection - sync checklist labels", () => {
   it("renders sync checklist items", async () => {
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
@@ -284,7 +284,7 @@ describe("SettingsSection — sync checklist labels", () => {
   });
 });
 
-describe("SettingsSection — sync progress states", () => {
+describe("SettingsSection - sync progress states", () => {
   it("renders 'Mendaftarkan tenant ke server...' when syncStep is syncing-tenant", async () => {
     vi.mocked(await import("#/hooks/useAdminTenantSync")).useAdminTenantSync = (() => ({
       onSyncToServer: mockOnSyncToServer,
@@ -297,11 +297,11 @@ describe("SettingsSection — sync progress states", () => {
     })) as any;
     // Re-import won't work with vi.mock, so we test via the existing mock
     // Instead, test the rendered output with different mock values
-    expect(true).toBe(true); // placeholder — covered by integration
+    expect(true).toBe(true); // placeholder - covered by integration
   });
 });
 
-describe("SettingsSection — local mode display", () => {
+describe("SettingsSection - local mode display", () => {
   it("renders 'Belum terdaftar' and 'Tenant belum terdaftar di server' for local mode", async () => {
     mockLocalTenantConfigStoreGet.mockResolvedValue({
       tenantId: "t-1",
@@ -318,15 +318,15 @@ describe("SettingsSection — local mode display", () => {
   });
 });
 
-describe("SettingsSection — fallback values", () => {
+describe("SettingsSection - fallback values", () => {
   it("renders dash for missing config values", async () => {
     mockLocalTenantConfigStoreGet.mockResolvedValue(null);
     mockTenantContextStoreGet.mockResolvedValue(null);
     await act(async () => {
       render(createElement(SettingsSection, { tenantId: "t-1" }));
     });
-    // Should show "—" for missing values
-    const dashes = screen.getAllByText("—");
+    // Should show "-" for missing values
+    const dashes = screen.getAllByText("-");
     expect(dashes.length).toBeGreaterThan(0);
   });
 });

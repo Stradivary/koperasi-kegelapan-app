@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
-import { formatTime, formatDuration } from "../formatters";
+import { formatTime, formatDuration } from "../utils/formatters";
 
 describe("formatTime", () => {
   it("formats unix seconds to HH:MM time string", () => {

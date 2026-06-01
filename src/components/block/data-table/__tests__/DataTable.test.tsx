@@ -87,7 +87,7 @@ afterEach(() => {
   mockIsMobile = false;
 });
 
-describe("DataTable — loading state", () => {
+describe("DataTable - loading state", () => {
   it("renders skeleton when isLoading=true", () => {
     render(createElement(DataTable, { columns: columns as any, data: [], isLoading: true }));
     expect(screen.getByTestId("skeleton")).toBeDefined();
@@ -99,7 +99,7 @@ describe("DataTable — loading state", () => {
   });
 });
 
-describe("DataTable — error state", () => {
+describe("DataTable - error state", () => {
   it("renders error message", () => {
     render(
       createElement(DataTable, {
@@ -112,7 +112,7 @@ describe("DataTable — error state", () => {
   });
 });
 
-describe("DataTable — empty state", () => {
+describe("DataTable - empty state", () => {
   it("renders default empty state when no data", () => {
     render(createElement(DataTable, { columns: columns as any, data: [] }));
     expect(screen.getByText("No data available")).toBeDefined();
@@ -151,7 +151,7 @@ describe("DataTable — empty state", () => {
   });
 });
 
-describe("DataTable — desktop rendering", () => {
+describe("DataTable - desktop rendering", () => {
   it("renders table with data rows", () => {
     render(createElement(DataTable, { columns: columns as any, data: testData }));
     expect(screen.getByTestId("table")).toBeDefined();
@@ -185,7 +185,7 @@ describe("DataTable — desktop rendering", () => {
   });
 });
 
-describe("DataTable — mobile rendering", () => {
+describe("DataTable - mobile rendering", () => {
   beforeEach(() => {
     mockIsMobile = true;
   });
@@ -220,7 +220,7 @@ describe("DataTable — mobile rendering", () => {
   });
 });
 
-describe("DataTable — search", () => {
+describe("DataTable - search", () => {
   it("renders search input when showSearch=true", () => {
     render(createElement(DataTable, { columns: columns as any, data: testData, showSearch: true }));
     expect(screen.getByTestId("search-input")).toBeDefined();
@@ -258,7 +258,7 @@ describe("DataTable — search", () => {
   });
 });
 
-describe("DataTable — pagination", () => {
+describe("DataTable - pagination", () => {
   it("renders pagination when showPagination=true and data exists", () => {
     render(
       createElement(DataTable, { columns: columns as any, data: testData, showPagination: true }),
@@ -279,7 +279,7 @@ describe("DataTable — pagination", () => {
   });
 });
 
-describe("DataTable — header", () => {
+describe("DataTable - header", () => {
   it("renders custom header content", () => {
     const header = createElement("div", { "data-testid": "custom-header" }, "My Header");
     render(createElement(DataTable, { columns: columns as any, data: testData, header }));
@@ -287,7 +287,7 @@ describe("DataTable — header", () => {
   });
 });
 
-describe("DataTable — sorting", () => {
+describe("DataTable - sorting", () => {
   it("renders sort icons when enableSorting=true", () => {
     render(
       createElement(DataTable, { columns: columns as any, data: testData, enableSorting: true }),

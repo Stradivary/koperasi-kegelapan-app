@@ -24,7 +24,7 @@ import {
 import { ChangePasswordDialog } from "../block/dialogs/ChangePasswordDialog";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
 import type { TenantDetail, TenantStatus } from "#/server/superadminTenants.types";
-import { API_BASE_URL } from "#/lib/api";
+import { API_BASE_URL } from "#/hooks/useApi";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

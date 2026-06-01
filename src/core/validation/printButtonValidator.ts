@@ -1,5 +1,5 @@
 /**
- * PrintButtonValidator — Evaluates whether the print button should be enabled
+ * PrintButtonValidator - Evaluates whether the print button should be enabled
  * based on the final card state and user options.
  *
  * Priority order:
@@ -11,7 +11,8 @@
  * @see Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
  */
 
-import { localDb, type Card } from "#/db/local-db";
+import type { CardRecord } from "../interfaces/types";
+import type { CardRepository } from "../interfaces/CardRepository";
 
 /** Result of print eligibility evaluation */
 export interface PrintEligibility {
@@ -36,7 +37,7 @@ export interface PrintOptions {
  * @returns PrintEligibility result
  */
 export function evaluatePrintEligibilitySync(
-  card: Card | undefined,
+  card: CardRecord | undefined,
   options: PrintOptions,
 ): PrintEligibility {
   // Requirement 1.1: Card not found → CARD_NOT_FOUND
@@ -85,11 +86,12 @@ export async function evaluatePrintEligibility(
   cardId: string,
   options: PrintOptions,
   tenantId: string,
+  deps: { cardRepo: CardRepository },
 ): Promise<PrintEligibility> {
-  let card: Card | undefined;
+  let card: CardRecord | undefined;
 
   try {
-    card = await localDb.cards.get([tenantId, cardId]);
+    card = await deps.cardRepo.getByTenantAndCardId(tenantId, cardId);
   } catch {
     // Requirement 1.6: IndexedDB read failure → CARD_NOT_FOUND
     return { enabled: false, reason: "CARD_NOT_FOUND" };

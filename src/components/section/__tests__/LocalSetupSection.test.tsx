@@ -30,10 +30,10 @@ const mockSetup = {
 };
 
 vi.mock("#/hooks/useLocalSetup", () => ({ useLocalSetup: () => mockSetup }));
-vi.mock("#/lib/slugValidation", () => ({
+vi.mock("#/lib/utils/slugValidation", () => ({
   createSlug: (n: string) => n.toLowerCase().replace(/\s+/g, "-"),
 }));
-vi.mock("#/lib/brand", () => ({ BRAND: { APP_NAME: "TestApp" } }));
+vi.mock("#/lib/utils/brand", () => ({ BRAND: { APP_NAME: "TestApp" } }));
 vi.mock("../layout/AuthLayout", () => ({
   AuthLayout: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="auth-layout">{children}</div>
@@ -83,7 +83,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe("LocalSetupSection — tenant step", () => {
+describe("LocalSetupSection - tenant step", () => {
   it("renders tenant name and slug inputs", () => {
     render(<LocalSetupSection {...defaultProps} />);
     expect(screen.getByPlaceholderText("Contoh: Koperasi Maju")).toBeDefined();
@@ -145,7 +145,7 @@ describe("LocalSetupSection — tenant step", () => {
   });
 });
 
-describe("LocalSetupSection — admin step", () => {
+describe("LocalSetupSection - admin step", () => {
   beforeEach(() => {
     mockSetup.step = "admin";
     mockSetup.tenantName = "My Koperasi";
@@ -228,7 +228,7 @@ describe("LocalSetupSection — admin step", () => {
   });
 });
 
-describe("LocalSetupSection — done step", () => {
+describe("LocalSetupSection - done step", () => {
   beforeEach(() => {
     mockSetup.step = "done";
   });

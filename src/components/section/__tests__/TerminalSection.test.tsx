@@ -43,7 +43,7 @@ vi.mock("#/core/state-machine/engine", () => ({
 vi.mock("#/hooks/nfc/updateLocalCardRecord", () => ({
   updateLocalCardRecord: (...args: unknown[]) => mockUpdateLocalCardRecord(...args),
 }));
-vi.mock("#/lib/formatters", () => ({
+vi.mock("#/lib/utils/formatters", () => ({
   formatDuration: (s: number) => `${Math.floor(s / 3600)}h`,
 }));
 
@@ -198,7 +198,7 @@ describe("TerminalSection", () => {
     const errorEl = screen.queryByText("Tidak ada sesi aktif. Hubungi petugas.");
     // If not found, check for any error-related text
     if (!errorEl) {
-      // Component may render differently — just verify it renders without crashing
+      // Component may render differently - just verify it renders without crashing
       expect(document.body).toBeDefined();
     } else {
       expect(errorEl).toBeDefined();

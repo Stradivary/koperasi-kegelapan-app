@@ -35,7 +35,7 @@ vi.mock("#/lib/localTenant", () => ({
 
 const mockValidateSlugFormat = vi.fn();
 const mockCreateSlug = vi.fn();
-vi.mock("#/lib/slugValidation", () => ({
+vi.mock("#/lib/utils/slugValidation", () => ({
   validateSlugFormat: (...args: unknown[]) => mockValidateSlugFormat(...args),
   createSlug: (...args: unknown[]) => mockCreateSlug(...args),
 }));
@@ -80,7 +80,7 @@ afterEach(() => {
 
 // ── Initial state ─────────────────────────────────────────────────────────────
 
-describe("useLocalSetup — initial state", () => {
+describe("useLocalSetup - initial state", () => {
   it("starts at tenant step with empty fields", async () => {
     const { useLocalSetup } = await import("../useLocalSetup");
     const { result } = renderHook(() => useLocalSetup({ onComplete: vi.fn() }));
@@ -99,7 +99,7 @@ describe("useLocalSetup — initial state", () => {
 
 // ── handleNextStep ────────────────────────────────────────────────────────────
 
-describe("useLocalSetup — handleNextStep", () => {
+describe("useLocalSetup - handleNextStep", () => {
   it("advances to admin step when slug is valid and not taken", async () => {
     const { useLocalSetup } = await import("../useLocalSetup");
     const { result } = renderHook(() => useLocalSetup({ onComplete: vi.fn() }));
@@ -204,7 +204,7 @@ describe("useLocalSetup — handleNextStep", () => {
 
 // ── handleSetup ───────────────────────────────────────────────────────────────
 
-describe("useLocalSetup — handleSetup: password validation", () => {
+describe("useLocalSetup - handleSetup: password validation", () => {
   async function getHookAtAdminStep() {
     const { useLocalSetup } = await import("../useLocalSetup");
     const onComplete = vi.fn();
@@ -253,7 +253,7 @@ describe("useLocalSetup — handleSetup: password validation", () => {
   });
 });
 
-describe("useLocalSetup — handleSetup: successful setup", () => {
+describe("useLocalSetup - handleSetup: successful setup", () => {
   async function getHookReadyForSetup() {
     const { useLocalSetup } = await import("../useLocalSetup");
     const onComplete = vi.fn();
@@ -322,7 +322,7 @@ describe("useLocalSetup — handleSetup: successful setup", () => {
       await result.current.handleSetup();
     });
 
-    expect(onComplete).not.toHaveBeenCalled(); // not yet — 1200ms delay
+    expect(onComplete).not.toHaveBeenCalled(); // not yet - 1200ms delay
 
     await act(async () => {
       vi.advanceTimersByTime(1200);
@@ -356,7 +356,7 @@ describe("useLocalSetup — handleSetup: successful setup", () => {
   });
 });
 
-describe("useLocalSetup — handleSetup: error handling", () => {
+describe("useLocalSetup - handleSetup: error handling", () => {
   it("sets error and clears loading when setupLocalTenant throws", async () => {
     const { useLocalSetup } = await import("../useLocalSetup");
     mockSetupLocalTenant.mockRejectedValue(new Error("DB write failed"));
@@ -386,7 +386,7 @@ describe("useLocalSetup — handleSetup: error handling", () => {
 
 // ── Slug debounce validation ──────────────────────────────────────────────────
 
-describe("useLocalSetup — slug debounce validation", () => {
+describe("useLocalSetup - slug debounce validation", () => {
   it("validates slug after 300ms debounce", async () => {
     const { useLocalSetup } = await import("../useLocalSetup");
     mockIsSlugTaken.mockResolvedValue({ taken: true, source: "local" });
@@ -428,7 +428,7 @@ describe("useLocalSetup — slug debounce validation", () => {
 
     expect(result.current.slugError).toBe("Format salah");
 
-    // Now fix the slug — format is valid and not taken
+    // Now fix the slug - format is valid and not taken
     mockValidateSlugFormat.mockReturnValue(null);
     mockIsSlugTaken.mockResolvedValue({ taken: false });
     act(() => {
@@ -466,7 +466,7 @@ describe("useLocalSetup — slug debounce validation", () => {
 
 // ── setStep ───────────────────────────────────────────────────────────────────
 
-describe("useLocalSetup — setStep", () => {
+describe("useLocalSetup - setStep", () => {
   it("allows manually setting step back to tenant", async () => {
     const { useLocalSetup } = await import("../useLocalSetup");
     const { result } = renderHook(() => useLocalSetup({ onComplete: vi.fn() }));

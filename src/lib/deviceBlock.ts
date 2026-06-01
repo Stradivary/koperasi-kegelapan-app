@@ -41,7 +41,7 @@ export function isDeviceBlocked(): boolean {
   if (_blockState.blockedUntil !== null) {
     const nowSeconds = Math.floor(Date.now() / 1000);
     if (_blockState.blockedUntil <= nowSeconds) {
-      // Block expired locally — clear it
+      // Block expired locally - clear it
       clearBlockState();
       return false;
     }
@@ -95,7 +95,7 @@ export function clearBlockState(): void {
  * ```ts
  * const res = await fetch(url, options);
  * if (await checkDeviceBlockResponse(res, tenantId)) {
- *   // Request was blocked — caller should abort
+ *   // Request was blocked - caller should abort
  *   return;
  * }
  * ```
@@ -114,7 +114,7 @@ export async function checkDeviceBlockResponse(
       return true;
     }
   } catch {
-    // Not a JSON response or not a device_blocked error — ignore
+    // Not a JSON response or not a device_blocked error - ignore
   }
 
   return false;
@@ -163,12 +163,12 @@ async function clearAuthState(tenantId?: string): Promise<void> {
       }
     }
 
-    // Clear all session grant caches — they're invalid after a block
+    // Clear all session grant caches - they're invalid after a block
     // Since sessionGrantCacheStore doesn't have a getAll/clearAll,
     // we clear via the raw IndexedDB API
     await clearSessionGrantCache(tenantId);
   } catch {
-    // Best-effort cleanup — don't throw if IndexedDB fails
+    // Best-effort cleanup - don't throw if IndexedDB fails
   }
 }
 

@@ -8,7 +8,7 @@
 import { API_BASE_URL } from "./api";
 import type { LocalAccount, LocalTenantConfig } from "./indexeddb";
 import { getIndexedDb } from "./indexeddb.lazy";
-import { createSlug, validateSlugFormat } from "./slugValidation";
+import { createSlug, validateSlugFormat } from "./utils/slugValidation";
 
 const PBKDF2_ITERATIONS = 100_000;
 const PBKDF2_HASH = "SHA-256";
@@ -85,7 +85,7 @@ export async function isRemoteSlugTaken(slug: string): Promise<boolean> {
     const tenants: { slug?: string }[] = data.tenants ?? data.results ?? data ?? [];
     return tenants.some((t) => t.slug === slug);
   } catch {
-    // Network error / offline — allow proceeding
+    // Network error / offline - allow proceeding
     return false;
   }
 }
@@ -229,7 +229,7 @@ export async function localLoginWithReason(
   }
 
   // If a tenant slug was specified, verify the account belongs to that tenant
-  // BEFORE checking the password — so we can give a specific error.
+  // BEFORE checking the password - so we can give a specific error.
   if (tenantSlug && cfg.slug !== tenantSlug) {
     return { success: false, reason: "wrong_tenant" };
   }
@@ -276,7 +276,7 @@ export interface CacheServerCredentialsParams {
  * - If the tenant config doesn't exist, creates one with mode="synced".
  * - If it exists, updates syncedAt timestamp.
  *
- * This is fire-and-forget safe — failures here don't block login.
+ * This is fire-and-forget safe - failures here don't block login.
  */
 export async function cacheServerCredentials(params: CacheServerCredentialsParams): Promise<void> {
   const { tenantId, tenantSlug, tenantName, accountId, role, username, password } = params;
@@ -287,7 +287,7 @@ export async function cacheServerCredentials(params: CacheServerCredentialsParam
 
   const { localAccountStore, localTenantConfigStore } = await getIndexedDb();
 
-  // Upsert local account — check if username already exists
+  // Upsert local account - check if username already exists
   const existing = await localAccountStore.getByUsername(username);
   if (existing) {
     // Update existing account with fresh password hash and role

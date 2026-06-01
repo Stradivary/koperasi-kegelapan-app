@@ -97,7 +97,7 @@ export async function getTransactions(query: TransactionQuery): Promise<Paginate
   // Get total count for pagination metadata
   const allMatching = await filtered.toArray();
 
-  // Deduplicate by [cardId+counter] — keep the entry with the highest priority syncStatus
+  // Deduplicate by [cardId+counter] - keep the entry with the highest priority syncStatus
   // Priority: synced > pending > conflict > failed (prefer the most "resolved" entry)
   const syncPriority: Record<string, number> = { synced: 3, pending: 2, conflict: 1, failed: 0 };
   const deduped = new Map<string, (typeof allMatching)[number]>();

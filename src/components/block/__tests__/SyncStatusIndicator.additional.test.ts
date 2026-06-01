@@ -8,7 +8,7 @@ import { render, screen, cleanup, act } from "@testing-library/react";
 import { createElement } from "react";
 import { SyncStatusIndicator } from "../SyncStatusIndicator";
 
-describe("SyncStatusIndicator — interval tick", () => {
+describe("SyncStatusIndicator - interval tick", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-15T12:00:00Z"));

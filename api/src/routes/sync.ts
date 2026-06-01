@@ -340,10 +340,10 @@ syncRoutes.get("/pull", async (c) => {
 
   // 2. Validate tenant isolation: token tenant_id must match query param tenantId
   const queryTenantId = c.req.query("tenantId");
-  // Use token's tenantId as authoritative — fall back to query param for backward compat
+  // Use token's tenantId as authoritative - fall back to query param for backward compat
   const tenantId = tokenPayload.tenantId;
   if (queryTenantId && queryTenantId !== tenantId) {
-    // Log mismatch but don't block — client may have stale local ID
+    // Log mismatch but don't block - client may have stale local ID
     logger.warn("sync/pull: tenantId mismatch", { queryTenantId, tokenTenantId: tenantId });
   }
 
@@ -354,7 +354,7 @@ syncRoutes.get("/pull", async (c) => {
 
   const db = drizzle(c.env.DB);
 
-  // 4. Query members (users table) — updated_at is stored as unix timestamp (mode: "timestamp" means Date in Drizzle)
+  // 4. Query members (users table) - updated_at is stored as unix timestamp (mode: "timestamp" means Date in Drizzle)
   // We need to compare against the raw integer column value
   const membersResult = await db
     .select({
@@ -385,7 +385,7 @@ syncRoutes.get("/pull", async (c) => {
   const newMembersCursor =
     membersData.length > 0 ? String(membersData.at(-1)!.updatedAt) : String(membersCursor);
 
-  // 5. Query cards — updatedAt is raw integer (unix timestamp seconds)
+  // 5. Query cards - updatedAt is raw integer (unix timestamp seconds)
   const cardsResult = await db
     .select({
       tenantId: cards.tenantId,
@@ -438,7 +438,7 @@ syncRoutes.get("/pull", async (c) => {
   const newCardsCursor =
     cardsData.length > 0 ? String(cardsData.at(-1)!.updatedAt) : String(cardsCursor);
 
-  // 6. Query transactions — createdAt is raw integer (unix timestamp seconds)
+  // 6. Query transactions - createdAt is raw integer (unix timestamp seconds)
   const txResult = await db
     .select({
       id: transactionLog.id,
@@ -505,7 +505,7 @@ syncRoutes.get("/pull", async (c) => {
   return c.json(response);
 });
 
-// ─── GET /devices — List all devices for the authenticated tenant ────────────
+// ─── GET /devices - List all devices for the authenticated tenant ────────────
 
 syncRoutes.get("/devices", async (c) => {
   const tokenPayload = extractTokenPayload(c.req.raw);

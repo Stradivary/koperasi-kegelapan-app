@@ -3,7 +3,7 @@
  *
  * Ensures cross-device check-in consistency by coordinating sync pushes
  * between devices. The NFC card state is ALWAYS the authoritative source
- * of truth — operations are never blocked waiting for cloud sync.
+ * of truth - operations are never blocked waiting for cloud sync.
  *
  * Key principles:
  * - NFC card state is authoritative (operations always proceed)
@@ -24,7 +24,7 @@ export interface PeerSyncStatus {
   lastCheckinSynced: boolean;
   /** Timestamp of last confirmed sync */
   lastSyncConfirmedAt: number | null;
-  /** Whether we should block operations pending sync (always false — NFC is authoritative) */
+  /** Whether we should block operations pending sync (always false - NFC is authoritative) */
   shouldWaitForSync: boolean;
 }
 
@@ -86,7 +86,7 @@ export function notifyCheckin(_cardId: string, _timestamp: number): void {
   } else if (activeTenantId) {
     // Fallback: call syncPush directly if no callback registered
     syncPush(activeTenantId).catch(() => {
-      // Sync failure is non-blocking — NFC card state is authoritative
+      // Sync failure is non-blocking - NFC card state is authoritative
       // The standard retry/backoff mechanism will handle re-push
     });
   }
@@ -95,7 +95,7 @@ export function notifyCheckin(_cardId: string, _timestamp: number): void {
 /**
  * Verify whether a card's check-in has been synced to the cloud.
  *
- * NFC card state is authoritative — shouldWaitForSync is always false.
+ * NFC card state is authoritative - shouldWaitForSync is always false.
  * This function provides status information for monitoring/logging purposes.
  *
  * @param cardId - The card to check sync status for
@@ -122,7 +122,7 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
       .toArray();
 
     if (pendingCheckins.length === 0) {
-      // No pending check-ins — either already synced or no check-in recorded
+      // No pending check-ins - either already synced or no check-in recorded
       // Find the most recent synced check-in to get the confirmed timestamp
       const syncedCheckins = await localDb.transactionLog
         .where("[tenantId+cardId+counter]")
@@ -145,14 +145,14 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
       };
     }
 
-    // There are pending check-ins — not yet synced
+    // There are pending check-ins - not yet synced
     return {
       lastCheckinSynced: false,
       lastSyncConfirmedAt: null,
-      shouldWaitForSync: false, // NFC card state is authoritative — never wait
+      shouldWaitForSync: false, // NFC card state is authoritative - never wait
     };
   } catch {
-    // On any error, return safe defaults — never block operations
+    // On any error, return safe defaults - never block operations
     return {
       lastCheckinSynced: false,
       lastSyncConfirmedAt: null,
@@ -166,7 +166,7 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
  * Attempts to push with a 3s maximum wait time.
  *
  * Returns whether the push actually succeeded. Callers should never block
- * operations on this result — NFC card state is authoritative regardless.
+ * operations on this result - NFC card state is authoritative regardless.
  * A `false` return means the push failed or timed out and will be retried
  * by the standard backoff mechanism.
  *
@@ -179,11 +179,11 @@ export async function verifyCheckinSynced(cardId: string): Promise<PeerSyncStatu
  */
 export async function forcePushBeforeRead(cardId: string): Promise<boolean> {
   if (!activeTenantId) {
-    return true; // No tenant — nothing to push
+    return true; // No tenant - nothing to push
   }
 
   if (!navigator.onLine) {
-    return false; // Offline — push not possible, retry via backoff
+    return false; // Offline - push not possible, retry via backoff
   }
 
   try {
@@ -208,7 +208,7 @@ export async function forcePushBeforeRead(cardId: string): Promise<boolean> {
 
     return true; // Push succeeded
   } catch {
-    // Push failed or timed out — standard backoff mechanism will handle retry
+    // Push failed or timed out - standard backoff mechanism will handle retry
     return false;
   }
 }

@@ -21,7 +21,7 @@ vi.stubEnv("VITE_API_BASE_URL", "https://test-api.example.com");
 
 import { setAccessToken, restoreAuthState } from "../api";
 
-describe("restoreAuthState — IndexedDB throws (line 206)", () => {
+describe("restoreAuthState - IndexedDB throws (line 206)", () => {
   let mockLocalStorage: Record<string, string>;
 
   beforeEach(() => {

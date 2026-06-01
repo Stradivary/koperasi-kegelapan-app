@@ -4,7 +4,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Stub validateSlugFormat
-vi.mock("#/lib/slugValidation", () => ({
+vi.mock("#/lib/utils/slugValidation", () => ({
   validateSlugFormat: vi.fn().mockReturnValue(null),
 }));
 
@@ -196,7 +196,7 @@ describe("SyncConflictDialog", () => {
     });
 
     it("calls onRetryWithChanges with new slug when retry is clicked", async () => {
-      const { validateSlugFormat } = await import("#/lib/slugValidation");
+      const { validateSlugFormat } = await import("#/lib/utils/slugValidation");
       vi.mocked(validateSlugFormat).mockReturnValue(null);
 
       const onRetryWithChanges = vi.fn();
@@ -218,7 +218,7 @@ describe("SyncConflictDialog", () => {
     });
 
     it("shows error when slug is same as current", async () => {
-      const { validateSlugFormat } = await import("#/lib/slugValidation");
+      const { validateSlugFormat } = await import("#/lib/utils/slugValidation");
       vi.mocked(validateSlugFormat).mockReturnValue(null);
 
       render(
@@ -230,7 +230,7 @@ describe("SyncConflictDialog", () => {
         />,
       );
 
-      // Don't change the slug — it defaults to currentSlug
+      // Don't change the slug - it defaults to currentSlug
       await userEvent.click(screen.getByText("Coba Lagi"));
       expect(screen.getByText("Slug harus berbeda dari yang sebelumnya")).toBeDefined();
     });

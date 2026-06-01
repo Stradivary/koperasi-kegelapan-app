@@ -113,9 +113,9 @@ describe("TransactionList", () => {
     expect(screen.getByText("Credit")).toBeDefined();
   });
 
-  it("shows '—' for zero timestamp", () => {
+  it("shows '-' for zero timestamp", () => {
     const entries = [makeEntry({ timestamp: 0, amount: 5000 })];
     render(createElement(TransactionList, { entries }));
-    expect(screen.getByText("—")).toBeDefined();
+    expect(screen.getByText("-")).toBeDefined();
   });
 });

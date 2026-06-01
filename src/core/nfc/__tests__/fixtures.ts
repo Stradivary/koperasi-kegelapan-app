@@ -29,7 +29,7 @@ export function makeCard(overrides: Partial<Card> = {}): Card {
 }
 
 /**
- * Creates a minimal Card stub — only status is set, all other fields zeroed.
+ * Creates a minimal Card stub - only status is set, all other fields zeroed.
  * Useful for block-check tests that only care about the status field.
  */
 export function stubCard(status: Card["status"]): Card {

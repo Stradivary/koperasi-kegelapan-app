@@ -156,7 +156,7 @@ function serverLoginErrorMessage(err: unknown): string {
 
 /**
  * Silently attempts to fetch a fresh access token from the server after a
- * successful local login. Failures are intentionally swallowed — the token
+ * successful local login. Failures are intentionally swallowed - the token
  * is non-critical for offline operation.
  */
 async function silentlyRefreshToken(
@@ -193,7 +193,7 @@ async function silentlyRefreshToken(
     }
   } catch {
     clearTimeout(timeout);
-    // Non-critical — sync will work next time user logs in via server
+    // Non-critical - sync will work next time user logs in via server
   }
 }
 
@@ -323,7 +323,7 @@ async function handleLocalLoginSuccess(
     fingerprintId,
     localResult.role,
   ).catch(() => {
-    // Non-critical — useSessionGrant will handle fallback
+    // Non-critical - useSessionGrant will handle fallback
   });
   onLoginSuccess(localResult.tenantId, localResult.role);
 }
@@ -361,7 +361,7 @@ async function handleServerLoginFallback(
     username,
     password,
   }).catch(() => {
-    // Non-critical — offline replay won't work but login still succeeds
+    // Non-critical - offline replay won't work but login still succeeds
   });
 
   onLoginSuccess(data.tenantId as string, data.role as string);
@@ -422,7 +422,7 @@ export function useLoginAuth(options: UseLoginAuthOptions): UseLoginAuthReturn {
 
       // 2. If offline and local login failed, show appropriate error
       if (!navigator.onLine) {
-        setError("Username atau password salah (offline — hanya akun lokal yang tersedia)");
+        setError("Username atau password salah (offline - hanya akun lokal yang tersedia)");
         return;
       }
 

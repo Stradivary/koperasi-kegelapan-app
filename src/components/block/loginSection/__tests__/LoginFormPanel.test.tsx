@@ -181,7 +181,7 @@ describe("LoginFormPanel", () => {
 
   it("shows Masuk text when loading=false", () => {
     render(createElement(LoginFormPanel, makeDefaultProps({ loading: false })));
-    // The submit button text — use role to be specific
+    // The submit button text - use role to be specific
     expect(screen.getByRole("button", { name: "Masuk" })).toBeDefined();
   });
 

@@ -1,5 +1,5 @@
-import type { LogEntry } from "#/core/payload/types";
-import { TxType } from "#/core/payload/types";
+import type { LogEntry } from "#/hooks/types";
+import { TxType } from "#/hooks/types";
 
 interface TransactionListProps {
   entries: LogEntry[];
@@ -27,7 +27,7 @@ export function TransactionList({ entries }: Readonly<TransactionListProps>) {
       <div className="rounded-lg border bg-card divide-y text-sm">
         {valid.map((entry, i) => {
           const txTime =
-            entry.timestamp > 0 ? new Date(entry.timestamp * 1000).toLocaleTimeString() : "—";
+            entry.timestamp > 0 ? new Date(entry.timestamp * 1000).toLocaleTimeString() : "-";
           return (
             <div
               key={`${entry.timestamp}-${entry.flags}-${i}`}

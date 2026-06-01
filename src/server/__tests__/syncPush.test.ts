@@ -97,7 +97,7 @@ describe("POST /api/sync/push", () => {
     const app = createApp();
     const token = createToken({ accountId: "acc-1", tenantId: "t-1" });
     const res = await makeRequest(app, token, { tenantId: "t-2", transactions: [] });
-    // Token tenantId is used as authoritative — mismatch is logged but not rejected
+    // Token tenantId is used as authoritative - mismatch is logged but not rejected
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.accepted).toBe(0);
@@ -108,7 +108,7 @@ describe("POST /api/sync/push", () => {
     const app = createApp();
     const token = createToken({ accountId: "acc-1", tenantId: "t-1" });
     const res = await makeRequest(app, token, { transactions: [] });
-    // Token tenantId is used as authoritative — missing payload tenantId is acceptable
+    // Token tenantId is used as authoritative - missing payload tenantId is acceptable
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.accepted).toBe(0);

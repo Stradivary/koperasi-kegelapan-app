@@ -2,8 +2,7 @@ import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import successHandImg from "#/assets/images/success_hand.svg";
 import failedImg from "#/assets/images/nfc/failed.svg";
-import type { CardPayload } from "#/core/payload/types";
-import type { NfcPhase } from "#/core/nfc/stateMachine";
+import type { CardPayload, NfcPhase } from "#/hooks/types";
 import {
   Drawer,
   DrawerContent,
@@ -167,7 +166,7 @@ export function IssueCardDrawer({
                   aria-label="Anggota"
                   className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="">— Tanpa anggota —</option>
+                  <option value="">- Tanpa anggota -</option>
                   {activeMembers.map((m) => (
                     <option key={m.userId} value={m.userId}>
                       {m.name} (#{m.userId})
@@ -176,7 +175,7 @@ export function IssueCardDrawer({
                 </select>
               </div>
 
-              {/* Name on card — auto-filled from member, still editable */}
+              {/* Name on card - auto-filled from member, still editable */}
               <div className="space-y-1.5">
                 <Label>Nama di kartu</Label>
                 <Input

@@ -102,6 +102,15 @@ vi.mock("#/core/validation/uidGlobalValidator", () => ({
   validateUID: vi.fn().mockResolvedValue({ valid: true }),
 }));
 
+vi.mock("#/lib/repositories", () => ({
+  cardRepo: {
+    filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
+    getByTenantAndCardId: vi.fn().mockResolvedValue(undefined),
+  },
+  uidRemoteValidator: { checkUIDExists: vi.fn().mockResolvedValue({ exists: false }) },
+  onlineStatus: { isOnline: () => true },
+}));
+
 const mockApplyTopup = vi.fn((..._args: unknown[]) => _args[0]);
 const mockApplyResetState = vi.fn((..._args: unknown[]) => _args[0]);
 const mockValidateTopup = vi.fn((..._args: unknown[]) => ({ valid: true }));
@@ -406,7 +415,7 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("CardSection — rendering", () => {
+describe("CardSection - rendering", () => {
   it("renders StationCardsPanel", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -464,7 +473,7 @@ describe("CardSection — rendering", () => {
   });
 });
 
-describe("CardSection — issue new card flow", () => {
+describe("CardSection - issue new card flow", () => {
   it("opens IssueCardDrawer when Issue New clicked", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -491,7 +500,7 @@ describe("CardSection — issue new card flow", () => {
   });
 });
 
-describe("CardSection — topup flow", () => {
+describe("CardSection - topup flow", () => {
   it("opens TopupDrawer and triggers scan when topup clicked", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -518,7 +527,7 @@ describe("CardSection — topup flow", () => {
   });
 });
 
-describe("CardSection — reset card flow", () => {
+describe("CardSection - reset card flow", () => {
   it("opens NfcScanDrawer and triggers scan when reset clicked", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -531,7 +540,7 @@ describe("CardSection — reset card flow", () => {
   });
 });
 
-describe("CardSection — delete card", () => {
+describe("CardSection - delete card", () => {
   it("calls delete mutation when delete clicked", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -544,7 +553,7 @@ describe("CardSection — delete card", () => {
   });
 });
 
-describe("CardSection — update card status", () => {
+describe("CardSection - update card status", () => {
   it("calls updateCardStatus mutation when status button clicked", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -556,7 +565,7 @@ describe("CardSection — update card status", () => {
   });
 });
 
-describe("CardSection — fix card panel", () => {
+describe("CardSection - fix card panel", () => {
   it("shows fix card panel when handleFixCard is called with no serial", async () => {
     mockNfcState = {
       phase: "error",
@@ -607,7 +616,7 @@ describe("CardSection — fix card panel", () => {
   });
 });
 
-describe("CardSection — sync conflict dialog", () => {
+describe("CardSection - sync conflict dialog", () => {
   it("renders sync conflict dialog when conflict exists", async () => {
     mockSyncStatus = "conflict";
     mockConflict = { type: "slug", slug: "test-slug" };
@@ -642,7 +651,7 @@ describe("CardSection — sync conflict dialog", () => {
   });
 });
 
-describe("CardSection — auto-close on success", () => {
+describe("CardSection - auto-close on success", () => {
   it("auto-closes drawer after success phase", async () => {
     const payload = {
       wallet: { balance: 50000, counter: 5n },
@@ -669,7 +678,7 @@ describe("CardSection — auto-close on success", () => {
   });
 });
 
-describe("CardSection — cards count", () => {
+describe("CardSection - cards count", () => {
   it("passes empty cards array to panel", async () => {
     await act(async () => {
       render(createElement(CardSection, defaultProps));
@@ -693,7 +702,7 @@ describe("CardSection — cards count", () => {
   });
 });
 
-describe("CardSection — NFC drawer close during scanning", () => {
+describe("CardSection - NFC drawer close during scanning", () => {
   it("calls cancel when drawer closed during scanning phase", async () => {
     mockNfcState = {
       phase: "scanning",

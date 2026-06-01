@@ -4,7 +4,7 @@ export const BRAND = {
   TAGLINE: "By Ahmad Muzaki",
   BYLINE: "By Ahmad Muzaki",
   SHORT_NAME: "KK Wallet",
-  APP_DESCRIPTION: "Dompet NFC Koperasi — By Ahmad Muzaki",
+  APP_DESCRIPTION: "Dompet NFC Koperasi - By Ahmad Muzaki",
 } as const;
 
 export const BRAND_FONTS = {

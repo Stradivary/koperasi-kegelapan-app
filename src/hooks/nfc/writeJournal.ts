@@ -96,7 +96,7 @@ export async function saveWriteJournal(params: {
     };
     await writeJournalStore.put(entry);
   } catch {
-    // Non-fatal — write proceeds without journal protection
+    // Non-fatal - write proceeds without journal protection
   }
 }
 
@@ -109,7 +109,7 @@ export async function clearWriteJournal(tenantId: string, cardIdHex: string): Pr
     const writeJournalStore = await getWriteJournalStore();
     await writeJournalStore.delete(tenantId, cardIdHex);
   } catch {
-    // Non-fatal — stale entry will be auto-cleared on expiry
+    // Non-fatal - stale entry will be auto-cleared on expiry
   }
 }
 
@@ -149,7 +149,7 @@ export async function getPendingJournal(
     return null;
   }
 
-  // Max attempts exceeded — leave entry for manual inspection but don't auto-recover
+  // Max attempts exceeded - leave entry for manual inspection but don't auto-recover
   if (entry.attempts >= MAX_JOURNAL_RECOVERY_ATTEMPTS) {
     return null;
   }
@@ -163,7 +163,7 @@ export async function getPendingJournal(
       updatedPayload: deserializePayload(entry.updatedPayload),
     };
   } catch {
-    // Corrupted journal entry — clear it
+    // Corrupted journal entry - clear it
     try {
       const store = await getWriteJournalStore();
       await store.delete(tenantId, cardIdHex);

@@ -5,14 +5,14 @@ import { useSessionGrant } from "#/hooks/useSessionGrant";
 import { useBlockedCheck } from "#/hooks/useBlockedCheck";
 import { useKioskAutoScan } from "#/hooks/useKioskAutoScan";
 import { useSyncEngineContext } from "#/hooks/SyncEngineContext";
-import { validateTransition, applyCheckin, applyBlockStatus } from "#/core/state-machine/engine";
-import { CardState, CardStatus } from "#/core/payload/types";
-import { notifyCheckin } from "#/lib/peerSyncCoordinator";
+import { validateTransition, applyCheckin, applyBlockStatus } from "#/hooks/domain";
+import { CardState, CardStatus } from "#/hooks/types";
+import { notifyCheckin } from "#/hooks/usePeerSync";
 import { updateLocalCardRecord } from "#/hooks/nfc/updateLocalCardRecord";
 import { Input } from "../ui/input";
 import { NfcTapArea, NfcStatusLabel } from "../block/NfcTapArea";
 import { FeedbackCard } from "../block/FeedbackCard";
-import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/hooks/types";
 import type { BlockedCheckResult } from "#/hooks/useBlockedCheck";
 
 interface GateSectionProps {
@@ -129,7 +129,7 @@ export function GateSection({
 
     // Step 2: Wait for blocked check to complete (eliminates race condition)
     // blockedCheck.isReady is true only when check is complete AND card is not blocked
-    if (blockedCheck.isChecking) return; // Still checking — don't proceed yet
+    if (blockedCheck.isChecking) return; // Still checking - don't proceed yet
 
     if (blockedCheck.isBlocked) {
       autoCheckinTriggered.current = true;
@@ -146,7 +146,7 @@ export function GateSection({
       return;
     }
 
-    // Step 3: Blocked check passed — proceed with state validation
+    // Step 3: Blocked check passed - proceed with state validation
     const nowSeconds = getNowSeconds();
 
     // When enforce24hLimit is disabled, skip session expiry check by using
@@ -173,7 +173,7 @@ export function GateSection({
       return;
     }
 
-    // Step 4: All checks passed — perform check-in write
+    // Step 4: All checks passed - perform check-in write
     autoCheckinTriggered.current = true;
     setCardRejectionReason(null);
     write(applyCheckin(payload, terminalId, nowSeconds), "checkin");
@@ -239,7 +239,7 @@ export function GateSection({
   }
 
   // Derive the effective blocked reason (from on-card status/balance OR from local DB check)
-  // Exclude "already checked in" reasons — those get their own friendly UI path
+  // Exclude "already checked in" reasons - those get their own friendly UI path
   const effectiveBlockedReason =
     cardRejectionReason === "Anda sudah melakukan check in" ||
     cardRejectionReason === "Anda sedang dalam operasi di station"
@@ -303,7 +303,7 @@ export function GateSection({
           </div>
         )}
 
-        {/* Idle — waiting for auto-scan */}
+        {/* Idle - waiting for auto-scan */}
         {state.phase === "idle" && (
           <div className="flex flex-col items-center gap-4">
             <NfcTapArea phase="scanning" />
@@ -319,7 +319,7 @@ export function GateSection({
           </div>
         )}
 
-        {/* Ready — auto-checkin in progress or card already checked in */}
+        {/* Ready - auto-checkin in progress or card already checked in */}
         {(state.phase === "ready" || state.phase === "writing") && state.payload && (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
             <NfcTapArea phase={state.phase === "writing" ? "writing" : "validating"} />

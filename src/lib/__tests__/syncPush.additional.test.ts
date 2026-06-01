@@ -86,9 +86,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// ── syncPush — early exits ────────────────────────────────────────────────────
+// ── syncPush - early exits ────────────────────────────────────────────────────
 
-describe("syncPush — early exits", () => {
+describe("syncPush - early exits", () => {
   it("throws DeviceBlockedError when device is blocked at start", async () => {
     const { syncPush } = await import("../syncPush");
     mockIsDeviceBlocked.mockReturnValue(true);
@@ -140,9 +140,9 @@ describe("syncPush — early exits", () => {
   });
 });
 
-// ── syncPush — successful push ────────────────────────────────────────────────
+// ── syncPush - successful push ────────────────────────────────────────────────
 
-describe("syncPush — successful push", () => {
+describe("syncPush - successful push", () => {
   it("marks accepted entries as synced", async () => {
     const { syncPush } = await import("../syncPush");
     mockGetSyncableEntries.mockResolvedValue([makeEntry({ id: 10 })]);
@@ -198,9 +198,9 @@ describe("syncPush — successful push", () => {
   });
 });
 
-// ── pushBatchWithRetry — retry logic ─────────────────────────────────────────
+// ── pushBatchWithRetry - retry logic ─────────────────────────────────────────
 
-describe("pushBatchWithRetry — retry and error handling", () => {
+describe("pushBatchWithRetry - retry and error handling", () => {
   it("retries on 5xx and eventually succeeds", async () => {
     const { syncPush } = await import("../syncPush");
     vi.useFakeTimers();

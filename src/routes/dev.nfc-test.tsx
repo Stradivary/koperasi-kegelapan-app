@@ -5,10 +5,9 @@ import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Separator } from "#/components/ui/separator";
 import { makeFreshCard } from "#/components/section/IssuanceTestSection";
-import { prepareWrite } from "#/core/nfc/pipelineEngine";
-import { encodePayloadWire } from "#/core/payload/engine";
-import type { SessionGrant } from "#/core/payload/types";
-import { API_BASE_URL } from "#/lib/api";
+import { prepareWrite, encodePayloadWire } from "#/hooks/domain";
+import type { SessionGrant } from "#/hooks/types";
+import { API_BASE_URL } from "#/hooks/useApi";
 
 export const Route = createFileRoute("/dev/nfc-test")({
   component: NfcTestPage,
@@ -59,7 +58,7 @@ function NfcTestPage() {
     const reader = new NDEFReader();
 
     reader.addEventListener("reading", (event: NDEFReadingEvent) => {
-      // Normalize serial: strip non-hex chars, lowercase — this is the stable hardware UID
+      // Normalize serial: strip non-hex chars, lowercase - this is the stable hardware UID
       const rawSerial = event.serialNumber || "(none)";
       const normalizedSerial = event.serialNumber
         ? event.serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase()
@@ -84,7 +83,7 @@ function NfcTestPage() {
 
     reader
       .scan({ signal })
-      .then(() => addLog("Scan active — waiting for card…"))
+      .then(() => addLog("Scan active - waiting for card…"))
       .catch((e: Error) => {
         if (!signal.aborted) addLog(`❌ scan() failed: ${e.message}`);
         setScanning(false);
@@ -113,7 +112,7 @@ function NfcTestPage() {
           overwrite: true,
         },
       );
-      addLog("✅ Write text success — tap card now if writer is waiting");
+      addLog("✅ Write text success - tap card now if writer is waiting");
     } catch (e) {
       addLog(`❌ Write text failed: ${e}`);
     }
@@ -270,7 +269,7 @@ function NfcTestPage() {
       <div>
         <h1 className="text-2xl font-bold">NFC Raw Test</h1>
         <p className="text-sm text-muted-foreground">
-          Direct NDEFReader API — no payload encoding. Dev/LAN only.
+          Direct NDEFReader API - no payload encoding. Dev/LAN only.
         </p>
       </div>
 
@@ -296,7 +295,7 @@ function NfcTestPage() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Shows raw NDEF records — works on formatted cards only.
+          Shows raw NDEF records - works on formatted cards only.
           <br />
           <strong>Note:</strong> The normalized serial (hardware UID, hex without separators) is the
           stable card identifier used by the app. Same card = same normalized serial every scan.

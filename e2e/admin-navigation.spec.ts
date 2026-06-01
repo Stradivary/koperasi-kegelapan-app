@@ -8,7 +8,7 @@ async function loginAsAdmin(page: Page) {
   await expect(page).toHaveURL(/\/tenant\/.+\//);
 }
 
-test.describe("Admin navigation — sidebar tabs", () => {
+test.describe("Admin navigation - sidebar tabs", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
   });

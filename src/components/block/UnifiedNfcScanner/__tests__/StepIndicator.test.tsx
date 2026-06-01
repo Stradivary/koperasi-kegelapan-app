@@ -69,7 +69,7 @@ describe("StepIndicator", () => {
 
   it("marks step 4 as current during success phase", () => {
     render(createElement(StepIndicator, { phase: "success" }));
-    // Step 4 is active — all previous steps show checkmarks
+    // Step 4 is active - all previous steps show checkmarks
     const step4 = screen.getByText("4");
     expect(step4.closest("[aria-current='step']")).toBeTruthy();
   });

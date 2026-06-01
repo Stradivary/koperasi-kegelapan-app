@@ -384,7 +384,7 @@ export async function createTenant(body: unknown): Promise<CreateTenantResult> {
       };
     }
 
-    // Non-constraint error — rethrow
+    // Non-constraint error - rethrow
     throw e;
   }
 

@@ -1,4 +1,5 @@
-import { localDb } from "#/db/local-db";
+import type { CardRepository } from "../interfaces/CardRepository";
+import type { UserRepository } from "../interfaces/UserRepository";
 
 export interface LocalStatusResult {
   blocked: boolean;
@@ -11,24 +12,26 @@ export interface LocalStatusResult {
  * Check if a card or its linked member is blocked/suspended in the local DB.
  *
  * Uses the hardware serial number (from the NFC scan event) as the lookup key
- * for `localDb.cards`, and performs a member lookup using the card's linked userId
+ * for the card repository, and performs a member lookup using the card's linked userId
  * from the local DB (not from the NFC binary payload).
  *
  * @param tenantId - The current tenant identifier
  * @param serialNumber - The hardware NFC serial number (may contain colons/dashes, any case)
+ * @param deps - Injected repository dependencies
  * @returns Promise resolving to { blocked, reason, notInLocalDb } indicating whether the operation should be rejected
  */
 export async function checkLocalBlockedStatus(
   tenantId: string,
   serialNumber: string,
+  deps: { cardRepo: CardRepository; userRepo: UserRepository },
 ): Promise<LocalStatusResult> {
   // Normalize serial number to lowercase hex (strip colons/dashes)
   const normalizedSerial = serialNumber.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
 
   // Look up card by [tenantId, normalizedSerial]
-  const cardRecord = await localDb.cards.get([tenantId, normalizedSerial]);
+  const cardRecord = await deps.cardRepo.getByTenantAndCardId(tenantId, normalizedSerial);
 
-  // Card not found in local DB — not blocked, but flag as missing
+  // Card not found in local DB - not blocked, but flag as missing
   if (!cardRecord) {
     return { blocked: false, reason: null, notInLocalDb: true };
   }
@@ -44,7 +47,7 @@ export async function checkLocalBlockedStatus(
   // Use the card's linked userId from local DB for member lookup
   const linkedUserId = cardRecord.userId ?? null;
   if (linkedUserId) {
-    const userRecord = await localDb.users.get([tenantId, linkedUserId]);
+    const userRecord = await deps.userRepo.getByTenantAndUserId(tenantId, linkedUserId);
     if (userRecord && userRecord.status !== "active") {
       return {
         blocked: true,

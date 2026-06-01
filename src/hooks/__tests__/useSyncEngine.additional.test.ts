@@ -50,7 +50,7 @@ vi.mock("#/lib/syncLogStore", () => ({
 
 import { syncPush } from "#/lib/syncPush";
 
-describe("useSyncEngine — retry backoff after error", () => {
+describe("useSyncEngine - retry backoff after error", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -114,7 +114,7 @@ describe("useSyncEngine — retry backoff after error", () => {
   });
 });
 
-describe("useSyncEngine — queued sync after cycle completes", () => {
+describe("useSyncEngine - queued sync after cycle completes", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -173,7 +173,7 @@ describe("useSyncEngine — queued sync after cycle completes", () => {
   });
 });
 
-describe("useSyncEngine — notifyMutation while syncing", () => {
+describe("useSyncEngine - notifyMutation while syncing", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -232,7 +232,7 @@ describe("useSyncEngine — notifyMutation while syncing", () => {
   });
 });
 
-describe("useSyncEngine — visibility change triggers sync", () => {
+describe("useSyncEngine - visibility change triggers sync", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -272,7 +272,7 @@ describe("useSyncEngine — visibility change triggers sync", () => {
   });
 });
 
-describe("useSyncEngine — online/offline event handlers", () => {
+describe("useSyncEngine - online/offline event handlers", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -323,7 +323,7 @@ describe("useSyncEngine — online/offline event handlers", () => {
   });
 });
 
-describe("useSyncEngine — periodic pull interval", () => {
+describe("useSyncEngine - periodic pull interval", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -356,7 +356,7 @@ describe("useSyncEngine — periodic pull interval", () => {
   });
 });
 
-describe("useSyncEngine — cleanup on unmount", () => {
+describe("useSyncEngine - cleanup on unmount", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -382,7 +382,7 @@ describe("useSyncEngine — cleanup on unmount", () => {
 
     vi.mocked(syncPush).mockClear();
 
-    // Advance past debounce — should NOT trigger sync after unmount
+    // Advance past debounce - should NOT trigger sync after unmount
     await act(async () => {
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 100);
     });

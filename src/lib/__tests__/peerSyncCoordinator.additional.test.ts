@@ -74,7 +74,7 @@ describe("peerSyncCoordinator additional coverage", () => {
     registerTriggerSync(null);
   });
 
-  describe("forcePushBeforeRead — offline path (line 121)", () => {
+  describe("forcePushBeforeRead - offline path (line 121)", () => {
     it("returns false when navigator is offline", async () => {
       Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
 
@@ -83,7 +83,7 @@ describe("peerSyncCoordinator additional coverage", () => {
     });
   });
 
-  describe("forcePushBeforeRead — no pending entries (line 135)", () => {
+  describe("forcePushBeforeRead - no pending entries (line 135)", () => {
     it("returns true when no pending entries exist", async () => {
       // Default mock returns empty array
       const result = await forcePushBeforeRead("aabbccddee01");
@@ -92,7 +92,7 @@ describe("peerSyncCoordinator additional coverage", () => {
     });
   });
 
-  describe("forcePushBeforeRead — push failure (line 211)", () => {
+  describe("forcePushBeforeRead - push failure (line 211)", () => {
     it("returns false when syncPush throws", async () => {
       vi.mocked(syncPush).mockRejectedValueOnce(new Error("Network error"));
 
@@ -121,7 +121,7 @@ describe("peerSyncCoordinator additional coverage", () => {
       (localDb.transactionLog as any).where = mockWhere;
 
       // Use real timers but with a very short timeout by mocking setTimeout
-      // The FORCE_PUSH_TIMEOUT_MS is 3000ms — we simulate the timeout rejection
+      // The FORCE_PUSH_TIMEOUT_MS is 3000ms - we simulate the timeout rejection
       const origSetTimeout = globalThis.setTimeout;
       vi.spyOn(globalThis, "setTimeout").mockImplementation(
         (fn: TimerHandler, delay?: number, ...args: unknown[]): ReturnType<typeof setTimeout> => {
@@ -143,7 +143,7 @@ describe("peerSyncCoordinator additional coverage", () => {
     }, 10000);
   });
 
-  describe("verifyCheckinSynced — synced check-ins path (lines 185,193,197)", () => {
+  describe("verifyCheckinSynced - synced check-ins path (lines 185,193,197)", () => {
     it("returns lastSyncConfirmedAt from most recent synced check-in", async () => {
       const syncedEntry = makeEntry({
         syncStatus: "synced",
@@ -156,10 +156,10 @@ describe("peerSyncCoordinator additional coverage", () => {
       const mockFilter = vi.fn().mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
-          // pending check — no pending entries
+          // pending check - no pending entries
           return { toArray: vi.fn().mockResolvedValue([]) };
         }
-        // synced check — return synced entry
+        // synced check - return synced entry
         return { toArray: vi.fn().mockResolvedValue([syncedEntry]) };
       });
       const mockBetween = vi.fn().mockReturnValue({ filter: mockFilter });

@@ -1,7 +1,11 @@
 import { useState, useRef, useCallback } from "react";
-import { readCard, isNfcSupported } from "#/core/nfc/engine";
-import { decodePayload } from "#/core/payload/engine";
-import { prepareWrite, decryptCardBody } from "#/core/nfc/pipelineEngine";
+import {
+  readCard,
+  isNfcSupported,
+  decodePayload,
+  prepareWrite,
+  decryptCardBody,
+} from "#/hooks/domain";
 import {
   MAGIC,
   CARD_SCHEMA_VERSION,
@@ -10,9 +14,9 @@ import {
   TRAILER_COUNTER_BIND,
   CardState,
   CardStatus,
-} from "#/core/payload/types";
-import type { CardPayload, SessionGrant } from "#/core/payload/types";
-import { API_BASE_URL } from "#/lib/api";
+} from "#/hooks/types";
+import type { CardPayload, SessionGrant } from "#/hooks/types";
+import { API_BASE_URL } from "#/hooks/useApi";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -235,7 +239,7 @@ export function IssuanceTestSection() {
       return;
     }
 
-    // Show the original (plaintext) payload — not the encrypted bytes
+    // Show the original (plaintext) payload - not the encrypted bytes
     setReadPayload(originalPayload);
     setSerialNumber(null);
     setPhase("done");
@@ -251,7 +255,7 @@ export function IssuanceTestSection() {
       <div>
         <h1 className="text-2xl font-bold">Issuance Test</h1>
         <p className="text-sm text-muted-foreground">
-          Read &amp; write NFC card payload — no auth required. Dev/LAN testing only.
+          Read &amp; write NFC card payload - no auth required. Dev/LAN testing only.
         </p>
       </div>
 

@@ -90,8 +90,8 @@ async function seed() {
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log("\n✅ D1 seed complete.");
   console.log("Accounts:");
-  console.log('  superadmin  — username: "superadmin", password: "superadmin"');
-  console.log('  admin-a     — username: "admin-a", password: "password" (Koperasi A)');
+  console.log('  superadmin  - username: "superadmin", password: "superadmin"');
+  console.log('  admin-a     - username: "admin-a", password: "password" (Koperasi A)');
 
   await dispose();
 }

@@ -117,8 +117,8 @@ export async function listAccounts(params: {
   const accountList: AccountListItem[] = rows.map((row) => ({
     accountId: row.accountId,
     tenantId: row.tenantId,
-    tenantName: row.tenantName ?? "—",
-    tenantSlug: row.tenantSlug ?? "—",
+    tenantName: row.tenantName ?? "-",
+    tenantSlug: row.tenantSlug ?? "-",
     username: row.username,
     role: row.role,
     status: row.status,

@@ -5,7 +5,7 @@
  *
  * Property 1: Bug Condition - Push Ordering Enforcement
  *
- * These tests are EXPECTED TO FAIL on unfixed code — failure confirms the bug exists.
+ * These tests are EXPECTED TO FAIL on unfixed code - failure confirms the bug exists.
  * They encode the expected behavior that the fix should produce.
  *
  * Bug Condition: isBugCondition(input) where
@@ -27,7 +27,7 @@ import * as fc from "fast-check";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 // ============================================================================
-// Test Helpers — Simulate and observe the actual sync behavior
+// Test Helpers - Simulate and observe the actual sync behavior
 // ============================================================================
 
 /**
@@ -108,7 +108,7 @@ function simulateCurrentHandleSyncToServer(params: {
   const steps: SyncStep[] = [];
 
   if (params.tenantMode !== "local") {
-    // Already synced — no full orchestration needed
+    // Already synced - no full orchestration needed
     return steps;
   }
 
@@ -181,7 +181,7 @@ function simulateCurrentTokenPropagation(params: {
 }
 
 // ============================================================================
-// Property 1: Bug Condition — Push Ordering Enforcement
+// Property 1: Bug Condition - Push Ordering Enforcement
 // ============================================================================
 
 describe("Property 1: Bug Condition - Push Ordering Enforcement", () => {
@@ -242,7 +242,7 @@ describe("Property 1: Bug Condition - Push Ordering Enforcement", () => {
               // contains both members and cards
               expect(
                 hasMembersInCall && hasCardsInCall,
-                `Push call contains both members (${call.members.length}) and cards (${call.cards.length}) — ordering violation`,
+                `Push call contains both members (${call.members.length}) and cards (${call.cards.length}) - ordering violation`,
               ).toBe(false);
             }
           },

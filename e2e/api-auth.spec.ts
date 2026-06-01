@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const API_BASE = "http://localhost:3000";
 
-test.describe("API — Authentication endpoints", () => {
+test.describe("API - Authentication endpoints", () => {
   test("POST /api/auth/token with valid credentials returns token", async ({ request }) => {
     const response = await request.post(`${API_BASE}/api/auth/token`, {
       data: {
@@ -92,7 +92,7 @@ test.describe("API — Authentication endpoints", () => {
   });
 });
 
-test.describe("API — Protected endpoints without auth", () => {
+test.describe("API - Protected endpoints without auth", () => {
   test("GET /api/session-grant without token returns 401", async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/session-grant`);
     expect(response.status()).toBe(401);
@@ -123,7 +123,7 @@ test.describe("API — Protected endpoints without auth", () => {
   });
 });
 
-test.describe("API — Authenticated requests", () => {
+test.describe("API - Authenticated requests", () => {
   let adminToken: string;
 
   test.beforeAll(async ({ request }) => {
@@ -177,7 +177,7 @@ test.describe("API — Authenticated requests", () => {
   });
 });
 
-test.describe("API — Superadmin endpoints", () => {
+test.describe("API - Superadmin endpoints", () => {
   let superadminToken: string;
 
   test.beforeAll(async ({ request }) => {

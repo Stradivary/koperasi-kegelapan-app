@@ -101,7 +101,7 @@ export function useNfcCard(
 
   // #region Reader cleanup helper
   // Removes event listeners from the current NDEFReader to prevent memory leaks.
-  // Each scan() creates a new reader — without removing listeners from the old one,
+  // Each scan() creates a new reader - without removing listeners from the old one,
   // the old reader + its entire closure chain stays in memory indefinitely.
   const cleanupReader = useCallback(() => {
     const reader = readerRef.current as EventTarget | null;
@@ -226,7 +226,7 @@ export function useNfcCard(
           await completePendingWrite(pending, readSignal);
           return;
         }
-        // Different card — discard pending and proceed with fresh scan
+        // Different card - discard pending and proceed with fresh scan
         pendingWriteRef.current = null;
         clearPendingWriteTimeout();
       }
@@ -318,12 +318,12 @@ export function useNfcCard(
     ) {
       journalRetryModeRef.current = false;
       try {
-        // Minimal decode to get cardIdHex — no full validation
+        // Minimal decode to get cardIdHex - no full validation
         const minimalResult = await decodeAndValidateCard(
           raw,
           currentGrant,
           event.serialNumber,
-          true, // lenient — skip strict checks
+          true, // lenient - skip strict checks
           readSignal,
         );
         if (readSignal.aborted) return;
@@ -338,7 +338,7 @@ export function useNfcCard(
             return;
           }
         }
-        // No journal found — fall through to normal ready state
+        // No journal found - fall through to normal ready state
         if (minimalResult.phase === "ready") {
           phaseRef.current = "ready";
           setState({
@@ -380,7 +380,7 @@ export function useNfcCard(
         );
         if (readSignal.aborted) return;
 
-        // Check for pending write journal — attempt recovery if needed
+        // Check for pending write journal - attempt recovery if needed
         if (result.phase === "ready" && result.payload) {
           const cardIdHex = getCardIdHex(result.payload);
           const journal = await getPendingJournal(tenantId, cardIdHex);
@@ -390,11 +390,11 @@ export function useNfcCard(
             const expectedCounter = journal.expectedPayload.wallet.counter;
 
             if (cardCounter < expectedCounter) {
-              // Write didn't land — trigger recovery write
+              // Write didn't land - trigger recovery write
               await handleJournalRecovery(journal, cardIdHex, event.serialNumber, readSignal);
               return;
             } else {
-              // Write landed but verify/record failed last time — clear journal and record
+              // Write landed but verify/record failed last time - clear journal and record
               await clearWriteJournal(tenantId, cardIdHex);
             }
           }
@@ -565,7 +565,7 @@ export function useNfcCard(
         cardName,
       });
 
-      // 4. Clear write journal — write fully confirmed
+      // 4. Clear write journal - write fully confirmed
       const cardIdHex = getCardIdHex(pending.updatedPayload);
       await clearWriteJournal(tenantId, cardIdHex);
     }
@@ -617,7 +617,7 @@ export function useNfcCard(
           terminalId,
         });
 
-        // Attempt immediate write — card is likely still in range
+        // Attempt immediate write - card is likely still in range
         if (reader && signal && !signal.aborted) {
           inlineWriteInProgressRef.current = true;
           try {
@@ -636,7 +636,7 @@ export function useNfcCard(
               { signal, overwrite: true },
             );
           } catch {
-            // Write I/O failed (card removed too fast) — fall back to re-tap below
+            // Write I/O failed (card removed too fast) - fall back to re-tap below
             inlineWriteInProgressRef.current = false;
             pendingWriteRef.current = {
               raw,
@@ -650,7 +650,7 @@ export function useNfcCard(
             return true;
           }
 
-          // Write succeeded — verify and record (errors here are real failures)
+          // Write succeeded - verify and record (errors here are real failures)
           await verifyWrittenPayload(payload, currentGrant);
 
           const cardName = updatedPayload.identity.name || null;
@@ -663,7 +663,7 @@ export function useNfcCard(
             cardName,
           });
 
-          // Clear write journal — write fully confirmed
+          // Clear write journal - write fully confirmed
           await clearWriteJournal(tenantId, cardIdHex);
 
           inlineWriteInProgressRef.current = false;

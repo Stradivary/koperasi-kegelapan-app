@@ -1,5 +1,5 @@
 /**
- * Tests for api/src/routes/sync.ts — validateTransaction and push endpoint
+ * Tests for api/src/routes/sync.ts - validateTransaction and push endpoint
  * Covers: validation rules, type checking, range checking, batch limits
  */
 import { describe, it, expect } from "vitest";
@@ -67,7 +67,7 @@ async function push(app: ReturnType<typeof createApp>, transactions: unknown[], 
   );
 }
 
-describe("POST /api/sync/push — transaction validation", () => {
+describe("POST /api/sync/push - transaction validation", () => {
   const app = createApp();
 
   it("rejects transaction with missing cardId", async () => {

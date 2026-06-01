@@ -70,7 +70,7 @@ clientErrorsRoute.post("/", async (c) => {
         tenantId = payload.tenantId ?? "unknown";
       }
     } catch {
-      // Token parsing failed — continue with "unknown"
+      // Token parsing failed - continue with "unknown"
     }
   }
 

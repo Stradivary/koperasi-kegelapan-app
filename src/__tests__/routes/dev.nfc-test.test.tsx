@@ -57,7 +57,7 @@ describe("NfcTestPage", () => {
     return (
       <div>
         <h1>NFC Raw Test</h1>
-        <p>Direct NDEFReader API — no payload encoding. Dev/LAN only.</p>
+        <p>Direct NDEFReader API - no payload encoding. Dev/LAN only.</p>
 
         {!supported && (
           <div data-testid="nfc-not-supported">
@@ -76,7 +76,7 @@ describe("NfcTestPage", () => {
   it("renders the subtitle", () => {
     render(<NfcTestPageSimple />);
     expect(
-      screen.getByText("Direct NDEFReader API — no payload encoding. Dev/LAN only."),
+      screen.getByText("Direct NDEFReader API - no payload encoding. Dev/LAN only."),
     ).toBeDefined();
   });
 

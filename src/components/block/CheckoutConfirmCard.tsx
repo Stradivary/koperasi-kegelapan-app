@@ -1,7 +1,7 @@
-import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/hooks/types";
 import { CardStatusBadge } from "./CardStatusBadge";
 import { Button } from "../ui/button";
-import { formatTime, formatDuration } from "#/lib/formatters";
+import { formatTime, formatDuration } from "#/lib/utils/formatters";
 
 interface CheckoutConfirmCardProps {
   payload: CardPayload;

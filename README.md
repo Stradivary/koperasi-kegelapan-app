@@ -1,4 +1,4 @@
-# Koperasi Kegelapan — Offline NFC Wallet
+# Koperasi Kegelapan - Offline NFC Wallet
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Stradivary_koperasi-kegelapan-app&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Stradivary_koperasi-kegelapan-app)
 
@@ -45,7 +45,7 @@ The frontend is a Progressive Web App with offline-first capabilities (vite-plug
 - [Node.js](https://nodejs.org/) 22+
 - [pnpm](https://pnpm.io/) 11+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (bundled via devDependencies)
-- An NFC-capable Android device (for Web NFC features — Chrome only)
+- An NFC-capable Android device (for Web NFC features - Chrome only)
 
 ## Getting Started
 
@@ -210,7 +210,7 @@ wrangler secret put SESSION_MASTER_KEY --config wrangler.api.jsonc
 
 ## Testing
 
-- **Unit tests**: Vitest + fast-check (property-based) — `pnpm test`
-- **E2E tests**: Playwright (11 spec files) — `pnpm e2e`
+- **Unit tests**: Vitest + fast-check (property-based) - `pnpm test`
+- **E2E tests**: Playwright (11 spec files) - `pnpm e2e`
 
 E2E test coverage includes: login flows, admin navigation, card management, member management, transactions, settings, role routing, superadmin, API auth, and API sync.

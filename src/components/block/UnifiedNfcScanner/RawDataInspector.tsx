@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
-import type { RawNfcResult } from "#/core/nfc/types.ts";
+import type { RawNfcResult } from "#/hooks/types.ts";
 import {
   Collapsible,
   CollapsibleContent,

@@ -383,9 +383,9 @@ describe("getPendingEntityCount", () => {
   });
 });
 
-// ── pushEntitiesWithRetry — retry logic ───────────────────────────────────────
+// ── pushEntitiesWithRetry - retry logic ───────────────────────────────────────
 
-describe("pushEntitiesWithRetry — retry and error handling", () => {
+describe("pushEntitiesWithRetry - retry and error handling", () => {
   it("retries on 5xx and eventually succeeds", async () => {
     const { syncPushMembers } = await import("../syncPushEntities");
     vi.useFakeTimers();

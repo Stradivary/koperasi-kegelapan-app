@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select.tsx";
-import { createSlug, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/slugValidation.ts";
+import { createSlug, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/utils/slugValidation";
 
 // --- Types ---
 

@@ -44,9 +44,9 @@ beforeEach(() => {
   mockDbRun.mockResolvedValue(undefined);
 });
 
-// ── processReconciliation — empty/invalid input ───────────────────────────────
+// ── processReconciliation - empty/invalid input ───────────────────────────────
 
-describe("processReconciliation — empty/invalid input", () => {
+describe("processReconciliation - empty/invalid input", () => {
   it("returns zero counts for empty events array", async () => {
     const result = await processReconciliation(mockDb, makeRequest([]));
     expect(result).toEqual({ accepted: 0, rejected: 0, flags: [] });
@@ -58,9 +58,9 @@ describe("processReconciliation — empty/invalid input", () => {
   });
 });
 
-// ── processReconciliation — valid events ──────────────────────────────────────
+// ── processReconciliation - valid events ──────────────────────────────────────
 
-describe("processReconciliation — valid events", () => {
+describe("processReconciliation - valid events", () => {
   it("accepts a valid event and inserts into audit_log", async () => {
     const result = await processReconciliation(mockDb, makeRequest([makeEvent()]));
     expect(result.accepted).toBe(1);
@@ -86,9 +86,9 @@ describe("processReconciliation — valid events", () => {
   });
 });
 
-// ── processReconciliation — rejections ───────────────────────────────────────
+// ── processReconciliation - rejections ───────────────────────────────────────
 
-describe("processReconciliation — rejections", () => {
+describe("processReconciliation - rejections", () => {
   it("rejects malformed event (missing cardId)", async () => {
     const result = await processReconciliation(mockDb, makeRequest([makeEvent({ cardId: "" })]));
     expect(result.rejected).toBe(1);
@@ -136,9 +136,9 @@ describe("processReconciliation — rejections", () => {
   });
 });
 
-// ── processReconciliation — mixed batch ───────────────────────────────────────
+// ── processReconciliation - mixed batch ───────────────────────────────────────
 
-describe("processReconciliation — mixed batch", () => {
+describe("processReconciliation - mixed batch", () => {
   it("processes mix of valid and invalid events correctly", async () => {
     const events = [
       makeEvent({ counter: 1 }),

@@ -12,7 +12,7 @@ import type { SessionGrant } from "#/core/payload/types";
 
 const mockGrant = { sessionKey: new Uint8Array(32), keyVersion: 1 } as SessionGrant;
 
-describe("useKioskAutoScan — autoStart (lines 68-72)", () => {
+describe("useKioskAutoScan - autoStart (lines 68-72)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -118,13 +118,13 @@ describe("useKioskAutoScan — autoStart (lines 68-72)", () => {
 
     expect(scan).toHaveBeenCalledTimes(1);
 
-    // Re-render with same props — should not trigger again
+    // Re-render with same props - should not trigger again
     rerender({ phase: "idle" });
     expect(scan).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("useKioskAutoScan — ready phase completes cycle (line 100-101)", () => {
+describe("useKioskAutoScan - ready phase completes cycle (line 100-101)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -189,13 +189,13 @@ describe("useKioskAutoScan — ready phase completes cycle (line 100-101)", () =
 
     // Complete a cycle
     rerender({ phase: "success" });
-    // Transition to idle — starts the resetDelay timer
+    // Transition to idle - starts the resetDelay timer
     rerender({ phase: "idle" });
 
     // Before delay fires, change phase to scanning (triggers cleanup)
     rerender({ phase: "scanning" });
 
-    // Advance past the delay — scan should NOT have been called
+    // Advance past the delay - scan should NOT have been called
     act(() => {
       vi.advanceTimersByTime(2500);
     });

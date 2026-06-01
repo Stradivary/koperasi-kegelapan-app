@@ -1,32 +1,40 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock local-db
-vi.mock("#/db/local-db", () => ({
-  localDb: {
-    cards: {
-      filter: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-    },
-  },
-}));
-
-// Mock api module
-vi.mock("#/lib/api", () => ({
-  API_BASE_URL: "https://test-api.example.com",
-  apiFetch: vi
-    .fn()
-    .mockResolvedValue(new Response(JSON.stringify({ exists: false }), { status: 200 })),
-}));
-
 import { normalizeUID, validateUIDLocal, validateUID } from "../uidGlobalValidator";
-import { localDb } from "#/db/local-db";
-import { apiFetch } from "#/lib/api";
+import type { CardRepository } from "../../interfaces/CardRepository";
+import type { UIDRemoteValidator } from "../../interfaces/UIDRemoteValidator";
+import type { OnlineStatusProvider } from "../../interfaces/OnlineStatusProvider";
+
+// ── Mock Factories ─────────────────────────────────────────────────────
+
+function createMockCardRepo(
+  cards: Array<{ cardId: string; tenantId: string; status: string }> = [],
+): CardRepository {
+  return {
+    getByTenantAndCardId: vi.fn(),
+    filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue(cards),
+    updateStatus: vi.fn(),
+    put: vi.fn(),
+  };
+}
+
+function createMockRemoteValidator(
+  response: { exists: boolean; tenantId?: string } = { exists: false },
+): UIDRemoteValidator {
+  return {
+    checkUIDExists: vi.fn().mockResolvedValue(response),
+  };
+}
+
+function createMockOnlineStatus(online = true): OnlineStatusProvider {
+  return {
+    isOnline: vi.fn().mockReturnValue(online),
+  };
+}
 
 describe("uidGlobalValidator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(localDb.cards.filter).mockReturnValue({
-      toArray: vi.fn().mockResolvedValue([]),
-    } as any);
   });
 
   describe("normalizeUID", () => {
@@ -53,95 +61,113 @@ describe("uidGlobalValidator", () => {
 
   describe("validateUIDLocal", () => {
     it("returns invalid for too short UID", async () => {
-      const result = await validateUIDLocal("abcdef", "t1");
+      const cardRepo = createMockCardRepo();
+      const result = await validateUIDLocal("abcdef", "t1", { cardRepo });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("INVALID_UID_FORMAT");
     });
 
     it("returns invalid for too long UID", async () => {
-      const result = await validateUIDLocal("04a2b3c4d5e6f7ff", "t1");
+      const cardRepo = createMockCardRepo();
+      const result = await validateUIDLocal("04a2b3c4d5e6f7ff", "t1", { cardRepo });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("INVALID_UID_FORMAT");
     });
 
     it("returns valid when card not found locally", async () => {
-      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1");
+      const cardRepo = createMockCardRepo([]);
+      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1", { cardRepo });
       expect(result.valid).toBe(true);
     });
 
     it("returns invalid when card found in same tenant", async () => {
-      vi.mocked(localDb.cards.filter).mockReturnValue({
-        toArray: vi
-          .fn()
-          .mockResolvedValue([{ cardId: "04a2b3c4d5e6f7", tenantId: "t1", status: "active" }]),
-      } as any);
-      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1");
+      const cardRepo = createMockCardRepo([
+        { cardId: "04a2b3c4d5e6f7", tenantId: "t1", status: "active" },
+      ]);
+      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1", { cardRepo });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("UID_ALREADY_REGISTERED");
     });
 
     it("returns invalid when card found in different tenant", async () => {
-      vi.mocked(localDb.cards.filter).mockReturnValue({
-        toArray: vi
-          .fn()
-          .mockResolvedValue([{ cardId: "04a2b3c4d5e6f7", tenantId: "t2", status: "active" }]),
-      } as any);
-      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1");
+      const cardRepo = createMockCardRepo([
+        { cardId: "04a2b3c4d5e6f7", tenantId: "t2", status: "active" },
+      ]);
+      const result = await validateUIDLocal("04a2b3c4d5e6f7", "t1", { cardRepo });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("UID_REGISTERED_OTHER_TENANT");
     });
   });
 
   describe("validateUID", () => {
-    beforeEach(() => {
-      vi.stubGlobal("navigator", { onLine: true });
-    });
-
     it("returns invalid for bad format", async () => {
-      const result = await validateUID("abc", "t1");
+      const deps = {
+        cardRepo: createMockCardRepo(),
+        remoteValidator: createMockRemoteValidator(),
+        onlineStatus: createMockOnlineStatus(true),
+      };
+      const result = await validateUID("abc", "t1", deps);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("INVALID_UID_FORMAT");
     });
 
     it("returns valid when not found locally or remotely", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        new Response(JSON.stringify({ exists: false }), { status: 200 }),
-      );
-      const result = await validateUID("04a2b3c4d5e6f7", "t1");
+      const deps = {
+        cardRepo: createMockCardRepo([]),
+        remoteValidator: createMockRemoteValidator({ exists: false }),
+        onlineStatus: createMockOnlineStatus(true),
+      };
+      const result = await validateUID("04a2b3c4d5e6f7", "t1", deps);
       expect(result.valid).toBe(true);
     });
 
     it("returns invalid when found remotely", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        new Response(JSON.stringify({ exists: true, tenantId: "other-tenant" }), { status: 200 }),
-      );
-      const result = await validateUID("04a2b3c4d5e6f7", "t1");
+      const deps = {
+        cardRepo: createMockCardRepo([]),
+        remoteValidator: createMockRemoteValidator({ exists: true, tenantId: "other-tenant" }),
+        onlineStatus: createMockOnlineStatus(true),
+      };
+      const result = await validateUID("04a2b3c4d5e6f7", "t1", deps);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("UID_REGISTERED_OTHER_TENANT");
     });
 
     it("returns NETWORK_ERROR when API call fails", async () => {
-      vi.mocked(apiFetch).mockRejectedValue(new Error("Network error"));
-      const result = await validateUID("04a2b3c4d5e6f7", "t1");
+      const remoteValidator: UIDRemoteValidator = {
+        checkUIDExists: vi.fn().mockRejectedValue(new Error("Network error")),
+      };
+      const deps = {
+        cardRepo: createMockCardRepo([]),
+        remoteValidator,
+        onlineStatus: createMockOnlineStatus(true),
+      };
+      const result = await validateUID("04a2b3c4d5e6f7", "t1", deps);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("NETWORK_ERROR");
     });
 
     it("returns valid when offline and not found locally", async () => {
-      vi.stubGlobal("navigator", { onLine: false });
-      const result = await validateUID("04a2b3c4d5e6f7", "t1");
+      const deps = {
+        cardRepo: createMockCardRepo([]),
+        remoteValidator: createMockRemoteValidator(),
+        onlineStatus: createMockOnlineStatus(false),
+      };
+      const result = await validateUID("04a2b3c4d5e6f7", "t1", deps);
       expect(result.valid).toBe(true);
     });
 
     it("skips cloud check when found locally", async () => {
-      vi.mocked(localDb.cards.filter).mockReturnValue({
-        toArray: vi
-          .fn()
-          .mockResolvedValue([{ cardId: "04a2b3c4d5e6f7", tenantId: "t1", status: "active" }]),
-      } as any);
-      const result = await validateUID("04a2b3c4d5e6f7", "t1");
+      const remoteValidator = createMockRemoteValidator();
+      const deps = {
+        cardRepo: createMockCardRepo([
+          { cardId: "04a2b3c4d5e6f7", tenantId: "t1", status: "active" },
+        ]),
+        remoteValidator,
+        onlineStatus: createMockOnlineStatus(true),
+      };
+      const result = await validateUID("04a2b3c4d5e6f7", "t1", deps);
       expect(result.valid).toBe(false);
-      expect(apiFetch).not.toHaveBeenCalled();
+      expect(remoteValidator.checkUIDExists).not.toHaveBeenCalled();
     });
   });
 });

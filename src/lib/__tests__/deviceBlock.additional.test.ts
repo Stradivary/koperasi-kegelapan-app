@@ -12,7 +12,7 @@ vi.mock("../indexeddb", () => ({
   },
 }));
 
-describe("deviceBlock — clearSessionGrantCache when indexedDB unavailable (lines 214-215)", () => {
+describe("deviceBlock - clearSessionGrantCache when indexedDB unavailable (lines 214-215)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     clearBlockState();

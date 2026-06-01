@@ -28,7 +28,7 @@ function makeData(count: number): TestRow[] {
   }));
 }
 
-describe("useDataTable — client pagination", () => {
+describe("useDataTable - client pagination", () => {
   it("returns a table instance with correct row count", () => {
     const data = makeData(25);
     const { result } = renderHook(() => useDataTable({ data, columns, pageSize: 10 }));
@@ -127,7 +127,7 @@ describe("useDataTable — client pagination", () => {
   });
 });
 
-describe("useDataTable — server pagination", () => {
+describe("useDataTable - server pagination", () => {
   it("uses serverPagination values when paginationMode=server", () => {
     const { result } = renderHook(() =>
       useDataTable({
@@ -155,7 +155,7 @@ describe("useDataTable — server pagination", () => {
       { initialProps: { pageSize: 10 } },
     );
     rerender({ pageSize: 20 });
-    // Server mode — pageIndex comes from serverPagination, not internal state
+    // Server mode - pageIndex comes from serverPagination, not internal state
     expect(result.current.pagination.pageIndex).toBe(3);
   });
 });

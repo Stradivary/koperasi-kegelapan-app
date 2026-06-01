@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { buildSelectChain } from "./dbMocks";
 
 // ---------------------------------------------------------------------------
-// DB mock factory — returns a configurable mock per test
+// DB mock factory - returns a configurable mock per test
 // ---------------------------------------------------------------------------
 
 const mockUpdate = vi.fn();
@@ -332,7 +332,7 @@ describe("updateTenantStatus", () => {
   });
 });
 
-describe("createTenant — conflict paths", () => {
+describe("createTenant - conflict paths", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -408,7 +408,7 @@ describe("createTenant — conflict paths", () => {
     }
   });
 
-  it("handles UNIQUE constraint error during transaction — slug conflict", async () => {
+  it("handles UNIQUE constraint error during transaction - slug conflict", async () => {
     // Pre-checks pass (no conflict found)
     const slugChain = buildSelectChain(undefined);
     const userChain = buildSelectChain(undefined);
@@ -435,7 +435,7 @@ describe("createTenant — conflict paths", () => {
     }
   });
 
-  it("handles UNIQUE constraint error during transaction — both conflict", async () => {
+  it("handles UNIQUE constraint error during transaction - both conflict", async () => {
     const slugChain = buildSelectChain(undefined);
     const userChain = buildSelectChain(undefined);
     const recheckSlugChain = buildSelectChain({ tenantId: "t1", slug: "new-tenant", name: "Race" });
@@ -456,7 +456,7 @@ describe("createTenant — conflict paths", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — admin_only race condition", async () => {
+  it("handles UNIQUE constraint error - admin_only race condition", async () => {
     const slugChain = buildSelectChain(undefined);
     const userChain = buildSelectChain(undefined);
     const recheckSlugChain = buildSelectChain(undefined); // slug no longer conflicts
@@ -479,7 +479,7 @@ describe("createTenant — conflict paths", () => {
     }
   });
 
-  it("handles UNIQUE constraint error — fallback when recheck finds nothing", async () => {
+  it("handles UNIQUE constraint error - fallback when recheck finds nothing", async () => {
     const slugChain = buildSelectChain(undefined);
     const userChain = buildSelectChain(undefined);
     const recheckSlugChain = buildSelectChain(undefined);

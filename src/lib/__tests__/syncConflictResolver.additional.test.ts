@@ -1,6 +1,6 @@
 /**
  * Additional tests for syncConflictResolver.ts covering line 186:
- * resolveMemberConflicts — no toast when localUpdatedAt === 0
+ * resolveMemberConflicts - no toast when localUpdatedAt === 0
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { resolveMemberConflicts } from "../syncConflictResolver";
@@ -38,7 +38,7 @@ vi.mock("#/db/local-db", () => ({
 
 import { toast } from "sonner";
 
-describe("resolveMemberConflicts — toast suppression when localUpdatedAt is 0 (line 186)", () => {
+describe("resolveMemberConflicts - toast suppression when localUpdatedAt is 0 (line 186)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUsersPut.mockResolvedValue(undefined);

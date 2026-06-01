@@ -7,7 +7,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useOnlineStatus } from "../useOnlineStatus";
 
-describe("useOnlineStatus — initial offline state (line 13)", () => {
+describe("useOnlineStatus - initial offline state (line 13)", () => {
   afterEach(() => {
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
   });

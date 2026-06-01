@@ -253,7 +253,7 @@ function buildPushErrorMessage(lastError: unknown): string {
     return `${lastError.name}: ${lastError.message}`;
   }
   if (lastError && typeof lastError === "object" && Object.keys(lastError).length === 0) {
-    return "Network error (empty error object — likely CORS or DNS failure)";
+    return "Network error (empty error object - likely CORS or DNS failure)";
   }
   return String(lastError);
 }
@@ -271,7 +271,7 @@ async function pushEntitiesWithRetry(
 
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
     if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked — entity push aborted");
+      throw new DeviceBlockedError("Device is blocked - entity push aborted");
     }
 
     try {
@@ -400,13 +400,13 @@ async function pushCardBatch(
  */
 export async function syncPushEntities(tenantId: string): Promise<EntityPushResult> {
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — entity push aborted");
+    throw new DeviceBlockedError("Device is blocked - entity push aborted");
   }
 
-  // Skip if no auth token — means this is a local-only tenant not registered on server
+  // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
-    console.log(`[SyncPushEntities] Skipped — no access token (local-only tenant)`);
+    console.log(`[SyncPushEntities] Skipped - no access token (local-only tenant)`);
     return { membersAccepted: 0, membersRejected: 0, cardsAccepted: 0, cardsRejected: 0 };
   }
 
@@ -473,7 +473,7 @@ async function _pushEntitiesInternal(
   // Track how many cards have been included in member batches
   let cardsSentWithMembers = 0;
 
-  // Batch members — include cards in the first batch (up to MAX_BATCH_SIZE)
+  // Batch members - include cards in the first batch (up to MAX_BATCH_SIZE)
   for (let i = 0; i < pendingMembers.length; i += MAX_BATCH_SIZE) {
     const memberBatch = pendingMembers.slice(i, i + MAX_BATCH_SIZE);
     const cardBatch = i === 0 ? pendingCards.slice(0, MAX_BATCH_SIZE) : [];
@@ -509,13 +509,13 @@ async function _pushEntitiesInternal(
  */
 export async function syncPushMembers(tenantId: string): Promise<MemberPushResult> {
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — member push aborted");
+    throw new DeviceBlockedError("Device is blocked - member push aborted");
   }
 
-  // Skip if no auth token — means this is a local-only tenant not registered on server
+  // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
-    console.log(`[SyncPushMembers] Skipped — no access token (local-only tenant)`);
+    console.log(`[SyncPushMembers] Skipped - no access token (local-only tenant)`);
     return { membersAccepted: 0, membersRejected: 0 };
   }
 
@@ -545,13 +545,13 @@ export async function syncPushMembers(tenantId: string): Promise<MemberPushResul
  */
 export async function syncPushCards(tenantId: string): Promise<CardPushResult> {
   if (isDeviceBlocked()) {
-    throw new DeviceBlockedError("Device is blocked — card push aborted");
+    throw new DeviceBlockedError("Device is blocked - card push aborted");
   }
 
-  // Skip if no auth token — means this is a local-only tenant not registered on server
+  // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
-    console.log(`[SyncPushCards] Skipped — no access token (local-only tenant)`);
+    console.log(`[SyncPushCards] Skipped - no access token (local-only tenant)`);
     return { cardsAccepted: 0, cardsRejected: 0 };
   }
 

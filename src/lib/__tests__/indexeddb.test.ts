@@ -1,5 +1,5 @@
 /**
- * Tests for src/lib/indexeddb.ts — store operations
+ * Tests for src/lib/indexeddb.ts - store operations
  *
  * We mock the IDBFactory to avoid real IndexedDB in Node.
  */
@@ -21,7 +21,7 @@ describe("makeIdempotencyKey", () => {
 
 // ── Tests for store operations when IndexedDB is unavailable ─────────────────
 
-describe("stores — IndexedDB unavailable", () => {
+describe("stores - IndexedDB unavailable", () => {
   let origIndexedDB: IDBFactory | undefined;
 
   beforeEach(() => {
@@ -102,7 +102,7 @@ describe("stores — IndexedDB unavailable", () => {
 
 // ── Tests for openDb error handling ──────────────────────────────────────────
 
-describe("openDb — error handling", () => {
+describe("openDb - error handling", () => {
   it("rejects when IDBFactory.open fails", async () => {
     vi.resetModules();
 

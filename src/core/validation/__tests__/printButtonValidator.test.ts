@@ -9,23 +9,14 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { evaluatePrintEligibilitySync, evaluatePrintEligibility } from "../printButtonValidator";
-import type { Card } from "#/db/local-db";
-
-vi.mock("#/db/local-db", () => ({
-  localDb: {
-    cards: {
-      get: vi.fn(),
-    },
-  },
-}));
-
-import { localDb } from "#/db/local-db";
+import type { CardRecord } from "#/core/interfaces/types";
+import type { CardRepository } from "#/core/interfaces/CardRepository";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeCard(overrides: Partial<Card> = {}): Card {
+function makeCard(overrides: Partial<CardRecord> = {}): CardRecord {
   return {
     tenantId: "tenant-1",
     cardId: "aabbccdd",
@@ -39,6 +30,15 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     expiresAt: null,
     notes: null,
     ...overrides,
+  };
+}
+
+function createMockCardRepo(card?: CardRecord | undefined): CardRepository {
+  return {
+    getByTenantAndCardId: vi.fn().mockResolvedValue(card),
+    filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
+    updateStatus: vi.fn().mockResolvedValue(undefined),
+    put: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -143,59 +143,76 @@ describe("evaluatePrintEligibilitySync", () => {
 });
 
 // ---------------------------------------------------------------------------
-// evaluatePrintEligibility — async wrapper (Requirement 1.6)
+// evaluatePrintEligibility - async wrapper (Requirement 1.6)
 // ---------------------------------------------------------------------------
 
 describe("evaluatePrintEligibility (async)", () => {
+  let mockCardRepo: CardRepository;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns CARD_NOT_FOUND when card is not in IndexedDB", async () => {
-    vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+    mockCardRepo = createMockCardRepo(undefined);
 
-    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1");
+    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1", {
+      cardRepo: mockCardRepo,
+    });
 
     expect(result).toEqual({ enabled: false, reason: "CARD_NOT_FOUND" });
   });
 
   it("returns CARD_NOT_FOUND when IndexedDB throws (Requirement 1.6)", async () => {
-    vi.mocked(localDb.cards.get).mockRejectedValue(new Error("IndexedDB quota exceeded"));
+    mockCardRepo = createMockCardRepo();
+    vi.mocked(mockCardRepo.getByTenantAndCardId).mockRejectedValue(
+      new Error("IndexedDB quota exceeded"),
+    );
 
-    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1");
+    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1", {
+      cardRepo: mockCardRepo,
+    });
 
     expect(result).toEqual({ enabled: false, reason: "CARD_NOT_FOUND" });
   });
 
   it("returns CARD_BLOCKED when card is blocked", async () => {
-    vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status: "blocked_admin" }));
+    mockCardRepo = createMockCardRepo(makeCard({ status: "blocked_admin" }));
 
-    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1");
+    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1", {
+      cardRepo: mockCardRepo,
+    });
 
     expect(result).toEqual({ enabled: false, reason: "CARD_BLOCKED" });
   });
 
   it("returns NO_MEMBER_NO_BALANCE when active, no member, zero balance", async () => {
-    vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status: "active", balance: 0 }));
+    mockCardRepo = createMockCardRepo(makeCard({ status: "active", balance: 0 }));
 
-    const result = await evaluatePrintEligibility("aabbccdd", { withMember: false }, "tenant-1");
+    const result = await evaluatePrintEligibility("aabbccdd", { withMember: false }, "tenant-1", {
+      cardRepo: mockCardRepo,
+    });
 
     expect(result).toEqual({ enabled: false, reason: "NO_MEMBER_NO_BALANCE" });
   });
 
   it("returns enabled when active, withMember=true, zero balance", async () => {
-    vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status: "active", balance: 0 }));
+    mockCardRepo = createMockCardRepo(makeCard({ status: "active", balance: 0 }));
 
-    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1");
+    const result = await evaluatePrintEligibility("aabbccdd", { withMember: true }, "tenant-1", {
+      cardRepo: mockCardRepo,
+    });
 
     expect(result).toEqual({ enabled: true });
   });
 
-  it("queries IndexedDB with correct [tenantId, cardId] key", async () => {
-    vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+  it("queries CardRepository with correct tenantId and cardId", async () => {
+    mockCardRepo = createMockCardRepo(undefined);
 
-    await evaluatePrintEligibility("aabbccdd", { withMember: false }, "tenant-xyz");
+    await evaluatePrintEligibility("aabbccdd", { withMember: false }, "tenant-xyz", {
+      cardRepo: mockCardRepo,
+    });
 
-    expect(localDb.cards.get).toHaveBeenCalledWith(["tenant-xyz", "aabbccdd"]);
+    expect(mockCardRepo.getByTenantAndCardId).toHaveBeenCalledWith("tenant-xyz", "aabbccdd");
   });
 });

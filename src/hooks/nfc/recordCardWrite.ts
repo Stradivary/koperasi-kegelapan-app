@@ -16,7 +16,7 @@ interface RecordCardWriteParams {
 
 /**
  * Record a completed card write to the reconciliation outbox and transaction log.
- * The transaction log write is non-critical — failures are silently swallowed.
+ * The transaction log write is non-critical - failures are silently swallowed.
  *
  * IMPORTANT: This must only be called AFTER write verification succeeds to avoid
  * phantom transactions in the outbox.
@@ -74,7 +74,7 @@ export async function recordCardWrite({
       deviceId: null,
     });
   } catch {
-    /* Non-critical — transaction log is best-effort */
+    /* Non-critical - transaction log is best-effort */
   }
 
   // Update local card and user records with latest state from the written card.

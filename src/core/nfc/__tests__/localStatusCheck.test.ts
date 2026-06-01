@@ -1,5 +1,5 @@
 /**
- * Unit tests for checkLocalBlockedStatus — offline block enforcement via IndexedDB.
+ * Unit tests for checkLocalBlockedStatus - offline block enforcement via repositories.
  *
  * Covers all branches:
  * - Card not found in local DB
@@ -11,29 +11,43 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
-vi.mock("#/db/local-db", () => ({
-  localDb: {
-    cards: {
-      get: vi.fn(),
-    },
-    users: {
-      get: vi.fn(),
-    },
-  },
-}));
-
 import { checkLocalBlockedStatus } from "../localStatusCheck";
-import { localDb } from "#/db/local-db";
+import type { CardRepository } from "../../interfaces/CardRepository";
+import type { UserRepository } from "../../interfaces/UserRepository";
 import { makeCard, makeUser, BLOCKED_CARD_STATUSES } from "./fixtures";
+
+// ---------------------------------------------------------------------------
+// Mock repository factories
+// ---------------------------------------------------------------------------
+
+function createMockCardRepo(overrides: Partial<CardRepository> = {}): CardRepository {
+  return {
+    getByTenantAndCardId: vi.fn().mockResolvedValue(undefined),
+    filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
+    updateStatus: vi.fn().mockResolvedValue(undefined),
+    put: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+function createMockUserRepo(overrides: Partial<UserRepository> = {}): UserRepository {
+  return {
+    getByTenantAndUserId: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe("checkLocalBlockedStatus", () => {
+  let cardRepo: CardRepository;
+  let userRepo: UserRepository;
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    cardRepo = createMockCardRepo();
+    userRepo = createMockUserRepo();
   });
 
   // -------------------------------------------------------------------------
@@ -42,9 +56,12 @@ describe("checkLocalBlockedStatus", () => {
 
   describe("card not found in local DB", () => {
     it("returns blocked=false, notInLocalDb=true when card is missing", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04:A2:B3:C4:D5:E6:F7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04:A2:B3:C4:D5:E6:F7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.blocked).toBe(false);
       expect(result.reason).toBeNull();
@@ -52,11 +69,11 @@ describe("checkLocalBlockedStatus", () => {
     });
 
     it("does not look up users when card is not found", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-      expect(localDb.users.get).not.toHaveBeenCalled();
+      expect(userRepo.getByTenantAndUserId).not.toHaveBeenCalled();
     });
   });
 
@@ -69,29 +86,35 @@ describe("checkLocalBlockedStatus", () => {
 
     for (const status of blockedStatuses) {
       it(`returns blocked=true for status '${status}'`, async () => {
-        vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status }));
+        vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ status }));
 
-        const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+        const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+          cardRepo,
+          userRepo,
+        });
 
         expect(result.blocked).toBe(true);
         expect(result.notInLocalDb).toBe(false);
       });
 
       it(`includes the status suffix in the reason for '${status}'`, async () => {
-        vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status }));
+        vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ status }));
 
-        const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+        const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+          cardRepo,
+          userRepo,
+        });
 
         const expectedSuffix = status.replaceAll("blocked_", "");
         expect(result.reason).toContain(expectedSuffix);
       });
 
       it(`does not look up users when card is blocked (${status})`, async () => {
-        vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ status }));
+        vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ status }));
 
-        await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+        await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-        expect(localDb.users.get).not.toHaveBeenCalled();
+        expect(userRepo.getByTenantAndUserId).not.toHaveBeenCalled();
       });
     }
   });
@@ -102,9 +125,12 @@ describe("checkLocalBlockedStatus", () => {
 
   describe("active card with no linked user", () => {
     it("returns blocked=false when card is active and userId is null", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: null }));
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: null }));
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.blocked).toBe(false);
       expect(result.reason).toBeNull();
@@ -112,11 +138,11 @@ describe("checkLocalBlockedStatus", () => {
     });
 
     it("does not look up users when userId is null", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: null }));
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: null }));
 
-      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-      expect(localDb.users.get).not.toHaveBeenCalled();
+      expect(userRepo.getByTenantAndUserId).not.toHaveBeenCalled();
     });
   });
 
@@ -126,25 +152,28 @@ describe("checkLocalBlockedStatus", () => {
 
   describe("active card with active linked user", () => {
     it("returns blocked=false when both card and user are active", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: "user-abc" }));
-      vi.mocked(localDb.users.get).mockResolvedValue(makeUser({ status: "active" }));
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: "user-abc" }));
+      vi.mocked(userRepo.getByTenantAndUserId).mockResolvedValue(makeUser({ status: "active" }));
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.blocked).toBe(false);
       expect(result.reason).toBeNull();
       expect(result.notInLocalDb).toBe(false);
     });
 
-    it("looks up user with correct [tenantId, userId] key", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(
+    it("looks up user with correct tenantId and userId", async () => {
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(
         makeCard({ userId: "user-abc", tenantId: "tenant-1" }),
       );
-      vi.mocked(localDb.users.get).mockResolvedValue(makeUser({ status: "active" }));
+      vi.mocked(userRepo.getByTenantAndUserId).mockResolvedValue(makeUser({ status: "active" }));
 
-      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-      expect(localDb.users.get).toHaveBeenCalledWith(["tenant-1", "user-abc"]);
+      expect(userRepo.getByTenantAndUserId).toHaveBeenCalledWith("tenant-1", "user-abc");
     });
   });
 
@@ -154,29 +183,38 @@ describe("checkLocalBlockedStatus", () => {
 
   describe("active card with suspended linked user", () => {
     it("returns blocked=true when user is suspended", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: "user-abc" }));
-      vi.mocked(localDb.users.get).mockResolvedValue(makeUser({ status: "suspended" }));
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: "user-abc" }));
+      vi.mocked(userRepo.getByTenantAndUserId).mockResolvedValue(makeUser({ status: "suspended" }));
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.blocked).toBe(true);
       expect(result.notInLocalDb).toBe(false);
     });
 
     it("includes 'ditangguhkan' in the reason when user is suspended", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: "user-abc" }));
-      vi.mocked(localDb.users.get).mockResolvedValue(makeUser({ status: "suspended" }));
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: "user-abc" }));
+      vi.mocked(userRepo.getByTenantAndUserId).mockResolvedValue(makeUser({ status: "suspended" }));
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.reason).toContain("ditangguhkan");
     });
 
     it("returns blocked=false when user record is not found in DB", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(makeCard({ userId: "user-abc" }));
-      vi.mocked(localDb.users.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(makeCard({ userId: "user-abc" }));
+      vi.mocked(userRepo.getByTenantAndUserId).mockResolvedValue(undefined);
 
-      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      const result = await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", {
+        cardRepo,
+        userRepo,
+      });
 
       expect(result.blocked).toBe(false);
     });
@@ -188,43 +226,43 @@ describe("checkLocalBlockedStatus", () => {
 
   describe("serial number normalization", () => {
     it("strips colons from serial number before DB lookup", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("tenant-1", "04:A2:B3:C4:D5:E6:F7");
+      await checkLocalBlockedStatus("tenant-1", "04:A2:B3:C4:D5:E6:F7", { cardRepo, userRepo });
 
-      expect(localDb.cards.get).toHaveBeenCalledWith(["tenant-1", "04a2b3c4d5e6f7"]);
+      expect(cardRepo.getByTenantAndCardId).toHaveBeenCalledWith("tenant-1", "04a2b3c4d5e6f7");
     });
 
     it("strips dashes from serial number before DB lookup", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("tenant-1", "04-A2-B3-C4-D5-E6-F7");
+      await checkLocalBlockedStatus("tenant-1", "04-A2-B3-C4-D5-E6-F7", { cardRepo, userRepo });
 
-      expect(localDb.cards.get).toHaveBeenCalledWith(["tenant-1", "04a2b3c4d5e6f7"]);
+      expect(cardRepo.getByTenantAndCardId).toHaveBeenCalledWith("tenant-1", "04a2b3c4d5e6f7");
     });
 
     it("converts serial number to lowercase before DB lookup", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("tenant-1", "04A2B3C4D5E6F7");
+      await checkLocalBlockedStatus("tenant-1", "04A2B3C4D5E6F7", { cardRepo, userRepo });
 
-      expect(localDb.cards.get).toHaveBeenCalledWith(["tenant-1", "04a2b3c4d5e6f7"]);
+      expect(cardRepo.getByTenantAndCardId).toHaveBeenCalledWith("tenant-1", "04a2b3c4d5e6f7");
     });
 
     it("handles already-normalized serial number", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7");
+      await checkLocalBlockedStatus("tenant-1", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-      expect(localDb.cards.get).toHaveBeenCalledWith(["tenant-1", "04a2b3c4d5e6f7"]);
+      expect(cardRepo.getByTenantAndCardId).toHaveBeenCalledWith("tenant-1", "04a2b3c4d5e6f7");
     });
 
     it("passes tenantId through unchanged", async () => {
-      vi.mocked(localDb.cards.get).mockResolvedValue(undefined);
+      vi.mocked(cardRepo.getByTenantAndCardId).mockResolvedValue(undefined);
 
-      await checkLocalBlockedStatus("MY-TENANT-ID", "04a2b3c4d5e6f7");
+      await checkLocalBlockedStatus("MY-TENANT-ID", "04a2b3c4d5e6f7", { cardRepo, userRepo });
 
-      expect(localDb.cards.get).toHaveBeenCalledWith(["MY-TENANT-ID", "04a2b3c4d5e6f7"]);
+      expect(cardRepo.getByTenantAndCardId).toHaveBeenCalledWith("MY-TENANT-ID", "04a2b3c4d5e6f7");
     });
   });
 });

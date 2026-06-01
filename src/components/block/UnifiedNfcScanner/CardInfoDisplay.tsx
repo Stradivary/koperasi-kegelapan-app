@@ -1,5 +1,5 @@
-import type { CardPayload } from "#/core/payload/types";
-import type { CardClassification } from "#/core/nfc/types";
+import type { CardPayload } from "#/hooks/types";
+import type { CardClassification } from "#/hooks/types";
 import { CardStatusBadge } from "../CardStatusBadge";
 
 /**
@@ -64,7 +64,7 @@ export function CardInfoDisplay({
   showCheckInStatus,
   labels,
 }: Readonly<CardInfoDisplayProps>) {
-  // Valid payload card — show full card info
+  // Valid payload card - show full card info
   if (classification === "valid_payload" && payload) {
     return (
       <section className="rounded-lg border p-4 space-y-3" aria-label={payload.identity.name}>
@@ -103,7 +103,7 @@ export function CardInfoDisplay({
     );
   }
 
-  // Non-payload card — show serial and classification label
+  // Non-payload card - show serial and classification label
   const classificationKey = classification === "invalid_format" ? "invalidFormat" : classification;
   let classificationLabel = "";
   if (classification) {

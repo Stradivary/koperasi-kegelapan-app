@@ -1,7 +1,7 @@
 import { getDb } from "#/db";
 import { tenants, accounts } from "#/db/schema";
 import { and, eq, sql } from "drizzle-orm";
-import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/slugValidation";
+import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/lib/utils/slugValidation";
 
 export interface SyncRequest {
   slug: string;
@@ -350,7 +350,7 @@ export async function processTenantSync(
     return buildConflictResult(existingBySlug, existingByAdmin, conflictTenant);
   }
 
-  // Step 4: No conflict — create tenant + admin account atomically via D1 batch
+  // Step 4: No conflict - create tenant + admin account atomically via D1 batch
   const tenantId = crypto.randomUUID();
   const accountId = crypto.randomUUID();
 
@@ -380,7 +380,7 @@ export async function processTenantSync(
       const conflictResult = await handleRaceConflict(db, request.slug, request.adminUsername);
       if (conflictResult) return conflictResult;
 
-      // Fallback: constraint violation but can't determine which — treat as slug conflict
+      // Fallback: constraint violation but can't determine which - treat as slug conflict
       return {
         error: "conflict" as const,
         conflictType: "slug_and_admin" as const,
@@ -389,7 +389,7 @@ export async function processTenantSync(
       };
     }
 
-    // Non-constraint error — rethrow
+    // Non-constraint error - rethrow
     throw e;
   }
 

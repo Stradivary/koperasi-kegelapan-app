@@ -26,7 +26,7 @@ export interface CardSnapshot {
 /**
  * Write-ahead journal entry for NFC card writes.
  * Persisted BEFORE the physical write so recovery is possible on failure.
- * Keyed by [tenantId, cardIdHex] — one pending write per card at a time.
+ * Keyed by [tenantId, cardIdHex] - one pending write per card at a time.
  */
 export interface WriteJournal {
   tenantId: string;
@@ -137,7 +137,7 @@ function openDb(): Promise<IDBDatabase> {
     }
     const req = idb.open(DB_NAME, DB_VERSION);
     req.onblocked = () => {
-      // Another tab/SW holds an older version — reject so callers can handle gracefully
+      // Another tab/SW holds an older version - reject so callers can handle gracefully
       reject(new Error("IndexedDB upgrade blocked by another connection"));
     };
     req.onupgradeneeded = (event) => {
@@ -412,7 +412,7 @@ export const authTokenCacheStore = {
       s.get(deviceId),
     );
     if (!entry) return undefined;
-    // Check expiry — if expiresAt is set and passed, discard
+    // Check expiry - if expiresAt is set and passed, discard
     if (entry.expiresAt > 0 && Date.now() > entry.expiresAt) {
       // Best-effort cleanup of expired token
       try {

@@ -3,9 +3,8 @@ import { CreditCard } from "lucide-react";
 import successHandImg from "#/assets/images/success_hand.svg";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import type { NfcCardPhase } from "#/hooks/nfc/useNfcCard";
-import type { CardPayload } from "#/core/payload/types";
-import type { NfcPhase } from "#/core/nfc/stateMachine";
-import { validateTopup, MAX_TOPUP_AMOUNT, MAX_BALANCE } from "#/core/state-machine/engine";
+import type { CardPayload, NfcPhase } from "#/hooks/types";
+import { validateTopup, MAX_TOPUP_AMOUNT, MAX_BALANCE } from "#/hooks/domain";
 import {
   Drawer,
   DrawerContent,
@@ -101,7 +100,7 @@ export function TopupDrawer({
           )}
         </DrawerHeader>
 
-        {/* Step Indicator — uses shared sub-component */}
+        {/* Step Indicator - uses shared sub-component */}
         <div className="px-4 py-2">
           <StepIndicator
             phase={nfcPhase}
@@ -115,7 +114,7 @@ export function TopupDrawer({
         </div>
 
         <div className="px-4 overflow-y-auto flex-1 min-h-0">
-          {/* Scanning / Writing — uses shared NfcTapArea */}
+          {/* Scanning / Writing - uses shared NfcTapArea */}
           {(isScanning || isWriting) && (
             <div className="flex flex-col items-center justify-center py-8 gap-6">
               <NfcTapArea phase={nfcPhase} />
@@ -130,7 +129,7 @@ export function TopupDrawer({
             </div>
           )}
 
-          {/* Card ready — show balance + amount input */}
+          {/* Card ready - show balance + amount input */}
           {hasCard && payload && (
             <div className="space-y-4 py-4">
               <div className="rounded-2xl bg-brand/5 border border-brand/20 p-4 text-center">

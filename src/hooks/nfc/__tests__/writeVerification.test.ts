@@ -174,7 +174,7 @@ describe("verifyWrittenPayload", () => {
     const { verifyWrittenPayload } = await import("../writeVerification");
     const grant = makeGrant();
 
-    // Don't emit any reading event — let the timeout fire naturally
+    // Don't emit any reading event - let the timeout fire naturally
     const verifyPromise = verifyWrittenPayload(makePayload() as never, grant as never);
 
     // Wait longer than VERIFICATION_TIMEOUT_MS * (MAX_VERIFICATION_RETRIES + 1) + retry delays
@@ -195,7 +195,7 @@ describe("verifyWrittenPayload", () => {
 
     const verifyPromise = verifyWrittenPayload(makePayload() as never, grant as never);
 
-    // First attempt — emit reading, decode fails
+    // First attempt - emit reading, decode fails
     await new Promise((r) => setTimeout(r, 20));
     const reader1 = MockNDEFReader.instances[0];
     reader1.emit("reading", { message: { records: [] }, serialNumber: "AA:BB" });

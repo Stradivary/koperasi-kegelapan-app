@@ -4,6 +4,12 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useBlockedCheck } from "../useBlockedCheck";
 import type { NfcCardPhase } from "../nfc/useNfcCard";
 
+// Mock repositories
+vi.mock("#/lib/repositories", () => ({
+  cardRepo: { getByTenantAndCardId: vi.fn(), filterByCardIdExcludingDeleted: vi.fn() },
+  userRepo: { getByTenantAndUserId: vi.fn() },
+}));
+
 // Mock checkLocalBlockedStatus
 vi.mock("#/core/nfc/localStatusCheck", () => ({
   checkLocalBlockedStatus: vi.fn(),
@@ -86,7 +92,11 @@ describe("useBlockedCheck", () => {
     expect(result.current.isBlocked).toBe(false);
     expect(result.current.isReady).toBe(true);
     expect(result.current.notInLocalDb).toBe(false);
-    expect(mockCheckStatus).toHaveBeenCalledWith("t1", "AA:BB:CC");
+    expect(mockCheckStatus).toHaveBeenCalledWith(
+      "t1",
+      "AA:BB:CC",
+      expect.objectContaining({ cardRepo: expect.any(Object), userRepo: expect.any(Object) }),
+    );
   });
 
   it("sets isBlocked and blockedReason when card is blocked", async () => {
@@ -207,7 +217,7 @@ describe("useBlockedCheck", () => {
       await new Promise((r) => setTimeout(r, 10));
     });
 
-    // The stale result should be discarded — state should be reset (idle)
+    // The stale result should be discarded - state should be reset (idle)
     expect(result.current.isBlocked).toBe(false);
     expect(result.current.blockedReason).toBeNull();
     expect(result.current.isReady).toBe(false);

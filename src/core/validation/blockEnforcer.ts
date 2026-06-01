@@ -1,5 +1,5 @@
 /**
- * BlockEnforcer — Enforces card block status on all operations (online & offline).
+ * BlockEnforcer - Enforces card block status on all operations (online & offline).
  *
  * Checks both on-card status AND local IndexedDB record. Rejects if either is blocked.
  * Works both online and offline by reading from IndexedDB.
@@ -7,8 +7,9 @@
  * @see Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
  */
 
+import type { CardRecord } from "../interfaces/types";
+import type { CardRepository } from "../interfaces/CardRepository";
 import { CardStatus } from "../payload/types";
-import { localDb, type Card } from "#/db/local-db";
 
 /** Result of a block check */
 export interface BlockCheckResult {
@@ -68,7 +69,7 @@ function isBlockedStatus(status: CardStatus): boolean {
 /**
  * Checks if a local DB card record has a blocked status.
  */
-function isDbCardBlocked(card: Card): boolean {
+function isDbCardBlocked(card: CardRecord): boolean {
   return card.status !== "active";
 }
 
@@ -76,7 +77,7 @@ function isDbCardBlocked(card: Card): boolean {
  * Converts a local DB card status string to a CardStatus enum value.
  * Returns undefined if the status is "active" (not blocked).
  */
-function dbStatusToCardStatus(dbStatus: Card["status"]): CardStatus | undefined {
+function dbStatusToCardStatus(dbStatus: CardRecord["status"]): CardStatus | undefined {
   return DB_STATUS_TO_ENUM[dbStatus];
 }
 
@@ -96,8 +97,8 @@ function makeBlockedResult(status: CardStatus): BlockCheckResult {
  * Synchronously checks block status from on-card status and/or local DB card record.
  *
  * This is the core logic that determines if a card is blocked based on:
- * 1. The on-card status (from NFC read) — authoritative if available
- * 2. The local DB record status — used as fallback or additional check
+ * 1. The on-card status (from NFC read) - authoritative if available
+ * 2. The local DB record status - used as fallback or additional check
  *
  * Either source indicating blocked → operation rejected.
  *
@@ -107,7 +108,7 @@ function makeBlockedResult(status: CardStatus): BlockCheckResult {
  */
 export function checkBlockedSync(
   onCardStatus?: CardStatus,
-  dbCard?: Card | null,
+  dbCard?: CardRecord | null,
 ): BlockCheckResult {
   // Check on-card status first (authoritative per Requirement 6.4)
   if (onCardStatus !== undefined && isBlockedStatus(onCardStatus)) {
@@ -147,6 +148,7 @@ export function checkBlockedSync(
 export async function checkBlocked(
   tenantId: string,
   cardId: string,
+  deps: { cardRepo: CardRepository },
   onCardStatus?: CardStatus,
 ): Promise<BlockCheckResult> {
   // If on-card status is already blocked, reject immediately without DB lookup
@@ -154,8 +156,8 @@ export async function checkBlocked(
     return makeBlockedResult(onCardStatus);
   }
 
-  // Read from local IndexedDB (works offline)
-  const dbCard = await localDb.cards.get([tenantId, cardId]);
+  // Read from repository (works offline via IndexedDB-backed implementation)
+  const dbCard = await deps.cardRepo.getByTenantAndCardId(tenantId, cardId);
 
   return checkBlockedSync(onCardStatus, dbCard ?? null);
 }
@@ -176,8 +178,9 @@ export async function checkBlocked(
 export async function enforceOnCheckin(
   tenantId: string,
   cardId: string,
+  deps: { cardRepo: CardRepository },
 ): Promise<BlockCheckResult> {
-  return checkBlocked(tenantId, cardId);
+  return checkBlocked(tenantId, cardId, deps);
 }
 
 /**
@@ -196,8 +199,9 @@ export async function enforceOnCheckin(
 export async function enforceOnCheckout(
   tenantId: string,
   cardId: string,
+  deps: { cardRepo: CardRepository },
 ): Promise<BlockCheckResult> {
-  return checkBlocked(tenantId, cardId);
+  return checkBlocked(tenantId, cardId, deps);
 }
 
 /**
@@ -209,15 +213,17 @@ export async function enforceOnCheckout(
  * @param tenantId - Tenant identifier
  * @param cardId - Card identifier (hex string)
  */
-export async function applyAdminBlock(tenantId: string, cardId: string): Promise<void> {
-  const existingCard = await localDb.cards.get([tenantId, cardId]);
+export async function applyAdminBlock(
+  tenantId: string,
+  cardId: string,
+  deps: { cardRepo: CardRepository },
+): Promise<void> {
+  const existingCard = await deps.cardRepo.getByTenantAndCardId(tenantId, cardId);
 
   if (existingCard) {
-    await localDb.cards.update([tenantId, cardId], {
-      status: "blocked_admin",
-    });
+    await deps.cardRepo.updateStatus(tenantId, cardId, "blocked_admin");
   } else {
-    await localDb.cards.put({
+    await deps.cardRepo.put({
       tenantId,
       cardId,
       userId: null,

@@ -4,7 +4,7 @@
  * is available for any API calls that fire before the React tree mounts
  * and useTenantContext runs.
  *
- * This is a fire-and-forget initialization — if IndexedDB is unavailable
+ * This is a fire-and-forget initialization - if IndexedDB is unavailable
  * or no tenant context exists, the deviceId will be set later during login
  * or when useTenantContext loads.
  */
@@ -28,6 +28,6 @@ export function initDeviceIdFromStorage(): void {
       }
     })
     .catch(() => {
-      // Silently ignore — deviceId will be set later during login or route load
+      // Silently ignore - deviceId will be set later during login or route load
     });
 }

@@ -60,7 +60,7 @@ export function PwaUpdatePrompt() {
     onRegistered(r) {
       if (!r) {
         console.warn(
-          "[PwaUpdatePrompt] SW registration returned undefined — SW may not be available",
+          "[PwaUpdatePrompt] SW registration returned undefined - SW may not be available",
         );
         return;
       }
@@ -75,7 +75,7 @@ export function PwaUpdatePrompt() {
     },
     onRegisterError(error) {
       console.error("[PwaUpdatePrompt] SW registration failed:", error);
-      // Don't crash the app — the component will simply not show the update prompt
+      // Don't crash the app - the component will simply not show the update prompt
     },
   });
 

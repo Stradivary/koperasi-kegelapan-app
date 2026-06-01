@@ -51,13 +51,13 @@ test.describe("Admin cards page", () => {
     const anyCard = page.locator("table tbody tr, [data-testid*='card']").first();
 
     if (await anyCard.isVisible()) {
-      // Cards exist — check for status badge
+      // Cards exist - check for status badge
       await expect(page.getByText(/active|aktif|blocked|diblokir/i).first()).toBeVisible();
     }
   });
 });
 
-test.describe("Admin cards — card actions", () => {
+test.describe("Admin cards - card actions", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await expect(page).toHaveURL(/\/cards/);
@@ -100,7 +100,7 @@ test.describe("Admin cards — card actions", () => {
   });
 });
 
-test.describe("Admin cards — sync status", () => {
+test.describe("Admin cards - sync status", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await expect(page).toHaveURL(/\/cards/);

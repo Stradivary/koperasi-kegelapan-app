@@ -1,4 +1,4 @@
-// FNV-32a hash — deterministic, no async needed, sufficient for 4-byte binding
+// FNV-32a hash - deterministic, no async needed, sufficient for 4-byte binding
 export function fnv32a(input: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {

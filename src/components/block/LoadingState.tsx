@@ -13,10 +13,10 @@ interface LoadingStateProps {
  * Standardized loading indicator with spinner + text.
  *
  * Variants:
- * - `button` — for use inside buttons, inherits parent text color
- * - `inline` — small spinner + text, for use inside lists or panels
- * - `section` — centered within a section/card
- * - `page` — full-screen centered loading
+ * - `button` - for use inside buttons, inherits parent text color
+ * - `inline` - small spinner + text, for use inside lists or panels
+ * - `section` - centered within a section/card
+ * - `page` - full-screen centered loading
  */
 function LoadingState({
   text = "Memuat...",

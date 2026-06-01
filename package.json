@@ -33,6 +33,7 @@
     "db:remote:query": "wrangler d1 execute DB --remote --config wrangler.api.jsonc --command",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:remote": "tsx src/db/seed.ts --remote",
+    "check:boundaries": "tsx scripts/check-boundaries.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui"
   },

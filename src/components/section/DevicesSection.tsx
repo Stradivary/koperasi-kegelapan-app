@@ -10,9 +10,9 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import type { TenantContext, LocalTenantConfig } from "#/lib/indexeddb";
-import { getIndexedDb } from "#/lib/indexeddb.lazy";
-import { API_BASE_URL } from "#/lib/api";
+import type { TenantContext, LocalTenantConfig } from "#/hooks/types";
+import { getIndexedDb } from "#/hooks/useIndexedDbStores";
+import { API_BASE_URL } from "#/hooks/useApi";
 import { AuthLayout } from "../layout/AuthLayout";
 import { Button } from "../ui/button";
 import { LoadingState } from "../block/LoadingState";
@@ -130,7 +130,7 @@ export function DevicesSection() {
 
   const tenantName = (e: TenantEntry) =>
     e.context?.tenantName ?? e.config?.name ?? "Tidak diketahui";
-  const tenantSlug = (e: TenantEntry) => e.context?.tenantSlug ?? e.config?.slug ?? "—";
+  const tenantSlug = (e: TenantEntry) => e.context?.tenantSlug ?? e.config?.slug ?? "-";
 
   function renderEntryList() {
     if (loading) {

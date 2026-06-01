@@ -48,7 +48,7 @@ koperasi-kegelapan/
 └── public/                     # Static assets, PWA manifest, icons
 ```
 
-## Ideal Clean Architecture (Target — Future Branch)
+## Ideal Clean Architecture (Target - Future Branch)
 
 ```
 koperasi-kegelapan/

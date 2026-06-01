@@ -1,7 +1,7 @@
 import { Wifi } from "lucide-react";
 
 import { cn } from "#/lib/utils.ts";
-import type { NfcPhase } from "#/core/nfc/stateMachine.ts";
+import type { NfcPhase } from "#/hooks/types.ts";
 import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
 
 // ============================================================================
@@ -114,7 +114,7 @@ const phaseVisuals: Record<string, PhaseVisualConfig> = {
 // ============================================================================
 
 /**
- * NfcTapArea — Circular tap area for the Unified NFC Scanner.
+ * NfcTapArea - Circular tap area for the Unified NFC Scanner.
  *
  * Displays an NFC icon with phase-specific animations and text.
  * - idle: Dashed border, prompts user to tap

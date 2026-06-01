@@ -99,7 +99,7 @@ for (const filePath of collectFiles(SRC)) {
     changedFiles++;
     totalReplacements += replacements;
     const rel = relative(ROOT, filePath).replace(/\\/g, "/");
-    console.log(`${DRY_RUN ? "[dry-run] " : ""}${rel} — ${replacements} replacement(s)`);
+    console.log(`${DRY_RUN ? "[dry-run] " : ""}${rel} - ${replacements} replacement(s)`);
     if (!DRY_RUN) {
       writeFileSync(filePath, updated, "utf8");
     }

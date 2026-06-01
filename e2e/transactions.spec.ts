@@ -58,7 +58,7 @@ test.describe("Transactions page", () => {
     await page.fill("#filter-date-from", today);
     await page.fill("#filter-date-to", today);
 
-    // Should either show transactions or empty state — no error
+    // Should either show transactions or empty state - no error
     await expect(
       page.getByText(/Tidak ada transaksi/i).or(page.locator("table, [role='table']")),
     ).toBeVisible({ timeout: 5000 });

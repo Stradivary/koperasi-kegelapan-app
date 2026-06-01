@@ -55,7 +55,7 @@ export function useReconciliation(tenantId: string, terminalId: number) {
           const errBody = JSON.parse(text);
           if (errBody.error) msg = errBody.error;
         } catch {
-          if (text) msg += ` — ${text.slice(0, 100)}`;
+          if (text) msg += ` - ${text.slice(0, 100)}`;
         }
         throw new Error(msg);
       }

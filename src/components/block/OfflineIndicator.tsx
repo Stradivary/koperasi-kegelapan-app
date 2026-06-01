@@ -44,14 +44,14 @@ export function OfflineIndicator({
  * the browser transitions between online and offline states, then
  * auto-hides after a few seconds.
  *
- * Renders nothing in the DOM — it only fires sonner toasts on change.
+ * Renders nothing in the DOM - it only fires sonner toasts on change.
  */
 export function RootOfflineBanner() {
   const { isOnline } = useOnlineStatus();
   const prevOnline = useRef(isOnline);
 
   useEffect(() => {
-    // Skip the initial render — only fire on actual transitions
+    // Skip the initial render - only fire on actual transitions
     if (prevOnline.current === isOnline) return;
     prevOnline.current = isOnline;
 

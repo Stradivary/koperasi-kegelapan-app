@@ -157,14 +157,14 @@ describe("deriveNonce", () => {
   });
 });
 
-describe("verifyHmac — edge cases", () => {
+describe("verifyHmac - edge cases", () => {
   const sessionKey = crypto.getRandomValues(new Uint8Array(32));
   const cardId = crypto.getRandomValues(new Uint8Array(6));
   const data = new Uint8Array(32).fill(0xaa);
 
   it("returns false when expected HMAC has wrong length", async () => {
     const mac = await computeHmac(sessionKey, cardId, data);
-    // Truncate to 4 bytes — length mismatch
+    // Truncate to 4 bytes - length mismatch
     const shortMac = mac.slice(0, 4);
     const result = await verifyHmac(sessionKey, cardId, data, shortMac);
     expect(result).toBe(false);
@@ -184,7 +184,7 @@ describe("verifyHmac — edge cases", () => {
   });
 });
 
-describe("computeChainHash — additional cases", () => {
+describe("computeChainHash - additional cases", () => {
   it("produces different hashes for different flags", async () => {
     const prev = new Uint8Array(4);
     const h1 = await computeChainHash(100, 5000, 45000, 0x00, prev);

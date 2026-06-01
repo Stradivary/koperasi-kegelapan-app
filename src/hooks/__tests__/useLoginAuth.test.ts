@@ -139,7 +139,7 @@ afterEach(() => {
 
 // ── handleUnifiedLogin ────────────────────────────────────────────────────────
 
-describe("useLoginAuth — handleUnifiedLogin: local login success", () => {
+describe("useLoginAuth - handleUnifiedLogin: local login success", () => {
   it("calls onLoginSuccess with tenantId and role on local login success", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     mockLocalLoginWithReason.mockResolvedValue(makeLocalLoginSuccess("admin"));
@@ -245,7 +245,7 @@ describe("useLoginAuth — handleUnifiedLogin: local login success", () => {
   });
 });
 
-describe("useLoginAuth — handleUnifiedLogin: offline fallback", () => {
+describe("useLoginAuth - handleUnifiedLogin: offline fallback", () => {
   beforeEach(() => {
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
   });
@@ -266,7 +266,7 @@ describe("useLoginAuth — handleUnifiedLogin: offline fallback", () => {
   });
 });
 
-describe("useLoginAuth — handleUnifiedLogin: server login fallback", () => {
+describe("useLoginAuth - handleUnifiedLogin: server login fallback", () => {
   it("calls onLoginSuccess after successful server login", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     // Local login fails
@@ -433,7 +433,7 @@ describe("useLoginAuth — handleUnifiedLogin: server login fallback", () => {
   it("sets connection error when fetch throws AbortError (timeout)", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     // Make getDeviceFingerprint throw an AbortError to trigger the outer catch
-    // with a DOMException (AbortError) — this tests the "Tidak dapat terhubung" branch
+    // with a DOMException (AbortError) - this tests the "Tidak dapat terhubung" branch
     const abortErr = new DOMException("The operation was aborted.", "AbortError");
     mockGetDeviceFingerprint.mockRejectedValue(abortErr);
 
@@ -488,7 +488,7 @@ describe("useLoginAuth — handleUnifiedLogin: server login fallback", () => {
   });
 });
 
-describe("useLoginAuth — handleUnifiedLogin: loading state", () => {
+describe("useLoginAuth - handleUnifiedLogin: loading state", () => {
   it("sets loading=true during login and false after", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
 
@@ -528,7 +528,7 @@ describe("useLoginAuth — handleUnifiedLogin: loading state", () => {
 
 // ── handleDeviceSetupAuth ─────────────────────────────────────────────────────
 
-describe("useLoginAuth — handleDeviceSetupAuth: local credentials available", () => {
+describe("useLoginAuth - handleDeviceSetupAuth: local credentials available", () => {
   it("calls onDeviceSetupAuthSuccess with context on local admin login", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     mockLocalLoginWithReason.mockResolvedValue(makeLocalLoginSuccess("admin"));
@@ -579,7 +579,7 @@ describe("useLoginAuth — handleDeviceSetupAuth: local credentials available", 
   });
 });
 
-describe("useLoginAuth — handleDeviceSetupAuth: offline, no local credentials", () => {
+describe("useLoginAuth - handleDeviceSetupAuth: offline, no local credentials", () => {
   beforeEach(() => {
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
   });
@@ -614,7 +614,7 @@ describe("useLoginAuth — handleDeviceSetupAuth: offline, no local credentials"
   });
 });
 
-describe("useLoginAuth — handleDeviceSetupAuth: server fallback", () => {
+describe("useLoginAuth - handleDeviceSetupAuth: server fallback", () => {
   it("fetches from server and caches credentials when local login fails online", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     mockLocalLoginWithReason.mockResolvedValue({ success: false, reason: "not_found" });
@@ -635,7 +635,7 @@ describe("useLoginAuth — handleDeviceSetupAuth: server fallback", () => {
     });
 
     expect(mockCacheServerCredentials).toHaveBeenCalled();
-    // PendingDeviceContext does not include role — it's used only for device setup navigation
+    // PendingDeviceContext does not include role - it's used only for device setup navigation
     expect(options.onDeviceSetupAuthSuccess).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: "tenant-1", accountId: "account-1" }),
     );
@@ -682,7 +682,7 @@ describe("useLoginAuth — handleDeviceSetupAuth: server fallback", () => {
   });
 });
 
-describe("useLoginAuth — handleDeviceSetupAuth: unexpected error", () => {
+describe("useLoginAuth - handleDeviceSetupAuth: unexpected error", () => {
   it("sets generic error when an unexpected exception is thrown", async () => {
     const { useLoginAuth } = await import("../useLoginAuth");
     mockLocalLoginWithReason.mockRejectedValue(new Error("Unexpected DB error"));

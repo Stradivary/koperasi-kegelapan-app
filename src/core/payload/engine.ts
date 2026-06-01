@@ -207,7 +207,7 @@ export function encodePayload(payload: CardPayload): Uint8Array {
 }
 
 // Compact wire format: [activeBuffer (216)] + [trailer (64)] = WIRE_SIZE bytes.
-// Use this for all NFC writes — fits NTAG215 with headroom vs the 496-byte full format.
+// Use this for all NFC writes - fits NTAG215 with headroom vs the 496-byte full format.
 export function encodePayloadWire(payload: CardPayload): Uint8Array {
   const raw = new Uint8Array(WIRE_SIZE);
   raw.set(encodeBuffer(payload), 0);

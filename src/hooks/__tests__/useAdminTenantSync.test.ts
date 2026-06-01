@@ -117,7 +117,7 @@ afterEach(() => {
 
 // ── onSyncToServer availability ───────────────────────────────────────────────
 
-describe("useAdminTenantSync — onSyncToServer availability", () => {
+describe("useAdminTenantSync - onSyncToServer availability", () => {
   it("onSyncToServer is undefined when tenant is already synced", async () => {
     const { useAdminTenantSync } = await import("../useAdminTenantSync");
     mockLocalTenantConfigStoreGet.mockResolvedValue(makeLocalConfig("synced"));
@@ -160,7 +160,7 @@ describe("useAdminTenantSync — onSyncToServer availability", () => {
 
 // ── Full orchestrated sync ────────────────────────────────────────────────────
 
-describe("useAdminTenantSync — full orchestrated sync", () => {
+describe("useAdminTenantSync - full orchestrated sync", () => {
   it("runs all 4 steps in order and sets syncStep to complete", async () => {
     const { useAdminTenantSync } = await import("../useAdminTenantSync");
 
@@ -281,7 +281,7 @@ describe("useAdminTenantSync — full orchestrated sync", () => {
 
 // ── No admin account ──────────────────────────────────────────────────────────
 
-describe("useAdminTenantSync — no admin account", () => {
+describe("useAdminTenantSync - no admin account", () => {
   it("sets syncError when no admin account found", async () => {
     const { useAdminTenantSync } = await import("../useAdminTenantSync");
     mockLocalAccountStoreGetByTenant.mockResolvedValue([
@@ -305,7 +305,7 @@ describe("useAdminTenantSync — no admin account", () => {
 
 // ── isSyncingToServer ─────────────────────────────────────────────────────────
 
-describe("useAdminTenantSync — isSyncingToServer", () => {
+describe("useAdminTenantSync - isSyncingToServer", () => {
   it("is false initially", async () => {
     const { useAdminTenantSync } = await import("../useAdminTenantSync");
 
@@ -337,7 +337,7 @@ describe("useAdminTenantSync — isSyncingToServer", () => {
 
 // ── retryWithChanges and resetSync ────────────────────────────────────────────
 
-describe("useAdminTenantSync — retryWithChanges and resetSync", () => {
+describe("useAdminTenantSync - retryWithChanges and resetSync", () => {
   it("delegates retryWithChanges to useTenantSync", async () => {
     const { useAdminTenantSync } = await import("../useAdminTenantSync");
 

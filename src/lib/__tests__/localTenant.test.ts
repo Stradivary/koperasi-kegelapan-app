@@ -38,7 +38,7 @@ vi.mock("#/lib/indexeddb", () => ({
   },
 }));
 
-vi.mock("#/lib/slugValidation", () => ({
+vi.mock("#/lib/utils/slugValidation", () => ({
   createSlug: (name: string) => name.toLowerCase().replace(/\s+/g, "-"),
   validateSlugFormat: (slug: string) => {
     if (slug.length < 3) return "Slug too short";
@@ -143,7 +143,7 @@ describe("localLoginWithReason", () => {
   it("returns success with correct data when credentials match", async () => {
     const { localLoginWithReason } = await import("../localTenant");
 
-    // We need a real PBKDF2 hash — use the actual crypto.subtle
+    // We need a real PBKDF2 hash - use the actual crypto.subtle
     // Instead, mock pbkdf2Verify by providing a hash that matches
     // We'll use a known hash format: "iterations:saltHex:hashHex"
     // Since we can't easily produce a valid hash without running the actual function,
@@ -219,7 +219,7 @@ describe("localLoginWithReason", () => {
     mockLocalAccountStoreGetByUsername.mockResolvedValue(makeAccount({ passwordHash: realHash }));
     mockLocalTenantConfigStoreGet.mockResolvedValue(makeTenantConfig());
 
-    // No tenantSlug provided — should not check slug
+    // No tenantSlug provided - should not check slug
     const result = await localLoginWithReason("admin", password, undefined);
     expect(result.success).toBe(true);
   });
@@ -465,7 +465,7 @@ describe("setupLocalTenant", () => {
     await expect(
       setupLocalTenant({
         name: "AB",
-        slug: "ab", // 2 chars — mocked validateSlugFormat returns error for < 3
+        slug: "ab", // 2 chars - mocked validateSlugFormat returns error for < 3
         adminUsername: "admin",
         adminPassword: "password123",
       }),
