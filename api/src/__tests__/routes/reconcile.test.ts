@@ -11,7 +11,7 @@ vi.mock("drizzle-orm/d1", () => ({
   drizzle: (...args: unknown[]) => mockDrizzle(...args),
 }));
 
-vi.mock("D:/dev/stradivary/koperasi-kegelapan/src/server/reconcileCore", () => ({
+vi.mock("#/server/reconcileCore", () => ({
   processReconciliation: (...args: unknown[]) => mockProcessReconciliation(...args),
 }));
 

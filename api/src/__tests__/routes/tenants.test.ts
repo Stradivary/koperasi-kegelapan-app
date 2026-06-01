@@ -21,7 +21,7 @@ vi.mock("drizzle-orm", () => ({
   sql: vi.fn((_strings: TemplateStringsArray, ...values: unknown[]) => values),
 }));
 
-vi.mock("D:/dev/stradivary/koperasi-kegelapan/src/db/schema", () => ({
+vi.mock("#/db/schema", () => ({
   tenants: {
     tenantId: "t.id",
     slug: "t.slug",
@@ -39,12 +39,12 @@ vi.mock("D:/dev/stradivary/koperasi-kegelapan/src/db/schema", () => ({
   },
 }));
 
-vi.mock("D:/dev/stradivary/koperasi-kegelapan/src/server/tenantSync", () => ({
+vi.mock("#/server/tenantSync", () => ({
   validateSyncRequest: vi.fn().mockReturnValue([]),
 }));
 
 import { tenantsRoutes } from "../../routes/tenants";
-import { validateSyncRequest } from "D:/dev/stradivary/koperasi-kegelapan/src/server/tenantSync";
+import { validateSyncRequest } from "#/server/tenantSync";
 
 const env = { DB: { fake: "d1" }, SESSION_MASTER_KEY: "test-key" };
 
