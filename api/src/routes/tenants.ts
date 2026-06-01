@@ -30,12 +30,12 @@ interface ExistingByAdmin {
  */
 async function handleConflictResponse(
   c: { json: (body: unknown, status?: number) => Response },
-  existingBySlug: ExistingBySlug | undefined,
-  existingByAdmin: ExistingByAdmin | undefined,
+  existingBySlug: ExistingBySlug | undefined | null,
+  existingByAdmin: ExistingByAdmin | undefined | null,
   db: DrizzleDb,
 ): Promise<Response | null> {
-  const hasSlugConflict = existingBySlug !== undefined;
-  const hasAdminConflict = existingByAdmin !== undefined;
+  const hasSlugConflict = existingBySlug != null;
+  const hasAdminConflict = existingByAdmin != null;
 
   if (hasSlugConflict && hasAdminConflict) {
     return c.json(

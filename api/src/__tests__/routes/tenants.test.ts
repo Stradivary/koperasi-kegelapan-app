@@ -337,7 +337,7 @@ describe("POST /sync", () => {
       adminUsername: "admin",
       adminPasswordHash: "hash",
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     const body = await res.json();
     expect(body.error).toContain("Internal server error");
   });
