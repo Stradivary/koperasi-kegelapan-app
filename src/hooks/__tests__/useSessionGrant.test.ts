@@ -355,3 +355,75 @@ describe("useSessionGrant - isValid with offline expired grant (lines 332-333)",
     expect(result.current.grant).not.toBeNull();
   });
 });
+
+describe("useSessionGrant - scout role uses server endpoint without auth", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
+    mockCacheGet.mockResolvedValue(null);
+    mockCachePut.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches session grant from server for scout role without auth token", async () => {
+    const { useSessionGrant } = await import("../useSessionGrant");
+
+    const scoutGrant = makeGrant({ accountId: "scout-anonymous", allowedOps: ["read"] });
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        keyVersion: 1,
+        sessionKey: btoa(String.fromCodePoint(...new Uint8Array(32))),
+        expiresAt: scoutGrant.expiresAt,
+        allowedOps: ["read"],
+        signature: btoa(String.fromCodePoint(...new Uint8Array(32))),
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { result } = renderHook(() => useSessionGrant("t-1", "scout-anonymous", "d-1", "scout"));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // Should call fetch with role=scout parameter
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("role=scout"),
+      expect.any(Object),
+    );
+
+    // Should have a valid grant from server
+    expect(result.current.grant).not.toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("falls back to local grant when server fetch fails for scout", async () => {
+    const { useSessionGrant } = await import("../useSessionGrant");
+
+    const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockIssueAndCache.mockResolvedValue(makeGrant({ accountId: "scout-anonymous" }));
+
+    const { result } = renderHook(() => useSessionGrant("t-1", "scout-anonymous", "d-1", "scout"));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // Should try to fetch first
+    expect(mockFetch).toHaveBeenCalled();
+
+    // Should fall back to local grant
+    expect(mockIssueAndCache).toHaveBeenCalledWith("t-1", "scout-anonymous", "d-1", "scout");
+
+    // Should have a valid grant
+    expect(result.current.grant).not.toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+});
