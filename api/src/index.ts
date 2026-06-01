@@ -45,6 +45,10 @@ app.use("/api/*", deviceBlockCheck);
 app.use("/api/auth/*", authRateLimit);
 app.route("/api/auth", authRoutes);
 
+// Public tenant directory — used by login/scout screens before auth.
+// Registered before verifyToken so no token is required.
+app.route("/api/tenants", tenantsRoutes);
+
 // Client error reporting (semi-public, best-effort token extraction)
 app.route("/api/client-errors", clientErrorsRoute);
 
@@ -62,7 +66,6 @@ app.use("/api/sync/*", syncAnalytics);
 app.route("/api/session-grant", sessionGrantRoute);
 app.route("/api/policy", policyRoute);
 app.route("/api/reconcile", reconcileRoute);
-app.route("/api/tenants", tenantsRoutes);
 app.route("/api/superadmin", superadminRoutes);
 app.route("/api/accounts", accountsRoutes);
 app.route("/api/sync", syncRoutes);

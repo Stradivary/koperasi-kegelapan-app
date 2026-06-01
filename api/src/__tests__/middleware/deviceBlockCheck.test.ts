@@ -23,7 +23,7 @@ vi.mock("../../lib/tokenExtract", () => ({
 
 import { drizzle } from "drizzle-orm/d1";
 import { extractDeviceIdFromToken } from "../../lib/tokenExtract";
-import { deviceBlockCheck } from "../deviceBlockCheck";
+import { deviceBlockCheck } from "../../middleware/deviceBlockCheck";
 
 const mockExtractDeviceId = vi.mocked(extractDeviceIdFromToken);
 const mockDrizzle = vi.mocked(drizzle);

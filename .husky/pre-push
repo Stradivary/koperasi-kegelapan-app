@@ -1,2 +1,3 @@
+pnpm audit --audit-level=moderate
 pnpm typecheck
 pnpm test

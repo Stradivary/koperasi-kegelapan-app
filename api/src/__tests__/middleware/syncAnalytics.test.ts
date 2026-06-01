@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { syncAnalytics } from "../syncAnalytics";
+import { syncAnalytics } from "../../middleware/syncAnalytics";
 
 function makeToken(payload: Record<string, unknown>): string {
   const encoded = btoa(JSON.stringify(payload));

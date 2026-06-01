@@ -5,7 +5,7 @@
  * Also covers the full block endpoint happy path and validation paths.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { cardsRoutes } from "../cards";
+import { cardsRoutes } from "../../routes/cards";
 import { createMockD1, createTestApp, makeToken } from "./testHelpers";
 
 function makeBlockRequest(

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { superadminRoutes } from "../superadmin";
+import { superadminRoutes } from "../../routes/superadmin";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
