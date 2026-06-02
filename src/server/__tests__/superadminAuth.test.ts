@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockDbGet = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: () => ({
     select: () => ({
       from: () => ({
@@ -17,7 +17,7 @@ vi.mock("#/db", () => ({
   }),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: { accountId: "accountId", username: "username", role: "role", status: "status" },
 }));
 

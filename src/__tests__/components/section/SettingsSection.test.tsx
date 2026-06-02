@@ -19,10 +19,10 @@ const mockUseAdminTenantSync = vi.fn().mockReturnValue({
   resetSync: vi.fn(),
 });
 
-vi.mock("#/hooks/useAdminTenantSync", () => ({
+vi.mock("#/presentation/hooks/useAdminTenantSync", () => ({
   useAdminTenantSync: (...args: unknown[]) => mockUseAdminTenantSync(...args),
 }));
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: vi.fn().mockReturnValue({
     lastSyncedAt: null,
     syncStatus: "idle",
@@ -30,7 +30,7 @@ vi.mock("#/hooks/SyncEngineContext", () => ({
     triggerSync: vi.fn(),
   }),
 }));
-vi.mock("#/hooks/useLocalDb", () => ({
+vi.mock("#/presentation/hooks/useLocalDb", () => ({
   localDb: {
     users: {
       where: vi.fn().mockReturnValue({
@@ -56,29 +56,29 @@ vi.mock("#/hooks/useLocalDb", () => ({
     },
   },
 }));
-vi.mock("#/hooks/useIndexedDbStores", () => ({
+vi.mock("#/presentation/hooks/useIndexedDbStores", () => ({
   getIndexedDb: vi.fn().mockResolvedValue({
     localTenantConfigStore: { get: vi.fn().mockResolvedValue(null) },
     tenantContextStore: { get: vi.fn().mockResolvedValue(null) },
   }),
 }));
-vi.mock("#/hooks/useApi", () => ({
+vi.mock("#/presentation/hooks/useApi", () => ({
   API_BASE_URL: "http://localhost:8787",
   apiFetch: vi.fn().mockResolvedValue({ ok: false }),
   getAccessToken: vi.fn().mockReturnValue(null),
 }));
-vi.mock("#/components/block/dialogs/SyncConflictDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/SyncConflictDialog", () => ({
   SyncConflictDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="sync-conflict-dialog" /> : null,
 }));
-vi.mock("#/components/ui/badge", () => ({
+vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
       {children}
     </span>
   ),
 }));
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -96,7 +96,7 @@ vi.mock("#/components/ui/button", () => ({
     </button>
   ),
 }));
-vi.mock("#/components/ui/card", () => ({
+vi.mock("#/presentation/components/ui/card", () => ({
   Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
@@ -110,7 +110,7 @@ vi.mock("#/components/ui/card", () => ({
     <h3 className={className}>{children}</h3>
   ),
 }));
-vi.mock("#/components/ui/collapsible", () => ({
+vi.mock("#/presentation/components/ui/collapsible", () => ({
   Collapsible: ({
     children,
     open,
@@ -153,7 +153,7 @@ vi.mock("lucide-react", () => ({
   XCircle: () => <span data-testid="icon-x-circle" />,
 }));
 
-import { SettingsSection } from "#/components/section/SettingsSection";
+import { SettingsSection } from "#/presentation/components/section/SettingsSection";
 
 describe("SettingsSection - rendering", () => {
   beforeEach(() => vi.clearAllMocks());

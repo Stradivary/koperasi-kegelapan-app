@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { handleDeviceBlocked, clearBlockState } from "../deviceBlock";
 
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn().mockResolvedValue([]),
     delete: vi.fn().mockResolvedValue(undefined),

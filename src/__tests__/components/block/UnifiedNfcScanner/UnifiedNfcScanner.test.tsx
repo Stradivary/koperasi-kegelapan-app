@@ -17,13 +17,13 @@ const mockCancel = vi.fn();
 const mockRetryWrite = vi.fn();
 const mockUseUnifiedNfc = vi.fn();
 
-vi.mock("#/hooks/useUnifiedNfc.ts", () => ({
+vi.mock("#/presentation/hooks/useUnifiedNfc.ts", () => ({
   useUnifiedNfc: (...args: unknown[]) => mockUseUnifiedNfc(...args),
 }));
 
 // ── Sub-component mocks ───────────────────────────────────────────────────────
 
-vi.mock("#/components/block/UnifiedNfcScanner/index.ts", () => ({
+vi.mock("#/presentation/components/block/UnifiedNfcScanner/index.ts", () => ({
   NfcTapArea: ({ phase }: { phase: string }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} />
   ),
@@ -41,7 +41,7 @@ vi.mock("#/components/block/UnifiedNfcScanner/index.ts", () => ({
 
 // ── UI mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock("#/components/ui/button.tsx", () => ({
+vi.mock("#/presentation/components/ui/button.tsx", () => ({
   Button: ({
     children,
     onClick,
@@ -61,7 +61,7 @@ vi.mock("#/components/ui/button.tsx", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/drawer.tsx", () => ({
+vi.mock("#/presentation/components/ui/drawer.tsx", () => ({
   Drawer: ({
     open,
     children,
@@ -93,7 +93,7 @@ vi.mock("lucide-react", () => ({
 import {
   UnifiedNfcScanner,
   DEFAULT_LABELS,
-} from "#/components/block/UnifiedNfcScanner/UnifiedNfcScanner";
+} from "#/presentation/components/block/UnifiedNfcScanner/UnifiedNfcScanner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

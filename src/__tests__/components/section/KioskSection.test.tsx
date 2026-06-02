@@ -14,19 +14,19 @@ const mockWrite = vi.fn();
 const mockReset = vi.fn();
 const mockScan = vi.fn();
 
-vi.mock("#/hooks/useSessionGrant", () => ({
+vi.mock("#/presentation/hooks/useSessionGrant", () => ({
   useSessionGrant: (...args: unknown[]) => mockUseSessionGrant(...args),
 }));
 
-vi.mock("#/hooks/nfc/useNfcCard", () => ({
+vi.mock("#/presentation/hooks/nfc/useNfcCard", () => ({
   useNfcCard: (...args: unknown[]) => mockUseNfcCard(...args),
 }));
 
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
 
-vi.mock("#/hooks/domain", () => ({
+vi.mock("#/presentation/hooks/domain", () => ({
   applyDebit: vi.fn((payload: unknown, amount: number) => ({
     ...(payload as object),
     wallet: {
@@ -37,23 +37,23 @@ vi.mock("#/hooks/domain", () => ({
   isWriteEligible: vi.fn().mockReturnValue({ eligible: true }),
 }));
 
-vi.mock("#/hooks/types", () => ({
+vi.mock("#/presentation/hooks/types", () => ({
   CardStatus: { ACTIVE: 0, BLOCKED_TAMPER: 1, BLOCKED_ADMIN: 4 },
 }));
 
-vi.mock("#/hooks/useLocalDb", () => ({
+vi.mock("#/presentation/hooks/useLocalDb", () => ({
   localDb: {
     cards: { put: vi.fn().mockResolvedValue(undefined) },
   },
 }));
 
-vi.mock("#/components/block/CardStatusBadge", () => ({
+vi.mock("#/presentation/components/block/CardStatusBadge", () => ({
   CardStatusBadge: ({ status }: { status: number }) => (
     <span data-testid="card-status-badge" data-status={status} />
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -75,11 +75,11 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/block/LoadingState", () => ({
+vi.mock("#/presentation/components/block/LoadingState", () => ({
   LoadingState: ({ text }: { text?: string }) => <span data-testid="loading-state">{text}</span>,
 }));
 
-vi.mock("#/components/block/NfcTapArea", () => ({
+vi.mock("#/presentation/components/block/NfcTapArea", () => ({
   NfcTapArea: ({ phase, onClick }: { phase: string; onClick?: () => void }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} onClick={onClick} />
   ),
@@ -90,7 +90,7 @@ vi.mock("#/components/block/NfcTapArea", () => ({
   ),
 }));
 
-import { KioskSection } from "#/components/section/KioskSection";
+import { KioskSection } from "#/presentation/components/section/KioskSection";
 
 const defaultProps = { tenantId: "t-1", accountId: "a-1", deviceId: "d-1", terminalId: 1 };
 

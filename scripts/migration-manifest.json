@@ -1,0 +1,258 @@
+﻿{
+  "version": 2,
+  "moves": [
+    {
+      "from": "#/server/auth",
+      "to": "#/core/auth/authRules",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/roleOps",
+      "to": "#/core/auth/roleOps",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/policy",
+      "to": "#/core/auth/policy",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncConflictResolver",
+      "to": "#/core/sync/conflictResolver",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/utils/slugValidation",
+      "to": "#/core/validation/slugValidation",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncPush",
+      "to": "#/application/sync/syncPush.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncPull",
+      "to": "#/application/sync/syncPull.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncPushEntities",
+      "to": "#/application/sync/syncPushEntities.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/reconcileCore",
+      "to": "#/application/sync/reconcile.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/reconcile",
+      "to": "#/application/sync/reconcileHandler",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/sessionGrant",
+      "to": "#/application/auth/sessionGrant.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/authSession",
+      "to": "#/application/auth/authSession.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/deviceRegistry",
+      "to": "#/application/device/deviceRegistry.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/tenantSync",
+      "to": "#/application/tenant/tenantSync.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/tenantSearch",
+      "to": "#/application/tenant/tenantSearch.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/superadminAccounts",
+      "to": "#/application/admin/superadminAccounts.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/superadminAuth",
+      "to": "#/application/admin/superadminAuth.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/superadminTenants",
+      "to": "#/application/admin/superadminTenants.usecase",
+      "type": "exact"
+    },
+    {
+      "from": "#/server/superadminTenants.types",
+      "to": "#/application/admin/superadminTenants.types",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/api",
+      "to": "#/infrastructure/api/apiClient",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/deviceBlock",
+      "to": "#/infrastructure/api/deviceBlock",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/realTimeSync",
+      "to": "#/infrastructure/api/realTimeSync",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncRateLimiter",
+      "to": "#/infrastructure/api/syncRateLimiter",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/deviceFingerprint",
+      "to": "#/infrastructure/device/fingerprint",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/getOrCreateDeviceId",
+      "to": "#/infrastructure/device/getOrCreateDeviceId",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/initDeviceId",
+      "to": "#/infrastructure/device/initDeviceId",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/utils/haptics",
+      "to": "#/infrastructure/device/haptics",
+      "type": "exact"
+    },
+    {
+      "from": "#/db/local-db",
+      "to": "#/infrastructure/persistence/dexie/localDb",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/indexeddb",
+      "to": "#/infrastructure/persistence/dexie/indexeddb",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/indexeddb.lazy",
+      "to": "#/infrastructure/persistence/dexie/indexeddb.lazy",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/localSessionGrant",
+      "to": "#/infrastructure/persistence/dexie/sessionGrantRepository",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/localTenant",
+      "to": "#/infrastructure/persistence/dexie/tenantRepository",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/transactionLogService",
+      "to": "#/infrastructure/persistence/dexie/transactionLogService",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/syncLogStore",
+      "to": "#/infrastructure/persistence/dexie/syncLogStore",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/stationQueries",
+      "to": "#/infrastructure/persistence/dexie/stationQueries",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/repositories",
+      "to": "#/infrastructure/persistence/dexie/repositories",
+      "type": "exact"
+    },
+    {
+      "from": "#/db/schema",
+      "to": "#/infrastructure/persistence/drizzle/schema",
+      "type": "exact"
+    },
+    {
+      "from": "#/db/seed",
+      "to": "#/infrastructure/persistence/drizzle/seed",
+      "type": "exact"
+    },
+    {
+      "from": "#/db/seed-remote",
+      "to": "#/infrastructure/persistence/drizzle/seed-remote",
+      "type": "exact"
+    },
+    {
+      "from": "#/db/index",
+      "to": "#/infrastructure/persistence/drizzle/index",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/peerSyncCoordinator",
+      "to": "#/infrastructure/sync/peerSyncCoordinator",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/errorTracker",
+      "to": "#/infrastructure/error/errorTracker",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/utils/formatters",
+      "to": "#/presentation/lib/formatters",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/utils/brand",
+      "to": "#/presentation/lib/brand",
+      "type": "exact"
+    },
+    {
+      "from": "#/lib/utils",
+      "to": "#/presentation/lib/utils",
+      "type": "exact"
+    },
+    {
+      "from": "#/components/",
+      "to": "#/presentation/components/",
+      "type": "prefix"
+    },
+    {
+      "from": "#/hooks/",
+      "to": "#/presentation/hooks/",
+      "type": "prefix"
+    },
+    {
+      "from": "#/routes/",
+      "to": "#/presentation/routes/",
+      "type": "prefix"
+    },
+    {
+      "from": "#/integrations/tanstack-query",
+      "to": "#/presentation/providers",
+      "type": "exact"
+    }
+  ],
+  "description": "Auto-generated import migration map for clean architecture v2.",
+  "generatedAt": "2026-06-02T23.30.42Z",
+  "pathAlias": "#/",
+  "pathAliasUpdates": {
+    "#/components/*": "#/presentation/components/*",
+    "#/hooks/*": "#/presentation/hooks/*",
+    "#/routes/*": "#/presentation/routes/*"
+  }
+}

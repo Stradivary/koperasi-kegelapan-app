@@ -9,15 +9,15 @@ const mockGetPending = vi.fn();
 const mockMarkSynced = vi.fn();
 const mockGetReconciliationOutbox = vi.fn();
 
-vi.mock("#/lib/indexeddb.lazy", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
   getReconciliationOutbox: () => mockGetReconciliationOutbox(),
 }));
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "http://localhost:8787",
 }));
 
-import { useReconciliation } from "#/hooks/useReconciliation";
+import { useReconciliation } from "#/presentation/hooks/useReconciliation";
 
 describe("useReconciliation", () => {
   beforeEach(() => {

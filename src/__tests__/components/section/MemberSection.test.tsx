@@ -34,7 +34,7 @@ vi.mock("sonner", () => ({
 
 // ── Mock localDb ──────────────────────────────────────────────────────────────
 
-vi.mock("#/hooks/useLocalDb", () => ({
+vi.mock("#/presentation/hooks/useLocalDb", () => ({
   localDb: {
     users: {
       where: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock("#/hooks/useLocalDb", () => ({
 }));
 
 // Resolved after mock is registered
-import { localDb as _localDb } from "#/hooks/useLocalDb";
+import { localDb as _localDb } from "#/presentation/hooks/useLocalDb";
 
 // Cast to mock type so vi.fn() methods are accessible without TS errors
 const mockLocalDb = _localDb as unknown as {
@@ -67,7 +67,7 @@ const mockLocalDb = _localDb as unknown as {
 const mockNotifyMutation = vi.fn();
 const mockUseSyncEngineContext = vi.fn();
 
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
 
@@ -75,14 +75,14 @@ vi.mock("#/hooks/SyncEngineContext", () => ({
 
 const mockStationMembersPanel = vi.fn();
 
-vi.mock("#/components/block/StationMembersPanel", () => ({
+vi.mock("#/presentation/components/block/StationMembersPanel", () => ({
   StationMembersPanel: (props: unknown) => {
     mockStationMembersPanel(props);
     return <div data-testid="station-members-panel" />;
   },
 }));
 
-import { MemberSection } from "#/components/section/MemberSection";
+import { MemberSection } from "#/presentation/components/section/MemberSection";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

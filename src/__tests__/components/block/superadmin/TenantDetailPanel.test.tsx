@@ -11,7 +11,7 @@ import React from "react";
 
 // ─── mocks ───────────────────────────────────────────────────────────────────
 
-vi.mock("#/components/block/data-table", () => ({
+vi.mock("#/presentation/components/block/data-table", () => ({
   DataTable: ({
     data,
     renderMobileItem,
@@ -45,7 +45,7 @@ vi.mock("#/components/block/data-table", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -65,7 +65,7 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/badge", () => ({
+vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
       {children}
@@ -73,7 +73,7 @@ vi.mock("#/components/ui/badge", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
+vi.mock("#/presentation/components/ui/confirmation-dialog-drawer", () => ({
   ConfirmationDialogDrawer: ({
     open,
     onConfirm,
@@ -117,11 +117,11 @@ vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
     ) : null,
 }));
 
-vi.mock("#/components/block/LoadingState", () => ({
+vi.mock("#/presentation/components/block/LoadingState", () => ({
   LoadingState: ({ text }: { text?: string }) => <div data-testid="loading">{text}</div>,
 }));
 
-vi.mock("#/server/superadminTenants.types", () => ({
+vi.mock("#/application/admin/superadminTenants.types", () => ({
   VALID_TRANSITIONS: {
     active: new Set(["suspended", "archived"]),
     suspended: new Set(["active", "archived"]),
@@ -136,8 +136,8 @@ vi.mock("lucide-react", () => ({
 
 // ─── imports ─────────────────────────────────────────────────────────────────
 
-import { TenantDetailPanel } from "#/components/block/superadmin/TenantDetailPanel";
-import type { TenantDetail } from "#/server/superadminTenants.types";
+import { TenantDetailPanel } from "#/presentation/components/block/superadmin/TenantDetailPanel";
+import type { TenantDetail } from "#/application/admin/superadminTenants.types";
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 

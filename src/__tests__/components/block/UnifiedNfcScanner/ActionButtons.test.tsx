@@ -5,9 +5,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("#/lib/utils.ts", () => ({ cn: (...args: string[]) => args.filter(Boolean).join(" ") }));
+vi.mock("#/presentation/lib/utils", () => ({
+  cn: (...args: string[]) => args.filter(Boolean).join(" "),
+}));
 
-vi.mock("#/components/ui/button.tsx", () => ({
+vi.mock("#/presentation/components/ui/button.tsx", () => ({
   Button: ({
     children,
     onClick,
@@ -28,7 +30,7 @@ vi.mock("#/components/ui/button.tsx", () => ({
   ),
 }));
 
-vi.mock("#/hooks/types.ts", () => ({
+vi.mock("#/presentation/hooks/types.ts", () => ({
   CardStatus: {
     ACTIVE: 0,
     BLOCKED_TAMPER: 1,
@@ -38,8 +40,8 @@ vi.mock("#/hooks/types.ts", () => ({
   },
 }));
 
-import { ActionButtons } from "#/components/block/UnifiedNfcScanner/ActionButtons";
-import type { CardPayload } from "#/hooks/types";
+import { ActionButtons } from "#/presentation/components/block/UnifiedNfcScanner/ActionButtons";
+import type { CardPayload } from "#/presentation/hooks/types";
 
 const activePayload = {
   identity: { status: 0 },

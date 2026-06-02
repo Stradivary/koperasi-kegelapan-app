@@ -8,15 +8,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetDb = vi.fn();
 const mockProcessReconciliation = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: () => mockGetDb(),
 }));
 
-vi.mock("#/server/reconcileCore", () => ({
+vi.mock("#/application/sync/reconcile.usecase", () => ({
   processReconciliation: (...args: unknown[]) => mockProcessReconciliation(...args),
 }));
 
-import { processReconciliation } from "#/server/reconcile";
+import { processReconciliation } from "#/application/sync/reconcileHandler";
 
 describe("processReconciliation (wrapper)", () => {
   beforeEach(() => {

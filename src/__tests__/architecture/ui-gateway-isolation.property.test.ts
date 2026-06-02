@@ -25,7 +25,10 @@ import { join, relative } from "node:path";
 // ============================================================================
 
 const SRC_ROOT = join(__dirname, "..", "..");
-const UI_DIRS = [join(SRC_ROOT, "components"), join(SRC_ROOT, "routes")];
+const UI_DIRS = [
+  join(SRC_ROOT, "presentation", "components"),
+  join(SRC_ROOT, "presentation", "routes"),
+];
 
 /** Pattern to exclude test files */
 const TEST_FILE_PATTERN = /\/__tests__\/|\.test\.|\.spec\./;
@@ -227,14 +230,18 @@ describe("UI Gateway Isolation Detection Logic (Property 3 - Generative)", () =>
     .constantFrom("api", "formatters", "transactionLogService", "repositories/index")
     .map((name) => `#/lib/${name}`);
 
-  const arbitraryLibUtilsImport = fc.constantFrom("#/lib/utils", "#/lib/utils/cn");
+  const arbitraryLibUtilsImport = fc.constantFrom("#/presentation/lib/utils", "#/lib/utils/cn");
 
   const arbitrarySafeImport = fc.oneof(
     fc.constant("react"),
     fc.constant("vitest"),
     fc.constant("./localHelper"),
     fc.constant("../utils"),
-    fc.constantFrom("#/hooks/types", "#/hooks/domain", "#/hooks/useBlockedCheck"),
+    fc.constantFrom(
+      "#/presentation/hooks/types",
+      "#/presentation/hooks/domain",
+      "#/presentation/hooks/useBlockedCheck",
+    ),
   );
 
   /**

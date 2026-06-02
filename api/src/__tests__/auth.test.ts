@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
 // Mock dependencies
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: "accounts",
   tenants: "tenants",
 }));
@@ -44,11 +44,11 @@ vi.mock("drizzle-orm", () => ({
 const mockRegisterDevice = vi.fn();
 const mockCreateSession = vi.fn();
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   registerDevice: (...args: unknown[]) => mockRegisterDevice(...args),
 }));
 
-vi.mock("#/server/authSession", () => ({
+vi.mock("#/application/auth/authSession.usecase", () => ({
   createSession: (...args: unknown[]) => mockCreateSession(...args),
 }));
 

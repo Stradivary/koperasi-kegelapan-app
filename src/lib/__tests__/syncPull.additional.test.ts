@@ -7,7 +7,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   apiFetch: vi.fn(),
   API_BASE_URL: "https://api.test",
   DeviceBlockedError: class DeviceBlockedError extends Error {
@@ -19,11 +19,11 @@ vi.mock("../api", () => ({
   getAccessToken: vi.fn(),
 }));
 
-vi.mock("../deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn(),
 }));
 
-vi.mock("#/db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const syncCursors = {
     where: vi.fn().mockReturnThis(),
     between: vi.fn().mockReturnThis(),
@@ -65,7 +65,7 @@ vi.mock("#/db/local-db", () => {
   };
 });
 
-import { localDb } from "#/db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { apiFetch, getAccessToken } from "../api";
 import { isDeviceBlocked } from "../deviceBlock";
 import { syncPull } from "../syncPull";

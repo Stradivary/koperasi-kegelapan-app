@@ -10,7 +10,7 @@ vi.mock("drizzle-orm/d1", () => ({
   drizzle: vi.fn(),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   devices: { deviceId: "deviceId", blockedUntil: "blockedUntil" },
 }));
 

@@ -5,13 +5,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("#/components/layout/AuthLayout", () => ({
+vi.mock("#/presentation/components/layout/AuthLayout", () => ({
   AuthLayout: ({ children }: { children: React.ReactNode; variant?: string }) => (
     <div data-testid="auth-layout">{children}</div>
   ),
 }));
 
-vi.mock("#/components/block/LoadingState", () => ({
+vi.mock("#/presentation/components/block/LoadingState", () => ({
   LoadingState: ({ variant }: { variant?: string }) => (
     <span data-testid="loading-state" data-variant={variant}>
       Loading
@@ -19,7 +19,7 @@ vi.mock("#/components/block/LoadingState", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -43,11 +43,11 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({
     children,
     htmlFor,
@@ -58,13 +58,13 @@ vi.mock("#/components/ui/label", () => ({
   }) => <label htmlFor={htmlFor}>{children}</label>,
 }));
 
-vi.mock("#/components/ui/password-input", () => ({
+vi.mock("#/presentation/components/ui/password-input", () => ({
   PasswordInput: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input type="password" {...props} />
   ),
 }));
 
-import { DeviceSetupAuthPanel } from "#/components/block/loginSection/DeviceSetupAuthPanel";
+import { DeviceSetupAuthPanel } from "#/presentation/components/block/loginSection/DeviceSetupAuthPanel";
 
 describe("DeviceSetupAuthPanel", () => {
   beforeEach(() => vi.clearAllMocks());

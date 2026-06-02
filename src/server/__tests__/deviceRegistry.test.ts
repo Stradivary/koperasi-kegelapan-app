@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock drizzle-orm/d1 and schema
 vi.mock("drizzle-orm/d1", () => ({ drizzle: vi.fn() }));
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   devices: {},
   authSessions: {},
 }));

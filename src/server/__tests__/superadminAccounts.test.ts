@@ -9,11 +9,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockDb: Record<string, ReturnType<typeof vi.fn>> = {};
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => mockDb),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: {
     accountId: "accounts.accountId",
     tenantId: "accounts.tenantId",
@@ -40,7 +40,7 @@ vi.mock("drizzle-orm", () => ({
   count: vi.fn(() => ({ count: true })),
 }));
 
-vi.mock("../auth", () => ({
+vi.mock("#/core/auth/authRules", () => ({
   hashPassword: vi.fn((pw: string) => `hashed:${pw}`),
   generateId: vi.fn(() => "generated-id-123"),
 }));

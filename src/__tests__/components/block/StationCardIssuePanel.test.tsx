@@ -5,7 +5,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -30,16 +30,16 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({ children }: { children: React.ReactNode }) => <label>{children}</label>,
 }));
 
-import { StationCardIssuePanel } from "#/components/block/StationCardIssuePanel";
-import type { StationUserRow } from "#/components/block/StationCardsPanel";
+import { StationCardIssuePanel } from "#/presentation/components/block/StationCardIssuePanel";
+import type { StationUserRow } from "#/presentation/components/block/StationCardsPanel";
 
 const members: StationUserRow[] = [
   { userId: "u-1", name: "Budi", status: "active", syncStatus: "synced" },

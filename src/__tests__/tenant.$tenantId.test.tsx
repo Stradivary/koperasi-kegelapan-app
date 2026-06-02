@@ -9,17 +9,17 @@ const mockTenantContextStoreGet = vi.fn();
 const mockUseHydrateCache = vi.fn();
 const mockUseSyncEngineContext = vi.fn();
 
-vi.mock("#/lib/indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     get: (...args: unknown[]) => mockTenantContextStoreGet(...args),
   },
 }));
 
-vi.mock("#/hooks/useHydrateCache", () => ({
+vi.mock("#/presentation/hooks/useHydrateCache", () => ({
   useHydrateCache: (...args: unknown[]) => mockUseHydrateCache(...args),
 }));
 
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   SyncEngineProvider: ({
     children,
     tenantId,

@@ -6,7 +6,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -32,10 +32,10 @@ vi.mock("#/components/ui/button", () => ({
     </button>
   ),
 }));
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({ children }: { children: React.ReactNode }) => <label>{children}</label>,
 }));
 vi.mock("lucide-react", () => ({
@@ -45,8 +45,11 @@ vi.mock("lucide-react", () => ({
   XCircle: () => <span data-testid="icon-x" />,
 }));
 
-import { StationFixCardPanel } from "#/components/block/StationFixCardPanel";
-import type { StationCardRow, StationUserRow } from "#/components/block/StationCardsPanel";
+import { StationFixCardPanel } from "#/presentation/components/block/StationFixCardPanel";
+import type {
+  StationCardRow,
+  StationUserRow,
+} from "#/presentation/components/block/StationCardsPanel";
 
 const members: StationUserRow[] = [
   { userId: "u-1", name: "Budi", status: "active", syncStatus: "synced" },

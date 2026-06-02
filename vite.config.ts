@@ -12,7 +12,9 @@ const config = defineConfig({
     devtools(),
     basicSsl(),
     tailwindcss(),
-    tanstackRouter(),
+    tanstackRouter({
+      routesDirectory: "src/presentation/routes",
+    }),
     viteReact(),
     svgr(),
     VitePWA({

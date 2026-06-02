@@ -11,20 +11,20 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => () => ({ component: null }),
 }));
 
-vi.mock("#/components/section/IssuanceTestSection", () => ({
+vi.mock("#/presentation/components/section/IssuanceTestSection", () => ({
   makeFreshCard: vi.fn().mockReturnValue({ identity: { name: "Test" } }),
 }));
 
-vi.mock("#/hooks/domain", () => ({
+vi.mock("#/presentation/hooks/domain", () => ({
   prepareWrite: vi.fn().mockResolvedValue({ bytes: new Uint8Array(128) }),
   encodePayloadWire: vi.fn().mockReturnValue(new Uint8Array(128)),
 }));
 
-vi.mock("#/hooks/useApi", () => ({
+vi.mock("#/presentation/hooks/useApi", () => ({
   API_BASE_URL: "http://localhost:8787",
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -43,17 +43,17 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({ children }: { children: React.ReactNode; className?: string }) => (
     <label>{children}</label>
   ),
 }));
 
-vi.mock("#/components/ui/separator", () => ({
+vi.mock("#/presentation/components/ui/separator", () => ({
   Separator: () => <hr />,
 }));
 

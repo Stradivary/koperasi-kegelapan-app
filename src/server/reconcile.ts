@@ -1,20 +1,2 @@
-import { getDb } from "#/db";
-import {
-  processReconciliation as _processReconciliation,
-  type ReconcileEvent,
-  type ReconcileResult,
-} from "./reconcileCore";
-
-export type {
-  ReconcileEvent,
-  ReconcileResult,
-  ReconcileFlag,
-  ReconcileRequest,
-} from "./reconcileCore";
-
-export async function processReconciliation(body: {
-  terminalId: number;
-  events: ReconcileEvent[];
-}): Promise<ReconcileResult> {
-  return _processReconciliation(getDb(), body);
-}
+﻿// Auto-generated re-export - remove after updating all imports
+export * from "../application/sync/reconcileHandler";

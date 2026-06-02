@@ -13,9 +13,9 @@ import {
   setActiveTenantId,
   registerTriggerSync,
 } from "../peerSyncCoordinator";
-import type { TransactionLog } from "#/db/local-db";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
-vi.mock("#/db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const mockWhere = vi.fn();
   return {
     localDb: {
@@ -32,11 +32,11 @@ vi.mock("#/db/local-db", () => {
   };
 });
 
-vi.mock("../syncPush", () => ({
+vi.mock("#/application/sync/syncPush.usecase", () => ({
   syncPush: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { localDb } from "#/db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { syncPush } from "../syncPush";
 
 function makeEntry(overrides: Partial<TransactionLog> = {}): TransactionLog {

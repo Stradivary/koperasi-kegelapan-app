@@ -19,7 +19,7 @@ const mockStores = {
   makeIdempotencyKey: vi.fn(() => "key-123"),
 };
 
-vi.mock("#/lib/indexeddb", () => mockStores);
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => mockStores);
 
 import {
   getAuthTokenCacheStore,
@@ -33,7 +33,7 @@ import {
   getSessionGrantCacheStore,
   getTenantContextStore,
   getWriteJournalStore,
-} from "#/lib/indexeddb.lazy";
+} from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 
 describe("indexeddb.lazy - store accessors", () => {
   it("getTenantContextStore returns tenantContextStore", async () => {

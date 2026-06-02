@@ -13,35 +13,37 @@ const mockUseSyncEngineContext = vi.fn();
 const mockUseBlockedCheck = vi.fn();
 const mockUseKioskAutoScan = vi.fn();
 
-vi.mock("#/hooks/useSessionGrant", () => ({
+vi.mock("#/presentation/hooks/useSessionGrant", () => ({
   useSessionGrant: (...args: unknown[]) => mockUseSessionGrant(...args),
 }));
-vi.mock("#/hooks/nfc/useNfcCard", () => ({
+vi.mock("#/presentation/hooks/nfc/useNfcCard", () => ({
   useNfcCard: (...args: unknown[]) => mockUseNfcCard(...args),
 }));
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
-vi.mock("#/hooks/useBlockedCheck", () => ({
+vi.mock("#/presentation/hooks/useBlockedCheck", () => ({
   useBlockedCheck: (...args: unknown[]) => mockUseBlockedCheck(...args),
 }));
-vi.mock("#/hooks/useKioskAutoScan", () => ({
+vi.mock("#/presentation/hooks/useKioskAutoScan", () => ({
   useKioskAutoScan: (...args: unknown[]) => mockUseKioskAutoScan(...args),
 }));
-vi.mock("#/hooks/domain", () => ({
+vi.mock("#/presentation/hooks/domain", () => ({
   applyBlockStatus: vi.fn((p: unknown) => p),
   applyCheckout: vi.fn((p: unknown) => p),
   validateCheckoutBalance: vi.fn().mockReturnValue({ sufficient: true, fee: 5000, deficit: 0 }),
   validateTransition: vi.fn().mockReturnValue({ valid: true }),
   PARKING_RATE_PER_HOUR: 5000,
 }));
-vi.mock("#/hooks/types", () => ({
+vi.mock("#/presentation/hooks/types", () => ({
   CardState: { IDLE: 0, CHECKED_IN: 1, CHECKED_OUT: 2, STATION_OPERATION: 3 },
   CardStatus: { ACTIVE: 0, BLOCKED_ADMIN: 4 },
 }));
-vi.mock("#/hooks/nfc/updateLocalCardRecord", () => ({ updateLocalCardRecord: vi.fn() }));
-vi.mock("#/lib/utils/formatters", () => ({ formatDuration: (s: number) => `${s}s` }));
-vi.mock("#/components/block/NfcTapArea", () => ({
+vi.mock("#/presentation/hooks/nfc/updateLocalCardRecord", () => ({
+  updateLocalCardRecord: vi.fn(),
+}));
+vi.mock("#/presentation/lib/formatters", () => ({ formatDuration: (s: number) => `${s}s` }));
+vi.mock("#/presentation/components/block/NfcTapArea", () => ({
   NfcTapArea: ({ phase }: { phase: string }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} />
   ),
@@ -49,7 +51,7 @@ vi.mock("#/components/block/NfcTapArea", () => ({
     <div data-testid="nfc-status-label" data-phase={phase} />
   ),
 }));
-vi.mock("#/components/block/FeedbackCard", () => ({
+vi.mock("#/presentation/components/block/FeedbackCard", () => ({
   FeedbackCard: ({
     title,
     variant,
@@ -73,13 +75,13 @@ vi.mock("#/components/block/FeedbackCard", () => ({
     </div>
   ),
 }));
-vi.mock("#/components/block/LoadingState", () => ({
+vi.mock("#/presentation/components/block/LoadingState", () => ({
   LoadingState: ({ text }: { text?: string; variant?: string; className?: string }) => (
     <span data-testid="loading-state">{text}</span>
   ),
 }));
 
-import { TerminalSection } from "#/components/section/TerminalSection";
+import { TerminalSection } from "#/presentation/components/section/TerminalSection";
 
 const defaultProps = { tenantId: "t-1", accountId: "a-1", deviceId: "d-1", terminalId: 1 };
 

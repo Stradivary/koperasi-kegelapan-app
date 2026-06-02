@@ -5,13 +5,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("#/components/block/CardStatusBadge", () => ({
+vi.mock("#/presentation/components/block/CardStatusBadge", () => ({
   CardStatusBadge: ({ status }: { status: number }) => (
     <span data-testid="status-badge">{status}</span>
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -28,13 +28,13 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/lib/utils/formatters", () => ({
+vi.mock("#/presentation/lib/formatters", () => ({
   formatTime: (t: number) => `time:${t}`,
   formatDuration: (d: number) => `dur:${d}`,
 }));
 
-import { CheckoutConfirmCard } from "#/components/block/CheckoutConfirmCard";
-import type { CardPayload } from "#/hooks/types";
+import { CheckoutConfirmCard } from "#/presentation/components/block/CheckoutConfirmCard";
+import type { CardPayload } from "#/presentation/hooks/types";
 
 const mockPayload = {
   identity: { name: "Budi", status: 0, userId: "u-1", createdAt: 0 },

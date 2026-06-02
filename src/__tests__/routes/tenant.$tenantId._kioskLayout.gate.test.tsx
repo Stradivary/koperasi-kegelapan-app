@@ -15,12 +15,12 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string) => mockUseTenantContext(tenantId),
 }));
 
-vi.mock("#/components/section/GateSection", () => ({
+vi.mock("#/presentation/components/section/GateSection", () => ({
   GateSection: ({
     tenantId,
     accountId,
@@ -42,8 +42,8 @@ vi.mock("#/components/section/GateSection", () => ({
   ),
 }));
 
-import { TenantRoutePending } from "#/hooks/useTenantContext";
-import { GateSection } from "#/components/section/GateSection";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
+import { GateSection } from "#/presentation/components/section/GateSection";
 
 function GatePage() {
   const tenantId = "t-1";

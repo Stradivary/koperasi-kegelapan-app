@@ -1,11 +1,11 @@
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
-import { getContext } from "./integrations/tanstack-query/root-provider";
 import { createRoot } from "react-dom/client";
 import { initDeviceIdFromStorage } from "./lib/initDeviceId";
 import { setQueryClient } from "./lib/realTimeSync";
 import "./styles.css";
+import { getContext } from "./presentation/providers/root-provider";
 
 // Restore deviceId from IndexedDB into the API client's in-memory cache.
 // This runs eagerly so that any API calls made before useTenantContext

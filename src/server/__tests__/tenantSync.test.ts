@@ -9,7 +9,7 @@ import {
 } from "../tenantSync";
 
 // Mock the database module (needed for processTenantSync but not for validators)
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({

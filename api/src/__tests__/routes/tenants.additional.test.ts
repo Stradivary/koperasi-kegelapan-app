@@ -24,7 +24,7 @@ vi.mock("drizzle-orm", () => ({
   sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({ sql: strings, values })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   tenants: {
     tenantId: "tenants.tenantId",
     slug: "tenants.slug",
@@ -42,7 +42,7 @@ vi.mock("#/db/schema", () => ({
   },
 }));
 
-vi.mock("#/server/tenantSync", () => ({
+vi.mock("#/application/tenant/tenantSync.usecase", () => ({
   validateSyncRequest: vi.fn(() => []),
 }));
 

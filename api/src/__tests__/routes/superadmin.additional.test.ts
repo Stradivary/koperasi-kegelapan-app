@@ -14,7 +14,7 @@ import { superadminRoutes } from "../../routes/superadmin";
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
 // Mock superadmin auth
-vi.mock("#/server/superadminAuth", () => ({
+vi.mock("#/application/admin/superadminAuth.usecase", () => ({
   requireSuperadmin: vi.fn().mockResolvedValue({ accountId: "sa1", role: "superadmin" }),
   isAuthError: vi.fn().mockReturnValue(false),
 }));
@@ -25,7 +25,7 @@ const mockCreateTenant = vi.fn().mockResolvedValue({ status: 201, data: { tenant
 const mockGetTenantDetail = vi.fn().mockResolvedValue({ status: 200, data: { tenantId: "t1" } });
 const mockUpdateTenantStatus = vi.fn().mockResolvedValue({ status: 200, data: { ok: true } });
 
-vi.mock("#/server/superadminTenants", () => ({
+vi.mock("#/application/admin/superadminTenants.usecase", () => ({
   listTenants: (...args: unknown[]) => mockListTenants(...args),
   createTenant: (...args: unknown[]) => mockCreateTenant(...args),
   getTenantDetail: (...args: unknown[]) => mockGetTenantDetail(...args),
@@ -38,7 +38,7 @@ const mockCreateAccount = vi.fn().mockResolvedValue({ status: 201, data: { accou
 const mockChangeAccountPassword = vi.fn().mockResolvedValue({ status: 200, data: { ok: true } });
 const mockUpdateAccountStatus = vi.fn().mockResolvedValue({ status: 200, data: { ok: true } });
 
-vi.mock("#/server/superadminAccounts", () => ({
+vi.mock("#/application/admin/superadminAccounts.usecase", () => ({
   listAccounts: (...args: unknown[]) => mockListAccounts(...args),
   createAccount: (...args: unknown[]) => mockCreateAccount(...args),
   changeAccountPassword: (...args: unknown[]) => mockChangeAccountPassword(...args),
@@ -47,7 +47,7 @@ vi.mock("#/server/superadminAccounts", () => ({
 
 // Mock DB - device not found by default
 const mockDeviceGet = vi.fn().mockResolvedValue(null);
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
@@ -69,7 +69,7 @@ const mockBlockDevice = vi.fn().mockResolvedValue(undefined);
 const mockUnblockDevice = vi.fn().mockResolvedValue(undefined);
 const mockRevokeDeviceSessions = vi.fn().mockResolvedValue(0);
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   getDevicesByTenant: (...args: unknown[]) => mockGetDevicesByTenant(...args),
   blockDevice: (...args: unknown[]) => mockBlockDevice(...args),
   unblockDevice: (...args: unknown[]) => mockUnblockDevice(...args),

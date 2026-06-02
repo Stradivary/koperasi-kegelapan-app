@@ -12,17 +12,23 @@ const RULES = [
   {
     name: "Domain must not import from Gateways",
     sourcePattern: /^src\/core\//,
-    forbiddenImports: [/["']#\/db\//, /["']#\/lib\//],
+    forbiddenImports: [
+      /["']#\/db\//,
+      /["']#\/lib\//,
+      /["']#\/infrastructure\//,
+      /["']#\/application\//,
+      /["']#\/presentation\//,
+    ],
   },
   {
     name: "UI must not import from Domain directly",
-    sourcePattern: /^src\/(components|routes)\//,
+    sourcePattern: /^src\/presentation\/(components|routes)\//,
     forbiddenImports: [/["']#\/core\//],
   },
   {
     name: "UI must not import from Gateways (except utils)",
-    sourcePattern: /^src\/(components|routes)\//,
-    forbiddenImports: [/["']#\/db\//, /["']#\/lib\/(?!utils)/],
+    sourcePattern: /^src\/presentation\/(components|routes)\//,
+    forbiddenImports: [/["']#\/db\//, /["']#\/lib\/(?!utils)/, /["']#\/infrastructure\//],
   },
 ];
 

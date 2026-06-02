@@ -18,7 +18,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => ({ and: args })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: {
     accountId: "accounts.accountId",
     tenantId: "accounts.tenantId",
@@ -41,7 +41,7 @@ vi.mock("#/db/schema", () => ({
   },
 }));
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   registerDevice: vi.fn((_db, opts) => ({
     deviceId: `device-${opts.fingerprintHash}`,
     tenantId: opts.tenantId,
@@ -49,7 +49,7 @@ vi.mock("#/server/deviceRegistry", () => ({
   })),
 }));
 
-vi.mock("#/server/authSession", () => ({
+vi.mock("#/application/auth/authSession.usecase", () => ({
   createSession: vi.fn((_db, _opts) => ({
     sessionId: "session-123",
     refreshToken: "refresh-token-123",
@@ -286,7 +286,8 @@ describe("POST /refresh", () => {
   });
 
   it("returns 404 when session not found", async () => {
-    const { refreshSession, AuthSessionError } = await import("#/server/authSession");
+    const { refreshSession, AuthSessionError } =
+      await import("#/application/auth/authSession.usecase");
     vi.mocked(refreshSession).mockRejectedValueOnce(
       new AuthSessionError("SESSION_NOT_FOUND", "SESSION_NOT_FOUND"),
     );
@@ -302,7 +303,8 @@ describe("POST /refresh", () => {
   });
 
   it("returns 401 when refresh token is invalid", async () => {
-    const { refreshSession, AuthSessionError } = await import("#/server/authSession");
+    const { refreshSession, AuthSessionError } =
+      await import("#/application/auth/authSession.usecase");
     vi.mocked(refreshSession).mockRejectedValueOnce(
       new AuthSessionError("INVALID_REFRESH_TOKEN", "INVALID_TOKEN"),
     );
@@ -378,7 +380,7 @@ describe("POST /refresh", () => {
   });
 
   it("returns 500 on unexpected error", async () => {
-    const { refreshSession } = await import("#/server/authSession");
+    const { refreshSession } = await import("#/application/auth/authSession.usecase");
     vi.mocked(refreshSession).mockRejectedValueOnce(new Error("Database connection lost"));
 
     const res = await req("POST", "/refresh", {

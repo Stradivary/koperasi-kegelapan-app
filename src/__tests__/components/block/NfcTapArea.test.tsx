@@ -7,7 +7,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockTriggerHaptic = vi.fn();
-vi.mock("#/lib/utils/haptics", () => ({
+vi.mock("#/infrastructure/device/haptics", () => ({
   triggerHaptic: (...a: unknown[]) => mockTriggerHaptic(...a),
 }));
 vi.mock("#/assets/images/nfc/tap_nfc.jpeg", () => ({ default: "tap.jpeg" }));
@@ -15,7 +15,7 @@ vi.mock("#/assets/images/landing/success_phone.png", () => ({ default: "success.
 vi.mock("#/assets/images/nfc/failed.svg", () => ({ default: "failed.svg" }));
 vi.mock("#/assets/images/nfc/tamper.svg", () => ({ default: "tamper.svg" }));
 
-import { NfcTapArea, NfcStatusLabel } from "#/components/block/NfcTapArea";
+import { NfcTapArea, NfcStatusLabel } from "#/presentation/components/block/NfcTapArea";
 
 describe("NfcTapArea", () => {
   beforeEach(() => vi.clearAllMocks());

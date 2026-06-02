@@ -11,7 +11,7 @@ import React from "react";
 
 // ─── mocks ───────────────────────────────────────────────────────────────────
 
-vi.mock("#/components/block/data-table", () => ({
+vi.mock("#/presentation/components/block/data-table", () => ({
   DataTable: ({
     data,
     isLoading,
@@ -99,7 +99,7 @@ vi.mock("#/components/block/data-table", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -118,7 +118,7 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/badge", () => ({
+vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <span data-testid="badge" className={className}>
       {children}
@@ -139,7 +139,7 @@ vi.mock("lucide-react", () => ({
 import {
   AccountListPanel,
   type AccountListItem,
-} from "#/components/block/superadmin/AccountListPanel";
+} from "#/presentation/components/block/superadmin/AccountListPanel";
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 

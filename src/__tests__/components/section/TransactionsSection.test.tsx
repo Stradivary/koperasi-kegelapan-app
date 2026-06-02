@@ -22,21 +22,21 @@ vi.mock("@tanstack/react-table", () => ({
   }),
 }));
 
-vi.mock("#/hooks/useTransactionLog", () => ({
+vi.mock("#/presentation/hooks/useTransactionLog", () => ({
   getTransactions: vi.fn().mockResolvedValue({ entries: [], total: 0, pageSize: 10 }),
 }));
 
-vi.mock("#/hooks/useIndexedDbStores", () => ({
+vi.mock("#/presentation/hooks/useIndexedDbStores", () => ({
   getLocalAccountStore: vi.fn().mockResolvedValue({
     getByTenant: vi.fn().mockResolvedValue([]),
   }),
 }));
 
-vi.mock("#/hooks/use-mobile", () => ({
+vi.mock("#/presentation/hooks/use-mobile", () => ({
   useIsMobile: () => mockUseIsMobile(),
 }));
 
-vi.mock("#/lib/utils", () => ({
+vi.mock("#/presentation/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
@@ -50,7 +50,7 @@ vi.mock("lucide-react", () => ({
   Receipt: () => <span data-testid="icon-receipt" />,
 }));
 
-vi.mock("#/components/ui/badge", () => ({
+vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
       {children}
@@ -58,7 +58,7 @@ vi.mock("#/components/ui/badge", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -77,11 +77,11 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({
     children,
     htmlFor,
@@ -92,7 +92,7 @@ vi.mock("#/components/ui/label", () => ({
   }) => <label htmlFor={htmlFor}>{children}</label>,
 }));
 
-vi.mock("#/components/ui/select", () => ({
+vi.mock("#/presentation/components/ui/select", () => ({
   Select: ({
     children,
     value,
@@ -124,7 +124,7 @@ vi.mock("#/components/ui/select", () => ({
   SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
 }));
 
-vi.mock("#/components/block/data-table", () => ({
+vi.mock("#/presentation/components/block/data-table", () => ({
   DataTable: ({
     data,
     isLoading,
@@ -173,9 +173,15 @@ vi.mock("#/components/block/data-table", () => ({
   ),
 }));
 
-import { TransactionsSection } from "#/components/section/TransactionsSection";
+import { TransactionsSection } from "#/presentation/components/section/TransactionsSection";
 
-const today = new Date().toISOString().split("T")[0];
+const today = (() => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+})();
 
 describe("TransactionsSection - loading and data", () => {
   beforeEach(() => {

@@ -20,9 +20,9 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("#/hooks/useApi", () => ({ API_BASE_URL: "http://localhost:8787" }));
+vi.mock("#/presentation/hooks/useApi", () => ({ API_BASE_URL: "http://localhost:8787" }));
 
-vi.mock("#/components/layout/SuperadminLayout", () => ({
+vi.mock("#/presentation/components/layout/SuperadminLayout", () => ({
   SuperadminLayout: ({
     children,
     activeSection,
@@ -39,7 +39,7 @@ vi.mock("#/components/layout/SuperadminLayout", () => ({
     </div>
   ),
 }));
-vi.mock("#/components/block/superadmin/TenantListPanel", () => ({
+vi.mock("#/presentation/components/block/superadmin/TenantListPanel", () => ({
   TenantListPanel: ({
     tenants,
     isLoading,
@@ -66,7 +66,7 @@ vi.mock("#/components/block/superadmin/TenantListPanel", () => ({
     </div>
   ),
 }));
-vi.mock("#/components/block/superadmin/TenantDetailPanel", () => ({
+vi.mock("#/presentation/components/block/superadmin/TenantDetailPanel", () => ({
   TenantDetailPanel: ({
     tenant: _t,
     onBack,
@@ -83,7 +83,7 @@ vi.mock("#/components/block/superadmin/TenantDetailPanel", () => ({
     </div>
   ),
 }));
-vi.mock("#/components/block/superadmin/AccountListPanel", () => ({
+vi.mock("#/presentation/components/block/superadmin/AccountListPanel", () => ({
   AccountListPanel: ({
     accounts,
     isLoading,
@@ -109,7 +109,7 @@ vi.mock("#/components/block/superadmin/AccountListPanel", () => ({
     </div>
   ),
 }));
-vi.mock("#/components/block/dialogs/TenantCreateDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/TenantCreateDialog", () => ({
   TenantCreateDialog: ({
     open,
     onOpenChange,
@@ -126,7 +126,7 @@ vi.mock("#/components/block/dialogs/TenantCreateDialog", () => ({
       </div>
     ) : null,
 }));
-vi.mock("#/components/block/dialogs/AccountCreateDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/AccountCreateDialog", () => ({
   AccountCreateDialog: ({
     open,
     onOpenChange,
@@ -145,7 +145,7 @@ vi.mock("#/components/block/dialogs/AccountCreateDialog", () => ({
       </div>
     ) : null,
 }));
-vi.mock("#/components/block/dialogs/ChangePasswordDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/ChangePasswordDialog", () => ({
   ChangePasswordDialog: ({
     open,
   }: {
@@ -157,12 +157,12 @@ vi.mock("#/components/block/dialogs/ChangePasswordDialog", () => ({
     error?: string | null;
   }) => (open ? <div data-testid="change-password-dialog" /> : null),
 }));
-vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
+vi.mock("#/presentation/components/ui/confirmation-dialog-drawer", () => ({
   ConfirmationDialogDrawer: ({ open }: { open: boolean; [key: string]: unknown }) =>
     open ? <div data-testid="confirmation-dialog" /> : null,
 }));
 
-import { SuperadminSection } from "#/components/section/SuperadminSection";
+import { SuperadminSection } from "#/presentation/components/section/SuperadminSection";
 
 // Mock localStorage
 const localStorageMock = (() => {

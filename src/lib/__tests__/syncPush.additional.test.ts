@@ -5,7 +5,7 @@
  *          processBatchResponse, processSingleBatch, syncPush full cycle)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { TransactionLog } from "#/db/local-db";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ const mockGetSyncableEntries = vi.fn();
 const mockUpdateSyncStatus = vi.fn();
 const mockGetAccessToken = vi.fn().mockReturnValue("token-abc");
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   apiFetch: (...a: unknown[]) => mockApiFetch(...a),
   API_BASE_URL: "https://api.test",
   DeviceBlockedError: class DeviceBlockedError extends Error {
@@ -27,11 +27,11 @@ vi.mock("#/lib/api", () => ({
   getAccessToken: () => mockGetAccessToken(),
 }));
 
-vi.mock("#/lib/deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: () => mockIsDeviceBlocked(),
 }));
 
-vi.mock("#/lib/transactionLogService", () => ({
+vi.mock("#/infrastructure/persistence/dexie/transactionLogService", () => ({
   getSyncableEntries: (...a: unknown[]) => mockGetSyncableEntries(...a),
   updateSyncStatus: (...a: unknown[]) => mockUpdateSyncStatus(...a),
 }));

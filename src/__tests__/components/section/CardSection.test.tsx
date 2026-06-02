@@ -25,7 +25,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: vi.fn().mockResolvedValue(null),
@@ -41,23 +41,23 @@ vi.mock("#/db/local-db", () => ({
   },
 }));
 
-vi.mock("#/lib/syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#/hooks/useSessionGrant", () => ({
+vi.mock("#/presentation/hooks/useSessionGrant", () => ({
   useSessionGrant: (...args: unknown[]) => mockUseSessionGrant(...args),
 }));
 
-vi.mock("#/hooks/nfc", () => ({
+vi.mock("#/presentation/hooks/nfc", () => ({
   useNfcCard: (...args: unknown[]) => mockUseNfcCard(...args),
 }));
 
-vi.mock("#/hooks/useTenantSync", () => ({
+vi.mock("#/presentation/hooks/useTenantSync", () => ({
   useTenantSync: () => mockUseTenantSync(),
 }));
 
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
 
@@ -79,6 +79,10 @@ vi.mock("#/core/nfc/engine", () => ({
 vi.mock("#/core/payload/types", () => ({
   MAGIC: 0x4b52,
   CARD_SCHEMA_VERSION: 2,
+  BUFFER_SIZE: 216,
+  TRAILER_SIZE: 64,
+  WIRE_SIZE: 280,
+  TRAILER_COUNTER_BIND: 16,
   CardState: { IDLE: 0 },
   CardStatus: {
     ACTIVE: 0,
@@ -101,7 +105,7 @@ vi.mock("#/core/validation/uidGlobalValidator", () => ({
   validateUID: vi.fn().mockResolvedValue({ valid: true }),
 }));
 
-vi.mock("#/lib/repositories", () => ({
+vi.mock("#/infrastructure/persistence/dexie/repositories", () => ({
   cardRepo: {
     filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
     getByTenantAndCardId: vi.fn().mockResolvedValue(undefined),
@@ -115,15 +119,15 @@ vi.mock("#/core/payload/engine", () => ({
   decodePayload: vi.fn(),
 }));
 
-vi.mock("#/lib/stationQueries", () => ({
+vi.mock("#/infrastructure/persistence/dexie/stationQueries", () => ({
   getCardsWithUsers: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("#/lib/errorTracker", () => ({
+vi.mock("#/infrastructure/error/errorTracker", () => ({
   trackError: vi.fn(),
 }));
 
-vi.mock("../../../components/block/StationCardsPanel", () => ({
+vi.mock("#/presentation/components/block/StationCardsPanel", () => ({
   StationCardsPanel: React.forwardRef(({ cards, isLoading, onIssueNew }: any, _ref: any) => (
     <div
       data-testid="station-cards-panel"
@@ -137,55 +141,55 @@ vi.mock("../../../components/block/StationCardsPanel", () => ({
   )),
 }));
 
-vi.mock("../../../components/block/StationFixCardPanel", () => ({
+vi.mock("#/presentation/components/block/StationFixCardPanel", () => ({
   StationFixCardPanel: () => <div data-testid="station-fix-card-panel" />,
 }));
 
-vi.mock("../../../components/block/dialogs/SyncConflictDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/SyncConflictDialog", () => ({
   SyncConflictDialog: () => <div data-testid="sync-conflict-dialog" />,
 }));
 
-vi.mock("../../../components/block/dialogs/CardOverwriteDialog", () => ({
+vi.mock("#/presentation/components/block/dialogs/CardOverwriteDialog", () => ({
   CardOverwriteDialog: () => null,
 }));
 
-vi.mock("../../../components/block/dialogs/CardOverwriteDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/CardOverwriteDrawer", () => ({
   CardOverwriteDrawer: ({ open }: { open: boolean }) => (
     <div data-testid="card-overwrite-drawer" data-open={String(open)} />
   ),
 }));
 
-vi.mock("../../../components/block/dialogs/CardNotBlankDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/CardNotBlankDrawer", () => ({
   CardNotBlankDrawer: ({ open }: { open: boolean }) => (
     <div data-testid="card-not-blank-drawer" data-open={String(open)} />
   ),
 }));
 
-vi.mock("../../../components/block/dialogs/NfcScanDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/NfcScanDrawer", () => ({
   NfcScanDrawer: ({ open, phase }: { open: boolean; phase: string }) => (
     <div data-testid="nfc-scan-drawer" data-open={String(open)} data-phase={phase} />
   ),
 }));
 
-vi.mock("../../../components/block/dialogs/IssuanceScanDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/IssuanceScanDrawer", () => ({
   IssuanceScanDrawer: ({ open }: { open: boolean }) => (
     <div data-testid="issuance-scan-drawer" data-open={String(open)} />
   ),
 }));
 
-vi.mock("../../../components/block/dialogs/IssueCardDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/IssueCardDrawer", () => ({
   IssueCardDrawer: ({ open, phase }: { open: boolean; phase: string }) => (
     <div data-testid="issue-card-drawer" data-open={String(open)} data-phase={phase} />
   ),
 }));
 
-vi.mock("../../../components/block/dialogs/TopupDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/TopupDrawer", () => ({
   TopupDrawer: ({ open }: { open: boolean }) => (
     <div data-testid="topup-drawer" data-open={String(open)} />
   ),
 }));
 
-import { CardSection } from "#/components/section/CardSection";
+import { CardSection } from "#/presentation/components/section/CardSection";
 
 const defaultProps = {
   tenantId: "t-1",

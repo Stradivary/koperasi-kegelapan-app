@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 /**
  * Tests for src/hooks/useUnifiedNfc.ts
  */
@@ -74,7 +74,7 @@ vi.mock("#/core/nfc/stateMachine", () => {
   return { nfcReducer, initialNfcState };
 });
 
-import { useUnifiedNfc } from "#/hooks/useUnifiedNfc";
+import { useUnifiedNfc } from "#/presentation/hooks/useUnifiedNfc";
 import type { SessionGrant } from "#/core/payload/types";
 
 function makeGrant(): SessionGrant {

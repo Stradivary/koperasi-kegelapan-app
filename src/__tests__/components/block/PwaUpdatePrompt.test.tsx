@@ -16,7 +16,7 @@ vi.mock("virtual:pwa-register/react", () => ({
   }) => mockUseRegisterSW(opts),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -27,7 +27,7 @@ vi.mock("#/components/ui/button", () => ({
   }) => <button onClick={onClick}>{children}</button>,
 }));
 
-import { PwaUpdatePrompt } from "#/components/block/PwaUpdatePrompt";
+import { PwaUpdatePrompt } from "#/presentation/components/block/PwaUpdatePrompt";
 
 describe("PwaUpdatePrompt", () => {
   beforeEach(() => {

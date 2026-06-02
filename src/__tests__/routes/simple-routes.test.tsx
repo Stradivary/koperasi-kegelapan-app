@@ -20,16 +20,16 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // ── Section mocks ────────────────────────────────────────────────────────────
-vi.mock("#/components/section/LoginSection", () => ({
+vi.mock("#/presentation/components/section/LoginSection", () => ({
   LoginSection: () => <div data-testid="login-section" />,
 }));
-vi.mock("#/components/section/DevicesSection", () => ({
+vi.mock("#/presentation/components/section/DevicesSection", () => ({
   DevicesSection: () => <div data-testid="devices-section" />,
 }));
-vi.mock("#/components/section/SuperadminSection", () => ({
+vi.mock("#/presentation/components/section/SuperadminSection", () => ({
   SuperadminSection: () => <div data-testid="superadmin-section" />,
 }));
-vi.mock("#/components/section/IssuanceTestSection", () => ({
+vi.mock("#/presentation/components/section/IssuanceTestSection", () => ({
   IssuanceTestSection: () => <div data-testid="issuance-test-section" />,
 }));
 vi.mock("lucide-react", () => ({
@@ -41,7 +41,7 @@ vi.mock("lucide-react", () => ({
 
 describe("routes/index.tsx - LoginSection", () => {
   it("renders LoginSection component", async () => {
-    const { LoginSection } = await import("#/components/section/LoginSection");
+    const { LoginSection } = await import("#/presentation/components/section/LoginSection");
     render(<LoginSection />);
     expect(screen.getByTestId("login-section")).toBeDefined();
   });
@@ -49,7 +49,7 @@ describe("routes/index.tsx - LoginSection", () => {
 
 describe("routes/devices.tsx - DevicesSection", () => {
   it("renders DevicesSection component", async () => {
-    const { DevicesSection } = await import("#/components/section/DevicesSection");
+    const { DevicesSection } = await import("#/presentation/components/section/DevicesSection");
     render(<DevicesSection />);
     expect(screen.getByTestId("devices-section")).toBeDefined();
   });
@@ -57,7 +57,8 @@ describe("routes/devices.tsx - DevicesSection", () => {
 
 describe("routes/superadmin.tsx - SuperadminPage", () => {
   it("renders SuperadminSection", async () => {
-    const { SuperadminSection } = await import("#/components/section/SuperadminSection");
+    const { SuperadminSection } =
+      await import("#/presentation/components/section/SuperadminSection");
     render(<SuperadminSection />);
     expect(screen.getByTestId("superadmin-section")).toBeDefined();
   });
@@ -65,7 +66,8 @@ describe("routes/superadmin.tsx - SuperadminPage", () => {
 
 describe("routes/dev.issuance-test.tsx - IssuanceTestSection", () => {
   it("renders IssuanceTestSection component", async () => {
-    const { IssuanceTestSection } = await import("#/components/section/IssuanceTestSection");
+    const { IssuanceTestSection } =
+      await import("#/presentation/components/section/IssuanceTestSection");
     render(<IssuanceTestSection />);
     expect(screen.getByTestId("issuance-test-section")).toBeDefined();
   });

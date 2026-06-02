@@ -1,20 +1,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { initDeviceIdFromStorage } from "../initDeviceId";
-import { setCurrentDeviceId, getCurrentDeviceId } from "../api";
 
-// Mock the indexeddb module
-vi.mock("../indexeddb", () => ({
-  tenantContextStore: {
-    getAll: vi.fn(),
-  },
+const mockGetAll = vi.fn();
+
+// Mock the lazy indexeddb module that initDeviceId imports from
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
+  getTenantContextStore: () => Promise.resolve({ getAll: mockGetAll }),
 }));
 
-import { tenantContextStore } from "../indexeddb";
+// Mock the api module for setCurrentDeviceId
+const mockSetCurrentDeviceId = vi.fn();
+let _currentDeviceId: string | null = null;
+
+vi.mock("#/infrastructure/api/apiClient", () => ({
+  setCurrentDeviceId: (id: string | null) => {
+    _currentDeviceId = id;
+    mockSetCurrentDeviceId(id);
+  },
+  getCurrentDeviceId: () => _currentDeviceId,
+}));
+
+import { initDeviceIdFromStorage } from "#/infrastructure/device/initDeviceId";
 
 describe("initDeviceIdFromStorage", () => {
   beforeEach(() => {
-    // Reset the cached device ID
-    setCurrentDeviceId(null);
+    _currentDeviceId = null;
+    mockSetCurrentDeviceId.mockClear();
+    mockGetAll.mockClear();
   });
 
   afterEach(() => {
@@ -22,7 +33,7 @@ describe("initDeviceIdFromStorage", () => {
   });
 
   it("sets deviceId from the most recently updated tenant context", async () => {
-    vi.mocked(tenantContextStore.getAll).mockResolvedValue([
+    mockGetAll.mockResolvedValue([
       {
         tenantId: "t1",
         tenantSlug: "slug1",
@@ -49,33 +60,33 @@ describe("initDeviceIdFromStorage", () => {
 
     // Wait for the async operation to complete
     await vi.waitFor(() => {
-      expect(getCurrentDeviceId()).toBe("device-newest");
+      expect(_currentDeviceId).toBe("device-newest");
     });
   });
 
   it("does nothing when no tenant contexts exist", async () => {
-    vi.mocked(tenantContextStore.getAll).mockResolvedValue([]);
+    mockGetAll.mockResolvedValue([]);
 
     initDeviceIdFromStorage();
 
     // Give the promise time to resolve
     await new Promise((r) => setTimeout(r, 10));
-    expect(getCurrentDeviceId()).toBeNull();
+    expect(_currentDeviceId).toBeNull();
   });
 
   it("silently handles IndexedDB errors", async () => {
-    vi.mocked(tenantContextStore.getAll).mockRejectedValue(new Error("IndexedDB unavailable"));
+    mockGetAll.mockRejectedValue(new Error("IndexedDB unavailable"));
 
     // Should not throw
     initDeviceIdFromStorage();
 
     // Give the promise time to reject
     await new Promise((r) => setTimeout(r, 10));
-    expect(getCurrentDeviceId()).toBeNull();
+    expect(_currentDeviceId).toBeNull();
   });
 
   it("sets deviceId from single context", async () => {
-    vi.mocked(tenantContextStore.getAll).mockResolvedValue([
+    mockGetAll.mockResolvedValue([
       {
         tenantId: "t1",
         tenantSlug: "slug1",
@@ -91,7 +102,7 @@ describe("initDeviceIdFromStorage", () => {
     initDeviceIdFromStorage();
 
     await vi.waitFor(() => {
-      expect(getCurrentDeviceId()).toBe("single-device-id");
+      expect(_currentDeviceId).toBe("single-device-id");
     });
   });
 });

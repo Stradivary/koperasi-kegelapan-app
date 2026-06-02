@@ -15,12 +15,12 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string) => mockUseTenantContext(tenantId),
 }));
 
-vi.mock("#/components/section/TerminalSection", () => ({
+vi.mock("#/presentation/components/section/TerminalSection", () => ({
   TerminalSection: ({
     tenantId,
     accountId,
@@ -42,8 +42,8 @@ vi.mock("#/components/section/TerminalSection", () => ({
   ),
 }));
 
-import { TenantRoutePending } from "#/hooks/useTenantContext";
-import { TerminalSection } from "#/components/section/TerminalSection";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
+import { TerminalSection } from "#/presentation/components/section/TerminalSection";
 
 function TerminalPage() {
   const tenantId = "t-1";

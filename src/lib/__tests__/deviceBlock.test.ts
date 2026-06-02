@@ -12,7 +12,7 @@ import {
 } from "../deviceBlock";
 
 // Mock the indexeddb module to avoid actual IndexedDB operations in tests
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn().mockResolvedValue([]),
     delete: vi.fn().mockResolvedValue(undefined),

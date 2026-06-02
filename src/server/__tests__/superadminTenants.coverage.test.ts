@@ -10,7 +10,7 @@ const mockSelect = vi.fn();
 const mockInsert = vi.fn();
 const mockTransaction = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: mockSelect,
     update: mockUpdate,

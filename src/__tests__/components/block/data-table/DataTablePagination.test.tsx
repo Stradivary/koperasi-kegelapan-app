@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
-vi.mock("#/components/ui/button.tsx", () => ({
+vi.mock("#/presentation/components/ui/button.tsx", () => ({
   Button: ({
     children,
     onClick,
@@ -27,7 +27,7 @@ vi.mock("#/components/ui/button.tsx", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/select.tsx", () => ({
+vi.mock("#/presentation/components/ui/select.tsx", () => ({
   Select: ({
     value,
     onValueChange,
@@ -66,7 +66,7 @@ vi.mock("lucide-react", () => ({
   ChevronsRight: () => <span>{">>"}</span>,
 }));
 
-import { DataTablePagination } from "#/components/block/data-table/DataTablePagination";
+import { DataTablePagination } from "#/presentation/components/block/data-table/DataTablePagination";
 import type { Table } from "@tanstack/react-table";
 
 function makeTable(

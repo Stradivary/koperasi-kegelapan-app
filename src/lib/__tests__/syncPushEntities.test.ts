@@ -13,7 +13,7 @@ const mockIsDeviceBlocked = vi.fn().mockReturnValue(false);
 const mockGetAccessToken = vi.fn().mockReturnValue("token-abc");
 const mockAddSyncLog = vi.fn();
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   apiFetch: (...a: unknown[]) => mockApiFetch(...a),
   API_BASE_URL: "https://api.test",
   DeviceBlockedError: class DeviceBlockedError extends Error {
@@ -25,11 +25,11 @@ vi.mock("#/lib/api", () => ({
   getAccessToken: () => mockGetAccessToken(),
 }));
 
-vi.mock("#/lib/deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: () => mockIsDeviceBlocked(),
 }));
 
-vi.mock("#/lib/syncLogStore", () => ({
+vi.mock("#/infrastructure/persistence/dexie/syncLogStore", () => ({
   addSyncLog: (...a: unknown[]) => mockAddSyncLog(...a),
 }));
 
@@ -38,7 +38,7 @@ const mockUsersUpdate = vi.fn();
 const mockCardsWhere = vi.fn();
 const mockCardsUpdate = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     users: {
       where: (...a: unknown[]) => mockUsersWhere(...a),

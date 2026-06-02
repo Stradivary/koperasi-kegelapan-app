@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── UI mocks ─────────────────────────────────────────────────────────────────
 
-vi.mock("#/components/ui/drawer", () => ({
+vi.mock("#/presentation/components/ui/drawer", () => ({
   Drawer: ({
     open,
     children,
@@ -36,7 +36,7 @@ vi.mock("#/components/ui/drawer", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -53,7 +53,7 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/badge", () => ({
+vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
       {children}
@@ -61,13 +61,13 @@ vi.mock("#/components/ui/badge", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/separator", () => ({
+vi.mock("#/presentation/components/ui/separator", () => ({
   Separator: ({ className }: { className?: string }) => (
     <hr data-testid="separator" className={className} />
   ),
 }));
 
-vi.mock("#/components/block/UnifiedNfcScanner", () => ({
+vi.mock("#/presentation/components/block/UnifiedNfcScanner", () => ({
   NfcTapArea: ({ phase }: { phase: string }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} />
   ),
@@ -80,13 +80,13 @@ vi.mock("#/assets/images/nfc/failed.svg", () => ({ default: "/failed.svg" }));
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-vi.mock("#/hooks/types", () => ({
+vi.mock("#/presentation/hooks/types", () => ({
   CardStatus: { 0: "Active", 1: "Blocked", 2: "Expired" },
   CardState: { 0: "Normal", 1: "Frozen" },
 }));
 
-import { IssuanceScanDrawer } from "#/components/block/dialogs/IssuanceScanDrawer";
-import type { CardPayload } from "#/hooks/types";
+import { IssuanceScanDrawer } from "#/presentation/components/block/dialogs/IssuanceScanDrawer";
+import type { CardPayload } from "#/presentation/hooks/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -30,17 +30,23 @@ const RULES = [
   {
     name: "Domain must not import from Gateways",
     sourcePattern: /^src\/core\//,
-    forbiddenImports: [/["']#\/db\//, /["']#\/lib\//],
+    forbiddenImports: [
+      /["']#\/db\//,
+      /["']#\/lib\//,
+      /["']#\/infrastructure\//,
+      /["']#\/application\//,
+      /["']#\/presentation\//,
+    ],
   },
   {
     name: "UI must not import from Domain directly",
-    sourcePattern: /^src\/(components|routes)\//,
+    sourcePattern: /^src\/presentation\/(components|routes)\//,
     forbiddenImports: [/["']#\/core\//],
   },
   {
     name: "UI must not import from Gateways (except utils)",
-    sourcePattern: /^src\/(components|routes)\//,
-    forbiddenImports: [/["']#\/db\//, /["']#\/lib\/(?!utils)/],
+    sourcePattern: /^src\/presentation\/(components|routes)\//,
+    forbiddenImports: [/["']#\/db\//, /["']#\/lib\/(?!utils)/, /["']#\/infrastructure\//],
   },
 ];
 
@@ -102,9 +108,10 @@ type Layer = "domain" | "ui" | "hooks" | "gateways" | "other";
 
 function getLayer(filePath: string): Layer {
   if (filePath.startsWith("src/core/")) return "domain";
-  if (/^src\/(components|routes)\//.test(filePath)) return "ui";
-  if (filePath.startsWith("src/hooks/")) return "hooks";
-  if (/^src\/(db|lib)\//.test(filePath)) return "gateways";
+  if (/^src\/presentation\/(components|routes)\//.test(filePath)) return "ui";
+  if (filePath.startsWith("src/presentation/hooks/") || filePath.startsWith("src/hooks/"))
+    return "hooks";
+  if (/^src\/(db|lib|infrastructure)\//.test(filePath)) return "gateways";
   return "other";
 }
 
@@ -115,10 +122,12 @@ type ImportTarget = "db" | "lib" | "lib-utils" | "core" | "hooks" | "other";
 
 function getImportTarget(importPath: string): ImportTarget {
   if (importPath.startsWith("#/db/")) return "db";
-  if (importPath === "#/lib/utils" || importPath.startsWith("#/lib/utils/")) return "lib-utils";
+  if (importPath === "#/presentation/lib/utils" || importPath.startsWith("#/lib/utils/"))
+    return "lib-utils";
   if (importPath.startsWith("#/lib/")) return "lib";
+  if (importPath.startsWith("#/infrastructure/")) return "lib";
   if (importPath.startsWith("#/core/")) return "core";
-  if (importPath.startsWith("#/hooks/")) return "hooks";
+  if (importPath.startsWith("#/presentation/hooks/")) return "hooks";
   return "other";
 }
 
@@ -185,7 +194,9 @@ const arbitraryUIPath: fc.Arbitrary<string> = fc
     arbitraryExtension,
   )
   .map(([layer, subdir, name, ext]) =>
-    subdir ? `src/${layer}/${subdir}/${name}${ext}` : `src/${layer}/${name}${ext}`,
+    subdir
+      ? `src/presentation/${layer}/${subdir}/${name}${ext}`
+      : `src/presentation/${layer}/${name}${ext}`,
   );
 
 /**
@@ -193,7 +204,7 @@ const arbitraryUIPath: fc.Arbitrary<string> = fc
  */
 const arbitraryHooksPath: fc.Arbitrary<string> = fc
   .tuple(arbitraryFileName, arbitraryExtension)
-  .map(([name, ext]) => `src/hooks/${name}${ext}`);
+  .map(([name, ext]) => `src/presentation/hooks/${name}${ext}`);
 
 /**
  * Generates a gateways layer file path (src/db/* or src/lib/*).
@@ -262,7 +273,7 @@ const arbitraryLibImport: fc.Arbitrary<string> = fc
  * Generates an import path targeting #/lib/utils specifically.
  */
 const arbitraryLibUtilsImport: fc.Arbitrary<string> = fc.constantFrom(
-  "#/lib/utils",
+  "#/presentation/lib/utils",
   "#/lib/utils/cn",
 );
 

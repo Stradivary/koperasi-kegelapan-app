@@ -1,9 +1,13 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
-import { accounts, tenants } from "#/db/schema";
-import { registerDevice } from "#/server/deviceRegistry";
-import { createSession, refreshSession, AuthSessionError } from "#/server/authSession";
+import { accounts, tenants } from "#/infrastructure/persistence/drizzle/schema";
+import { registerDevice } from "#/application/device/deviceRegistry.usecase";
+import {
+  createSession,
+  refreshSession,
+  AuthSessionError,
+} from "#/application/auth/authSession.usecase";
 import { signAccessToken } from "../lib/jwt";
 
 type Env = {
@@ -249,7 +253,7 @@ authRoutes.post("/refresh", async (c) => {
     const result = await refreshSession(db, json.sessionId, json.refreshToken);
 
     // Look up the session's account to build a new access token
-    const { authSessions } = await import("#/db/schema");
+    const { authSessions } = await import("#/infrastructure/persistence/drizzle/schema");
     const session = await db
       .select()
       .from(authSessions)

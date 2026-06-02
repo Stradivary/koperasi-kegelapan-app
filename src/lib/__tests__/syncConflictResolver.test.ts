@@ -10,7 +10,7 @@ import {
   type ServerMemberEntry,
   type ServerCardEntry,
 } from "../syncConflictResolver";
-import type { User, Card, TransactionLog } from "#/db/local-db";
+import type { User, Card, TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("../syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue({
     membersPulled: 0,
     cardsPulled: 0,
@@ -49,7 +49,7 @@ const mockCardsPut = vi.fn();
 const mockTransactionLogWhere = vi.fn();
 const mockTransactionLogDelete = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockUsersGet(...args),

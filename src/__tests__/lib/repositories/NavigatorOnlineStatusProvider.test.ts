@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { NavigatorOnlineStatusProvider } from "#/lib/repositories/NavigatorOnlineStatusProvider";
+import { NavigatorOnlineStatusProvider } from "#/infrastructure/persistence/dexie/repositories/NavigatorOnlineStatusProvider";
 
 describe("NavigatorOnlineStatusProvider", () => {
   afterEach(() => {
