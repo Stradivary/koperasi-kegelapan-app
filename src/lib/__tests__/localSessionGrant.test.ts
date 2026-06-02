@@ -13,14 +13,14 @@ vi.mock("./indexeddb", () => ({
   },
 }));
 
-vi.mock("#/lib/indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   sessionGrantCacheStore: {
     put: (...args: unknown[]) => mockSessionGrantCacheStorePut(...args),
     get: (...args: unknown[]) => mockSessionGrantCacheStoreGet(...args),
   },
 }));
 
-vi.mock("../roleOps", () => ({
+vi.mock("#/core/auth/roleOps", () => ({
   roleToOps: (role: string) => {
     if (role === "admin") return ["read", "debit", "credit", "admin"];
     if (role === "gate") return ["read", "checkin"];

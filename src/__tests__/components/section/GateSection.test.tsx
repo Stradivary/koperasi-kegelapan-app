@@ -13,27 +13,27 @@ const mockUseSyncEngineContext = vi.fn();
 const mockUseBlockedCheck = vi.fn();
 const mockUseKioskAutoScan = vi.fn();
 
-vi.mock("#/hooks/useSessionGrant", () => ({
+vi.mock("#/presentation/hooks/useSessionGrant", () => ({
   useSessionGrant: (...args: unknown[]) => mockUseSessionGrant(...args),
 }));
-vi.mock("#/hooks/nfc/useNfcCard", () => ({
+vi.mock("#/presentation/hooks/nfc/useNfcCard", () => ({
   useNfcCard: (...args: unknown[]) => mockUseNfcCard(...args),
 }));
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
-vi.mock("#/hooks/useBlockedCheck", () => ({
+vi.mock("#/presentation/hooks/useBlockedCheck", () => ({
   useBlockedCheck: (...args: unknown[]) => mockUseBlockedCheck(...args),
 }));
-vi.mock("#/hooks/useKioskAutoScan", () => ({
+vi.mock("#/presentation/hooks/useKioskAutoScan", () => ({
   useKioskAutoScan: (...args: unknown[]) => mockUseKioskAutoScan(...args),
 }));
-vi.mock("#/hooks/domain", () => ({
+vi.mock("#/presentation/hooks/domain", () => ({
   validateTransition: vi.fn().mockReturnValue({ valid: true }),
   applyCheckin: vi.fn((p: unknown) => p),
   applyBlockStatus: vi.fn((p: unknown) => p),
 }));
-vi.mock("#/hooks/types", () => ({
+vi.mock("#/presentation/hooks/types", () => ({
   CardState: { IDLE: 0, CHECKED_IN: 1, CHECKED_OUT: 2, STATION_OPERATION: 3 },
   CardStatus: {
     ACTIVE: 0,
@@ -43,12 +43,14 @@ vi.mock("#/hooks/types", () => ({
     BLOCKED_ADMIN: 4,
   },
 }));
-vi.mock("#/hooks/usePeerSync", () => ({ notifyCheckin: vi.fn() }));
-vi.mock("#/hooks/nfc/updateLocalCardRecord", () => ({ updateLocalCardRecord: vi.fn() }));
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/hooks/usePeerSync", () => ({ notifyCheckin: vi.fn() }));
+vi.mock("#/presentation/hooks/nfc/updateLocalCardRecord", () => ({
+  updateLocalCardRecord: vi.fn(),
+}));
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
-vi.mock("#/components/block/NfcTapArea", () => ({
+vi.mock("#/presentation/components/block/NfcTapArea", () => ({
   NfcTapArea: ({ phase, tamperDetected }: { phase: string; tamperDetected?: boolean }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} data-tamper={String(!!tamperDetected)} />
   ),
@@ -56,7 +58,7 @@ vi.mock("#/components/block/NfcTapArea", () => ({
     <div data-testid="nfc-status-label" data-phase={phase} />
   ),
 }));
-vi.mock("#/components/block/FeedbackCard", () => ({
+vi.mock("#/presentation/components/block/FeedbackCard", () => ({
   FeedbackCard: ({
     title,
     variant,
@@ -81,7 +83,7 @@ vi.mock("#/components/block/FeedbackCard", () => ({
   ),
 }));
 
-import { GateSection } from "#/components/section/GateSection";
+import { GateSection } from "#/presentation/components/section/GateSection";
 
 const defaultProps = { tenantId: "t-1", accountId: "a-1", deviceId: "d-1", terminalId: 1 };
 

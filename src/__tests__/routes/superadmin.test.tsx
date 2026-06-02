@@ -10,11 +10,11 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => () => ({ component: null }),
 }));
 
-vi.mock("#/components/section/SuperadminSection", () => ({
+vi.mock("#/presentation/components/section/SuperadminSection", () => ({
   SuperadminSection: () => <div data-testid="superadmin-section" />,
 }));
 
-import { SuperadminSection } from "#/components/section/SuperadminSection";
+import { SuperadminSection } from "#/presentation/components/section/SuperadminSection";
 
 // Recreate the SuperadminPage component as defined in the route
 function SuperadminPage() {

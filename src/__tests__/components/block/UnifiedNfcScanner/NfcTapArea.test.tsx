@@ -5,7 +5,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("#/lib/utils.ts", () => ({ cn: (...args: string[]) => args.filter(Boolean).join(" ") }));
+vi.mock("#/presentation/lib/utils", () => ({
+  cn: (...args: string[]) => args.filter(Boolean).join(" "),
+}));
 vi.mock("lucide-react", () => ({
   Wifi: ({ size, className }: { size?: number; className?: string }) => (
     <svg data-testid="wifi-icon" data-size={size} className={className} />
@@ -13,7 +15,7 @@ vi.mock("lucide-react", () => ({
 }));
 vi.mock("#/assets/images/nfc/tap_nfc.jpeg", () => ({ default: "tap_nfc.jpeg" }));
 
-import { NfcTapArea } from "#/components/block/UnifiedNfcScanner/NfcTapArea";
+import { NfcTapArea } from "#/presentation/components/block/UnifiedNfcScanner/NfcTapArea";
 
 describe("NfcTapArea", () => {
   it("renders idle phase with image", () => {

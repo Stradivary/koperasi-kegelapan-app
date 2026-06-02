@@ -20,7 +20,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => ({ and: args })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: {
     accountId: "accounts.accountId",
     tenantId: "accounts.tenantId",
@@ -43,7 +43,7 @@ vi.mock("#/db/schema", () => ({
   },
 }));
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   registerDevice: vi.fn((_db, opts) => ({
     deviceId: `device-${opts.fingerprintHash}`,
     tenantId: opts.tenantId,
@@ -51,7 +51,7 @@ vi.mock("#/server/deviceRegistry", () => ({
   })),
 }));
 
-vi.mock("#/server/authSession", () => ({
+vi.mock("#/application/auth/authSession.usecase", () => ({
   createSession: vi.fn((_db, _opts) => ({
     sessionId: "session-123",
     refreshToken: "refresh-token-123",
@@ -88,6 +88,7 @@ function _setupSelectChain(row: unknown = null) {
   mockDb.where = vi.fn().mockReturnValue(mockDb);
   mockDb.get = vi.fn().mockResolvedValue(row);
 }
+void _setupSelectChain;
 
 function req(method: string, path: string, body?: unknown) {
   return authRoutes.request(

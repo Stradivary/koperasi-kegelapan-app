@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
-vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
+vi.mock("#/presentation/components/ui/confirmation-dialog-drawer", () => ({
   ConfirmationDialogDrawer: ({
     open,
     title,
@@ -45,7 +45,7 @@ vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
     ) : null,
 }));
 
-import { CardNotBlankDrawer } from "#/components/block/dialogs/CardNotBlankDrawer";
+import { CardNotBlankDrawer } from "#/presentation/components/block/dialogs/CardNotBlankDrawer";
 
 describe("CardNotBlankDrawer", () => {
   beforeEach(() => vi.clearAllMocks());

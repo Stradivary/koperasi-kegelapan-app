@@ -38,7 +38,7 @@ vi.mock("vaul", () => {
   };
 });
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({ children, onClick, disabled, ...props }: any) => (
     <button onClick={onClick} disabled={disabled} {...props}>
       {children}
@@ -46,15 +46,15 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: any) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
-vi.mock("#/components/block/UnifiedNfcScanner", () => ({
+vi.mock("#/presentation/components/block/UnifiedNfcScanner", () => ({
   NfcTapArea: ({ phase }: { phase: string }) => (
     <div data-testid="nfc-tap-area" data-phase={phase} />
   ),
@@ -63,11 +63,11 @@ vi.mock("#/components/block/UnifiedNfcScanner", () => ({
   ),
 }));
 
-vi.mock("#/components/block/StationCardsPanel", () => ({
+vi.mock("#/presentation/components/block/StationCardsPanel", () => ({
   StationCardsPanel: () => null,
 }));
 
-import { IssueCardDrawer } from "#/components/block/dialogs/IssueCardDrawer";
+import { IssueCardDrawer } from "#/presentation/components/block/dialogs/IssueCardDrawer";
 
 type StationUserRow = {
   userId: string;

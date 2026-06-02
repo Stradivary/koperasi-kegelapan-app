@@ -5,7 +5,7 @@ const mockGetCurrentDeviceId = vi.fn().mockReturnValue("device-123");
 const mockGetAccessToken = vi.fn().mockReturnValue("token-abc");
 const mockFetch = vi.fn().mockResolvedValue({ ok: true });
 
-vi.mock("../api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "https://api.test",
   getCurrentDeviceId: () => mockGetCurrentDeviceId(),
   getAccessToken: () => mockGetAccessToken(),

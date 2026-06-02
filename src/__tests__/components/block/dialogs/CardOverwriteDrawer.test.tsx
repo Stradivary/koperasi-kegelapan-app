@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
-vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
+vi.mock("#/presentation/components/ui/confirmation-dialog-drawer", () => ({
   ConfirmationDialogDrawer: ({
     open,
     title,
@@ -42,8 +42,8 @@ vi.mock("#/components/ui/confirmation-dialog-drawer", () => ({
     ) : null,
 }));
 
-import { CardOverwriteDrawer } from "#/components/block/dialogs/CardOverwriteDrawer";
-import type { CardOwnerInfo } from "#/components/block/dialogs/CardOverwriteDialog";
+import { CardOverwriteDrawer } from "#/presentation/components/block/dialogs/CardOverwriteDrawer";
+import type { CardOwnerInfo } from "#/presentation/components/block/dialogs/CardOverwriteDialog";
 
 const existingCard: CardOwnerInfo = {
   cardId: "abc123",

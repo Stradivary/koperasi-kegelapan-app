@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("#/components/layout/AdminLayout", () => ({
+vi.mock("#/presentation/components/layout/AdminLayout", () => ({
   AdminLayout: ({
     children,
     tenantId,
@@ -55,22 +55,22 @@ vi.mock("#/components/layout/AdminLayout", () => ({
   ),
 }));
 
-vi.mock("#/hooks/SyncEngineContext", () => ({
+vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
   useSyncEngineContext: () => mockUseSyncEngineContext(),
 }));
 
-vi.mock("#/hooks/useAdminTenantSync", () => ({
+vi.mock("#/presentation/hooks/useAdminTenantSync", () => ({
   useAdminTenantSync: (tenantId: string) => mockUseAdminTenantSync(tenantId),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string) => mockUseTenantContext(tenantId),
 }));
 
 import { Outlet } from "@tanstack/react-router";
-import { AdminLayout } from "#/components/layout/AdminLayout";
-import { TenantRoutePending } from "#/hooks/useTenantContext";
+import { AdminLayout } from "#/presentation/components/layout/AdminLayout";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
 
 // Recreate the getAdminView function for direct testing
 type AdminView = "cards" | "members" | "transactions" | "settings" | "scout";

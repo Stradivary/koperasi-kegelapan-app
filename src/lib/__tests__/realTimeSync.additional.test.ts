@@ -11,12 +11,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 const mockSyncPull = vi.fn();
-vi.mock("../syncPull", () => ({ syncPull: (...a: unknown[]) => mockSyncPull(...a) }));
+vi.mock("#/application/sync/syncPull.usecase", () => ({
+  syncPull: (...a: unknown[]) => mockSyncPull(...a),
+}));
 
 const mockCardsGet = vi.fn();
 const mockCardsUpdate = vi.fn();
 const mockCardsPut = vi.fn();
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: (...a: unknown[]) => mockCardsGet(...a),
@@ -27,10 +29,12 @@ vi.mock("#/db/local-db", () => ({
 }));
 
 const mockGetAccessToken = vi.fn().mockReturnValue("test-token");
-vi.mock("../api", () => ({ getAccessToken: () => mockGetAccessToken() }));
+vi.mock("#/infrastructure/api/apiClient", () => ({ getAccessToken: () => mockGetAccessToken() }));
 
 const mockAddSyncLog = vi.fn();
-vi.mock("../syncLogStore", () => ({ addSyncLog: (...a: unknown[]) => mockAddSyncLog(...a) }));
+vi.mock("#/infrastructure/persistence/dexie/syncLogStore", () => ({
+  addSyncLog: (...a: unknown[]) => mockAddSyncLog(...a),
+}));
 
 // ── EventSource mock ──────────────────────────────────────────────────────────
 

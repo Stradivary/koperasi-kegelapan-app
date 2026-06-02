@@ -7,7 +7,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 
-vi.mock("#/components/block/StationCardListPanel", () => ({
+vi.mock("#/presentation/components/block/StationCardListPanel", () => ({
   StationCardListPanel: ({
     cards,
     isLoading,
@@ -25,8 +25,11 @@ vi.mock("#/components/block/StationCardListPanel", () => ({
   ),
 }));
 
-import { StationCardsPanel } from "#/components/block/StationCardsPanel";
-import type { StationCardRow, StationUserRow } from "#/components/block/StationCardsPanel";
+import { StationCardsPanel } from "#/presentation/components/block/StationCardsPanel";
+import type {
+  StationCardRow,
+  StationUserRow,
+} from "#/presentation/components/block/StationCardsPanel";
 
 const cards: StationCardRow[] = [
   {

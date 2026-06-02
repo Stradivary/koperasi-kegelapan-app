@@ -13,7 +13,7 @@ vi.mock("drizzle-orm/d1", () => ({
   drizzle: vi.fn(() => mockDb),
 }));
 
-vi.mock("#/server/reconcileCore", () => ({
+vi.mock("#/application/sync/reconcile.usecase", () => ({
   processReconciliation: vi.fn((_db, payload) => ({
     accepted: payload.events.length,
     rejected: 0,
@@ -24,7 +24,7 @@ vi.mock("#/server/reconcileCore", () => ({
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 import { reconcileRoute } from "../../routes/reconcile";
-import { processReconciliation } from "#/server/reconcileCore";
+import { processReconciliation } from "#/application/sync/reconcile.usecase";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 const env: Env = { DB: {} as D1Database, SESSION_MASTER_KEY: "test-key" };

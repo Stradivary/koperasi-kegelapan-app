@@ -26,7 +26,7 @@ const makeTxInsertChain = () => ({
   values: vi.fn(),
 });
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => makeFromChain()),

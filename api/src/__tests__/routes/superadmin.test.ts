@@ -9,19 +9,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("#/server/superadminAuth", () => ({
+vi.mock("#/application/admin/superadminAuth.usecase", () => ({
   requireSuperadmin: vi.fn((_req) => ({ accountId: "superadmin-1", tenantId: "t-system" })),
   isAuthError: vi.fn((result) => result?.error !== undefined),
 }));
 
-vi.mock("#/server/superadminTenants", () => ({
+vi.mock("#/application/admin/superadminTenants.usecase", () => ({
   listTenants: vi.fn(() => ({ tenants: [], total: 0 })),
   createTenant: vi.fn(() => ({ data: { tenantId: "t-new" }, status: 201 })),
   getTenantDetail: vi.fn(() => ({ data: { tenantId: "t-1", name: "Test" }, status: 200 })),
   updateTenantStatus: vi.fn(() => ({ data: { tenantId: "t-1", status: "active" }, status: 200 })),
 }));
 
-vi.mock("#/server/superadminAccounts", () => ({
+vi.mock("#/application/admin/superadminAccounts.usecase", () => ({
   listAccounts: vi.fn(() => ({ accounts: [], total: 0 })),
   createAccount: vi.fn(() => ({ data: { accountId: "a-new" }, status: 201 })),
   changeAccountPassword: vi.fn(() => ({ data: { success: true }, status: 200 })),
@@ -30,11 +30,11 @@ vi.mock("#/server/superadminAccounts", () => ({
 
 const mockDb: Record<string, ReturnType<typeof vi.fn>> = {};
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => mockDb),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   devices: {
     deviceId: "devices.deviceId",
     tenantId: "devices.tenantId",
@@ -45,7 +45,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((a: unknown, b: unknown) => ({ eq: [a, b] })),
 }));
 
-vi.mock("#/server/deviceRegistry", () => ({
+vi.mock("#/application/device/deviceRegistry.usecase", () => ({
   getDevicesByTenant: vi.fn(() => []),
   blockDevice: vi.fn(),
   unblockDevice: vi.fn(),

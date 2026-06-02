@@ -3,7 +3,7 @@ import { apiFetch, DeviceBlockedError } from "../api";
 import { handleDeviceBlocked, clearBlockState } from "../deviceBlock";
 
 // Mock the indexeddb module
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   tenantContextStore: {
     getAll: vi.fn().mockResolvedValue([]),
     delete: vi.fn().mockResolvedValue(undefined),

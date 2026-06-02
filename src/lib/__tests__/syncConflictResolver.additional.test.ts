@@ -9,7 +9,7 @@ vi.mock("sonner", () => ({
   toast: { info: vi.fn() },
 }));
 
-vi.mock("../syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue({}),
   SyncPullError: class SyncPullError extends Error {},
 }));
@@ -17,7 +17,7 @@ vi.mock("../syncPull", () => ({
 const mockUsersGet = vi.fn();
 const mockUsersPut = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockUsersGet(...args),

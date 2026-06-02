@@ -20,45 +20,45 @@ vi.mock("@tanstack/react-devtools", () => ({
   ),
 }));
 
-vi.mock("#/integrations/tanstack-query/devtools", () => ({
+vi.mock("#/presentation/providers/devtools", () => ({
   default: { name: "Query", render: <div /> },
 }));
 
-vi.mock("#/components/block/PwaUpdatePrompt", () => ({
+vi.mock("#/presentation/components/block/PwaUpdatePrompt", () => ({
   PwaUpdatePrompt: () => <div data-testid="pwa-update-prompt" />,
 }));
 
-vi.mock("#/components/block/PwaInstallPrompt", () => ({
+vi.mock("#/presentation/components/block/PwaInstallPrompt", () => ({
   PwaInstallPrompt: () => <div data-testid="pwa-install-prompt" />,
 }));
 
-vi.mock("#/components/block/DeviceBlockListener", () => ({
+vi.mock("#/presentation/components/block/DeviceBlockListener", () => ({
   DeviceBlockListener: () => <div data-testid="device-block-listener" />,
 }));
 
-vi.mock("#/components/block/OfflineIndicator", () => ({
+vi.mock("#/presentation/components/block/OfflineIndicator", () => ({
   RootOfflineBanner: () => <div data-testid="root-offline-banner" />,
 }));
 
-vi.mock("#/components/ui/sonner", () => ({
+vi.mock("#/presentation/components/ui/sonner", () => ({
   Toaster: ({ position }: { position: string }) => (
     <div data-testid="toaster" data-position={position} />
   ),
 }));
 
-vi.mock("#/components/ui/tooltip", () => ({
+vi.mock("#/presentation/components/ui/tooltip", () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="tooltip-provider">{children}</div>
   ),
 }));
 
 import { Outlet } from "@tanstack/react-router";
-import { RootOfflineBanner } from "#/components/block/OfflineIndicator";
-import { Toaster } from "#/components/ui/sonner";
-import { DeviceBlockListener } from "#/components/block/DeviceBlockListener";
-import { PwaInstallPrompt } from "#/components/block/PwaInstallPrompt";
-import { PwaUpdatePrompt } from "#/components/block/PwaUpdatePrompt";
-import { TooltipProvider } from "#/components/ui/tooltip";
+import { RootOfflineBanner } from "#/presentation/components/block/OfflineIndicator";
+import { Toaster } from "#/presentation/components/ui/sonner";
+import { DeviceBlockListener } from "#/presentation/components/block/DeviceBlockListener";
+import { PwaInstallPrompt } from "#/presentation/components/block/PwaInstallPrompt";
+import { PwaUpdatePrompt } from "#/presentation/components/block/PwaUpdatePrompt";
+import { TooltipProvider } from "#/presentation/components/ui/tooltip";
 
 // Re-create the RootComponent for testing since the route export is complex
 function RootComponent() {

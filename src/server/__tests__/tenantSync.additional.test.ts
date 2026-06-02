@@ -52,7 +52,7 @@ describe("buildConflictResult", () => {
 // ── processTenantSync ──────────────────────────────────────────────────
 
 // Mock the database module
-vi.mock("#/db", () => {
+vi.mock("#/infrastructure/persistence/drizzle", () => {
   let mockGetResult: unknown = undefined;
   let mockBatchThrow: string | null = null;
 
@@ -87,7 +87,7 @@ vi.mock("#/db", () => {
   };
 });
 
-import { getDb } from "#/db";
+import { getDb } from "#/infrastructure/persistence/drizzle";
 
 function getInternalMockDb() {
   return (

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGet = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     users: {
       get: (...args: unknown[]) => mockGet(...args),
@@ -10,7 +10,7 @@ vi.mock("#/db/local-db", () => ({
   },
 }));
 
-import { DexieUserRepository } from "#/lib/repositories/DexieUserRepository";
+import { DexieUserRepository } from "#/infrastructure/persistence/dexie/repositories/DexieUserRepository";
 
 function makeDexieUser(overrides: Record<string, unknown> = {}) {
   return {

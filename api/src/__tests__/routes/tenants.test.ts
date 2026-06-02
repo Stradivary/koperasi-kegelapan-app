@@ -22,7 +22,7 @@ vi.mock("drizzle-orm", () => ({
   sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({ sql: strings, values })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   tenants: {
     tenantId: "tenants.tenantId",
     slug: "tenants.slug",
@@ -40,14 +40,14 @@ vi.mock("#/db/schema", () => ({
   },
 }));
 
-vi.mock("#/server/tenantSync", () => ({
+vi.mock("#/application/tenant/tenantSync.usecase", () => ({
   validateSyncRequest: vi.fn(() => []),
 }));
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 import { tenantsRoutes } from "../../routes/tenants";
-import { validateSyncRequest } from "#/server/tenantSync";
+import { validateSyncRequest } from "#/application/tenant/tenantSync.usecase";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 const env: Env = { DB: {} as D1Database, SESSION_MASTER_KEY: "test-key" };

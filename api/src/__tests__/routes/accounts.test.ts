@@ -19,7 +19,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => ({ and: args })),
 }));
 
-vi.mock("#/db/schema", () => ({
+vi.mock("#/infrastructure/persistence/drizzle/schema", () => ({
   accounts: {
     accountId: "accounts.accountId",
     tenantId: "accounts.tenantId",
@@ -30,7 +30,7 @@ vi.mock("#/db/schema", () => ({
   },
 }));
 
-vi.mock("#/server/auth", () => ({
+vi.mock("#/core/auth/authRules", () => ({
   hashPassword: vi.fn((pw: string) => `hashed:${pw}`),
   generateId: vi.fn(() => "generated-id-123"),
 }));

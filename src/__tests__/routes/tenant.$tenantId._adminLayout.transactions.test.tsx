@@ -15,19 +15,19 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string) => mockUseTenantContext(tenantId),
 }));
 
-vi.mock("#/components/section/TransactionsSection", () => ({
+vi.mock("#/presentation/components/section/TransactionsSection", () => ({
   TransactionsSection: ({ tenantId, accountId }: { tenantId: string; accountId: string }) => (
     <div data-testid="transactions-section" data-tenant-id={tenantId} data-account-id={accountId} />
   ),
 }));
 
-import { TenantRoutePending } from "#/hooks/useTenantContext";
-import { TransactionsSection } from "#/components/section/TransactionsSection";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
+import { TransactionsSection } from "#/presentation/components/section/TransactionsSection";
 
 function TransactionsPage() {
   const tenantId = "t-1";

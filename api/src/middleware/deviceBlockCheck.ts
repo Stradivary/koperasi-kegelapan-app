@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
-import { devices } from "#/db/schema";
+import { devices } from "#/infrastructure/persistence/drizzle/schema";
 import { extractDeviceIdFromToken } from "../lib/tokenExtract";
 
 type Env = {

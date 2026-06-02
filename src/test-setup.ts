@@ -14,6 +14,23 @@ import { afterEach } from "vitest";
 if (typeof window !== "undefined") {
   const { cleanup } = await import("@testing-library/react");
 
+  // Polyfill matchMedia for jsdom (used by responsive hooks/components)
+  if (!window.matchMedia) {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+  }
+
   // Tell React 19 that we're in a test environment so act() works correctly
   // and the scheduler doesn't fire setImmediate callbacks outside test scope.
   // @ts-expect-error - IS_REACT_ACT_ENVIRONMENT is a React internal global

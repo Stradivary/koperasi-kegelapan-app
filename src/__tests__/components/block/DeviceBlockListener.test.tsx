@@ -7,11 +7,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const mockUseDeviceBlock = vi.fn();
 
-vi.mock("#/hooks/useDeviceBlock", () => ({
+vi.mock("#/presentation/hooks/useDeviceBlock", () => ({
   useDeviceBlock: () => mockUseDeviceBlock(),
 }));
 
-import { DeviceBlockListener } from "#/components/block/DeviceBlockListener";
+import { DeviceBlockListener } from "#/presentation/components/block/DeviceBlockListener";
 
 describe("DeviceBlockListener", () => {
   it("renders nothing (returns null)", () => {

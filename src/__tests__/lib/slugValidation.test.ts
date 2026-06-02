@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tests for src/lib/utils/slugValidation.ts
  * Covers: createSlug, validateSlugFormat, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH
  */
@@ -8,7 +8,7 @@ import {
   validateSlugFormat,
   SLUG_MIN_LENGTH,
   SLUG_MAX_LENGTH,
-} from "#/lib/utils/slugValidation";
+} from "#/core/validation/slugValidation";
 
 describe("constants", () => {
   it("SLUG_MIN_LENGTH is 3", () => expect(SLUG_MIN_LENGTH).toBe(3));

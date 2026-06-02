@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock deviceBlock module
-vi.mock("../deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
   checkDeviceBlockResponse: vi.fn().mockResolvedValue(false),
 }));
@@ -12,12 +12,12 @@ const mockAuthTokenCacheStore = {
   get: vi.fn().mockResolvedValue(null),
   delete: vi.fn().mockResolvedValue(undefined),
 };
-vi.mock("../indexeddb.lazy", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
   getAuthTokenCacheStore: () => Promise.resolve(mockAuthTokenCacheStore),
 }));
 
 // Mock indexeddb module (for direct imports in tests)
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   authTokenCacheStore: {
     put: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),

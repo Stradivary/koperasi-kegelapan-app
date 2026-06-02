@@ -14,7 +14,7 @@ const mockOnEvent = vi.fn();
 const mockIsConnected = vi.fn();
 const mockGetCurrentDeviceId = vi.fn();
 
-vi.mock("#/lib/realTimeSync", () => ({
+vi.mock("#/infrastructure/api/realTimeSync", () => ({
   fullSyncOnLogin: (...args: unknown[]) => mockFullSyncOnLogin(...args),
   connect: (...args: unknown[]) => mockConnect(...args),
   disconnect: (...args: unknown[]) => mockDisconnect(...args),
@@ -22,12 +22,12 @@ vi.mock("#/lib/realTimeSync", () => ({
   isConnected: () => mockIsConnected(),
 }));
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "http://localhost:8787",
   getCurrentDeviceId: () => mockGetCurrentDeviceId(),
 }));
 
-import { useRealTimeSync } from "#/hooks/useRealTimeSync";
+import { useRealTimeSync } from "#/presentation/hooks/useRealTimeSync";
 
 describe("useRealTimeSync", () => {
   beforeEach(() => {

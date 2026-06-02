@@ -7,11 +7,11 @@ import {
   registerTriggerSync,
   peerSyncCoordinator,
 } from "../peerSyncCoordinator";
-import type { TransactionLog } from "#/db/local-db";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("#/db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const mockWhere = vi.fn();
   const mockBetween = vi.fn();
   const mockFilter = vi.fn();
@@ -32,7 +32,7 @@ vi.mock("#/db/local-db", () => {
   };
 });
 
-vi.mock("../syncPush", () => ({
+vi.mock("#/application/sync/syncPush.usecase", () => ({
   syncPush: vi.fn().mockResolvedValue({
     totalAccepted: 0,
     totalRejected: 0,
@@ -42,7 +42,7 @@ vi.mock("../syncPush", () => ({
   }),
 }));
 
-import { localDb } from "#/db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 import { syncPush } from "../syncPush";
 
 // ── Helpers ────────────────────────────────────────────────────────────

@@ -10,16 +10,16 @@ const mockUseSyncEngine = vi.fn();
 const mockRegisterTriggerSync = vi.fn();
 const mockSetActiveTenantId = vi.fn();
 
-vi.mock("#/hooks/useSyncEngine", () => ({
+vi.mock("#/presentation/hooks/useSyncEngine", () => ({
   useSyncEngine: (...args: unknown[]) => mockUseSyncEngine(...args),
 }));
 
-vi.mock("#/lib/peerSyncCoordinator", () => ({
+vi.mock("#/infrastructure/sync/peerSyncCoordinator", () => ({
   registerTriggerSync: (...args: unknown[]) => mockRegisterTriggerSync(...args),
   setActiveTenantId: (...args: unknown[]) => mockSetActiveTenantId(...args),
 }));
 
-import { SyncEngineProvider, useSyncEngineContext } from "#/hooks/SyncEngineContext";
+import { SyncEngineProvider, useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
 
 const mockSyncEngine = {
   triggerSync: vi.fn(),

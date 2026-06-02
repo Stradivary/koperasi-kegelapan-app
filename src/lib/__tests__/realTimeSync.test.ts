@@ -3,11 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-vi.mock("../syncPull", () => ({
+vi.mock("#/application/sync/syncPull.usecase", () => ({
   syncPull: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: vi.fn().mockResolvedValue(null),
@@ -17,11 +17,11 @@ vi.mock("#/db/local-db", () => ({
   },
 }));
 
-vi.mock("../api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   getAccessToken: vi.fn().mockReturnValue("test-token"),
 }));
 
-vi.mock("../syncLogStore", () => ({
+vi.mock("#/infrastructure/persistence/dexie/syncLogStore", () => ({
   addSyncLog: vi.fn(),
 }));
 

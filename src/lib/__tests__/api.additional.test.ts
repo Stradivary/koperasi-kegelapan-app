@@ -4,12 +4,12 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../deviceBlock", () => ({
+vi.mock("#/infrastructure/api/deviceBlock", () => ({
   isDeviceBlocked: vi.fn().mockReturnValue(false),
   checkDeviceBlockResponse: vi.fn().mockResolvedValue(false),
 }));
 
-vi.mock("../indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   authTokenCacheStore: {
     put: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockRejectedValue(new Error("IndexedDB unavailable")),

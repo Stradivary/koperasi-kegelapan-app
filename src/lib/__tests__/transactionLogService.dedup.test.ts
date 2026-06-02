@@ -5,9 +5,9 @@
  * - DuplicateTransactionError message format
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { TransactionLog } from "#/db/local-db";
+import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
-vi.mock("#/db/local-db", () => {
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => {
   const transactionLog = {
     where: vi.fn((_index: string) => ({
       equals: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock("#/db/local-db", () => {
 });
 
 import { getTransactions, DuplicateTransactionError } from "../transactionLogService";
-import { localDb } from "#/db/local-db";
+import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 
 function getMockedTable() {
   return localDb.transactionLog as unknown as {

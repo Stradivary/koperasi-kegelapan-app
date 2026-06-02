@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockGet = vi.fn();
 const mockRun = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({

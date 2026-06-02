@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockCardsToArray = vi.fn();
 const mockUsersToArray = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       where: vi.fn().mockReturnThis(),

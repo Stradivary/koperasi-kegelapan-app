@@ -25,7 +25,7 @@ const mockLocalTenantConfigStoreGetAll = vi.fn();
 const mockLocalTenantConfigStoreGet = vi.fn();
 const mockLocalTenantConfigStorePut = vi.fn();
 
-vi.mock("#/lib/indexeddb", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb", () => ({
   localAccountStore: {
     getByUsername: (...args: unknown[]) => mockLocalAccountStoreGetByUsername(...args),
     getByTenant: (...args: unknown[]) => mockLocalAccountStoreGetByTenant(...args),
@@ -38,7 +38,27 @@ vi.mock("#/lib/indexeddb", () => ({
   },
 }));
 
-vi.mock("#/lib/utils/slugValidation", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
+  getIndexedDb: () =>
+    Promise.resolve({
+      localAccountStore: {
+        getByUsername: (...args: unknown[]) => mockLocalAccountStoreGetByUsername(...args),
+        getByTenant: (...args: unknown[]) => mockLocalAccountStoreGetByTenant(...args),
+        put: (...args: unknown[]) => mockLocalAccountStorePut(...args),
+      },
+      localTenantConfigStore: {
+        getAll: () => mockLocalTenantConfigStoreGetAll(),
+        get: (...args: unknown[]) => mockLocalTenantConfigStoreGet(...args),
+        put: (...args: unknown[]) => mockLocalTenantConfigStorePut(...args),
+      },
+    }),
+}));
+
+vi.mock("#/infrastructure/api/apiClient", () => ({
+  API_BASE_URL: "https://api.test",
+}));
+
+vi.mock("#/core/validation/slugValidation", () => ({
   createSlug: (name: string) => name.toLowerCase().replace(/\s+/g, "-"),
   validateSlugFormat: (slug: string) => {
     if (slug.length < 3) return "Slug too short";

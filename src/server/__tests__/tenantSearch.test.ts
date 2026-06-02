@@ -12,7 +12,7 @@ import { buildSelectChain } from "./dbMocks";
 
 const mockSelect = vi.fn();
 
-vi.mock("#/db", () => ({
+vi.mock("#/infrastructure/persistence/drizzle", () => ({
   getDb: vi.fn(() => ({
     select: mockSelect,
   })),

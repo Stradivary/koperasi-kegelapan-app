@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseInstallPrompt = vi.fn();
 
-vi.mock("#/hooks/useInstallPrompt", () => ({
+vi.mock("#/presentation/hooks/useInstallPrompt", () => ({
   useInstallPrompt: () => mockUseInstallPrompt(),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -27,7 +27,7 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-import { PwaInstallPrompt } from "#/components/block/PwaInstallPrompt";
+import { PwaInstallPrompt } from "#/presentation/components/block/PwaInstallPrompt";
 
 describe("PwaInstallPrompt", () => {
   beforeEach(() => vi.clearAllMocks());

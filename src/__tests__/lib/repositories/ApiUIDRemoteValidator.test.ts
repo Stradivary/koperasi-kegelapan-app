@@ -7,12 +7,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockApiFetch = vi.fn();
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "http://localhost:8787",
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
-import { ApiUIDRemoteValidator } from "#/lib/repositories/ApiUIDRemoteValidator";
+import { ApiUIDRemoteValidator } from "#/infrastructure/persistence/dexie/repositories/ApiUIDRemoteValidator";
 
 describe("ApiUIDRemoteValidator", () => {
   let validator: ApiUIDRemoteValidator;

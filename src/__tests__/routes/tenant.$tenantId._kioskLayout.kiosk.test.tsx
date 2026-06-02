@@ -15,13 +15,13 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string, allowedRoles?: readonly string[]) =>
     mockUseTenantContext(tenantId, allowedRoles),
 }));
 
-vi.mock("#/components/section/KioskSection", () => ({
+vi.mock("#/presentation/components/section/KioskSection", () => ({
   KioskSection: ({
     tenantId,
     accountId,
@@ -43,8 +43,8 @@ vi.mock("#/components/section/KioskSection", () => ({
   ),
 }));
 
-import { TenantRoutePending } from "#/hooks/useTenantContext";
-import { KioskSection } from "#/components/section/KioskSection";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
+import { KioskSection } from "#/presentation/components/section/KioskSection";
 
 function KioskPage() {
   const tenantId = "t-1";

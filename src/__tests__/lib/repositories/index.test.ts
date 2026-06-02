@@ -5,32 +5,37 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("#/lib/repositories/DexieCardRepository", () => ({
+vi.mock("#/infrastructure/persistence/dexie/repositories/DexieCardRepository", () => ({
   DexieCardRepository: class {
     filterByCardIdExcludingDeleted = vi.fn();
     getByTenantAndCardId = vi.fn();
   },
 }));
 
-vi.mock("#/lib/repositories/DexieUserRepository", () => ({
+vi.mock("#/infrastructure/persistence/dexie/repositories/DexieUserRepository", () => ({
   DexieUserRepository: class {
     getByTenantAndUserId = vi.fn();
   },
 }));
 
-vi.mock("#/lib/repositories/ApiUIDRemoteValidator", () => ({
+vi.mock("#/infrastructure/persistence/dexie/repositories/ApiUIDRemoteValidator", () => ({
   ApiUIDRemoteValidator: class {
     checkUIDExists = vi.fn();
   },
 }));
 
-vi.mock("#/lib/repositories/NavigatorOnlineStatusProvider", () => ({
+vi.mock("#/infrastructure/persistence/dexie/repositories/NavigatorOnlineStatusProvider", () => ({
   NavigatorOnlineStatusProvider: class {
     isOnline = vi.fn().mockReturnValue(true);
   },
 }));
 
-import { cardRepo, userRepo, uidRemoteValidator, onlineStatus } from "#/lib/repositories";
+import {
+  cardRepo,
+  userRepo,
+  uidRemoteValidator,
+  onlineStatus,
+} from "#/infrastructure/persistence/dexie/repositories";
 
 describe("repositories/index singletons", () => {
   it("exports cardRepo with filterByCardIdExcludingDeleted method", () => {
@@ -54,7 +59,7 @@ describe("repositories/index singletons", () => {
   });
 
   it("cardRepo is a singleton (same reference on re-import)", async () => {
-    const { cardRepo: cardRepo2 } = await import("#/lib/repositories");
+    const { cardRepo: cardRepo2 } = await import("#/infrastructure/persistence/dexie/repositories");
     expect(cardRepo2).toBe(cardRepo);
   });
 });

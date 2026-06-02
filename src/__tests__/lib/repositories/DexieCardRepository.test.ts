@@ -6,7 +6,7 @@ const mockToArray = vi.fn();
 const mockUpdate = vi.fn();
 const mockPut = vi.fn();
 
-vi.mock("#/db/local-db", () => ({
+vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
   localDb: {
     cards: {
       get: (...args: unknown[]) => mockGet(...args),
@@ -17,7 +17,7 @@ vi.mock("#/db/local-db", () => ({
   },
 }));
 
-import { DexieCardRepository } from "#/lib/repositories/DexieCardRepository";
+import { DexieCardRepository } from "#/infrastructure/persistence/dexie/repositories/DexieCardRepository";
 
 function makeDexieCard(overrides: Record<string, unknown> = {}) {
   return {

@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("#/lib/indexeddb.lazy", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
   getTenantContextStore: () =>
     Promise.resolve({
       get: mockTenantContextStoreGet,
@@ -23,21 +23,21 @@ vi.mock("#/lib/indexeddb.lazy", () => ({
     }),
 }));
 
-vi.mock("#/lib/getOrCreateDeviceId", () => ({
+vi.mock("#/infrastructure/device/getOrCreateDeviceId", () => ({
   getDeviceFingerprint: () => mockGetDeviceFingerprint(),
 }));
 
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   restoreAuthState: (deviceId: string) => mockRestoreAuthState(deviceId),
 }));
 
-vi.mock("#/components/block/LoadingState", () => ({
+vi.mock("#/presentation/components/block/LoadingState", () => ({
   LoadingState: ({ variant }: { variant: string }) => (
     <div data-testid="loading-state" data-variant={variant} />
   ),
 }));
 
-import { useTenantContext, TenantRoutePending } from "#/hooks/useTenantContext";
+import { useTenantContext, TenantRoutePending } from "#/presentation/hooks/useTenantContext";
 
 describe("useTenantContext", () => {
   beforeEach(() => {

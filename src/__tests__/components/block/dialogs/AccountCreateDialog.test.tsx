@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 
 // Mock all UI primitives to simple HTML equivalents
-vi.mock("#/components/ui/dialog.tsx", () => ({
+vi.mock("#/presentation/components/ui/dialog.tsx", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -18,11 +18,11 @@ vi.mock("#/components/ui/dialog.tsx", () => ({
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("#/components/ui/input.tsx", () => ({
+vi.mock("#/presentation/components/ui/input.tsx", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/button.tsx", () => ({
+vi.mock("#/presentation/components/ui/button.tsx", () => ({
   Button: ({
     children,
     ...props
@@ -31,19 +31,19 @@ vi.mock("#/components/ui/button.tsx", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/label.tsx", () => ({
+vi.mock("#/presentation/components/ui/label.tsx", () => ({
   Label: ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => (
     <label htmlFor={htmlFor}>{children}</label>
   ),
 }));
 
-vi.mock("#/components/ui/password-input.tsx", () => ({
+vi.mock("#/presentation/components/ui/password-input.tsx", () => ({
   PasswordInput: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input type="password" {...props} />
   ),
 }));
 
-vi.mock("#/components/ui/select.tsx", () => ({
+vi.mock("#/presentation/components/ui/select.tsx", () => ({
   Select: ({
     value,
     onValueChange,
@@ -113,7 +113,7 @@ vi.mock("#/components/ui/select.tsx", () => ({
 import {
   AccountCreateDialog,
   type AccountCreateDialogProps,
-} from "#/components/block/dialogs/AccountCreateDialog";
+} from "#/presentation/components/block/dialogs/AccountCreateDialog";
 
 const tenants = [
   { tenantId: "t-1", name: "Tenant One", slug: "tenant-one" },

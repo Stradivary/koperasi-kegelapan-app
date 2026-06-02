@@ -12,13 +12,13 @@ const mockGet = vi.fn();
 const mockSessionGrantCacheStore = { put: mockPut, get: mockGet };
 const mockGetSessionGrantCacheStore = vi.fn().mockResolvedValue(mockSessionGrantCacheStore);
 
-vi.mock("#/lib/indexeddb.lazy", () => ({
+vi.mock("#/infrastructure/persistence/dexie/indexeddb.lazy", () => ({
   getSessionGrantCacheStore: () => mockGetSessionGrantCacheStore(),
 }));
 
 // ── Mock roleOps ──────────────────────────────────────────────────────────────
 
-vi.mock("#/lib/roleOps", () => ({
+vi.mock("#/core/auth/roleOps", () => ({
   roleToOps: (role: string) => {
     if (role === "admin") return ["read", "write", "admin"];
     if (role === "terminal") return ["read", "debit"];
@@ -30,7 +30,7 @@ import {
   issueLocalSessionGrant,
   issueAndCacheLocalSessionGrant,
   getOrIssueLocalSessionGrant,
-} from "#/lib/localSessionGrant";
+} from "#/infrastructure/persistence/dexie/sessionGrantRepository";
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 

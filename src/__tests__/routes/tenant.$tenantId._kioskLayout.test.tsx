@@ -20,7 +20,7 @@ vi.mock("@tanstack/react-router", () => ({
     select({ pathname: mockPathname }),
 }));
 
-vi.mock("#/components/block/OfflineIndicator", () => ({
+vi.mock("#/presentation/components/block/OfflineIndicator", () => ({
   OfflineIndicator: ({
     pendingCount,
     syncStatus,
@@ -37,7 +37,7 @@ vi.mock("#/components/block/OfflineIndicator", () => ({
   ),
 }));
 
-vi.mock("#/components/layout/KioskLayout", () => ({
+vi.mock("#/presentation/components/layout/KioskLayout", () => ({
   KioskLayout: ({
     children,
     title,
@@ -67,21 +67,21 @@ vi.mock("#/components/layout/KioskLayout", () => ({
   ),
 }));
 
-vi.mock("#/hooks/useReconciliation", () => ({
+vi.mock("#/presentation/hooks/useReconciliation", () => ({
   useReconciliation: (tenantId: string, terminalId: number) =>
     mockUseReconciliation(tenantId, terminalId),
 }));
 
-vi.mock("#/hooks/useTenantContext", () => ({
+vi.mock("#/presentation/hooks/useTenantContext", () => ({
   TenantRoutePending: () => <div data-testid="tenant-route-pending" />,
   useTenantContext: (tenantId: string, allowedRoles?: readonly string[]) =>
     mockUseTenantContext(tenantId, allowedRoles),
 }));
 
 import { Outlet } from "@tanstack/react-router";
-import { KioskLayout } from "#/components/layout/KioskLayout";
-import { TenantRoutePending } from "#/hooks/useTenantContext";
-import { OfflineIndicator } from "#/components/block/OfflineIndicator";
+import { KioskLayout } from "#/presentation/components/layout/KioskLayout";
+import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
+import { OfflineIndicator } from "#/presentation/components/block/OfflineIndicator";
 
 // Extract helper functions for direct testing
 type KioskView = "terminal" | "kiosk" | "scout" | "gate";

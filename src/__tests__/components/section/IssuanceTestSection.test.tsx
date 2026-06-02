@@ -15,7 +15,7 @@ const mockDecodePayload = vi.fn();
 const mockPrepareWrite = vi.fn();
 const mockDecryptCardBody = vi.fn();
 
-vi.mock("#/hooks/domain", () => ({
+vi.mock("#/presentation/hooks/domain", () => ({
   readCard: (...args: unknown[]) => mockReadCard(...args),
   isNfcSupported: vi.fn().mockReturnValue(false),
   decodePayload: (...args: unknown[]) => mockDecodePayload(...args),
@@ -23,7 +23,7 @@ vi.mock("#/hooks/domain", () => ({
   decryptCardBody: (...args: unknown[]) => mockDecryptCardBody(...args),
 }));
 
-vi.mock("#/hooks/types", () => ({
+vi.mock("#/presentation/hooks/types", () => ({
   MAGIC: 0x4b52,
   CARD_SCHEMA_VERSION: 2,
   BUFFER_SIZE: 128,
@@ -34,12 +34,12 @@ vi.mock("#/hooks/types", () => ({
 }));
 
 const mockApiFetch = vi.fn();
-vi.mock("#/lib/api", () => ({
+vi.mock("#/infrastructure/api/apiClient", () => ({
   API_BASE_URL: "http://localhost:8787",
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
-vi.mock("#/components/ui/button", () => ({
+vi.mock("#/presentation/components/ui/button", () => ({
   Button: ({ children, disabled, onClick, ...props }: any) => (
     <button disabled={disabled} onClick={onClick} {...props}>
       {children}
@@ -47,20 +47,20 @@ vi.mock("#/components/ui/button", () => ({
   ),
 }));
 
-vi.mock("#/components/ui/input", () => ({
+vi.mock("#/presentation/components/ui/input", () => ({
   Input: (props: any) => <input {...props} />,
 }));
 
-vi.mock("#/components/ui/label", () => ({
+vi.mock("#/presentation/components/ui/label", () => ({
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
-vi.mock("#/components/ui/separator", () => ({
+vi.mock("#/presentation/components/ui/separator", () => ({
   Separator: () => <hr />,
 }));
 
 // Drawer mock — exposes onClose and onRetry so tests can invoke them
-vi.mock("#/components/block/dialogs/IssuanceScanDrawer", () => ({
+vi.mock("#/presentation/components/block/dialogs/IssuanceScanDrawer", () => ({
   IssuanceScanDrawer: ({
     open,
     phase,
@@ -85,9 +85,12 @@ vi.mock("#/components/block/dialogs/IssuanceScanDrawer", () => ({
 
 // ─── imports (after mocks) ────────────────────────────────────────────────────
 
-import { makeFreshCard, IssuanceTestSection } from "#/components/section/IssuanceTestSection";
-import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus } from "#/hooks/types";
-import { isNfcSupported } from "#/hooks/domain";
+import {
+  makeFreshCard,
+  IssuanceTestSection,
+} from "#/presentation/components/section/IssuanceTestSection";
+import { MAGIC, CARD_SCHEMA_VERSION, CardState, CardStatus } from "#/presentation/hooks/types";
+import { isNfcSupported } from "#/presentation/hooks/domain";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

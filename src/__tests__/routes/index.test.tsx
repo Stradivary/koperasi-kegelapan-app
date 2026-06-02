@@ -10,11 +10,11 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => () => ({ component: null }),
 }));
 
-vi.mock("#/components/section/LoginSection", () => ({
+vi.mock("#/presentation/components/section/LoginSection", () => ({
   LoginSection: () => <div data-testid="login-section" />,
 }));
 
-import { LoginSection } from "#/components/section/LoginSection";
+import { LoginSection } from "#/presentation/components/section/LoginSection";
 
 describe("index route (/)", () => {
   it("renders LoginSection as the route component", () => {
