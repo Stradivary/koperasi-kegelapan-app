@@ -79,10 +79,6 @@ superadminRoutes.get("/tenants/:tenantId", async (c) => {
 
   const tenantId = c.req.param("tenantId");
 
-  if (!tenantId) {
-    return c.json({ error: "tenantId is required" }, 400);
-  }
-
   try {
     const result = await getTenantDetail(tenantId);
     return c.json(result.data, result.status);
