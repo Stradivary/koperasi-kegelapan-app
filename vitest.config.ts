@@ -14,8 +14,22 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
-      include: ["api/src/**/*.ts"],
-      exclude: ["api/src/__tests__/**", "api/src/env.d.ts"],
+      include: ["api/src/**/*.ts", "src/**/*.{ts,tsx}"],
+      exclude: [
+        "api/src/__tests__/**",
+        "api/src/env.d.ts",
+        "src/__tests__/**",
+        "src/__mocks__/**",
+        "src/test-setup.ts",
+        "src/routeTree.gen.ts",
+        "src/main.tsx",
+        "src/styles.css",
+        "src/cloudflare-env.d.ts",
+        "src/assets/**",
+        "src/db/**",
+        "src/presentation/routes/**",
+        "src/presentation/components/ui/**",
+      ],
     },
     projects: [
       {
