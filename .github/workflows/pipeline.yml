@@ -311,7 +311,7 @@ jobs:
         with:
           args: >
             -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=300
+            -Dsonar.qualitygate.timeout=1300
 
       - name: Quality Gate summary
         if: always()
