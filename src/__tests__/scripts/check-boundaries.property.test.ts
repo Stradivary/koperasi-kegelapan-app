@@ -28,7 +28,7 @@ interface Violation {
 
 const RULES = [
   {
-    name: "Domain must not import from Gateways",
+    name: "Domain (core/) must not import from outer layers",
     sourcePattern: /^src\/core\//,
     forbiddenImports: [
       /["']#\/db\//,
@@ -39,14 +39,24 @@ const RULES = [
     ],
   },
   {
-    name: "UI must not import from Domain directly",
+    name: "Application must not import from Presentation",
+    sourcePattern: /^src\/application\//,
+    forbiddenImports: [/["']#\/presentation\//],
+  },
+  {
+    name: "Infrastructure must not import from Presentation",
+    sourcePattern: /^src\/infrastructure\//,
+    forbiddenImports: [/["']#\/presentation\//],
+  },
+  {
+    name: "Presentation (components/routes) must not import from Domain directly",
     sourcePattern: /^src\/presentation\/(components|routes)\//,
     forbiddenImports: [/["']#\/core\//],
   },
   {
-    name: "UI must not import from Gateways (except utils)",
+    name: "Presentation (components/routes) must not import from Infrastructure directly",
     sourcePattern: /^src\/presentation\/(components|routes)\//,
-    forbiddenImports: [/["']#\/db\//, /["']#\/lib\/(?!utils)/, /["']#\/infrastructure\//],
+    forbiddenImports: [/["']#\/infrastructure\//, /["']#\/db\//, /["']#\/lib\/(?!utils)/],
   },
 ];
 
@@ -140,19 +150,21 @@ function expectedViolations(filePath: string, importPath: string): string[] {
   const target = getImportTarget(importPath);
   const violations: string[] = [];
 
-  // Rule 1: Domain must not import from Gateways
+  // Rule 1: Domain must not import from outer layers
   if (layer === "domain" && (target === "db" || target === "lib" || target === "lib-utils")) {
-    violations.push("Domain must not import from Gateways");
+    violations.push("Domain (core/) must not import from outer layers");
   }
 
-  // Rule 2: UI must not import from Domain directly
+  // Rule 2: Presentation (components/routes) must not import from Domain directly
   if (layer === "ui" && target === "core") {
-    violations.push("UI must not import from Domain directly");
+    violations.push("Presentation (components/routes) must not import from Domain directly");
   }
 
-  // Rule 3: UI must not import from Gateways (except utils)
+  // Rule 3: Presentation (components/routes) must not import from Infrastructure directly
   if (layer === "ui" && (target === "db" || target === "lib")) {
-    violations.push("UI must not import from Gateways (except utils)");
+    violations.push(
+      "Presentation (components/routes) must not import from Infrastructure directly",
+    );
   }
 
   return violations;
@@ -361,9 +373,9 @@ describe("Boundary Enforcement Script Correctness Property Tests", () => {
           (filePath, importLine) => {
             const violations = checkLine(filePath, importLine, 1);
             expect(violations.length).toBeGreaterThan(0);
-            expect(violations.some((v) => v.rule === "Domain must not import from Gateways")).toBe(
-              true,
-            );
+            expect(
+              violations.some((v) => v.rule === "Domain (core/) must not import from outer layers"),
+            ).toBe(true);
           },
         ),
         { numRuns: 50 },
@@ -384,7 +396,11 @@ describe("Boundary Enforcement Script Correctness Property Tests", () => {
             const violations = checkLine(filePath, importLine, 1);
             expect(violations.length).toBeGreaterThan(0);
             expect(
-              violations.some((v) => v.rule === "UI must not import from Domain directly"),
+              violations.some(
+                (v) =>
+                  v.rule ===
+                  "Presentation (components/routes) must not import from Domain directly",
+              ),
             ).toBe(true);
           },
         ),
@@ -406,7 +422,11 @@ describe("Boundary Enforcement Script Correctness Property Tests", () => {
             const violations = checkLine(filePath, importLine, 1);
             expect(violations.length).toBeGreaterThan(0);
             expect(
-              violations.some((v) => v.rule === "UI must not import from Gateways (except utils)"),
+              violations.some(
+                (v) =>
+                  v.rule ===
+                  "Presentation (components/routes) must not import from Infrastructure directly",
+              ),
             ).toBe(true);
           },
         ),
@@ -426,9 +446,11 @@ describe("Boundary Enforcement Script Correctness Property Tests", () => {
           arbitraryImportLine(arbitraryLibUtilsImport),
           (filePath, importLine) => {
             const violations = checkLine(filePath, importLine, 1);
-            // Should have no "UI must not import from Gateways (except utils)" violation
+            // Should have no "Presentation (components/routes) must not import from Infrastructure directly" violation
             const gatewayViolations = violations.filter(
-              (v) => v.rule === "UI must not import from Gateways (except utils)",
+              (v) =>
+                v.rule ===
+                "Presentation (components/routes) must not import from Infrastructure directly",
             );
             expect(gatewayViolations).toHaveLength(0);
           },
