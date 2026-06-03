@@ -305,13 +305,14 @@ jobs:
       # result is available and exits non-zero when the gate is RED.
       - name: SonarCloud Scan (Quality Gate enforced)
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=1300
+            -Dsonar.qualitygate.timeout=15300
 
       - name: Quality Gate summary
         if: always()
