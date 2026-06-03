@@ -229,8 +229,9 @@ describe("useSessionGrant - offline, no cache, local grant (lines 280-309)", () 
 
     const { result } = renderHook(() => useSessionGrant("t-1", "a-1", "d-1"));
 
+    // tryLocalGrant uses Web Crypto (HMAC-SHA256) which needs multiple async ticks
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 300));
     });
 
     // tryLocalGrant uses Web Crypto which is available in jsdom
