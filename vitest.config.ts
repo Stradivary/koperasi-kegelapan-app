@@ -33,6 +33,8 @@ export default defineConfig({
         "src/__tests__/**",
         "src/__mocks__/**",
         "src/server/__tests__/**",
+        "src/infrastructure/persistence/dexie/**",
+        "src/infrastructure/persistence/drizzle/**",
       ],
     },
     projects: [
