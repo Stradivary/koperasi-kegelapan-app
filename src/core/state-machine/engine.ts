@@ -115,7 +115,16 @@ export function isWriteEligible(
 export const PARKING_RATE_PER_HOUR = 2_000;
 export const MIN_BALANCE_AFTER_CHECKOUT = 0;
 export const MIN_BALANCE_BEFORE_CHECKIN = 10_000;
-export const MAX_BALANCE = 16_000_000;
+/**
+ * Maximum single transaction amount — constrained by uint24 log entry field (max 16,777,215).
+ * We use 16,000,000 as a round business limit within the 24-bit hardware cap.
+ */
+export const MAX_TRANSACTION_AMOUNT = 16_000_000;
+/**
+ * Maximum card balance — must not exceed MAX_TRANSACTION_AMOUNT so that a full-balance
+ * debit can still be recorded in the 24-bit log amount field.
+ */
+export const MAX_BALANCE = MAX_TRANSACTION_AMOUNT;
 export const MAX_TOPUP_AMOUNT = 2_000_000;
 export const MIN_TOPUP_AMOUNT = 2_000;
 export const MIN_ISSUANCE_BALANCE = 2_000;

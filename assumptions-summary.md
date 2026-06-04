@@ -20,7 +20,11 @@
 - Minimum balance required for check-in: **Rp 10,000**
 - Parking fee: **Rp 2,000/hour** (rounded up)
 - Balance cannot go negative after checkout
-- Maximum per transaction: ~Rp 16.7 million; maximum card balance: ~Rp 4.29 billion
+- Maximum per transaction: **Rp 16,000,000** (uint24 log entry constraint)
+- Maximum card balance: **Rp 16,000,000** (capped to fit full-balance debit in uint24 log amount)
+- Minimum top-up amount: **Rp 2,000**
+- Maximum top-up amount: **Rp 2,000,000**
+- Minimum initial balance on issuance: **Rp 2,000**
 - Card stores the last 5 transaction entries; full history is kept on server/IndexedDB
 
 ## Operational Flow
@@ -59,5 +63,6 @@
 
 - NFC is not supported on iOS or desktop browsers
 - Offline mode does not support multi-device operation
-- Maximum Rp 16.7 million per transaction (card encoding limit)
+- Maximum Rp 16 million per transaction and max card balance (uint24 log entry constraint)
 - Card member name capped at 24 bytes UTF-8
+- Policy system (`maxDailyTotal`, `topupOnlineOnly`, `allowedTxTypes`) is defined but not yet enforced at transaction time

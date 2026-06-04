@@ -38,7 +38,10 @@
 - Tarif parkir dihitung per jam (dibulatkan ke atas): Rp.2.000/jam
 - Fee checkout = ceil(durasi_dalam_jam) × Rp.2.000
 - Maksimum amount per transaksi yang dapat di-encode pada kartu adalah 16.777.215 (uint24 max, ~Rp.16.7 juta)
-- Maksimum balance yang dapat disimpan pada kartu adalah 4.294.967.295 (uint32 max, ~Rp.4.29 miliar)
+- Maksimum balance kartu dibatasi Rp.16.000.000 (agar full-balance debit tetap dapat direkam di log entry uint24)
+- Minimum nominal top-up: Rp.2.000
+- Minimum saldo awal saat cetak kartu (issuance): Rp.2.000
+- Maksimum nominal top-up per transaksi: Rp.2.000.000
 - Counter kartu menggunakan uint64 (bigint) - secara praktis tidak akan overflow
 - Setiap transaksi menghasilkan idempotency key unik (`tenantId:cardIdHex:counter`) untuk mencegah duplikasi saat sync
 - Transaction log pada kartu menyimpan maksimal 5 entry terakhir (ring buffer) - log lengkap ada di server/IndexedDB
@@ -185,6 +188,7 @@
 - Dual-buffer recovery hanya bekerja jika setidaknya satu buffer valid - jika kedua buffer corrupt, kartu tidak dapat di-recover
 - Offline mode tidak mendukung multi-device - hanya 1 device yang berfungsi untuk semua role
 - Session grant cache di client bisa stale - jika server melakukan key rotation, kartu akan ditolak sampai grant di-refresh
-- Maximum 16 juta per transaksi (uint24 limit pada log entry amount field)
+- Maximum 16 juta per transaksi dan saldo kartu (uint24 limit pada log entry amount field, bisnis limit Rp.16.000.000)
 - Card name pada kartu dibatasi 24 bytes UTF-8 - nama panjang akan di-truncate
 - User ID pada kartu dibatasi 8 bytes ASCII - harus alphanumeric pendek
+- Policy system (`maxDailyTotal`, `topupOnlineOnly`, `allowedTxTypes`) didefinisikan di API/IndexedDB tetapi belum di-enforce pada saat transaksi

@@ -14,6 +14,7 @@ export {
   MIN_TOPUP_AMOUNT,
   MIN_ISSUANCE_BALANCE,
   MAX_BALANCE,
+  MAX_TRANSACTION_AMOUNT,
   PARKING_RATE_PER_HOUR,
 } from "#/core/state-machine/engine";
 

@@ -70,7 +70,7 @@ sequenceDiagram
     Terminal->>Terminal: Verify chain hash integrity (SHA-256 linked entries)
     Terminal->>Terminal: Check counter monotonicity (no replay)
     Terminal->>Terminal: Validate state machine transition
-    Terminal->>Terminal: Enforce financial limits (max tx, daily total)
+    Terminal->>Terminal: Enforce financial limits (max tx amount, max balance)
 
     alt Validation fails
         Terminal-->>Terminal: BLOCK card (tamper/clone/replay)
@@ -112,24 +112,24 @@ graph TD
 
 ## Security Controls Summary
 
-| Control             | Implementation                                            |
-| ------------------- | --------------------------------------------------------- |
-| Password hashing    | PBKDF2 (100k iterations, SHA-256, 16-byte salt)           |
-| Token storage       | SHA-256 hash stored, never raw token                      |
-| Token rotation      | New refresh token on every refresh call                   |
-| Compromise response | Revoke ALL device sessions on invalid token               |
-| Session limit       | Max 5 concurrent sessions per account                     |
-| Session grant       | HMAC-signed, 24h TTL, role-scoped, device-bound           |
-| Card integrity      | HMAC over full payload buffer                             |
-| Tamper detection    | Chain hash (SHA-256 linked log entries)                   |
-| Replay protection   | Monotonic counter enforcement                             |
-| Clone detection     | Counter mismatch vs backend projection                    |
-| Financial limits    | Max transaction amount, max daily total (policy-enforced) |
-| Device blocking     | Server-side device block list, middleware enforcement     |
-| Rate limiting       | 60 req/min per device on sync routes                      |
-| Dependency scanning | OWASP Dependency Check + npm audit (CI)                   |
-| Static analysis     | SonarCloud (weekly + on PR)                               |
-| CORS                | Strict origin allowlist via middleware                    |
+| Control             | Implementation                                                        |
+| ------------------- | --------------------------------------------------------------------- |
+| Password hashing    | PBKDF2 (100k iterations, SHA-256, 16-byte salt)                       |
+| Token storage       | SHA-256 hash stored, never raw token                                  |
+| Token rotation      | New refresh token on every refresh call                               |
+| Compromise response | Revoke ALL device sessions on invalid token                           |
+| Session limit       | Max 5 concurrent sessions per account                                 |
+| Session grant       | HMAC-signed, 24h TTL, role-scoped, device-bound                       |
+| Card integrity      | HMAC over full payload buffer                                         |
+| Tamper detection    | Chain hash (SHA-256 linked log entries)                               |
+| Replay protection   | Monotonic counter enforcement                                         |
+| Clone detection     | Counter mismatch vs backend projection                                |
+| Financial limits    | Max transaction amount (16M), max topup (2M), min topup/issuance (2K) |
+| Device blocking     | Server-side device block list, middleware enforcement                 |
+| Rate limiting       | 60 req/min per device on sync routes                                  |
+| Dependency scanning | OWASP Dependency Check + npm audit (CI)                               |
+| Static analysis     | SonarCloud (weekly + on PR)                                           |
+| CORS                | Strict origin allowlist via middleware                                |
 
 ## Threat Model (Offline)
 

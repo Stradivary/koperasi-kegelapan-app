@@ -59,6 +59,13 @@ function hexToBytes(hex: string): Uint8Array {
 
 const VALID_TYPES = new Set(["debit", "credit", "checkin", "checkout", "topup", "admin"]);
 
+// ─── Business limits (aligned with 24-bit log amount field: max 16,777,215) ──
+const MAX_TRANSACTION_AMOUNT = 16_000_000;
+const MAX_BALANCE = MAX_TRANSACTION_AMOUNT;
+const MAX_TOPUP_AMOUNT = 2_000_000;
+const MIN_TOPUP_AMOUNT = 2_000;
+const MIN_ISSUANCE_BALANCE = 2_000;
+
 // ─── Push helpers ─────────────────────────────────────────────────────────────
 
 /**
@@ -81,19 +88,19 @@ function validateTransaction(tx: PushTransaction): { valid: boolean; reason?: st
   if (!VALID_TYPES.has(tx.type)) {
     return { valid: false, reason: "invalid_type" };
   }
-  if (tx.amount < 0 || tx.amount > 16000000) {
+  if (tx.amount < 0 || tx.amount > MAX_TRANSACTION_AMOUNT) {
     return { valid: false, reason: "invalid_amount" };
   }
-  if (tx.type === "topup" && tx.amount < 2000) {
+  if (tx.type === "topup" && tx.amount < MIN_TOPUP_AMOUNT) {
     return { valid: false, reason: "topup_amount_below_minimum" };
   }
-  if (tx.type === "topup" && tx.amount > 2000000) {
+  if (tx.type === "topup" && tx.amount > MAX_TOPUP_AMOUNT) {
     return { valid: false, reason: "topup_amount_exceeds_limit" };
   }
-  if (tx.type === "credit" && tx.amount < 2000) {
+  if (tx.type === "credit" && tx.amount < MIN_ISSUANCE_BALANCE) {
     return { valid: false, reason: "issuance_amount_below_minimum" };
   }
-  if (tx.balanceAfter < 0 || tx.balanceAfter > 16000000) {
+  if (tx.balanceAfter < 0 || tx.balanceAfter > MAX_BALANCE) {
     return { valid: false, reason: "invalid_balance" };
   }
   if (tx.counter < 0 || tx.counter > 65535) {
