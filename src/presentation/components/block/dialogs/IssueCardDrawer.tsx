@@ -3,6 +3,7 @@ import { CreditCard } from "lucide-react";
 import successHandImg from "#/assets/images/success_hand.svg";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import type { CardPayload, NfcPhase } from "#/presentation/hooks/types";
+import { MIN_ISSUANCE_BALANCE } from "#/presentation/hooks/domain";
 import {
   Drawer,
   DrawerContent,
@@ -89,7 +90,7 @@ export function IssueCardDrawer({
   const activeMembers = members.filter((m) => m.status === "active");
 
   const parsedAmount = Number.parseInt(amount, 10);
-  const isValidAmount = !Number.isNaN(parsedAmount) && parsedAmount >= 0;
+  const isValidAmount = !Number.isNaN(parsedAmount) && parsedAmount >= MIN_ISSUANCE_BALANCE;
   const canSubmit = name.trim().length > 0 && isValidAmount;
 
   function handleUserChange(selectedUserId: string | null) {
@@ -190,7 +191,8 @@ export function IssueCardDrawer({
                 <Label>Saldo Awal (IDR)</Label>
                 <Input
                   type="number"
-                  placeholder="0"
+                  placeholder="Min. 2.000"
+                  min={MIN_ISSUANCE_BALANCE}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                 />

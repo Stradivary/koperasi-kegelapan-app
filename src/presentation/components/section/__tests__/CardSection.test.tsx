@@ -1,688 +1,543 @@
-// @vitest-environment jsdom
 /**
- * Tests for CardSection.tsx
- * Covers: rendering, NFC drawer interactions, card operations,
- *         issuance flow, recovery flow, top-up flow, fix card panel
+ * Tests for CardSection component.
+ * Covers: rendering, conditional rendering, callback handlers,
+ * drawer open/close logic, overwrite/not-blank dialog flows.
  */
-import { createElement } from "react";
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, render } from "@testing-library/react";
+import React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+// ── Captured props from mock components ──────────────────────────────────────
 
-let mockUseQueryFn: (opts: any) => any;
-let mockUseMutationFn: (opts: any) => any;
+let nfcScanDrawerProps: Record<string, unknown> = {};
+let topupDrawerProps: Record<string, unknown> = {};
+let issueCardDrawerProps: Record<string, unknown> = {};
+let overwriteDrawerProps: Record<string, unknown> = {};
+let notBlankDrawerProps: Record<string, unknown> = {};
+let syncConflictDialogProps: Record<string, unknown> = {};
+let stationCardsPanelProps: Record<string, unknown> = {};
 
-vi.mock("@tanstack/react-query", () => {
-  const queryClient = { invalidateQueries: vi.fn() };
-  return {
-    useQuery: (opts: any) => mockUseQueryFn(opts),
-    useMutation: (opts: any) => mockUseMutationFn(opts),
-    useQueryClient: () => queryClient,
-    QueryClient: vi.fn(),
-  };
-});
-
-vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
-}));
+// ── Mock all hooks used by CardSection ───────────────────────────────────────
 
 const mockScan = vi.fn();
-const mockWrite = vi.fn();
 const mockReset = vi.fn();
 const mockCancel = vi.fn();
 const mockRetryScan = vi.fn();
-let mockNfcState: any = {
-  phase: "idle",
-  payload: null,
-  serialNumber: null,
-  error: null,
-  tamperDetected: false,
-  warning: null,
-};
+const mockHandleTopupCard = vi.fn();
+const mockHandleTopupConfirm = vi.fn();
+const mockSetResetCardPending = vi.fn();
+const mockStartCardRecovery = vi.fn();
+const mockHandleIssueCard = vi.fn();
+const mockHandleIssuanceDrawerClose = vi.fn();
+const mockHandleRetryIssuance = vi.fn();
+const mockHandleForceOverwriteConfirm = vi.fn();
+const mockCleanupIssuanceSession = vi.fn();
+const mockHandleRecoveryDrawerClose = vi.fn();
+const mockHandleRetryRecovery = vi.fn();
+const mockRetryWithChanges = vi.fn();
+const mockResetSync = vi.fn();
+const mockDeleteMutate = vi.fn();
+const mockSetIsDrawerOpen = vi.fn();
+const mockSetOverwriteDialog = vi.fn();
+const mockSetNotBlankDialog = vi.fn();
+const mockCloseTopupDrawer = vi.fn();
+const mockOpenFixCard = vi.fn();
+const mockCloseFixCard = vi.fn();
+const mockCloseIssueCardDrawer = vi.fn();
 
-vi.mock("#/presentation/hooks/nfc", () => ({
-  useNfcCard: () => ({
-    state: mockNfcState,
+let mockShowFixCard = false;
+let mockIsDrawerOpen = false;
+let mockTopupDrawerOpen = false;
+let mockIssueCardDrawerOpen = false;
+let mockRecoveryDrawerOpen = false;
+let mockOverwriteDialog: unknown = null;
+let mockNotBlankDialog: unknown = null;
+let mockSyncStatus = "idle";
+let mockConflict: unknown = null;
+let mockStatePhase = "idle";
+let mockSerialNumber: string | null = null;
+
+vi.mock("#/presentation/hooks/useSessionGrant", () => ({
+  useSessionGrant: vi.fn(() => ({ grant: { sessionKey: "key", expiresAt: 9999999999 } })),
+}));
+
+vi.mock("#/presentation/hooks/useTenantSync", () => ({
+  useTenantSync: vi.fn(() => ({
+    get status() {
+      return mockSyncStatus;
+    },
+    get conflict() {
+      return mockConflict;
+    },
+    retryWithChanges: mockRetryWithChanges,
+    reset: mockResetSync,
+  })),
+}));
+
+vi.mock("#/presentation/hooks/useCardSection", () => ({
+  useCardDrawers: vi.fn(() => ({
+    get isDrawerOpen() {
+      return mockIsDrawerOpen;
+    },
+    get topupDrawerOpen() {
+      return mockTopupDrawerOpen;
+    },
+    get recoveryDrawerOpen() {
+      return mockRecoveryDrawerOpen;
+    },
+    fixCardId: "fix-1",
+    get showFixCard() {
+      return mockShowFixCard;
+    },
+    get issueCardDrawerOpen() {
+      return mockIssueCardDrawerOpen;
+    },
+    get overwriteDialog() {
+      return mockOverwriteDialog;
+    },
+    get notBlankDialog() {
+      return mockNotBlankDialog;
+    },
+    setIsDrawerOpen: mockSetIsDrawerOpen,
+    setOverwriteDialog: mockSetOverwriteDialog,
+    setNotBlankDialog: mockSetNotBlankDialog,
+    openTopupDrawer: vi.fn(),
+    closeTopupDrawer: mockCloseTopupDrawer,
+    openRecoveryDrawer: vi.fn(),
+    closeRecoveryDrawer: vi.fn(),
+    openFixCard: mockOpenFixCard,
+    closeFixCard: mockCloseFixCard,
+    openIssueCardDrawer: vi.fn(),
+    closeIssueCardDrawer: mockCloseIssueCardDrawer,
+  })),
+  useCardData: vi.fn(() => ({
+    cards: { data: [], isLoading: false },
+    members: { data: [], isLoading: false },
+  })),
+  useCardIssuance: vi.fn(() => ({
+    issuancePhase: "idle",
+    issuanceError: null,
+    issuancePayload: null,
+    issueCardDrawerPhase: "idle",
+    isIssuing: false,
+    handleIssueCard: mockHandleIssueCard,
+    handleIssuanceDrawerClose: mockHandleIssuanceDrawerClose,
+    handleRetryIssuance: mockHandleRetryIssuance,
+    handleForceOverwriteConfirm: mockHandleForceOverwriteConfirm,
+    cleanupIssuanceSession: mockCleanupIssuanceSession,
+  })),
+  useCardRecovery: vi.fn(() => ({
+    recoveryPhase: "idle",
+    recoveryError: null,
+    recoveryPayload: null,
+    recoverySerial: null,
+    isRecovering: false,
+    startCardRecovery: mockStartCardRecovery,
+    handleRecoveryDrawerClose: mockHandleRecoveryDrawerClose,
+    handleRetryRecovery: mockHandleRetryRecovery,
+  })),
+  useCardOperations: vi.fn(() => ({
+    state: {
+      get phase() {
+        return mockStatePhase;
+      },
+      payload: null,
+      error: null,
+      tamperDetected: false,
+      get serialNumber() {
+        return mockSerialNumber;
+      },
+    },
+    resetCardPending: false,
+    setResetCardPending: mockSetResetCardPending,
+    deleteCard: { mutate: mockDeleteMutate, isPending: false },
+    fixCard: { mutateAsync: vi.fn(), isPending: false },
+    handleTopupCard: mockHandleTopupCard,
+    handleTopupConfirm: mockHandleTopupConfirm,
     scan: mockScan,
-    write: mockWrite,
     reset: mockReset,
     cancel: mockCancel,
     retryScan: mockRetryScan,
-  }),
+  })),
+  useCardSync: vi.fn(),
 }));
 
-vi.mock("#/presentation/hooks/useSessionGrant", () => ({
-  useSessionGrant: () => ({ grant: { keyVersion: 1, masterKey: new Uint8Array(32) } }),
-}));
-
-const mockRetryWithChanges = vi.fn();
-const mockResetSync = vi.fn();
-let mockSyncStatus = "idle";
-let mockConflict: any = null;
-
-vi.mock("#/presentation/hooks/useTenantSync", () => ({
-  useTenantSync: () => ({
-    status: mockSyncStatus,
-    conflict: mockConflict,
-    retryWithChanges: mockRetryWithChanges,
-    reset: mockResetSync,
-  }),
-}));
-
-const mockNotifyMutation = vi.fn();
-vi.mock("#/presentation/hooks/SyncEngineContext", () => ({
-  useSyncEngineContext: () => ({
-    notifyMutation: mockNotifyMutation,
-    lastSyncedAt: null,
-  }),
-}));
-
-const mockLocalDbCardsGet = vi.fn().mockResolvedValue(null);
-const mockLocalDbCardsPut = vi.fn().mockResolvedValue(undefined);
-const mockLocalDbCardsUpdate = vi.fn().mockResolvedValue(undefined);
-vi.mock("#/infrastructure/persistence/dexie/localDb", () => ({
-  localDb: {
-    cards: {
-      get: (...args: unknown[]) => mockLocalDbCardsGet(...args),
-      put: (...args: unknown[]) => mockLocalDbCardsPut(...args),
-      update: (...args: unknown[]) => mockLocalDbCardsUpdate(...args),
-    },
-    users: { where: () => ({ equals: () => ({ toArray: () => Promise.resolve([]) }) }) },
-  },
-}));
-
-vi.mock("#/application/sync/syncPull.usecase", () => ({ syncPull: vi.fn() }));
-vi.mock("#/infrastructure/error/errorTracker", () => ({ trackError: vi.fn() }));
-const mockCheckLocalBlockedStatus = vi.fn().mockResolvedValue({ blocked: false });
-vi.mock("#/core/nfc/localStatusCheck", () => ({
-  checkLocalBlockedStatus: (...args: unknown[]) => mockCheckLocalBlockedStatus(...args),
-}));
-vi.mock("#/core/validation/uidGlobalValidator", () => ({
-  validateUID: vi.fn().mockResolvedValue({ valid: true }),
-}));
-
-vi.mock("#/infrastructure/persistence/dexie/repositories", () => ({
-  cardRepo: {
-    filterByCardIdExcludingDeleted: vi.fn().mockResolvedValue([]),
-    getByTenantAndCardId: vi.fn().mockResolvedValue(undefined),
-  },
-  uidRemoteValidator: { checkUIDExists: vi.fn().mockResolvedValue({ exists: false }) },
-  onlineStatus: { isOnline: () => true },
-}));
-
-const mockApplyTopup = vi.fn((..._args: unknown[]) => _args[0]);
-const mockApplyResetState = vi.fn((..._args: unknown[]) => _args[0]);
-const mockValidateTopup = vi.fn((..._args: unknown[]) => ({ valid: true }));
-vi.mock("#/core/state-machine/engine", () => ({
-  applyTopup: (...args: unknown[]) => mockApplyTopup(...args),
-  applyResetState: (...args: unknown[]) => mockApplyResetState(...args),
-  validateTopup: (...args: unknown[]) => mockValidateTopup(...args),
-}));
-vi.mock("#/core/nfc/pipelineEngine", () => ({
-  prepareWrite: vi.fn().mockResolvedValue({ bytes: new Uint8Array(280) }),
-}));
-vi.mock("#/core/nfc/engine", () => ({
-  extractCardBytes: vi.fn(),
-  isNfcSupported: () => true,
-}));
-vi.mock("#/core/payload/types", () => ({
-  MAGIC: 0x4b4f5057,
-  CARD_SCHEMA_VERSION: 4,
-  CardState: { IDLE: 0, CHECKED_IN: 1 },
-  CardStatus: {
-    ACTIVE: 0,
-    BLOCKED_TAMPER: 1,
-    BLOCKED_FRAUD: 2,
-    BLOCKED_EXPIRED: 3,
-    BLOCKED_ADMIN: 4,
-  },
-}));
-vi.mock("#/core/payload/tenantBind", () => ({ encodeTenantBind: () => new Uint8Array(4) }));
-vi.mock("#/core/payload/engine", () => ({ decodePayload: vi.fn() }));
-vi.mock("#/infrastructure/persistence/dexie/stationQueries", () => ({
-  getCardsWithUsers: vi.fn().mockResolvedValue([]),
-}));
-
-// Mock child components with interactive callbacks
+// Mock child UI components - capture props for callback testing
 vi.mock("../../block/StationCardsPanel", () => ({
-  StationCardsPanel: vi.fn((props: any) => {
-    return createElement(
-      "div",
-      { "data-testid": "station-cards-panel" },
-      createElement("span", { "data-testid": "cards-count" }, String(props.cards.length)),
-      createElement(
-        "button",
-        { "data-testid": "issue-new-btn", onClick: props.onIssueNew },
-        "Issue New",
-      ),
-      createElement(
-        "button",
-        { "data-testid": "topup-btn", onClick: () => props.onTopupCard("card-1") },
-        "Topup",
-      ),
-      createElement(
-        "button",
-        { "data-testid": "recover-btn", onClick: () => props.onRecoverCard({ cardId: "card-1" }) },
-        "Recover",
-      ),
-      createElement(
-        "button",
-        { "data-testid": "delete-btn", onClick: () => props.onDeleteCard({ cardId: "card-1" }) },
-        "Delete",
-      ),
-    );
+  StationCardsPanel: React.forwardRef(function MockPanel(
+    props: Record<string, unknown>,
+    _ref: unknown,
+  ) {
+    stationCardsPanelProps = props;
+    return <div data-testid="station-cards-panel" />;
   }),
 }));
 
 vi.mock("../../block/StationFixCardPanel", () => ({
-  StationFixCardPanel: ({ onBack, onFixCard }: any) =>
-    createElement(
-      "div",
-      { "data-testid": "fix-card-panel" },
-      createElement("button", { "data-testid": "back-btn", onClick: onBack }, "Back"),
-      createElement(
-        "button",
-        {
-          "data-testid": "fix-submit-btn",
-          onClick: () => onFixCard({ cardId: "c1", userId: "u1", balance: 50000, expiresAt: null }),
-        },
-        "Fix",
-      ),
-    ),
-}));
-
-let mockNfcDrawerOnFixCard: any;
-let mockNfcDrawerOnClose: any;
-vi.mock("../../block/dialogs/NfcScanDrawer", () => ({
-  NfcScanDrawer: ({ open, phase, onFixCard, onClose }: any) => {
-    mockNfcDrawerOnFixCard = onFixCard;
-    mockNfcDrawerOnClose = onClose;
-    return open
-      ? createElement("div", { "data-testid": "nfc-scan-drawer", "data-phase": phase })
-      : null;
-  },
-}));
-
-vi.mock("../../block/dialogs/IssuanceScanDrawer", () => ({
-  IssuanceScanDrawer: ({ open, onClose, onRetry }: any) =>
-    open
-      ? createElement(
-          "div",
-          { "data-testid": "issuance-scan-drawer" },
-          createElement(
-            "button",
-            { "data-testid": "recovery-close-btn", onClick: onClose },
-            "Close",
-          ),
-          createElement(
-            "button",
-            { "data-testid": "recovery-retry-btn", onClick: onRetry },
-            "Retry",
-          ),
-        )
-      : null,
-}));
-
-vi.mock("../../block/dialogs/IssueCardDrawer", () => ({
-  IssueCardDrawer: ({ open, phase, onIssue, onClose, onRetry }: any) => {
-    return open
-      ? createElement(
-          "div",
-          { "data-testid": "issue-card-drawer", "data-phase": phase },
-          createElement(
-            "button",
-            {
-              "data-testid": "issue-submit-btn",
-              onClick: () =>
-                onIssue({ name: "Test", userId: "u1", balance: 50000, expiresAt: null }),
-            },
-            "Submit",
-          ),
-          createElement("button", { "data-testid": "issue-close-btn", onClick: onClose }, "Close"),
-          createElement("button", { "data-testid": "issue-retry-btn", onClick: onRetry }, "Retry"),
-        )
-      : null;
-  },
-}));
-
-vi.mock("../../block/dialogs/TopupDrawer", () => ({
-  TopupDrawer: ({ open, onTopup, onClose }: any) => {
-    return open
-      ? createElement(
-          "div",
-          { "data-testid": "topup-drawer" },
-          createElement(
-            "button",
-            { "data-testid": "topup-confirm-btn", onClick: () => onTopup(10000) },
-            "Confirm",
-          ),
-          createElement("button", { "data-testid": "topup-close-btn", onClick: onClose }, "Close"),
-        )
-      : null;
-  },
-}));
-
-vi.mock("../../block/dialogs/SyncConflictDialog", () => ({
-  SyncConflictDialog: ({ open, onDismiss, onRetryWithChanges }: any) =>
-    open
-      ? createElement(
-          "div",
-          { "data-testid": "sync-conflict-dialog" },
-          createElement(
-            "button",
-            { "data-testid": "dismiss-conflict", onClick: onDismiss },
-            "Dismiss",
-          ),
-          createElement(
-            "button",
-            {
-              "data-testid": "retry-conflict",
-              onClick: () => onRetryWithChanges("new-slug", "new-admin"),
-            },
-            "Retry",
-          ),
-        )
-      : null,
-}));
-
-vi.mock("../../block/dialogs/CardOverwriteDialog", () => ({}));
-
-vi.mock("../../block/dialogs/CardOverwriteDrawer", () => ({
-  CardOverwriteDrawer: ({ open, onCancel, onConfirm }: any) => {
-    return open
-      ? createElement(
-          "div",
-          { "data-testid": "card-overwrite-drawer" },
-          createElement(
-            "button",
-            { "data-testid": "overwrite-cancel", onClick: onCancel },
-            "Cancel",
-          ),
-          createElement(
-            "button",
-            { "data-testid": "overwrite-confirm", onClick: onConfirm },
-            "Confirm",
-          ),
-        )
-      : null;
+  StationFixCardPanel: (_props: Record<string, unknown>) => {
+    return <div data-testid="fix-card-panel" />;
   },
 }));
 
 vi.mock("../../block/dialogs/CardNotBlankDrawer", () => ({
-  CardNotBlankDrawer: ({ open, onCancel, onConfirm }: any) => {
-    return open
-      ? createElement(
-          "div",
-          { "data-testid": "card-not-blank-drawer" },
-          createElement(
-            "button",
-            { "data-testid": "not-blank-cancel", onClick: onCancel },
-            "Cancel",
-          ),
-          createElement(
-            "button",
-            { "data-testid": "not-blank-confirm", onClick: onConfirm },
-            "Confirm",
-          ),
-        )
-      : null;
+  CardNotBlankDrawer: (props: Record<string, unknown>) => {
+    notBlankDrawerProps = props;
+    return <div data-testid="not-blank-drawer" />;
   },
 }));
 
-import { CardSection } from "../CardSection";
+vi.mock("../../block/dialogs/CardOverwriteDrawer", () => ({
+  CardOverwriteDrawer: (props: Record<string, unknown>) => {
+    overwriteDrawerProps = props;
+    return <div data-testid="overwrite-drawer" />;
+  },
+}));
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+vi.mock("../../block/dialogs/IssuanceScanDrawer", () => ({
+  IssuanceScanDrawer: (_props: Record<string, unknown>) => {
+    return <div data-testid="issuance-scan-drawer" />;
+  },
+}));
+
+vi.mock("../../block/dialogs/IssueCardDrawer", () => ({
+  IssueCardDrawer: (props: Record<string, unknown>) => {
+    issueCardDrawerProps = props;
+    return <div data-testid="issue-card-drawer" />;
+  },
+}));
+
+vi.mock("../../block/dialogs/NfcScanDrawer", () => ({
+  NfcScanDrawer: (props: Record<string, unknown>) => {
+    nfcScanDrawerProps = props;
+    return <div data-testid="nfc-scan-drawer" />;
+  },
+}));
+
+vi.mock("../../block/dialogs/SyncConflictDialog", () => ({
+  SyncConflictDialog: (props: Record<string, unknown>) => {
+    syncConflictDialogProps = props;
+    return <div data-testid="sync-conflict-dialog" />;
+  },
+}));
+
+vi.mock("../../block/dialogs/TopupDrawer", () => ({
+  TopupDrawer: (props: Record<string, unknown>) => {
+    topupDrawerProps = props;
+    return <div data-testid="topup-drawer" />;
+  },
+}));
+
+vi.mock("../CardSection.utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...(actual as object) };
+});
+
+// ── Import component under test ──────────────────────────────────────────────
+
+import { CardSection } from "#/presentation/components/section/CardSection";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 const defaultProps = {
-  tenantId: "t-1",
-  accountId: "a-1",
-  deviceId: "d-1",
+  tenantId: "tenant-1",
+  accountId: "account-1",
+  deviceId: "device-1",
   terminalId: 1,
 };
 
-// Track mutation handlers for testing
-let mutationHandlers: Record<
-  string,
-  { mutate: any; mutateAsync: any; onSuccess?: any; onError?: any }
-> = {};
-let mutationCallCount = 0;
+function renderComponent() {
+  return render(<CardSection {...defaultProps} />, { wrapper: createWrapper() });
+}
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.useFakeTimers();
-  mockNfcState = {
-    phase: "idle",
-    payload: null,
-    serialNumber: null,
-    error: null,
-    tamperDetected: false,
-    warning: null,
-  };
-  mockSyncStatus = "idle";
-  mockConflict = null;
-  mutationHandlers = {};
-  mutationCallCount = 0;
+// ── Tests ────────────────────────────────────────────────────────────────────
 
-  mockUseQueryFn = ({ queryKey }: any) => ({
-    data: queryKey[0] === "station-cards" ? [] : [],
-    isLoading: false,
-    error: null,
+describe("CardSection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockShowFixCard = false;
+    mockIsDrawerOpen = false;
+    mockTopupDrawerOpen = false;
+    mockIssueCardDrawerOpen = false;
+    mockRecoveryDrawerOpen = false;
+    mockOverwriteDialog = null;
+    mockNotBlankDialog = null;
+    mockSyncStatus = "idle";
+    mockConflict = null;
+    mockStatePhase = "idle";
+    mockSerialNumber = null;
+    nfcScanDrawerProps = {};
+    topupDrawerProps = {};
+    issueCardDrawerProps = {};
+    overwriteDrawerProps = {};
+    notBlankDrawerProps = {};
+    syncConflictDialogProps = {};
+    stationCardsPanelProps = {};
   });
 
-  mockUseMutationFn = ({ mutationFn, onSuccess, onError }: any) => {
-    const id = `mutation-${mutationCallCount++}`;
-    const handler = {
-      mutate: vi.fn(async (...args: any[]) => {
-        try {
-          const result = await mutationFn(...(args[0] ?? args));
-          onSuccess?.(result);
-        } catch (e) {
-          onError?.(e);
-        }
-      }),
-      mutateAsync: vi.fn(async (...args: any[]) => {
-        const result = await mutationFn(...(args[0] ?? args));
-        onSuccess?.(result);
-        return result;
-      }),
-      isPending: false,
-      onSuccess,
-      onError,
-    };
-    mutationHandlers[id] = handler;
-    return handler;
-  };
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-  cleanup();
-});
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-describe("CardSection - rendering", () => {
-  it("renders StationCardsPanel", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("rendering", () => {
+    it("renders StationCardsPanel when showFixCard is false", () => {
+      const { container } = renderComponent();
+      expect(container.querySelector('[data-testid="station-cards-panel"]')).not.toBeNull();
     });
-    expect(screen.getByTestId("station-cards-panel")).toBeDefined();
+
+    it("renders all drawer components", () => {
+      const { container } = renderComponent();
+      expect(container.querySelector('[data-testid="nfc-scan-drawer"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="topup-drawer"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="issue-card-drawer"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="issuance-scan-drawer"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="overwrite-drawer"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="not-blank-drawer"]')).not.toBeNull();
+    });
+
+    it("does not render SyncConflictDialog when no conflict", () => {
+      const { container } = renderComponent();
+      expect(container.querySelector('[data-testid="sync-conflict-dialog"]')).toBeNull();
+    });
+
+    it("renders SyncConflictDialog when conflict exists", () => {
+      mockSyncStatus = "conflict";
+      mockConflict = { type: "slug_only", existingSlug: "test", existingTenantName: "Test" };
+      const { container } = renderComponent();
+      expect(container.querySelector('[data-testid="sync-conflict-dialog"]')).not.toBeNull();
+    });
+
+    it("renders StationFixCardPanel when showFixCard is true", () => {
+      mockShowFixCard = true;
+      const { container } = renderComponent();
+      expect(container.querySelector('[data-testid="fix-card-panel"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="station-cards-panel"]')).toBeNull();
+    });
   });
 
-  it("renders NfcScanDrawer (closed by default)", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("StationCardsPanel callbacks", () => {
+    it("calls handleTopupCard on onTopupCard", () => {
+      renderComponent();
+      act(() => {
+        (stationCardsPanelProps.onTopupCard as Function)({ cardId: "c1" });
+      });
+      expect(mockHandleTopupCard).toHaveBeenCalledWith({ cardId: "c1" });
     });
-    expect(screen.queryByTestId("nfc-scan-drawer")).toBeNull();
+
+    it("calls deleteCard.mutate on onDeleteCard", () => {
+      renderComponent();
+      act(() => {
+        (stationCardsPanelProps.onDeleteCard as Function)({ cardId: "c1" });
+      });
+      expect(mockDeleteMutate).toHaveBeenCalledWith({ card: { cardId: "c1" } });
+    });
+
+    it("calls startCardRecovery on onRecoverCard", () => {
+      renderComponent();
+      act(() => {
+        (stationCardsPanelProps.onRecoverCard as Function)({ cardId: "c1" });
+      });
+      expect(mockStartCardRecovery).toHaveBeenCalledWith("c1");
+    });
   });
 
-  it("renders IssueCardDrawer (closed by default)", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("NfcScanDrawer callbacks", () => {
+    it("handleDrawerClose calls reset when phase is idle", () => {
+      mockStatePhase = "idle";
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onClose as Function)();
+      });
+      expect(mockReset).toHaveBeenCalled();
+      expect(mockSetIsDrawerOpen).toHaveBeenCalledWith(false);
+      expect(mockCloseTopupDrawer).toHaveBeenCalled();
+      expect(mockSetResetCardPending).toHaveBeenCalledWith(false);
     });
-    expect(screen.queryByTestId("issue-card-drawer")).toBeNull();
+
+    it("handleDrawerClose calls cancel when phase is scanning", () => {
+      mockStatePhase = "scanning";
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onClose as Function)();
+      });
+      expect(mockCancel).toHaveBeenCalled();
+    });
+
+    it("handleDrawerClose calls cancel when phase is validating", () => {
+      mockStatePhase = "validating";
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onClose as Function)();
+      });
+      expect(mockCancel).toHaveBeenCalled();
+    });
+
+    it("onOpenChange(false) triggers handleDrawerClose", () => {
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onOpenChange as Function)(false);
+      });
+      expect(mockReset).toHaveBeenCalled();
+    });
+
+    it("onRetry calls scan", () => {
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onRetry as Function)();
+      });
+      expect(mockScan).toHaveBeenCalled();
+    });
+
+    it("handleFixCard with valid hex serialNumber starts recovery", () => {
+      mockSerialNumber = "04A2B3C4D5E6F7";
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onFixCard as Function)();
+      });
+      expect(mockStartCardRecovery).toHaveBeenCalledWith("04a2b3c4d5e6f7");
+    });
+
+    it("handleFixCard with null serialNumber opens fix card panel", () => {
+      mockSerialNumber = null;
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onFixCard as Function)();
+      });
+      expect(mockOpenFixCard).toHaveBeenCalledWith(null);
+    });
+
+    it("handleFixCard with non-hex serialNumber opens fix card panel", () => {
+      mockSerialNumber = "!!!";
+      renderComponent();
+      act(() => {
+        (nfcScanDrawerProps.onFixCard as Function)();
+      });
+      expect(mockOpenFixCard).toHaveBeenCalledWith("!!!");
+    });
   });
 
-  it("renders TopupDrawer (closed by default)", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("TopupDrawer callbacks", () => {
+    it("onOpenChange(false) triggers handleDrawerClose", () => {
+      renderComponent();
+      act(() => {
+        (topupDrawerProps.onOpenChange as Function)(false);
+      });
+      expect(mockReset).toHaveBeenCalled();
     });
-    expect(screen.queryByTestId("topup-drawer")).toBeNull();
+
+    it("onTopup calls handleTopupConfirm", () => {
+      renderComponent();
+      act(() => {
+        (topupDrawerProps.onTopup as Function)(5000);
+      });
+      expect(mockHandleTopupConfirm).toHaveBeenCalledWith(5000);
+    });
+
+    it("onRetry calls retryScan", () => {
+      renderComponent();
+      act(() => {
+        (topupDrawerProps.onRetry as Function)();
+      });
+      expect(mockRetryScan).toHaveBeenCalled();
+    });
   });
 
-  it("does not render fix card panel by default", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("IssueCardDrawer callbacks", () => {
+    it("onOpenChange(false) calls handleIssuanceDrawerClose", () => {
+      renderComponent();
+      act(() => {
+        (issueCardDrawerProps.onOpenChange as Function)(false);
+      });
+      expect(mockHandleIssuanceDrawerClose).toHaveBeenCalled();
     });
-    expect(screen.queryByTestId("fix-card-panel")).toBeNull();
+
+    it("onIssue calls handleIssueCard", () => {
+      renderComponent();
+      act(() => {
+        (issueCardDrawerProps.onIssue as Function)({ name: "Test" });
+      });
+      expect(mockHandleIssueCard).toHaveBeenCalledWith({ name: "Test" });
+    });
   });
 
-  it("does not render sync conflict dialog when no conflict", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("CardOverwriteDrawer callbacks", () => {
+    it("onCancel clears dialog and cleans up issuance", () => {
+      mockOverwriteDialog = {
+        existingCard: { cardId: "c1" },
+        pendingIssue: { name: "Test", userId: "u1" },
+      };
+      renderComponent();
+      act(() => {
+        (overwriteDrawerProps.onCancel as Function)();
+      });
+      expect(mockSetOverwriteDialog).toHaveBeenCalledWith(null);
+      expect(mockCleanupIssuanceSession).toHaveBeenCalled();
+      expect(mockCloseIssueCardDrawer).toHaveBeenCalled();
     });
-    expect(screen.queryByTestId("sync-conflict-dialog")).toBeNull();
+
+    it("onConfirm calls handleForceOverwriteConfirm", async () => {
+      mockOverwriteDialog = {
+        existingCard: { cardId: "c1" },
+        pendingIssue: { name: "Test", userId: "u1" },
+      };
+      mockHandleForceOverwriteConfirm.mockResolvedValue(undefined);
+      renderComponent();
+      await act(async () => {
+        await (overwriteDrawerProps.onConfirm as Function)();
+      });
+      expect(mockSetOverwriteDialog).toHaveBeenCalledWith(null);
+      expect(mockHandleForceOverwriteConfirm).toHaveBeenCalled();
+    });
   });
 
-  it("does not render card overwrite drawer by default", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("CardNotBlankDrawer callbacks", () => {
+    it("onCancel clears dialog and cleans up issuance", () => {
+      mockNotBlankDialog = { cardSerial: "aabb", pendingIssue: { name: "Test", userId: "u1" } };
+      renderComponent();
+      act(() => {
+        (notBlankDrawerProps.onCancel as Function)();
+      });
+      expect(mockSetNotBlankDialog).toHaveBeenCalledWith(null);
+      expect(mockCleanupIssuanceSession).toHaveBeenCalled();
+      expect(mockCloseIssueCardDrawer).toHaveBeenCalled();
     });
-    expect(screen.queryByTestId("card-overwrite-drawer")).toBeNull();
+
+    it("onConfirm calls handleForceOverwriteConfirm", async () => {
+      mockNotBlankDialog = { cardSerial: "aabb", pendingIssue: { name: "Test", userId: "u1" } };
+      mockHandleForceOverwriteConfirm.mockResolvedValue(undefined);
+      renderComponent();
+      await act(async () => {
+        await (notBlankDrawerProps.onConfirm as Function)();
+      });
+      expect(mockSetNotBlankDialog).toHaveBeenCalledWith(null);
+      expect(mockHandleForceOverwriteConfirm).toHaveBeenCalled();
+    });
   });
 
-  it("does not render card not blank drawer by default", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+  describe("SyncConflictDialog callbacks", () => {
+    it("onDismiss calls resetSync", () => {
+      mockSyncStatus = "conflict";
+      mockConflict = { type: "slug_only", existingSlug: "test", existingTenantName: "Test" };
+      renderComponent();
+      act(() => {
+        (syncConflictDialogProps.onDismiss as Function)();
+      });
+      expect(mockResetSync).toHaveBeenCalled();
     });
-    expect(screen.queryByTestId("card-not-blank-drawer")).toBeNull();
-  });
-});
 
-describe("CardSection - issue new card flow", () => {
-  it("opens IssueCardDrawer when Issue New clicked", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
+    it("onRetryWithChanges calls retryWithChanges", () => {
+      mockSyncStatus = "conflict";
+      mockConflict = { type: "slug_only", existingSlug: "test", existingTenantName: "Test" };
+      renderComponent();
+      act(() => {
+        (syncConflictDialogProps.onRetryWithChanges as Function)("new-slug", "new-admin");
+      });
+      expect(mockRetryWithChanges).toHaveBeenCalledWith("new-slug", "new-admin");
     });
-    await act(async () => {
-      screen.getByTestId("issue-new-btn").click();
-    });
-    expect(screen.getByTestId("issue-card-drawer")).toBeDefined();
-    expect(screen.getByTestId("issue-card-drawer").getAttribute("data-phase")).toBe("form");
-  });
-
-  it("closes IssueCardDrawer when close is called", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("issue-new-btn").click();
-    });
-    expect(screen.getByTestId("issue-card-drawer")).toBeDefined();
-    await act(async () => {
-      screen.getByTestId("issue-close-btn").click();
-    });
-    expect(screen.queryByTestId("issue-card-drawer")).toBeNull();
-  });
-});
-
-describe("CardSection - topup flow", () => {
-  it("opens TopupDrawer and triggers scan when topup clicked", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("topup-btn").click();
-    });
-    expect(screen.getByTestId("topup-drawer")).toBeDefined();
-    expect(mockScan).toHaveBeenCalled();
-  });
-
-  it("closes TopupDrawer when close is called", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("topup-btn").click();
-    });
-    expect(screen.getByTestId("topup-drawer")).toBeDefined();
-    await act(async () => {
-      screen.getByTestId("topup-close-btn").click();
-    });
-    expect(screen.queryByTestId("topup-drawer")).toBeNull();
-  });
-});
-
-describe("CardSection - delete card", () => {
-  it("calls delete mutation when delete clicked", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("delete-btn").click();
-    });
-    // Mutation was called (we verify it doesn't crash)
-    expect(screen.getByTestId("station-cards-panel")).toBeDefined();
-  });
-});
-
-describe("CardSection - update card status", () => {
-  it("calls updateCardStatus mutation when status button clicked", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    expect(screen.getByTestId("station-cards-panel")).toBeDefined();
-  });
-});
-
-describe("CardSection - fix card panel", () => {
-  it("shows fix card panel when handleFixCard is called with no serial", async () => {
-    mockNfcState = {
-      phase: "error",
-      payload: null,
-      serialNumber: null,
-      error: "Error",
-      tamperDetected: false,
-      warning: null,
-    };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    // Call onFixCard from the NFC drawer
-    await act(async () => {
-      mockNfcDrawerOnFixCard?.();
-    });
-    expect(screen.getByTestId("fix-card-panel")).toBeDefined();
-  });
-
-  it("hides fix card panel and shows cards panel when back clicked", async () => {
-    mockNfcState = {
-      phase: "error",
-      payload: null,
-      serialNumber: null,
-      error: "Error",
-      tamperDetected: false,
-      warning: null,
-    };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      mockNfcDrawerOnFixCard?.();
-    });
-    expect(screen.getByTestId("fix-card-panel")).toBeDefined();
-    await act(async () => {
-      screen.getByTestId("back-btn").click();
-    });
-    expect(screen.queryByTestId("fix-card-panel")).toBeNull();
-    expect(screen.getByTestId("station-cards-panel")).toBeDefined();
-  });
-});
-
-describe("CardSection - sync conflict dialog", () => {
-  it("renders sync conflict dialog when conflict exists", async () => {
-    mockSyncStatus = "conflict";
-    mockConflict = { type: "slug", slug: "test-slug" };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    expect(screen.getByTestId("sync-conflict-dialog")).toBeDefined();
-  });
-
-  it("calls resetSync when dismiss clicked", async () => {
-    mockSyncStatus = "conflict";
-    mockConflict = { type: "slug", slug: "test-slug" };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("dismiss-conflict").click();
-    });
-    expect(mockResetSync).toHaveBeenCalled();
-  });
-
-  it("calls retryWithChanges when retry clicked", async () => {
-    mockSyncStatus = "conflict";
-    mockConflict = { type: "slug", slug: "test-slug" };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    await act(async () => {
-      screen.getByTestId("retry-conflict").click();
-    });
-    expect(mockRetryWithChanges).toHaveBeenCalledWith("new-slug", "new-admin");
-  });
-});
-
-describe("CardSection - auto-close on success", () => {
-  it("auto-closes drawer after success phase", async () => {
-    const payload = {
-      wallet: { balance: 50000, counter: 5n },
-      identity: { name: "Test" },
-      header: { cardId: new Uint8Array(6) },
-      trailer: { keyVersion: 1 },
-    };
-    mockNfcState = {
-      phase: "success",
-      payload,
-      serialNumber: "abc123",
-      error: null,
-      tamperDetected: false,
-      warning: null,
-    };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    // Advance timer to trigger auto-close
-    await act(async () => {
-      vi.advanceTimersByTime(2600);
-    });
-    expect(mockReset).toHaveBeenCalled();
-  });
-});
-
-describe("CardSection - cards count", () => {
-  it("passes empty cards array to panel", async () => {
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    expect(screen.getByTestId("cards-count").textContent).toBe("0");
-  });
-
-  it("passes cards from query to panel", async () => {
-    mockUseQueryFn = ({ queryKey }: any) => ({
-      data:
-        queryKey[0] === "station-cards"
-          ? [{ cardId: "c1", userId: "u1", balance: 100, status: "active" }]
-          : [],
-      isLoading: false,
-      error: null,
-    });
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    expect(screen.getByTestId("cards-count").textContent).toBe("1");
-  });
-});
-
-describe("CardSection - NFC drawer close during scanning", () => {
-  it("calls cancel when drawer closed during scanning phase", async () => {
-    mockNfcState = {
-      phase: "scanning",
-      payload: null,
-      serialNumber: null,
-      error: null,
-      tamperDetected: false,
-      warning: null,
-    };
-    await act(async () => {
-      render(createElement(CardSection, defaultProps));
-    });
-    // Close it
-    await act(async () => {
-      mockNfcDrawerOnClose?.();
-    });
-    expect(mockCancel).toHaveBeenCalled();
   });
 });

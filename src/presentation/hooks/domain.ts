@@ -11,6 +11,8 @@ export {
   validateCheckoutBalance,
   validateTopup,
   MAX_TOPUP_AMOUNT,
+  MIN_TOPUP_AMOUNT,
+  MIN_ISSUANCE_BALANCE,
   MAX_BALANCE,
   PARKING_RATE_PER_HOUR,
 } from "#/core/state-machine/engine";

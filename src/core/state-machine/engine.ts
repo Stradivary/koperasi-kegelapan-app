@@ -117,6 +117,8 @@ export const MIN_BALANCE_AFTER_CHECKOUT = 0;
 export const MIN_BALANCE_BEFORE_CHECKIN = 10_000;
 export const MAX_BALANCE = 16_000_000;
 export const MAX_TOPUP_AMOUNT = 2_000_000;
+export const MIN_TOPUP_AMOUNT = 2_000;
+export const MIN_ISSUANCE_BALANCE = 2_000;
 
 /**
  * Calculate the checkout fee for a given payload and timestamp.
@@ -236,8 +238,11 @@ export function validateTopup(
   payload: CardPayload,
   amount: number,
 ): { valid: boolean; reason?: string } {
-  if (amount <= 0) {
-    return { valid: false, reason: "Nominal top-up harus lebih dari 0" };
+  if (amount < MIN_TOPUP_AMOUNT) {
+    return {
+      valid: false,
+      reason: `Nominal top-up minimal ${MIN_TOPUP_AMOUNT.toLocaleString("id-ID")}`,
+    };
   }
   if (amount > MAX_TOPUP_AMOUNT) {
     return {
