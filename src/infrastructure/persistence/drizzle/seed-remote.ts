@@ -1,6 +1,6 @@
-﻿import { execSync } from "child_process";
-import { writeFileSync, unlinkSync } from "fs";
-import { join } from "path";
+﻿import { execSync } from "node:child_process";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
 import { hashPassword, generateId } from "#/core/auth/authRules";
 
 // Check for environment flags

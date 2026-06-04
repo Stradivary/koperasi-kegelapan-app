@@ -14,7 +14,14 @@ async function seed() {
   // Determine which config to use
   const configPath = isRemoteStage ? "wrangler.api.staging.jsonc" : "wrangler.api.jsonc";
 
-  const environment = isRemoteStage ? "staging" : isRemote ? "production" : "local";
+  let environment: string;
+  if (isRemoteStage) {
+    environment = "staging";
+  } else if (isRemote) {
+    environment = "production";
+  } else {
+    environment = "local";
+  }
 
   console.log(`🌱 Seeding ${environment} D1 database...`);
 
@@ -108,7 +115,7 @@ async function seed() {
   await dispose();
 }
 
-seed().catch((e) => {
+await seed().catch((e) => {
   console.error(e);
   process.exit(1);
 });

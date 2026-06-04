@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
@@ -270,16 +270,20 @@ export function useCardIssuance({
     [issueCard, cleanupIssuanceSession],
   );
 
-  const issueCardDrawerPhase: "form" | "scanning" | "writing" | "done" | "error" =
-    issuancePhase === "idle"
-      ? "form"
-      : issuancePhase === "scanning"
-        ? "scanning"
-        : issuancePhase === "writing"
-          ? "writing"
-          : issuancePhase === "done"
-            ? "done"
-            : "error";
+  const issueCardDrawerPhase = useMemo((): "form" | "scanning" | "writing" | "done" | "error" => {
+    switch (issuancePhase) {
+      case "idle":
+        return "form";
+      case "scanning":
+        return "scanning";
+      case "writing":
+        return "writing";
+      case "done":
+        return "done";
+      default:
+        return "error";
+    }
+  }, [issuancePhase]);
 
   return {
     issuancePhase,

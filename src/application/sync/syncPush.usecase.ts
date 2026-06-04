@@ -394,6 +394,39 @@ async function processSingleBatch(
 }
 
 /**
+ * Process all batches for a push cycle and return aggregate results.
+ */
+async function processAllBatches(
+  batches: TransactionLog[][],
+  tenantId: string,
+  initialFailedCount: number,
+): Promise<SyncPushResult> {
+  let totalAccepted = 0;
+  let totalRejected = 0;
+  let pullNeeded = false;
+  let conflictCount = 0;
+  let failedCount = initialFailedCount;
+
+  for (const batch of batches) {
+    // Check device block before each batch
+    if (isDeviceBlocked()) {
+      throw new DeviceBlockedError("Device is blocked - sync push aborted");
+    }
+
+    const batchResult = await processSingleBatch(batch, tenantId);
+    if (batchResult === null) continue;
+
+    totalAccepted += batchResult.accepted;
+    totalRejected += batchResult.rejected;
+    if (batchResult.pullNeeded) pullNeeded = true;
+    conflictCount += batchResult.conflictCount;
+    failedCount += batchResult.failedCount;
+  }
+
+  return { totalAccepted, totalRejected, pullNeeded, conflictCount, failedCount };
+}
+
+/**
  * Execute the full sync push cycle for a tenant.
  *
  * 1. Gets pending entries from transactionLogService.getSyncableEntries(tenantId)
@@ -427,7 +460,6 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
 
   // Step 1: Get pending entries
   const pendingEntries = await getSyncableEntries(tenantId);
-
   if (pendingEntries.length === 0) {
     return {
       totalAccepted: 0,
@@ -440,52 +472,18 @@ export async function syncPush(tenantId: string): Promise<SyncPushResult> {
 
   // Step 2: Validate entries - isolate corrupt ones before push
   const { valid: validEntries, corrupt: corruptEntries } = partitionEntries(pendingEntries);
-
-  let failedCount = await markCorruptEntriesFailed(corruptEntries);
+  const failedCount = await markCorruptEntriesFailed(corruptEntries);
 
   // If no valid entries remain after filtering, return early
   if (validEntries.length === 0) {
-    return {
-      totalAccepted: 0,
-      totalRejected: 0,
-      pullNeeded: false,
-      conflictCount: 0,
-      failedCount,
-    };
+    return { totalAccepted: 0, totalRejected: 0, pullNeeded: false, conflictCount: 0, failedCount };
   }
 
   // Step 3: Batch valid entries into groups of max 500
   const batches = batchEntries(validEntries, MAX_BATCH_SIZE);
 
-  let totalAccepted = 0;
-  let totalRejected = 0;
-  let pullNeeded = false;
-  let conflictCount = 0;
-
   // Step 4: Send each batch
-  for (const batch of batches) {
-    // Check device block before each batch
-    if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked - sync push aborted");
-    }
-
-    const batchResult = await processSingleBatch(batch, tenantId);
-    if (batchResult === null) continue;
-
-    totalAccepted += batchResult.accepted;
-    totalRejected += batchResult.rejected;
-    if (batchResult.pullNeeded) pullNeeded = true;
-    conflictCount += batchResult.conflictCount;
-    failedCount += batchResult.failedCount;
-  }
-
-  return {
-    totalAccepted,
-    totalRejected,
-    pullNeeded,
-    conflictCount,
-    failedCount,
-  };
+  return processAllBatches(batches, tenantId, failedCount);
 }
 
 // ── Error classes ──────────────────────────────────────────────────────

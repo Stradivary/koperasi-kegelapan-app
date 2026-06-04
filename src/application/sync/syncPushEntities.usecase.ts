@@ -280,31 +280,15 @@ async function pushEntitiesWithRetry(
     }
 
     try {
-      const body = JSON.stringify(payload);
-      console.log(
-        `[SyncPushEntities] Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}, payload size=${body.length} bytes`,
-      );
-
-      const response = await apiFetch(
-        url,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body,
-        },
-        tenantId,
-      );
-
-      console.log(`[SyncPushEntities] Response: ${response.status} ${response.statusText}`);
-
-      if (response.ok) {
-        return await handlePushSuccess(response);
+      const result = await attemptEntityPush(url, payload, tenantId, attempt);
+      if (result === undefined) continue; // 429 handled, retry immediately
+      if (result instanceof Error) {
+        lastError = result;
+      } else {
+        return result;
       }
-
-      lastError = await handlePushNonOkResponse(response, url, attempt);
     } catch (error: unknown) {
       if (error instanceof DeviceBlockedError) throw error;
-      // If it's our own thrown error from 4xx, re-throw immediately
       if (error instanceof Error && error.message.startsWith("HTTP 4")) throw error;
 
       const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -323,6 +307,42 @@ async function pushEntitiesWithRetry(
 
   const errorMsg = buildPushErrorMessage(lastError);
   throw new Error(`Entity push failed after ${MAX_RETRY_ATTEMPTS} attempts: ${errorMsg}`);
+}
+
+/**
+ * Attempt a single entity push request. Returns:
+ * - EntityPushResponse on success (2xx)
+ * - undefined on 429 (already waited, signal retry)
+ * - Error on 5xx (retryable)
+ * Throws on 4xx (non-retryable).
+ */
+async function attemptEntityPush(
+  url: string,
+  payload: EntityPushPayload,
+  tenantId: string,
+  attempt: number,
+): Promise<EntityPushResponse | Error | undefined> {
+  const body = JSON.stringify(payload);
+  console.log(
+    `[SyncPushEntities] Attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}, payload size=${body.length} bytes`,
+  );
+
+  const response = await apiFetch(
+    url,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body },
+    tenantId,
+  );
+
+  console.log(`[SyncPushEntities] Response: ${response.status} ${response.statusText}`);
+
+  if (response.ok) {
+    return handlePushSuccess(response);
+  }
+
+  const err = await handlePushNonOkResponse(response, url, attempt);
+  // If it was a 429, handlePushNonOkResponse already slept; signal retry
+  if (response.status === 429) return undefined;
+  return err;
 }
 
 // ── Batch push helpers ─────────────────────────────────────────────────
@@ -420,20 +440,7 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
     getPendingCards(tenantId),
   ]);
 
-  console.log(
-    `[SyncPushEntities] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}, pendingCards=${pendingCards.length}`,
-  );
-
-  // Log sample data for debugging
-  if (pendingMembers.length > 0) {
-    console.log(`[SyncPushEntities] Sample member:`, JSON.stringify(pendingMembers[0]));
-  }
-  if (pendingCards.length > 0) {
-    console.log(`[SyncPushEntities] Sample card:`, JSON.stringify(pendingCards[0]));
-  }
-  console.log(
-    `[SyncPushEntities] API_BASE_URL="${API_BASE_URL}", full URL="${API_BASE_URL}/api/sync/push-entities"`,
-  );
+  logPendingEntities(tenantId, pendingMembers, pendingCards);
 
   // Nothing to push
   if (pendingMembers.length === 0 && pendingCards.length === 0) {
@@ -443,7 +450,6 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
   try {
     return await _pushEntitiesInternal(tenantId, pendingMembers, pendingCards);
   } catch (err) {
-    // Enrich error with pending entity counts for better diagnostics
     const baseMsg = err instanceof Error ? err.message : String(err);
     const enriched = new Error(
       `pendingMembers=${pendingMembers.length}, pendingCards=${pendingCards.length} | ${baseMsg}`,
@@ -451,6 +457,22 @@ export async function syncPushEntities(tenantId: string): Promise<EntityPushResu
     enriched.name = "SyncPushEntitiesError";
     throw enriched;
   }
+}
+
+/** Log debug information about pending entities. */
+function logPendingEntities(tenantId: string, pendingMembers: User[], pendingCards: Card[]): void {
+  console.log(
+    `[SyncPushEntities] tenantId=${tenantId}, pendingMembers=${pendingMembers.length}, pendingCards=${pendingCards.length}`,
+  );
+  if (pendingMembers.length > 0) {
+    console.log(`[SyncPushEntities] Sample member:`, JSON.stringify(pendingMembers[0]));
+  }
+  if (pendingCards.length > 0) {
+    console.log(`[SyncPushEntities] Sample card:`, JSON.stringify(pendingCards[0]));
+  }
+  console.log(
+    `[SyncPushEntities] API_BASE_URL="${API_BASE_URL}", full URL="${API_BASE_URL}/api/sync/push-entities"`,
+  );
 }
 
 export interface MemberPushResult {

@@ -288,6 +288,38 @@ function mapTransactionToLocal(tx: TransactionPullEntry): TransactionLog {
 // ── Single Pull Request with Retry ─────────────────────────────────────
 
 /**
+ * Process a single pull HTTP response.
+ * Returns the parsed response on 2xx, throws on 401/4xx, returns null on 429/5xx (retryable).
+ */
+async function processPullHttpResponse(response: Response): Promise<SyncPullResponse | null> {
+  // 2xx: success
+  if (response.ok) {
+    return (await response.json()) as SyncPullResponse;
+  }
+
+  // 401: abort and signal re-auth
+  if (response.status === 401) {
+    throw new SyncPullAuthError();
+  }
+
+  // 429: rate limited - respect Retry-After header
+  if (response.status === 429) {
+    const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
+    const pauseMs = Math.min(retryAfter * 1000, 120_000);
+    await sleep(pauseMs);
+    return null; // signal: retry
+  }
+
+  // 4xx (non-401, non-429): not retryable
+  if (response.status >= 400 && response.status < 500) {
+    throw new SyncPullError(`Sync pull failed with client error: ${response.status}`);
+  }
+
+  // 5xx: retryable server error
+  return null;
+}
+
+/**
  * Execute a single pull request with retry logic.
  * Throws SyncPullAuthError on 401, DeviceBlockedError if blocked.
  */
@@ -307,30 +339,13 @@ async function pullWithRetry(
       const url = buildPullUrl(tenantId, cursors);
       const response = await apiFetch(url, { method: "GET" }, tenantId);
 
-      // 2xx: success
-      if (response.ok) {
-        return (await response.json()) as SyncPullResponse;
-      }
+      const result = await processPullHttpResponse(response);
+      if (result !== null) return result;
 
-      // 401: abort and signal re-auth
-      if (response.status === 401) {
-        throw new SyncPullAuthError();
-      }
-
-      // 429: rate limited - respect Retry-After header
+      // null means retryable (429 already slept - just continue; 5xx sets lastError)
       if (response.status === 429) {
-        const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "5", 10);
-        const pauseMs = Math.min(retryAfter * 1000, 120_000);
-        await sleep(pauseMs);
         continue;
       }
-
-      // 4xx (non-401, non-429): not retryable
-      if (response.status >= 400 && response.status < 500) {
-        throw new SyncPullError(`Sync pull failed with client error: ${response.status}`);
-      }
-
-      // 5xx: retryable server error
       lastError = new Error(`Server error: ${response.status}`);
     } catch (error: unknown) {
       if (!isRetryableError(error)) {
@@ -349,7 +364,6 @@ async function pullWithRetry(
   throw new SyncPullError(`Sync pull failed after ${MAX_PULL_RETRY_ATTEMPTS} attempts`, lastError);
 }
 
-/**
 /**
  * Merge pulled members into the users table, skipping locally pending members.
  * Returns the count of records merged.
@@ -473,6 +487,46 @@ async function mergePullResponse(
 // ── Main Pull Logic ────────────────────────────────────────────────────
 
 /**
+ * Execute one page of the pull loop: fetch, merge, update cursors.
+ * Returns updated cursors and merge counts.
+ */
+async function pullOnePage(
+  tenantId: string,
+  runningCursors: { members: string; cards: string; transactions: string },
+): Promise<{
+  membersMerged: number;
+  cardsMerged: number;
+  txMerged: number;
+  cursors: { members: string; cards: string; transactions: string };
+  hasMore: boolean;
+}> {
+  // Check device block before each page request
+  if (isDeviceBlocked()) {
+    throw new DeviceBlockedError("Device is blocked - sync pull aborted");
+  }
+
+  const response = await pullWithRetry(tenantId, runningCursors);
+  const pendingKeys = await getPendingOutboxKeys(tenantId);
+
+  const { membersMerged, cardsMerged, txMerged } = await mergePullResponse(
+    tenantId,
+    response,
+    pendingKeys,
+  );
+
+  const updatedCursors = {
+    members: response.members.cursor,
+    cards: response.cards.cursor,
+    transactions: response.transactions.cursor,
+  };
+
+  const hasMore =
+    response.members.hasMore || response.cards.hasMore || response.transactions.hasMore;
+
+  return { membersMerged, cardsMerged, txMerged, cursors: updatedCursors, hasMore };
+}
+
+/**
  * Execute the full sync pull cycle for a tenant.
  *
  * 1. Reads current sync cursors from IndexedDB syncCursors table
@@ -495,57 +549,25 @@ export async function syncPull(tenantId: string): Promise<SyncPullResult> {
   // Skip if no auth token - means this is a local-only tenant not registered on server
   const token = getAccessToken();
   if (!token) {
-    return {
-      membersPulled: 0,
-      cardsPulled: 0,
-      transactionsPulled: 0,
-      authRequired: false,
-    };
+    return { membersPulled: 0, cardsPulled: 0, transactionsPulled: 0, authRequired: false };
   }
 
   // Step 1: Read current sync cursors
-  const cursors = await getSyncCursors(tenantId);
+  let runningCursors = await getSyncCursors(tenantId);
 
-  // Track running cursors for pagination
-  const runningCursors = { ...cursors };
-
-  // Accumulate all pulled data across pages
   let totalMembersPulled = 0;
   let totalCardsPulled = 0;
   let totalTransactionsPulled = 0;
 
   // Step 2 & 3: Paginate until all entity types are complete
   let hasMore = true;
-
   while (hasMore) {
-    // Check device block before each page request
-    if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked - sync pull aborted");
-    }
-
-    // Fetch one page
-    const response = await pullWithRetry(tenantId, runningCursors);
-
-    // Step 4: Merge server data into IndexedDB
-    // Get pending outbox keys to skip during merge
-    const pendingKeys = await getPendingOutboxKeys(tenantId);
-
-    const { membersMerged, cardsMerged, txMerged } = await mergePullResponse(
-      tenantId,
-      response,
-      pendingKeys,
-    );
-    totalMembersPulled += membersMerged;
-    totalCardsPulled += cardsMerged;
-    totalTransactionsPulled += txMerged;
-
-    // Update running cursors from response
-    runningCursors.members = response.members.cursor;
-    runningCursors.cards = response.cards.cursor;
-    runningCursors.transactions = response.transactions.cursor;
-
-    // Check if any entity type still has more data
-    hasMore = response.members.hasMore || response.cards.hasMore || response.transactions.hasMore;
+    const page = await pullOnePage(tenantId, runningCursors);
+    totalMembersPulled += page.membersMerged;
+    totalCardsPulled += page.cardsMerged;
+    totalTransactionsPulled += page.txMerged;
+    runningCursors = page.cursors;
+    hasMore = page.hasMore;
   }
 
   // Step 5: Update local sync cursors on success
