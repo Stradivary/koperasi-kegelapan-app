@@ -246,7 +246,7 @@ describe("validateTopup", () => {
   it("rejects amount of 0", () => {
     const r = validateTopup(makePayload(), 0);
     expect(r.valid).toBe(false);
-    expect(r.reason).toContain("lebih dari 0");
+    expect(r.reason).toContain("minimal");
   });
 
   it("rejects negative amount", () => {

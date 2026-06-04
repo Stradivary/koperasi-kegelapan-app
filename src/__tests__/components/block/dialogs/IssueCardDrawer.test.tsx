@@ -104,7 +104,7 @@ describe("IssueCardDrawer", () => {
     render(<IssueCardDrawer {...defaultProps} />);
     expect(screen.getByText("Cetak Kartu Baru")).toBeDefined();
     expect(screen.getByPlaceholderText("Nama lengkap pemegang kartu")).toBeDefined();
-    expect(screen.getByPlaceholderText("0")).toBeDefined();
+    expect(screen.getByPlaceholderText("Min. 2.000")).toBeDefined();
   });
 
   it("renders member select with active members", () => {
@@ -135,7 +135,7 @@ describe("IssueCardDrawer", () => {
     fireEvent.change(nameInput, { target: { value: "Test User" } });
 
     // Fill in amount
-    const amountInput = screen.getByPlaceholderText("0");
+    const amountInput = screen.getByPlaceholderText("Min. 2.000");
     fireEvent.change(amountInput, { target: { value: "50000" } });
 
     // Submit - find the button that contains "Cetak" and "Daftarkan"
@@ -216,7 +216,7 @@ describe("IssueCardDrawer", () => {
     render(<IssueCardDrawer {...defaultProps} />);
     const btn50k = screen.getByText("50k");
     fireEvent.click(btn50k);
-    const amountInput = screen.getByPlaceholderText("0") as HTMLInputElement;
+    const amountInput = screen.getByPlaceholderText("Min. 2.000") as HTMLInputElement;
     expect(amountInput.value).toBe("50000");
   });
 });
