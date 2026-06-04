@@ -292,6 +292,38 @@ async function processPushHttpResponse(response: Response): Promise<SyncPushResp
 }
 
 /**
+ * Attempt a single push request. Returns:
+ * - SyncPushResponse on success (2xx)
+ * - "retry" if the request should be retried (429 already waited)
+ * - Error on 5xx (retryable, stored as lastError)
+ * Throws on non-retryable errors (4xx except 429, DeviceBlockedError).
+ */
+async function attemptBatchPush(
+  payload: PushBatchPayload,
+  tenantId: string,
+): Promise<SyncPushResponse | "retry" | Error> {
+  if (isDeviceBlocked()) {
+    throw new DeviceBlockedError("Device is blocked - sync push aborted");
+  }
+
+  const response = await apiFetch(
+    `${API_BASE_URL}/api/sync/push`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    tenantId,
+  );
+
+  const result = await processPushHttpResponse(response);
+  if (result !== null) return result;
+
+  // null means retryable: 429 already slept, 5xx needs backoff
+  return response.status === 429 ? "retry" : new Error(`Server error: ${response.status}`);
+}
+
+/**
  * Send a single batch to the server with retry logic.
  * Returns the server response or throws after max retries.
  * Throws NonRetryableServerError for 4xx responses (except 429).
@@ -303,40 +335,20 @@ async function pushBatchWithRetry(
   let lastError: unknown;
 
   for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-    // Check device block before each request
-    if (isDeviceBlocked()) {
-      throw new DeviceBlockedError("Device is blocked - sync push aborted");
-    }
-
     try {
-      const response = await apiFetch(
-        `${API_BASE_URL}/api/sync/push`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-        tenantId,
-      );
-
-      const result = await processPushHttpResponse(response);
-      if (result !== null) return result;
-
-      // null means retryable (429 already slept - just continue; 5xx sets lastError)
-      if (response.status === 429) {
-        continue;
+      const outcome = await attemptBatchPush(payload, tenantId);
+      if (outcome === "retry") continue;
+      if (outcome instanceof Error) {
+        lastError = outcome;
+      } else {
+        return outcome;
       }
-      lastError = new Error(`Server error: ${response.status}`);
     } catch (error: unknown) {
-      // Re-throw non-retryable errors immediately
       if (error instanceof NonRetryableServerError) throw error;
-      if (!isRetryableError(error)) {
-        throw error;
-      }
+      if (!isRetryableError(error)) throw error;
       lastError = error;
     }
 
-    // Wait with exponential backoff before retrying
     if (attempt < MAX_RETRY_ATTEMPTS - 1) {
       const backoff = calculateBackoff(attempt);
       await sleep(backoff);

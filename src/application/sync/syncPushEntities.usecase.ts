@@ -263,6 +263,29 @@ function buildPushErrorMessage(lastError: unknown): string {
   return String(lastError);
 }
 
+/**
+ * Determine if a caught error should be immediately rethrown (non-retryable).
+ */
+function isNonRetryableEntityError(error: unknown): boolean {
+  if (error instanceof DeviceBlockedError) return true;
+  if (error instanceof Error && error.message.startsWith("HTTP 4")) return true;
+  return false;
+}
+
+/**
+ * Handle a caught error in the retry loop. Logs the error and returns it as lastError.
+ * Throws immediately for non-retryable errors.
+ */
+function handleEntityPushError(error: unknown, attempt: number): unknown {
+  if (isNonRetryableEntityError(error)) throw error;
+
+  const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  console.error(
+    `[SyncPushEntities] ✗ Network/fetch error (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}): ${errMsg}`,
+  );
+  return error;
+}
+
 async function pushEntitiesWithRetry(
   payload: EntityPushPayload,
   tenantId: string,
@@ -288,14 +311,7 @@ async function pushEntitiesWithRetry(
         return result;
       }
     } catch (error: unknown) {
-      if (error instanceof DeviceBlockedError) throw error;
-      if (error instanceof Error && error.message.startsWith("HTTP 4")) throw error;
-
-      const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      console.error(
-        `[SyncPushEntities] ✗ Network/fetch error (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}): ${errMsg}`,
-      );
-      lastError = error;
+      lastError = handleEntityPushError(error, attempt);
     }
 
     if (attempt < MAX_RETRY_ATTEMPTS - 1) {
