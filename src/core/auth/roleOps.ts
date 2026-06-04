@@ -12,8 +12,6 @@ export function roleToOps(role: string): string[] {
       return ["read", "checkin"];
     case "scout":
       return ["read"];
-    case "kiosk":
-      return ["read", "debit"];
     case "station":
       return ["read", "credit", "checkin", "checkout", "admin"];
     case "admin":

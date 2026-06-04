@@ -61,7 +61,6 @@ const ROLE_STYLES: Record<string, { className: string }> = {
   scout: {
     className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
-  kiosk: { className: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400" },
 };
 
 function formatDate(dateStr: string): string {

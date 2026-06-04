@@ -15,8 +15,8 @@ describe("roleToOps", () => {
     expect(roleToOps("scout")).toEqual(["read"]);
   });
 
-  it("returns read+debit for kiosk", () => {
-    expect(roleToOps("kiosk")).toEqual(["read", "debit"]);
+  it("returns read only for kiosk (removed role, falls to default)", () => {
+    expect(roleToOps("kiosk")).toEqual(["read"]);
   });
 
   it("returns full ops for station", () => {

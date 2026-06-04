@@ -438,7 +438,6 @@ describe("useLoginFlow - redirectToRole", () => {
     ["station", "/tenant/t-1/station"],
     ["terminal", "/tenant/t-1/terminal"],
     ["gate", "/tenant/t-1/gate"],
-    ["kiosk", "/tenant/t-1/kiosk"],
     ["scout", "/tenant/t-1/scout"],
     ["superadmin", "/superadmin"],
   ];

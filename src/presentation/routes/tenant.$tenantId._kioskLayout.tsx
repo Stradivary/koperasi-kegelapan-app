@@ -5,7 +5,7 @@ import { KioskLayout } from "#/presentation/components/layout/KioskLayout";
 import { useReconciliation } from "#/presentation/hooks/useReconciliation";
 import { TenantRoutePending, useTenantContext } from "#/presentation/hooks/useTenantContext";
 
-type KioskView = "terminal" | "kiosk" | "scout" | "gate";
+type KioskView = "terminal" | "scout" | "gate";
 
 export const Route = createFileRoute("/tenant/$tenantId/_kioskLayout")({
   component: KioskLayoutRoute,
@@ -16,7 +16,6 @@ function KioskLayoutRoute() {
   const { tenantContext, loading } = useTenantContext(tenantId, [
     "admin",
     "gate",
-    "kiosk",
     "scout",
     "terminal",
   ]);
@@ -63,14 +62,14 @@ function getKioskView(pathname: string): KioskView {
   if (pathname.endsWith("/terminal")) return "terminal";
   if (pathname.endsWith("/scout")) return "scout";
   if (pathname.endsWith("/gate")) return "gate";
-  return "kiosk";
+  return "scout";
 }
 
 function getKioskTitle(view: KioskView): string {
   if (view === "terminal") return "Terminal";
   if (view === "scout") return "Cek Saldo";
   if (view === "gate") return "Gerbang Masuk";
-  return "Mesin Kasir";
+  return "Cek Saldo";
 }
 
 function getKioskSubtitle(view: KioskView): string | undefined {

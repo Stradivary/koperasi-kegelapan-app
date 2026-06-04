@@ -10,7 +10,6 @@ function getRoleRoute(tenantId: string, role: string): string {
   const roleRoutes: Record<string, string> = {
     admin: `/tenant/${tenantId}/admin`,
     gate: `/tenant/${tenantId}/gate`,
-    kiosk: `/tenant/${tenantId}/kiosk`,
     scout: `/tenant/${tenantId}/scout`,
     station: `/tenant/${tenantId}/station`,
     terminal: `/tenant/${tenantId}/terminal`,

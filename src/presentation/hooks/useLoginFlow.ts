@@ -33,7 +33,6 @@ const NO_AUTH_ROLES = ["gate", "terminal", "scout"] as const;
 const ROLE_ROUTES: Record<string, string> = {
   terminal: "/tenant/:tenantId/terminal",
   gate: "/tenant/:tenantId/gate",
-  kiosk: "/tenant/:tenantId/kiosk",
   scout: "/tenant/:tenantId/scout",
   station: "/tenant/:tenantId/station",
   admin: "/tenant/:tenantId/admin",

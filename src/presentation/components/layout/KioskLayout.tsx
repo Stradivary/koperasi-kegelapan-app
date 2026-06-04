@@ -12,7 +12,7 @@ interface KioskLayoutProps {
   subtitle?: string;
   tenantName: string;
   tenantId: string;
-  currentMode: "terminal" | "kiosk" | "scout" | "gate" | "station";
+  currentMode: "terminal" | "scout" | "gate" | "station";
   canAccessStation?: boolean;
   /** The stored device role - used to restrict mode switching for dedicated devices */
   deviceRole?: string;
@@ -57,7 +57,7 @@ export function KioskLayout({
   // Determine which mode options to show based on role:
   // - admin/station: all 4 (terminal, scout, gate, admin)
   // - scout: only scout (no switching to gate/terminal)
-  // - gate/terminal/kiosk (non-admin): terminal, scout, gate (3 options)
+  // - gate/terminal (non-admin): terminal, scout, gate (3 options)
   let modeOptions: (typeof MODE_OPTIONS)[number][];
   if (canAccessStation) {
     modeOptions = [...MODE_OPTIONS];
@@ -81,7 +81,7 @@ export function KioskLayout({
   }
 
   const handleSwitchMode = useCallback(
-    async (mode: "terminal" | "kiosk" | "scout" | "gate" | "admin") => {
+    async (mode: "terminal" | "scout" | "gate" | "admin") => {
       const tenantContextStore = await getTenantContextStore();
       const ctx = await tenantContextStore.get(tenantId);
       if (ctx) {

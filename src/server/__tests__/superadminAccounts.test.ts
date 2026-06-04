@@ -243,7 +243,7 @@ describe("createAccount", () => {
   });
 
   it("accepts all valid roles", async () => {
-    const validRoles = ["admin", "station", "gate", "terminal", "scout", "superadmin", "kiosk"];
+    const validRoles = ["admin", "station", "gate", "terminal", "scout", "superadmin"];
     for (const role of validRoles) {
       setupInsertChain();
       const result = await createAccount({

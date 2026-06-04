@@ -103,11 +103,10 @@
 
 ## 7. Roles & Akses
 
-- Sistem memiliki 7 role: `admin`, `station`, `gate`, `terminal`, `scout`, `superadmin`, `kiosk`
+- Sistem memiliki 6 role: `admin`, `station`, `gate`, `terminal`, `scout`, `superadmin`
 - **Gate**: Checkin otomatis - validasi kartu, cek saldo minimum, apply checkin
 - **Terminal**: Checkout otomatis - hitung fee parkir, deduct saldo, apply checkout
 - **Scout**: Read-only - inspeksi kartu, lihat saldo dan log transaksi, tidak bisa write
-- **Kiosk**: Debit/pembelian - pilih nominal, deduct saldo, juga bisa register kartu baru
 - **Station/Admin**: Full management - issue kartu, topup, block/unblock, reset state, recovery
 - **Superadmin**: Cross-tenant management
 - Setiap role mendapat session grant dengan `allowedOps` yang berbeda - engine menolak operasi di luar grant

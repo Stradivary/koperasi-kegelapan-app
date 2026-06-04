@@ -246,7 +246,7 @@ describe("DevicesSection - actions", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/tenant/t1/terminal" });
   });
 
-  it("navigates to kiosk route for kiosk role", async () => {
+  it("does not navigate for removed kiosk role (no route mapped)", async () => {
     mockTenantContextStoreGetAll.mockResolvedValue([
       { tenantId: "t1", tenantName: "A", tenantSlug: "a", role: "kiosk", updatedAt: Date.now() },
     ]);
@@ -255,7 +255,7 @@ describe("DevicesSection - actions", () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     await userEvent.click(screen.getByText("Buka"));
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/tenant/t1/kiosk" });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("navigates to scout route for scout role", async () => {

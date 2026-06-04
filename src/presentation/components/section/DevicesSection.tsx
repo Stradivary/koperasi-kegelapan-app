@@ -28,7 +28,6 @@ const ROLE_LABELS: Record<string, string> = {
   station: "Stasiun",
   gate: "Gerbang",
   terminal: "Terminal",
-  kiosk: "Kiosk",
   scout: "Buku Saku",
 };
 
@@ -37,7 +36,6 @@ const ROLE_ROUTES: Record<string, string> = {
   station: "station",
   gate: "gate",
   terminal: "terminal",
-  kiosk: "kiosk",
   scout: "scout",
 };
 

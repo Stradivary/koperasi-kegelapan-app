@@ -130,7 +130,7 @@ export async function listAccounts(params: {
 
 // ─── Create Account ──────────────────────────────────────────────────────────
 
-const VALID_ROLES = ["admin", "station", "gate", "terminal", "scout", "superadmin", "kiosk"];
+const VALID_ROLES = ["admin", "station", "gate", "terminal", "scout", "superadmin"];
 
 export async function createAccount(body: unknown): Promise<CreateAccountResult> {
   if (!body || typeof body !== "object") {

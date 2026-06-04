@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseTenantContext = vi.fn();
 const mockUseReconciliation = vi.fn();
-let mockPathname = "/tenant/t-1/kiosk";
+let mockPathname = "/tenant/t-1/terminal";
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => () => ({
@@ -84,20 +84,20 @@ import { TenantRoutePending } from "#/presentation/hooks/useTenantContext";
 import { OfflineIndicator } from "#/presentation/components/block/OfflineIndicator";
 
 // Extract helper functions for direct testing
-type KioskView = "terminal" | "kiosk" | "scout" | "gate";
+type KioskView = "terminal" | "scout" | "gate";
 
 function getKioskView(pathname: string): KioskView {
   if (pathname.endsWith("/terminal")) return "terminal";
   if (pathname.endsWith("/scout")) return "scout";
   if (pathname.endsWith("/gate")) return "gate";
-  return "kiosk";
+  return "terminal";
 }
 
 function getKioskTitle(view: KioskView): string {
   if (view === "terminal") return "Terminal";
   if (view === "scout") return "Cek Saldo";
   if (view === "gate") return "Gerbang Masuk";
-  return "Mesin Kasir";
+  return "Terminal";
 }
 
 function getKioskSubtitle(view: KioskView): string | undefined {
@@ -111,7 +111,6 @@ function KioskLayoutRoute() {
   const { tenantContext, loading } = mockUseTenantContext(tenantId, [
     "admin",
     "gate",
-    "kiosk",
     "scout",
     "terminal",
   ]);
@@ -162,10 +161,9 @@ describe("getKioskView", () => {
     expect(getKioskView("/tenant/t-1/gate")).toBe("gate");
   });
 
-  it("returns 'kiosk' as default for any other pathname", () => {
-    expect(getKioskView("/tenant/t-1/kiosk")).toBe("kiosk");
-    expect(getKioskView("/tenant/t-1/")).toBe("kiosk");
-    expect(getKioskView("/tenant/t-1/unknown")).toBe("kiosk");
+  it("returns 'terminal' as default for any other pathname", () => {
+    expect(getKioskView("/tenant/t-1/")).toBe("terminal");
+    expect(getKioskView("/tenant/t-1/unknown")).toBe("terminal");
   });
 });
 
@@ -182,8 +180,8 @@ describe("getKioskTitle", () => {
     expect(getKioskTitle("gate")).toBe("Gerbang Masuk");
   });
 
-  it("returns 'Mesin Kasir' for kiosk view", () => {
-    expect(getKioskTitle("kiosk")).toBe("Mesin Kasir");
+  it("returns 'Terminal' for default view", () => {
+    expect(getKioskTitle("terminal")).toBe("Terminal");
   });
 });
 
@@ -196,10 +194,6 @@ describe("getKioskSubtitle", () => {
     expect(getKioskSubtitle("terminal")).toBeUndefined();
   });
 
-  it("returns undefined for kiosk view", () => {
-    expect(getKioskSubtitle("kiosk")).toBeUndefined();
-  });
-
   it("returns undefined for scout view", () => {
     expect(getKioskSubtitle("scout")).toBeUndefined();
   });
@@ -208,7 +202,7 @@ describe("getKioskSubtitle", () => {
 describe("KioskLayoutRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPathname = "/tenant/t-1/kiosk";
+    mockPathname = "/tenant/t-1/terminal";
     mockUseReconciliation.mockReturnValue({
       status: "idle",
       pendingCount: 0,
@@ -229,11 +223,11 @@ describe("KioskLayoutRoute", () => {
     expect(screen.getByTestId("tenant-route-pending")).toBeDefined();
   });
 
-  it("renders KioskLayout with correct title for kiosk mode", () => {
+  it("renders KioskLayout with correct title for terminal mode", () => {
     mockUseTenantContext.mockReturnValue({
       tenantContext: {
         tenantName: "Test Tenant",
-        role: "kiosk",
+        role: "terminal",
         accountId: "a-1",
         deviceId: "d-1",
         terminalId: 1,
@@ -242,11 +236,11 @@ describe("KioskLayoutRoute", () => {
     });
     render(<KioskLayoutRoute />);
     const layout = screen.getByTestId("kiosk-layout");
-    expect(layout.getAttribute("data-title")).toBe("Mesin Kasir");
-    expect(layout.getAttribute("data-current-mode")).toBe("kiosk");
+    expect(layout.getAttribute("data-title")).toBe("Terminal");
+    expect(layout.getAttribute("data-current-mode")).toBe("terminal");
   });
 
-  it("renders KioskLayout with correct title for terminal mode", () => {
+  it("renders KioskLayout with correct title for explicit terminal mode", () => {
     mockPathname = "/tenant/t-1/terminal";
     mockUseTenantContext.mockReturnValue({
       tenantContext: {
@@ -286,7 +280,7 @@ describe("KioskLayoutRoute", () => {
     mockUseTenantContext.mockReturnValue({
       tenantContext: {
         tenantName: "Test Tenant",
-        role: "kiosk",
+        role: "terminal",
         accountId: "a-1",
         deviceId: "d-1",
         terminalId: 1,

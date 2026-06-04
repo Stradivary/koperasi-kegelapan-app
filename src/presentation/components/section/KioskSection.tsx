@@ -1,4 +1,8 @@
-﻿import { useNfcCard } from "#/presentation/hooks/nfc/useNfcCard";
+﻿/**
+ * DELETEME: Kiosk feature removed from requirements. This component is unused.
+ * Keeping temporarily for reference during cleanup.
+ */
+import { useNfcCard } from "#/presentation/hooks/nfc/useNfcCard";
 import { useSessionGrant } from "#/presentation/hooks/useSessionGrant";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
 import { CardStatusBadge } from "../block/CardStatusBadge";
