@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 import {
   RefreshCw,

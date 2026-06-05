@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { checkLocalBlockedStatus } from "#/core/nfc/localStatusCheck";
 import { cardRepo, userRepo } from "#/infrastructure/persistence/dexie/repositories";
 import type { NfcCardPhase } from "./nfc/useNfcCard";
@@ -31,23 +31,31 @@ const INITIAL_STATE: BlockedCheckResult = {
 /**
  * Encapsulates the async local-DB blocked status check with proper race condition handling.
  *
- * - Runs `checkLocalBlockedStatus` when phase transitions to "ready" and serialNumber is non-null
- * - Discards stale results if phase/serialNumber changes during in-flight check
+ * - Runs `checkLocalBlockedStatus` when phase transitions to "ready" and payload is available
+ * - Uses payload.header.cardId (hex) as the lookup key to match local DB storage
+ * - Discards stale results if phase/payload changes during in-flight check
  * - Resets all state when phase transitions to "idle"
  * - On IndexedDB read error, treats as not blocked with notInLocalDb: true
  */
 export function useBlockedCheck(options: UseBlockedCheckOptions): BlockedCheckResult {
-  const { tenantId, serialNumber, phase, payload: _payload } = options;
+  const { tenantId, serialNumber: _serialNumber, phase, payload } = options;
   const [state, setState] = useState<BlockedCheckResult>(INITIAL_STATE);
 
-  // Track the current phase and serialNumber at invocation time to detect stale results
-  const invocationRef = useRef<{ phase: NfcCardPhase; serialNumber: string | null }>({
+  // Derive the cardId hex from payload header (matches local DB key format)
+  const cardIdHex = payload
+    ? Array.from(payload.header.cardId)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+    : null;
+
+  // Track the current phase and cardIdHex at invocation time to detect stale results
+  const invocationRef = useRef<{ phase: NfcCardPhase; cardIdHex: string | null }>({
     phase: "idle",
-    serialNumber: null,
+    cardIdHex: null,
   });
 
   // Keep invocationRef in sync with current props
-  invocationRef.current = { phase, serialNumber };
+  invocationRef.current = { phase, cardIdHex };
 
   useEffect(() => {
     // Reset all state when phase transitions to "idle"
@@ -56,22 +64,22 @@ export function useBlockedCheck(options: UseBlockedCheckOptions): BlockedCheckRe
       return;
     }
 
-    // Only run the check when phase is "ready" and serialNumber is available
-    if (phase !== "ready" || !serialNumber) {
+    // Only run the check when phase is "ready" and cardIdHex is available
+    if (phase !== "ready" || !cardIdHex) {
       return;
     }
 
-    // Capture the phase/serialNumber at the time we start the check
+    // Capture the phase/cardIdHex at the time we start the check
     const capturedPhase = phase;
-    const capturedSerial = serialNumber;
+    const capturedCardId = cardIdHex;
 
     setState((s) => ({ ...s, isChecking: true, isReady: false }));
 
-    checkLocalBlockedStatus(tenantId, serialNumber, { cardRepo, userRepo })
+    checkLocalBlockedStatus(tenantId, cardIdHex, { cardRepo, userRepo })
       .then((result) => {
-        // Discard stale results if phase or serialNumber changed during the async check
+        // Discard stale results if phase or cardIdHex changed during the async check
         const current = invocationRef.current;
-        if (current.phase !== capturedPhase || current.serialNumber !== capturedSerial) {
+        if (current.phase !== capturedPhase || current.cardIdHex !== capturedCardId) {
           return;
         }
 
@@ -96,7 +104,7 @@ export function useBlockedCheck(options: UseBlockedCheckOptions): BlockedCheckRe
       .catch(() => {
         // On IndexedDB read error, treat as not blocked with notInLocalDb: true
         const current = invocationRef.current;
-        if (current.phase !== capturedPhase || current.serialNumber !== capturedSerial) {
+        if (current.phase !== capturedPhase || current.cardIdHex !== capturedCardId) {
           return;
         }
 
@@ -108,7 +116,7 @@ export function useBlockedCheck(options: UseBlockedCheckOptions): BlockedCheckRe
           isReady: true,
         });
       });
-  }, [phase, serialNumber, tenantId]);
+  }, [phase, cardIdHex, tenantId]);
 
   return state;
 }

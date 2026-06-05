@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 /**
  * Tests for src/lib/getOrCreateDeviceId.tsx
  * Covers: getDeviceFingerprint (cache, compute), getOrCreateDeviceId (create, reuse)

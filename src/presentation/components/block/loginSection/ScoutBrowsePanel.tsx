@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, BookOpen, Search, WifiOff } from "lucide-react";
+import { ArrowLeft, BookOpen, Search, WifiOff } from "lucide-react";
 import type { TenantSearchResult } from "#/presentation/hooks/useServerTenantSearch";
 import type { LocalTenantConfig } from "#/presentation/hooks/types";
 import { AuthLayout } from "../../layout/AuthLayout";

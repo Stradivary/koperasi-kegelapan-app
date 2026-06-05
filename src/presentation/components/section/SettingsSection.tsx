@@ -1,4 +1,4 @@
-﻿import {
+import {
   CheckCircle2,
   ChevronDown,
   Circle,
@@ -22,6 +22,7 @@ import { API_BASE_URL, apiFetch, getAccessToken } from "#/presentation/hooks/use
 import type { LocalTenantConfig, TenantContext } from "#/presentation/hooks/types";
 import { getIndexedDb } from "#/presentation/hooks/useIndexedDbStores";
 import { SyncConflictDialog } from "../block/dialogs/SyncConflictDialog";
+import { useSyncLogDrawer } from "../block/SyncLogDrawer";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -344,6 +345,12 @@ export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
     ? new Date(displayedLastSyncedAt).toLocaleString("id-ID")
     : "-";
 
+  const { triggerProps: syncLogTrigger, drawerElement: syncLogDrawer } = useSyncLogDrawer({
+    syncStatus: syncEngine?.syncStatus,
+    lastSyncedAt: syncEngine?.lastSyncedAt ?? undefined,
+    pendingCount: syncEngine?.pendingCount,
+  });
+
   return (
     <div className="space-y-4">
       {/* ─── Tenant Profile Viewer ─────────────────────────────────────── */}
@@ -436,7 +443,7 @@ export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
           <CollapsibleContent>
             <CardContent className="p-2 pt-4 space-y-4">
               {/* Connection status */}
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border p-4" {...syncLogTrigger}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {tenantConfig?.mode === "synced" ? (
@@ -661,6 +668,9 @@ export function SettingsSection({ tenantId }: Readonly<SettingsSectionProps>) {
           isRetrying={isSyncingToServer}
         />
       )}
+
+      {/* ─── Sync Log Drawer (easter egg: long-press on sync status) ──── */}
+      {syncLogDrawer}
     </div>
   );
 }

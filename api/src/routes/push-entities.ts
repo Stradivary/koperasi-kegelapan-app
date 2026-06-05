@@ -257,7 +257,12 @@ pushEntitiesRoute.post("/push-entities", async (c) => {
   // 1. Authenticate
   const tokenPayload = extractTokenPayload(c.req.raw);
   if (!tokenPayload) {
-    return c.json({ error: "Authentication required" }, 401);
+    const authHeader = c.req.header("authorization") ?? "";
+    logger.warn("push-entities/401: token extraction failed", {
+      hasHeader: !!c.req.header("authorization"),
+      headerPrefix: authHeader.slice(0, 10) || "(empty)",
+    });
+    return c.json({ error: "Authentication required", reason: "token_extraction_failed" }, 401);
   }
 
   // 2. Parse body

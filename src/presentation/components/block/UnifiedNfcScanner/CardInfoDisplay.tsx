@@ -1,4 +1,4 @@
-﻿import type { CardPayload, CardClassification } from "#/presentation/hooks/types";
+import type { CardPayload, CardClassification } from "#/presentation/hooks/types";
 import { CardStatusBadge } from "../CardStatusBadge";
 
 /**

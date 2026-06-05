@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import type { CardOwnerInfo } from "#/presentation/components/block/dialogs/CardOverwriteDialog";
 
 export interface DrawerStates {

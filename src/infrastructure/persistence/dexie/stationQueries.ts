@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared query helpers for station card and user data.
  * Used by both the React Query queryFn in CardSection and the
  * cache hydration layer in useHydrateCache.

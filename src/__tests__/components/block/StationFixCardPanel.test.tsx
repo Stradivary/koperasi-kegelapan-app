@@ -144,6 +144,9 @@ describe("StationFixCardPanel - form phase", () => {
     // when onFixCard throws (which exercises the catch branch).
     const onFixCardFail = vi.fn().mockRejectedValue(new Error("ID Kartu wajib diisi"));
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc", onFixCard: onFixCardFail })} />);
+    // Select a member (required) on the second render
+    const selects = screen.getAllByLabelText("Anggota");
+    fireEvent.change(selects[1], { target: { value: "u-1" } });
     fireEvent.click(screen.getAllByText("Perbaiki & Tulis Ulang")[1]);
     await waitFor(() => {
       expect(screen.getByText("ID Kartu wajib diisi")).toBeDefined();
@@ -160,6 +163,8 @@ describe("StationFixCardPanel - scanning phase", () => {
       }),
     );
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc123", onFixCard })} />);
+    // Select a member (required)
+    fireEvent.change(screen.getByLabelText("Anggota"), { target: { value: "u-1" } });
     fireEvent.click(screen.getByText("Perbaiki & Tulis Ulang"));
     await waitFor(() => {
       expect(screen.getByText("Tempelkan kartu ke pembaca NFC...")).toBeDefined();
@@ -171,6 +176,8 @@ describe("StationFixCardPanel - scanning phase", () => {
 describe("StationFixCardPanel - success phase", () => {
   it("shows success UI after onFixCard resolves", async () => {
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc123" })} />);
+    // Select a member (required)
+    fireEvent.change(screen.getByLabelText("Anggota"), { target: { value: "u-1" } });
     fireEvent.click(screen.getByText("Perbaiki & Tulis Ulang"));
     await waitFor(() => {
       expect(screen.getByText("Kartu Berhasil Diperbaiki")).toBeDefined();
@@ -180,6 +187,8 @@ describe("StationFixCardPanel - success phase", () => {
   it("calls onBack from success screen", async () => {
     const onBack = vi.fn();
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc123", onBack })} />);
+    // Select a member (required)
+    fireEvent.change(screen.getByLabelText("Anggota"), { target: { value: "u-1" } });
     fireEvent.click(screen.getByText("Perbaiki & Tulis Ulang"));
     await waitFor(() => screen.getByText("Kembali ke Daftar Kartu"));
     fireEvent.click(screen.getByText("Kembali ke Daftar Kartu"));
@@ -191,6 +200,8 @@ describe("StationFixCardPanel - error phase", () => {
   it("shows error UI when onFixCard rejects", async () => {
     const onFixCard = vi.fn().mockRejectedValue(new Error("NFC write failed"));
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc123", onFixCard })} />);
+    // Select a member (required)
+    fireEvent.change(screen.getByLabelText("Anggota"), { target: { value: "u-1" } });
     fireEvent.click(screen.getByText("Perbaiki & Tulis Ulang"));
     await waitFor(() => {
       expect(screen.getByText("Gagal Memperbaiki Kartu")).toBeDefined();
@@ -201,6 +212,8 @@ describe("StationFixCardPanel - error phase", () => {
   it("returns to form when Coba Lagi clicked from error", async () => {
     const onFixCard = vi.fn().mockRejectedValue(new Error("fail"));
     render(<StationFixCardPanel {...defaultProps({ cardId: "abc123", onFixCard })} />);
+    // Select a member (required)
+    fireEvent.change(screen.getByLabelText("Anggota"), { target: { value: "u-1" } });
     fireEvent.click(screen.getByText("Perbaiki & Tulis Ulang"));
     await waitFor(() => screen.getByText("Coba Lagi"));
     fireEvent.click(screen.getByText("Coba Lagi"));

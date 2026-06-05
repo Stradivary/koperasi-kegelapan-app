@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { AdminLayout, type AdminView } from "#/presentation/components/layout/AdminLayout";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
 import { useAdminTenantSync } from "#/presentation/hooks/useAdminTenantSync";

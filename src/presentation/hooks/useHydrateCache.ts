@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useHydrateCache - Populates React Query cache from IndexedDB (Dexie)
  * on login and on every page navigation.
  *

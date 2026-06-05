@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { CardSection } from "#/presentation/components/section/CardSection";
 import { TenantRoutePending, useTenantContext } from "#/presentation/hooks/useTenantContext";
 

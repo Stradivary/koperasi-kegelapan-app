@@ -1,4 +1,4 @@
-﻿// src/hooks/useApi.ts
+// src/hooks/useApi.ts
 export {
   apiFetch,
   API_BASE_URL,

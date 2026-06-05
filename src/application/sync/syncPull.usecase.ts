@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Client-side sync pull logic.
  *
  * Reads current sync cursors from IndexedDB, calls GET /api/sync/pull,

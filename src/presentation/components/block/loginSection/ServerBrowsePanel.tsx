@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, Search, WifiOff } from "lucide-react";
+import { ArrowLeft, Search, WifiOff } from "lucide-react";
 import type { TenantSearchResult } from "#/presentation/hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";

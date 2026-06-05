@@ -1,4 +1,4 @@
-﻿import type { LogEntry } from "#/presentation/hooks/types";
+import type { LogEntry } from "#/presentation/hooks/types";
 import { TxType } from "#/presentation/hooks/types";
 
 interface TransactionListProps {

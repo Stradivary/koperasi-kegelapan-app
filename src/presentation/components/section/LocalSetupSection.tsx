@@ -1,4 +1,4 @@
-﻿import successHumanImg from "#/assets/images/success_human.svg";
+import successHumanImg from "#/assets/images/success_human.svg";
 import { BRAND } from "#/presentation/lib/brand";
 import { useLocalSetup } from "#/presentation/hooks/useLocalSetup";
 import { createSlug } from "#/core/validation/slugValidation";

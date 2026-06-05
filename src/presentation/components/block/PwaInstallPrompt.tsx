@@ -1,4 +1,4 @@
-﻿import { useInstallPrompt } from "#/presentation/hooks/useInstallPrompt";
+import { useInstallPrompt } from "#/presentation/hooks/useInstallPrompt";
 import { Button } from "../ui/button";
 
 export function PwaInstallPrompt() {

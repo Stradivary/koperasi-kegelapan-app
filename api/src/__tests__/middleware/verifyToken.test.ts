@@ -9,10 +9,11 @@ import { Hono } from "hono";
 // Mock the jwt module
 vi.mock("../../lib/jwt", () => ({
   verifyAccessToken: vi.fn(),
+  verifyAccessTokenVerbose: vi.fn(),
 }));
 
 import { verifyToken } from "../../middleware/verifyToken";
-import { verifyAccessToken } from "../../lib/jwt";
+import { verifyAccessToken, verifyAccessTokenVerbose } from "../../lib/jwt";
 
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 
@@ -111,7 +112,10 @@ describe("verifyToken middleware", () => {
   });
 
   it("returns 401 when token verification fails (invalid/expired)", async () => {
-    vi.mocked(verifyAccessToken).mockResolvedValue(null);
+    vi.mocked(verifyAccessTokenVerbose).mockResolvedValue({
+      ok: false,
+      reason: "invalid_signature",
+    });
     const res = await app.request("http://localhost/api/protected", {
       method: "GET",
       headers: { Authorization: "Bearer invalid-token" },
@@ -129,7 +133,7 @@ describe("verifyToken middleware", () => {
       iat: 1000,
       exp: 9999999999,
     };
-    vi.mocked(verifyAccessToken).mockResolvedValue(mockPayload);
+    vi.mocked(verifyAccessTokenVerbose).mockResolvedValue({ ok: true, payload: mockPayload });
     const res = await app.request("http://localhost/api/protected", {
       method: "GET",
       headers: { Authorization: "Bearer valid-token" },
@@ -138,6 +142,6 @@ describe("verifyToken middleware", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.auth).toEqual(mockPayload);
-    expect(verifyAccessToken).toHaveBeenCalledWith("valid-token", "test-key");
+    expect(verifyAccessTokenVerbose).toHaveBeenCalledWith("valid-token", "test-key");
   });
 });

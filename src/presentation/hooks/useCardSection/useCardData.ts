@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { localDb } from "#/presentation/hooks/useLocalDb";
 import { getCardsWithUsers } from "#/presentation/hooks/useStationData";
 import type {

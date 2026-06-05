@@ -1,15 +1,15 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionGrant } from "#/core/payload/types";
 import { API_BASE_URL, apiFetch } from "#/infrastructure/api/apiClient";
 import type { CachedSessionGrant } from "#/infrastructure/persistence/dexie/indexeddb";
 import { getSessionGrantCacheStore } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
-import { issueAndCacheLocalSessionGrant } from "#/infrastructure/persistence/dexie/sessionGrantRepository";
 
 const REFRESH_BUFFER_SECONDS = 300;
 export const OFFLINE_GRACE_PERIOD_SECONDS = 3600;
 
-/** Local master key seed for offline session grant derivation */
-const LOCAL_MASTER_SEED = "koperasi-local-session-key-v1";
+/** Master key for local session grant derivation - must match server's SESSION_MASTER_KEY */
+const LOCAL_MASTER_SEED =
+  import.meta.env.VITE_SESSION_PUBLIC_KEY ?? "koperasi-local-session-key-v1";
 
 /**
  * Generate a session grant locally for offline/local-only tenants.
@@ -23,10 +23,10 @@ async function generateLocalSessionGrant(
 ): Promise<SessionGrant> {
   const enc = new TextEncoder();
 
-  // Derive a master key from the local seed
+  // Derive a master key from the local seed (first 32 bytes, matching server)
   const masterKeyMaterial = await crypto.subtle.importKey(
     "raw",
-    enc.encode(LOCAL_MASTER_SEED),
+    enc.encode(LOCAL_MASTER_SEED).slice(0, 32),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -163,7 +163,8 @@ async function writeGrantToCache(grant: SessionGrant): Promise<void> {
 }
 
 /** Read a session grant from IndexedDB cache. Returns null if not found or expired.
- *  When offline, allows expired grants within the grace period for offline operations. */
+ *  When offline, allows expired grants for offline NFC operations since the session key
+ *  is still valid for decryption even after expiration. */
 async function readGrantFromCache(
   tenantId: string,
   accountId: string,
@@ -177,11 +178,13 @@ async function readGrantFromCache(
     const isOffline = typeof navigator === "undefined" ? false : !navigator.onLine;
 
     if (cached.expiresAt <= nowSeconds) {
-      // Grant is expired - allow it if offline and within grace period
-      if (isOffline && cached.expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS) {
+      // Grant is expired - when offline, always allow the cached grant because
+      // the session key is still needed for card decryption regardless of expiration.
+      // The key doesn't rotate on expiry; it only changes with keyVersion bumps.
+      if (isOffline) {
         return fromCachedGrant(cached);
       }
-      return null; // Expired beyond grace period or online
+      return null; // Online - fetch a fresh one
     }
     return fromCachedGrant(cached);
   } catch {
@@ -238,17 +241,12 @@ async function handleOnlineRefresh(
       setGrant(cachedGrant);
       scheduleRefreshFn(cachedGrant);
     } else {
-      // Last resort: issue a local session grant (for local-only tenants or network issues)
-      try {
-        const localGrant = await issueAndCacheLocalSessionGrant(
-          tenantId,
-          accountId,
-          deviceId,
-          role ?? "terminal",
-        );
+      // No cached server grant - use local as last resort (won't overwrite cache)
+      const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
+      if (localGrant) {
         setGrant(localGrant);
         scheduleRefreshFn(localGrant);
-      } catch {
+      } else {
         setError(String(e));
       }
     }
@@ -260,33 +258,24 @@ async function handleOfflineRefresh(
   tenantId: string,
   accountId: string,
   deviceId: string,
-  role: string | undefined,
+  _role: string | undefined,
   cachedGrant: SessionGrant | null,
   setGrant: (g: SessionGrant) => void,
   setError: (e: string) => void,
 ): Promise<void> {
   if (cachedGrant) {
+    // Use the cached server grant - don't overwrite it with a local one
     setGrant(cachedGrant);
-    // Don't schedule refresh when offline - it would just loop since we can't fetch
   } else {
-    // No cached grant while offline - issue locally so NFC operations can proceed
-    try {
-      const localGrant = await issueAndCacheLocalSessionGrant(
-        tenantId,
-        accountId,
-        deviceId,
-        role ?? "terminal",
-      );
+    // No cached grant at all while offline. Generate a local grant for local-only
+    // tenants but do NOT cache it (to avoid overwriting a future server grant).
+    const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
+    if (localGrant) {
       setGrant(localGrant);
-    } catch {
-      // Offline with no cache - generate locally for local-only tenants
-      const localGrant = await tryLocalGrant(tenantId, accountId, deviceId);
-      if (localGrant) {
-        setGrant(localGrant);
-        writeGrantToCache(localGrant);
-      } else {
-        setError("Offline dan tidak ada sesi tersimpan");
-      }
+    } else {
+      setError(
+        "Offline dan tidak ada sesi tersimpan. Hubungkan ke internet sekali untuk mengaktifkan.",
+      );
     }
   }
 }
@@ -344,10 +333,9 @@ export function useSessionGrant(
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const isOffline = typeof navigator === "undefined" ? false : !navigator.onLine;
-  const isValid =
-    grant !== null &&
-    (nowSeconds < grant.expiresAt ||
-      (isOffline && grant.expiresAt > nowSeconds - OFFLINE_GRACE_PERIOD_SECONDS));
+  // When offline, always treat the grant as valid - the session key is needed
+  // for card decryption and doesn't become invalid on expiry (only on key rotation).
+  const isValid = grant !== null && (nowSeconds < grant.expiresAt || isOffline);
 
   return { grant: isValid ? grant : null, loading, error, refresh };
 }

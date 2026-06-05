@@ -1,4 +1,4 @@
-﻿import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 import { getIndexedDb } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 import { recordTransaction } from "#/infrastructure/persistence/dexie/transactionLogService";
 import { updateLocalCardRecord, updateLocalUserFromCard } from "./updateLocalCardRecord";

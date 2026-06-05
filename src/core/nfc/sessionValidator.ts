@@ -66,7 +66,9 @@ export function validateSession(
 
   // Check 2: Expired session → "SESSION_EXPIRED"
   // Requirement 7.3
-  if (sessionGrant.expiresAt < Date.now()) {
+  // expiresAt is in seconds (unix timestamp), compare with current time in seconds
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (sessionGrant.expiresAt < nowSeconds) {
     return {
       valid: false,
       error: "Sesi telah berakhir",

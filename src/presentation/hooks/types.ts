@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Domain type re-exports for UI consumption.
  *
  * UI components should import domain types from this module

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Sync Conflict Resolution Module.
  *
  * Implements conflict resolution strategies for the bidirectional sync engine:

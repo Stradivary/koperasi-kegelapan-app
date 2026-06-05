@@ -1,4 +1,4 @@
-﻿import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 import { CardStatus } from "#/core/payload/types";
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 
@@ -48,6 +48,10 @@ export async function updateLocalCardRecord(tenantId: string, payload: CardPaylo
     const existing = await localDb.cards.get([tenantId, cardIdHex]);
 
     if (existing) {
+      // Don't overwrite a locally-deleted card — the deletion is intentional
+      // and must be synced to the server before this card can be re-registered.
+      if (existing.status === "deleted") return;
+
       await localDb.cards.update([tenantId, cardIdHex], {
         balance: payload.wallet.balance,
         counter: Number(payload.wallet.counter),

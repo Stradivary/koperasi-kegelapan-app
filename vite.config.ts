@@ -7,6 +7,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
+const isProd = process.env.NODE_ENV === "production";
+const pwaPrefix = isProd ? "" : "[DEV] ";
+
 const config = defineConfig({
   plugins: [
     devtools(),
@@ -26,9 +29,9 @@ const config = defineConfig({
 
       manifest: {
         id: "/",
-        name: "Koperasi Kegelapan (Stradivary)",
-        short_name: "KK Wallet",
-        description: "Dompet NFC Koperasi - Stradivary",
+        name: `${pwaPrefix}Koperasi Kegelapan (Stradivary)`,
+        short_name: `${pwaPrefix}KK Wallet`,
+        description: `${pwaPrefix}Dompet NFC Koperasi - Stradivary`,
 
         start_url: "/",
         display: "standalone",
@@ -70,9 +73,9 @@ const config = defineConfig({
 
         shortcuts: [
           {
-            name: "Scan NFC",
-            short_name: "Scan",
-            url: "/scan?entry=shortcut",
+            name: "Cek Saldo",
+            short_name: "Scout",
+            url: "/?entry=shortcut",
             icons: [
               {
                 src: "logo192.png",
@@ -84,7 +87,7 @@ const config = defineConfig({
           {
             name: "Top Up",
             short_name: "TopUp",
-            url: "/topup?entry=shortcut",
+            url: "/?entry=shortcut",
             icons: [
               {
                 src: "logo192.png",

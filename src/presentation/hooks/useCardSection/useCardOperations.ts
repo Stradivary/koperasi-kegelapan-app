@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
@@ -35,13 +35,6 @@ export function useCardOperations({
   const qc = useQueryClient();
   const syncEngineCtx = useSyncEngineContext();
   const { state, scan, write, reset, cancel, retryScan } = useNfcCard(grant, tenantId, terminalId);
-
-  // Normalize hardware serial number to consistent hex format
-  const normalizeSerial = (sn: string | null): string | null => {
-    if (!sn) return null;
-    const normalized = sn.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
-    return normalized || null;
-  };
 
   const deleteCard = useMutation({
     mutationFn: async ({ card }: { card: StationCardRow }) => {
@@ -125,7 +118,12 @@ export function useCardOperations({
   useEffect(() => {
     if (state.phase !== "ready" || !topupTargetCardId) return;
 
-    const scannedId = normalizeSerial(state.serialNumber);
+    // Derive cardId from the payload's header (same key as used in local DB)
+    const scannedId = state.payload
+      ? Array.from(state.payload.header.cardId)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
+      : null;
 
     // Validate scanned card matches the selected card
     if (topupTargetCardId && scannedId && scannedId !== topupTargetCardId) {
@@ -135,19 +133,17 @@ export function useCardOperations({
       return;
     }
 
-    // Check if card/user is blocked
-    if (state.serialNumber) {
-      checkLocalBlockedStatus(tenantId, state.serialNumber, { cardRepo, userRepo }).then(
-        (statusResult) => {
-          if (statusResult.blocked) {
-            toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
-            onCloseDrawer();
-            setTopupTargetCardId(null);
-          }
-        },
-      );
+    // Check if card/user is blocked using payload-derived cardId (matches local DB key)
+    if (scannedId) {
+      checkLocalBlockedStatus(tenantId, scannedId, { cardRepo, userRepo }).then((statusResult) => {
+        if (statusResult.blocked) {
+          toast.error(statusResult.reason ?? "Kartu diblokir", { duration: 5000 });
+          onCloseDrawer();
+          setTopupTargetCardId(null);
+        }
+      });
     }
-  }, [state.phase, topupTargetCardId, state.serialNumber, tenantId, onCloseDrawer]);
+  }, [state.phase, state.payload, topupTargetCardId, tenantId, onCloseDrawer]);
 
   // Top-up: user confirmed amount in the drawer
   const handleTopupConfirm = useCallback(

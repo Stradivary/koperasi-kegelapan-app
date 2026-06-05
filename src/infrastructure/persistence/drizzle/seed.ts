@@ -1,4 +1,4 @@
-﻿import { config } from "dotenv";
+import { config } from "dotenv";
 import { getPlatformProxy } from "wrangler";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";

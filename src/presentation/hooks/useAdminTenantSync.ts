@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Hook that provides "Sync to Server" functionality for admin layout routes.
  * Returns onSyncToServer callback and isSyncingToServer state only when
  * the tenant is local-only (mode !== "synced").

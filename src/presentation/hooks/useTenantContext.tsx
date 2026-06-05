@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TenantContext } from "#/infrastructure/persistence/dexie/indexeddb";
 import { getTenantContextStore } from "#/infrastructure/persistence/dexie/indexeddb.lazy";

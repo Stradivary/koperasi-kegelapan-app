@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Client-side sync push logic for members and cards.
  *
  * Reads pending User and Card entries from IndexedDB (syncStatus === "pending"),

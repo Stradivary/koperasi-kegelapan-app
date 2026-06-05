@@ -1,4 +1,4 @@
-﻿// src/hooks/useStationData.ts
+// src/hooks/useStationData.ts
 export { getCardsWithUsers, getUserRows } from "#/infrastructure/persistence/dexie/stationQueries";
 export type {
   StationCardRow,

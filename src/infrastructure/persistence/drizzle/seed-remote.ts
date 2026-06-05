@@ -1,4 +1,4 @@
-﻿import { execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { hashPassword, generateId } from "#/core/auth/authRules";

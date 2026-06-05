@@ -1,4 +1,4 @@
-﻿import { WifiHigh, WifiOff } from "lucide-react";
+import { WifiHigh, WifiOff } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useOnlineStatus } from "#/presentation/hooks/useOnlineStatus";

@@ -1,4 +1,4 @@
-﻿// src/hooks/useTransactionLog.ts
+// src/hooks/useTransactionLog.ts
 export {
   getTransactions,
   recordTransaction,

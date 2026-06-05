@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
 import { localDb, type Card } from "#/presentation/hooks/useLocalDb";
@@ -22,18 +22,22 @@ export function useCardSync({
   const qc = useQueryClient();
   const syncEngineCtx = useSyncEngineContext();
 
-  // Normalize hardware serial number to consistent hex format
-  const normalizeSerial = (sn: string | null): string | null => {
-    if (!sn) return null;
-    const normalized = sn.replaceAll(/[^a-fA-F0-9]/g, "").toLowerCase();
-    return normalized || null;
+  // Derive card identifier from the payload's header.cardId (6-byte random ID written during issuance).
+  // This MUST match the key used by updateLocalCardRecord and recordCardWrite.
+  // Previously used normalizeSerial(state.serialNumber) which is the NFC hardware UID (7 bytes)
+  // and differs from the payload-embedded cardId, causing duplicate entries.
+  const getCardIdFromPayload = (payload: NfcCardState["payload"]): string | null => {
+    if (!payload) return null;
+    return Array.from(payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   };
 
   // Auto-close drawer after success and sync local DB
   useEffect(() => {
     if (state.phase === "success" && state.payload) {
       const payload = state.payload;
-      const cardId = normalizeSerial(state.serialNumber);
+      const cardId = getCardIdFromPayload(payload);
       if (!cardId) return;
       localDb.cards.get([tenantId, cardId]).then((existing) => {
         if (existing) {
@@ -61,7 +65,6 @@ export function useCardSync({
   }, [
     state.phase,
     state.payload,
-    state.serialNumber,
     tenantId,
     qc,
     resetCardPending,
@@ -75,7 +78,7 @@ export function useCardSync({
     if (state.phase !== "ready" || !state.payload) return;
 
     const payload = state.payload;
-    const cardId = normalizeSerial(state.serialNumber);
+    const cardId = getCardIdFromPayload(payload);
     if (!cardId) return;
 
     localDb.cards.get([tenantId, cardId]).then((existing) => {
@@ -104,5 +107,5 @@ export function useCardSync({
       }
       qc.invalidateQueries({ queryKey: ["station-cards", tenantId] });
     });
-  }, [state.phase, state.payload, state.serialNumber, tenantId, qc]);
+  }, [state.phase, state.payload, tenantId, qc]);
 }

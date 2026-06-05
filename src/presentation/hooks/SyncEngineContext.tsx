@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SyncEngineContext provides the sync engine's notifyMutation callback
  * to all authenticated tenant views, enabling Outbox writes to trigger
  * the sync debounce timer.

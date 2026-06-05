@@ -1,4 +1,4 @@
-﻿import { Skeleton } from "#/presentation/components/ui/skeleton.tsx";
+import { Skeleton } from "#/presentation/components/ui/skeleton.tsx";
 
 interface DataTableSkeletonProps {
   /** Number of columns to simulate */

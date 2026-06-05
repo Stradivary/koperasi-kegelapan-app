@@ -126,9 +126,23 @@ export async function signAccessToken(options: SignTokenOptions, secret: string)
  * @param secret - The SESSION_MASTER_KEY used for verification
  * @returns Decoded payload or null if invalid/expired
  */
+export type TokenVerifyResult = { ok: true; payload: JwtPayload } | { ok: false; reason: string };
+
 export async function verifyAccessToken(token: string, secret: string): Promise<JwtPayload | null> {
+  const result = await verifyAccessTokenVerbose(token, secret);
+  return result.ok ? result.payload : null;
+}
+
+/**
+ * Verbose version of verifyAccessToken that returns a structured reason on failure.
+ * Use this in middleware to log WHY a token was rejected.
+ */
+export async function verifyAccessTokenVerbose(
+  token: string,
+  secret: string,
+): Promise<TokenVerifyResult> {
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3) return { ok: false, reason: "malformed_structure" };
 
   const [header, body, signature] = parts;
 
@@ -137,24 +151,29 @@ export async function verifyAccessToken(token: string, secret: string): Promise<
   if (signature === "unsigned") {
     try {
       const payload = JSON.parse(base64urlToStr(body));
-      if (!payload.accountId || !payload.tenantId) return null;
+      if (!payload.accountId || !payload.tenantId)
+        return { ok: false, reason: "unsigned_missing_claims" };
       console.warn("[JWT] DEPRECATED: unsigned token accepted during grace period", {
         accountId: payload.accountId,
         tenantId: payload.tenantId,
       });
       // Treat unsigned tokens as having 24h expiry from iat (or no expiry if no iat)
       const now = Math.floor(Date.now() / 1000);
-      if (payload.iat && now - payload.iat > 86400) return null;
+      if (payload.iat && now - payload.iat > 86400)
+        return { ok: false, reason: "unsigned_expired" };
       return {
-        accountId: payload.accountId,
-        tenantId: payload.tenantId,
-        role: payload.role ?? "terminal",
-        deviceId: payload.deviceId,
-        iat: payload.iat ?? now,
-        exp: payload.exp ?? (payload.iat ? payload.iat + 86400 : now + 86400),
+        ok: true,
+        payload: {
+          accountId: payload.accountId,
+          tenantId: payload.tenantId,
+          role: payload.role ?? "terminal",
+          deviceId: payload.deviceId,
+          iat: payload.iat ?? now,
+          exp: payload.exp ?? (payload.iat ? payload.iat + 86400 : now + 86400),
+        },
       };
     } catch {
-      return null;
+      return { ok: false, reason: "unsigned_decode_error" };
     }
   }
   // ── End grace period block ────────────────────────────────────────────────
@@ -163,27 +182,37 @@ export async function verifyAccessToken(token: string, secret: string): Promise<
   const key = await importHmacKey(secret);
   const signingInput = `${header}.${body}`;
   const valid = await verify(signingInput, signature, key);
-  if (!valid) return null;
+  if (!valid) return { ok: false, reason: "invalid_signature" };
 
   // Decode and validate payload
   try {
     const payload = JSON.parse(base64urlToStr(body));
-    if (!payload.accountId || !payload.tenantId || !payload.exp) return null;
+    if (!payload.accountId || !payload.tenantId || !payload.exp) {
+      return { ok: false, reason: "missing_required_claims" };
+    }
 
     // Check expiration
     const now = Math.floor(Date.now() / 1000);
-    if (payload.exp <= now) return null;
+    if (payload.exp <= now) {
+      return {
+        ok: false,
+        reason: `token_expired (exp=${payload.exp}, now=${now}, delta=${now - payload.exp}s)`,
+      };
+    }
 
     return {
-      accountId: payload.accountId,
-      tenantId: payload.tenantId,
-      role: payload.role ?? "terminal",
-      deviceId: payload.deviceId,
-      iat: payload.iat ?? now,
-      exp: payload.exp,
+      ok: true,
+      payload: {
+        accountId: payload.accountId,
+        tenantId: payload.tenantId,
+        role: payload.role ?? "terminal",
+        deviceId: payload.deviceId,
+        iat: payload.iat ?? now,
+        exp: payload.exp,
+      },
     };
   } catch {
-    return null;
+    return { ok: false, reason: "payload_decode_error" };
   }
 }
 

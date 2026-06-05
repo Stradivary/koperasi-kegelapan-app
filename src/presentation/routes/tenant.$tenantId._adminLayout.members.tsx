@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { MemberSection } from "#/presentation/components/section/MemberSection";
 import { TenantRoutePending, useTenantContext } from "#/presentation/hooks/useTenantContext";
 

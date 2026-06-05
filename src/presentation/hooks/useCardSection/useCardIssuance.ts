@@ -1,8 +1,8 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
-import { encodeTenantBind, isNfcSupported, prepareWrite } from "#/presentation/hooks/domain";
+import { encodeTenantBind, isNfcSupported } from "#/presentation/hooks/domain";
 import {
   CARD_SCHEMA_VERSION,
   CardState,
@@ -136,12 +136,9 @@ export function useCardIssuance({
         },
       };
 
-      const { bytes } = await prepareWrite(payload, payload, grant);
-
       // If forceOverwrite with a prepared session, write immediately
       if (forceOverwrite && issuancePreparedRef.current) {
         const done = await handleForceOverwrite({
-          bytes,
           issuancePreparedRef,
           issuanceReaderRef,
           issuanceAbortRef,
@@ -151,7 +148,6 @@ export function useCardIssuance({
           balance,
           expiresAt,
           name,
-          grant,
           qc,
         });
         if (done) {
@@ -163,7 +159,6 @@ export function useCardIssuance({
 
       // Fresh NFC session - open drawer and scan
       await handleFreshNfcSession({
-        bytes,
         payload,
         issuanceAbortRef,
         issuanceReaderRef,

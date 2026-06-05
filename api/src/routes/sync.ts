@@ -140,11 +140,9 @@ async function processTransaction(
       .where(and(eq(cards.tenantId, tenantId), eq(cards.cardId, cardIdBlob)))
       .get();
 
-    if (cardRecord && tx.counter <= cardRecord.counter) {
-      return { accepted: false, reason: "stale_counter" };
-    }
+    const isStale = cardRecord && tx.counter <= cardRecord.counter;
 
-    // Insert into transaction_log
+    // Insert into transaction_log (even if stale — for audit completeness)
     await db.insert(transactionLog).values({
       tenantId,
       cardId: tx.cardId,
@@ -158,21 +156,23 @@ async function processTransaction(
       terminalId: tx.terminalId ?? null,
       deviceId: tx.deviceId ?? auth.deviceId ?? null,
       idempotencyKey: tx.idempotencyKey,
-      flagged: 0,
+      flagged: isStale ? 1 : 0,
       createdAt: now,
     });
 
-    // Update card balance/counter if this transaction has a higher counter
-    await db.run(sql`
-      UPDATE cards
-      SET balance = ${tx.balanceAfter},
-          counter = ${tx.counter},
-          last_activity_at = ${tx.timestamp},
-          updated_at = ${now}
-      WHERE tenant_id = ${tenantId}
-        AND card_id = ${cardIdBlob}
-        AND counter < ${tx.counter}
-    `);
+    // Only update card balance/counter if this transaction has a higher counter
+    if (!isStale) {
+      await db.run(sql`
+        UPDATE cards
+        SET balance = ${tx.balanceAfter},
+            counter = ${tx.counter},
+            last_activity_at = ${tx.timestamp},
+            updated_at = ${now}
+        WHERE tenant_id = ${tenantId}
+          AND card_id = ${cardIdBlob}
+          AND counter < ${tx.counter}
+      `);
+    }
 
     return { accepted: true };
   } catch (e: unknown) {
@@ -190,7 +190,11 @@ syncRoutes.post("/push", async (c) => {
   // 1. Authenticate: extract tenant_id from JWT token
   const auth = c.get("auth");
   if (!auth) {
-    return c.json({ error: "Authentication required" }, 401);
+    logger.warn("sync/push/401: auth context missing after middleware", {
+      path: c.req.path,
+      method: c.req.method,
+    });
+    return c.json({ error: "Authentication required", reason: "auth_context_missing" }, 401);
   }
 
   // 2. Parse request body
@@ -347,7 +351,11 @@ syncRoutes.get("/pull", async (c) => {
   // 1. Authenticate: extract tenant_id from JWT token
   const auth = c.get("auth");
   if (!auth) {
-    return c.json({ error: "Authentication required" }, 401);
+    logger.warn("sync/pull/401: auth context missing after middleware", {
+      path: c.req.path,
+      method: c.req.method,
+    });
+    return c.json({ error: "Authentication required", reason: "auth_context_missing" }, 401);
   }
 
   // 2. Validate tenant isolation: token tenant_id must match query param tenantId
@@ -532,7 +540,11 @@ syncRoutes.get("/pull", async (c) => {
 syncRoutes.get("/devices", async (c) => {
   const auth = c.get("auth");
   if (!auth) {
-    return c.json({ error: "Authentication required" }, 401);
+    logger.warn("sync/devices/401: auth context missing after middleware", {
+      path: c.req.path,
+      method: c.req.method,
+    });
+    return c.json({ error: "Authentication required", reason: "auth_context_missing" }, 401);
   }
 
   const { tenantId } = auth;

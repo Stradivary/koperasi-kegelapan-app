@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DELETEME: Kiosk feature removed from requirements. This component is unused.
  * Keeping temporarily for reference during cleanup.
  */

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UnifiedNfcScanner - Main NFC scanning component.
  *
  * Consolidates multiple NFC implementations into a single, flexible component

@@ -1,4 +1,4 @@
-﻿import type { CardPayload } from "#/core/payload/types";
+import type { CardPayload } from "#/core/payload/types";
 import type { WriteJournal } from "#/infrastructure/persistence/dexie/indexeddb";
 import { getWriteJournalStore } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 

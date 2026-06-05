@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Sync Engine orchestrator hook.
  *
  * Manages bidirectional sync lifecycle with debouncing, queuing,

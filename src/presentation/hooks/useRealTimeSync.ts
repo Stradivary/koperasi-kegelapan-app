@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useRealTimeSync - manages the RealTimeSyncManager lifecycle within
  * the authenticated tenant layout.
  *

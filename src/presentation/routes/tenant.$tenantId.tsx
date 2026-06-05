@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SyncEngineProvider, useSyncEngineContext } from "#/presentation/hooks/SyncEngineContext";
 import { useHydrateCache } from "#/presentation/hooks/useHydrateCache";
