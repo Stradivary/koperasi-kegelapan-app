@@ -120,61 +120,136 @@ async function buildAccessToken(
 }
 
 authRoutes.post("/token", async (c) => {
-  const json = await c.req.json().catch(() => null);
+  // ── Step 1: Parse request body ───────────────────────────────────────────
+  const parsedBody = c.get("parsedBody" as never) as Record<string, unknown> | undefined;
+  const json = parsedBody ?? (await c.req.json().catch(() => null));
+
+  console.log("[auth/token] Step 1 - Body parsing:", {
+    hadParsedBody: !!parsedBody,
+    jsonIsNull: json === null,
+    hasUsername: !!json?.username,
+    hasPassword: !!json?.password,
+    hasTenantSlug: !!json?.tenantSlug,
+    tenantSlug: json?.tenantSlug ?? "(empty)",
+    username: json?.username ?? "(empty)",
+  });
+
   if (!json?.username || !json?.password) {
     return c.json({ error: "username and password required" }, 400);
   }
 
   const db = drizzle(c.env.DB);
 
-  // If tenantSlug is provided, scope the account lookup to that tenant
+  // ── Step 2: Tenant lookup ────────────────────────────────────────────────
   let account;
+  let tenant;
   if (json.tenantSlug) {
-    const tenant = await db.select().from(tenants).where(eq(tenants.slug, json.tenantSlug)).get();
+    tenant = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, json.tenantSlug as string))
+      .get();
+
+    console.log("[auth/token] Step 2 - Tenant lookup:", {
+      slug: json.tenantSlug,
+      found: !!tenant,
+      tenantId: tenant?.tenantId ?? "N/A",
+      tenantStatus: tenant?.status ?? "N/A",
+    });
 
     if (!tenant) {
       return c.json({ error: "Tenant not found" }, 404);
     }
 
+    // ── Step 3: Account lookup (scoped to tenant) ────────────────────────
     account = await db
       .select()
       .from(accounts)
       .where(
         and(
-          eq(accounts.username, json.username),
+          eq(accounts.username, json.username as string),
           eq(accounts.status, "active"),
           eq(accounts.tenantId, tenant.tenantId),
         ),
       )
       .get();
+
+    console.log("[auth/token] Step 3 - Account lookup (tenant-scoped):", {
+      username: json.username,
+      tenantId: tenant.tenantId,
+      found: !!account,
+      accountId: account?.accountId ?? "N/A",
+      role: account?.role ?? "N/A",
+      status: account?.status ?? "N/A",
+      hashPrefix: account?.passwordHash?.substring(0, 15) ?? "N/A",
+    });
   } else {
-    // No tenantSlug: only superadmin accounts are allowed to log in without
-    // a tenant scope. Regular accounts must always provide a tenantSlug.
-    account = await db
+    // No tenantSlug: search by username across all tenants.
+    // If multiple accounts share the same username (different tenants),
+    // prefer superadmin, otherwise return the first active match.
+    const allMatches = await db
       .select()
       .from(accounts)
-      .where(
-        and(
-          eq(accounts.username, json.username),
-          eq(accounts.status, "active"),
-          eq(accounts.role, "superadmin"),
-        ),
-      )
-      .get();
+      .where(and(eq(accounts.username, json.username as string), eq(accounts.status, "active")))
+      .all();
+
+    // Prefer superadmin if present, otherwise take the first match
+    account = allMatches.find((a) => a.role === "superadmin") ?? allMatches[0] ?? undefined;
+
+    console.log("[auth/token] Step 3 - Account lookup (no slug):", {
+      username: json.username,
+      matchCount: allMatches.length,
+      found: !!account,
+      accountId: account?.accountId ?? "N/A",
+      role: account?.role ?? "N/A",
+    });
   }
 
-  const isPasswordValid = account
-    ? await verifyPassword(json.password, account.passwordHash)
-    : false;
+  // ── Step 4: Password verification ─────────────────────────────────────
+  let isPasswordValid = false;
+  let passwordError: string | null = null;
+  if (account) {
+    try {
+      isPasswordValid = await verifyPassword(json.password as string, account.passwordHash);
+    } catch (e) {
+      passwordError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  console.log("[auth/token] Step 4 - Password verification:", {
+    accountExists: !!account,
+    isPasswordValid,
+    passwordError,
+    hashFormat: account?.passwordHash?.startsWith("pbkdf2$")
+      ? "A (pbkdf2$salt$hash)"
+      : account?.passwordHash?.includes(":")
+        ? "B (iter:salt:hash)"
+        : "unknown",
+    hashLength: account?.passwordHash?.length ?? 0,
+  });
+
   if (!account || !isPasswordValid) {
-    return c.json({ error: "Invalid credentials" }, 401);
+    const debugInfo = {
+      step: !account ? "account_not_found" : "password_mismatch",
+      username: json.username,
+      tenantSlug: json.tenantSlug ?? "(none)",
+      accountFound: !!account,
+      accountStatus: account?.status ?? "N/A",
+      passwordError,
+      hashFormat: account?.passwordHash?.startsWith("pbkdf2$")
+        ? "A"
+        : account?.passwordHash?.includes(":")
+          ? "B"
+          : "unknown",
+      hashLength: account?.passwordHash?.length ?? 0,
+      hashPrefix: account?.passwordHash?.substring(0, 20) ?? "N/A",
+    };
+    return c.json({ error: "Invalid credentials", debug: debugInfo }, 401);
   }
 
-  const tenant = await db
-    .select()
-    .from(tenants)
-    .where(eq(tenants.tenantId, account.tenantId))
-    .get();
+  if (!tenant) {
+    tenant = await db.select().from(tenants).where(eq(tenants.tenantId, account.tenantId)).get();
+  }
 
   // Superadmin accounts bypass the tenant active check — they must always be
   // able to log in regardless of their tenant's status (e.g. to reactivate it).

@@ -1,4 +1,4 @@
-﻿import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import type { SyncConflict } from "#/presentation/hooks/useTenantSync";
 import { validateSlugFormat } from "#/core/validation/slugValidation";

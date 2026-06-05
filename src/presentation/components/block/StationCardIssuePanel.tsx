@@ -84,7 +84,9 @@ export function StationCardIssuePanel({
               aria-label="Anggota"
               className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">- Tanpa anggota -</option>
+              <option value="" disabled>
+                - Pilih anggota -
+              </option>
               {activeMembers.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.name} (#{m.userId})
@@ -135,7 +137,7 @@ export function StationCardIssuePanel({
           <div className="flex gap-2">
             <Button
               onClick={handleIssue}
-              disabled={!issueName.trim() || isIssuing}
+              disabled={!issueUserId || !issueName.trim() || isIssuing}
               className="flex-1"
             >
               Cetak &amp; Daftarkan

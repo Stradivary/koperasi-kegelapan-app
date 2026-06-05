@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { getReconciliationOutbox } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 

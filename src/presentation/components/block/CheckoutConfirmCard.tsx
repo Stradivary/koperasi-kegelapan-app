@@ -1,4 +1,4 @@
-﻿import type { CardPayload } from "#/presentation/hooks/types";
+import type { CardPayload } from "#/presentation/hooks/types";
 import { CardStatusBadge } from "./CardStatusBadge";
 import { Button } from "../ui/button";
 import { formatTime, formatDuration } from "#/presentation/lib/formatters";

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "#/infrastructure/api/apiClient";
 export interface TenantSearchResult {
   tenantId: string;

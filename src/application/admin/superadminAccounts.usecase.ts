@@ -1,4 +1,4 @@
-﻿import { getDb } from "#/infrastructure/persistence/drizzle";
+import { getDb } from "#/infrastructure/persistence/drizzle";
 import { accounts, tenants } from "#/infrastructure/persistence/drizzle/schema";
 import { eq, sql, like, or, desc, count } from "drizzle-orm";
 import { hashPassword, generateId } from "#/core/auth/authRules";

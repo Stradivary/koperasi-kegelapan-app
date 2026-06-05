@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { getIndexedDb } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 import {
   localLoginWithReason,
@@ -13,7 +13,6 @@ import {
   restoreAuthState,
   getAccessToken,
 } from "#/infrastructure/api/apiClient";
-import { issueAndCacheLocalSessionGrant } from "#/infrastructure/persistence/dexie/sessionGrantRepository";
 import type { TenantSearchResult } from "#/presentation/hooks/useServerTenantSearch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -140,6 +139,11 @@ async function tryServerLogin(
     if (res.status === 404) {
       throw new Error("tenant_not_found");
     }
+    // If 401 and no tenantSlug was provided, the server only searches superadmin
+    // accounts. Hint the user to provide their koperasi slug.
+    if (res.status === 401 && !effectiveSlug) {
+      throw new Error("missing_tenant_slug");
+    }
     throw new Error("invalid_credentials");
   }
 
@@ -153,6 +157,8 @@ function serverLoginErrorMessage(err: unknown): string {
   if (err instanceof Error) {
     if (err.message === "tenant_inactive") return "Tenant tidak lagi aktif";
     if (err.message === "tenant_not_found") return "Koperasi tidak ditemukan";
+    if (err.message === "missing_tenant_slug")
+      return "Masukkan slug koperasi untuk login (wajib di perangkat baru)";
   }
   return "Username atau password salah";
 }
@@ -307,7 +313,9 @@ async function tryDeviceSetupServerAuth(
 
 /**
  * Handles a successful local login: silently refreshes token if online,
- * issues a local session grant, and calls the success callback.
+ * and calls the success callback.
+ * Note: Session grant is NOT issued here — useSessionGrant hook handles it
+ * when the authenticated page mounts, ensuring the server-derived key is used.
  */
 async function handleLocalLoginSuccess(
   localResult: LocalLoginResult,
@@ -320,14 +328,6 @@ async function handleLocalLoginSuccess(
   if (!getAccessToken() && navigator.onLine) {
     await silentlyRefreshToken(username, password, effectiveSlug, fingerprintId);
   }
-  issueAndCacheLocalSessionGrant(
-    localResult.tenantId,
-    localResult.accountId,
-    fingerprintId,
-    localResult.role,
-  ).catch(() => {
-    // Non-critical - useSessionGrant will handle fallback
-  });
   onLoginSuccess(localResult.tenantId, localResult.role);
 }
 

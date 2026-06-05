@@ -53,9 +53,9 @@
   "categories": ["finance", "utilities"],
   "shortcuts": [
     {
-      "name": "Scan NFC",
-      "short_name": "Scan",
-      "url": "/scan",
+      "name": "Cek Saldo",
+      "short_name": "Scout",
+      "url": "/?entry=shortcut",
       "icons": [
         {
           "src": "logo192.png",
@@ -66,7 +66,7 @@
     {
       "name": "Top Up",
       "short_name": "TopUp",
-      "url": "/topup",
+      "url": "/?entry=shortcut",
       "icons": [
         {
           "src": "logo192.png",

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock } from "lucide-react";
 import { useNfcCard } from "#/presentation/hooks/nfc/useNfcCard";
 import { useSessionGrant } from "#/presentation/hooks/useSessionGrant";
@@ -276,7 +276,7 @@ export function GateSection({
         <FeedbackCard
           variant="blocked"
           title="Akses Ditolak"
-          subtitle={payload.identity.name}
+          subtitle={effectiveBlockedReason}
           actions={[{ label: "Selesai", onClick: reset, variant: "outline" }]}
         />
       );

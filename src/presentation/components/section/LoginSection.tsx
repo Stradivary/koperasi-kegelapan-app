@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BRAND } from "#/presentation/lib/brand";
 import { DeviceRoleSelectionPanel } from "../block/loginSection/DeviceRoleSelectionPanel";

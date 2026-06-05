@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { GateSection } from "#/presentation/components/section/GateSection";
 import { TenantRoutePending, useTenantContext } from "#/presentation/hooks/useTenantContext";
 

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import successHandImg from "#/assets/images/success_hand.svg";
 import failedImg from "#/assets/images/nfc/failed.svg";

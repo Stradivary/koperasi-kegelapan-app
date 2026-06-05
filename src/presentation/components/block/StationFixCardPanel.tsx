@@ -182,7 +182,9 @@ export function StationFixCardPanel({
           aria-label="Anggota"
           className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="">- Tanpa anggota -</option>
+          <option value="" disabled>
+            - Pilih anggota -
+          </option>
           {activeMembers.map((m) => (
             <option key={m.userId} value={m.userId}>
               {m.name} (#{m.userId})
@@ -225,7 +227,7 @@ export function StationFixCardPanel({
       <div className="flex gap-2">
         <Button
           onClick={handleFix}
-          disabled={!cardId.trim() || isFixing || !hasGrant}
+          disabled={!cardId.trim() || !userId || isFixing || !hasGrant}
           className="flex-1"
         >
           {isFixing ? "Memperbaiki..." : "Perbaiki & Tulis Ulang"}

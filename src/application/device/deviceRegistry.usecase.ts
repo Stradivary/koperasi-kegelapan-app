@@ -1,4 +1,4 @@
-﻿import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, gt } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { devices, authSessions } from "#/infrastructure/persistence/drizzle/schema";
 import type { Device, NewDevice } from "#/infrastructure/persistence/drizzle/schema";

@@ -1,4 +1,4 @@
-﻿import type { UIDRemoteValidator } from "#/core/interfaces/UIDRemoteValidator";
+import type { UIDRemoteValidator } from "#/core/interfaces/UIDRemoteValidator";
 import type { UIDCheckResult } from "#/core/interfaces/types";
 import { API_BASE_URL, apiFetch } from "#/infrastructure/api/apiClient";
 

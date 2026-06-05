@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { triggerHaptic } from "#/infrastructure/device/haptics";
 import tapNfcImg from "#/assets/images/nfc/tap_nfc.jpeg";
 import successPhoneImg from "#/assets/images/landing/success_phone.png";

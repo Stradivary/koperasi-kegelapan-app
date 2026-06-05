@@ -1,4 +1,4 @@
-﻿import { CardStatus } from "#/presentation/hooks/types";
+import { CardStatus } from "#/presentation/hooks/types";
 
 const STATUS_LABELS: Record<number, string> = {
   [CardStatus.ACTIVE]: "Active",

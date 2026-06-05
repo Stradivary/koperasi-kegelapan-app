@@ -1,4 +1,4 @@
-﻿// src/hooks/useIndexedDbStores.ts
+// src/hooks/useIndexedDbStores.ts
 export {
   getTenantContextStore,
   getCardSnapshotStore,

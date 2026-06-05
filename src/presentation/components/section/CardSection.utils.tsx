@@ -1,4 +1,4 @@
-﻿import {
+import {
   decodePayload,
   encodeTenantBind,
   extractCardBytes,
@@ -172,7 +172,6 @@ export interface IssuanceSetters {
  * session was dead and the caller should fall through to a fresh NFC scan.
  */
 export async function handleForceOverwrite({
-  bytes,
   issuancePreparedRef,
   issuanceReaderRef,
   issuanceAbortRef,
@@ -184,7 +183,6 @@ export async function handleForceOverwrite({
   name,
   qc,
 }: {
-  bytes: Uint8Array;
   issuancePreparedRef: IssuanceRefs["issuancePreparedRef"];
   issuanceReaderRef: IssuanceRefs["issuanceReaderRef"];
   issuanceAbortRef: IssuanceRefs["issuanceAbortRef"];
@@ -194,7 +192,6 @@ export async function handleForceOverwrite({
   balance: number;
   expiresAt: number | null;
   name: string;
-  grant: SessionGrant;
   qc: QueryClient;
 }): Promise<boolean> {
   const prepared = issuancePreparedRef.current!;
@@ -220,14 +217,16 @@ export async function handleForceOverwrite({
   setIssuancePhase("writing");
 
   try {
+    // Use prepared.bytes which already have the serial-derived cardId from the initial scan
+    const writeBytes = prepared.bytes;
     await reader.write(
       {
         records: [
           {
             recordType: "unknown",
-            data: bytes.buffer.slice(
-              bytes.byteOffset,
-              bytes.byteOffset + bytes.byteLength,
+            data: writeBytes.buffer.slice(
+              writeBytes.byteOffset,
+              writeBytes.byteOffset + writeBytes.byteLength,
             ) as ArrayBuffer,
           },
         ],
@@ -259,12 +258,14 @@ export async function handleForceOverwrite({
 
   // If write succeeded (no catch triggered), finalize
   if (!abort.signal.aborted && issuancePreparedRef.current) {
-    const capturedSerial = prepared.serial;
     const now = Math.floor(Date.now() / 1000);
+    const cardIdHex = Array.from(prepared.payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     await localDb.cards.put({
       tenantId,
-      cardId: capturedSerial,
+      cardId: cardIdHex,
       userId,
       status: "active",
       balance,
@@ -312,7 +313,10 @@ export async function validateUIDForIssuance(
     }
 
     if (isRegisteredSameTenant) {
-      const existing = await localDb.cards.get([tenantId, capturedSerial]);
+      const localCardIdHex = Array.from(toPayloadCardId(capturedSerial))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const existing = await localDb.cards.get([tenantId, localCardIdHex]);
       throw new CardAlreadyRegisteredError({
         cardId: capturedSerial,
         ownerName: existing?.notes ?? null,
@@ -370,7 +374,6 @@ export async function checkLocalCardConflict(
  * Handles the fresh NFC scan path for card issuance.
  */
 export async function handleFreshNfcSession({
-  bytes,
   payload,
   issuanceAbortRef,
   issuanceReaderRef,
@@ -389,7 +392,6 @@ export async function handleFreshNfcSession({
   forceOverwrite,
   qc,
 }: {
-  bytes: Uint8Array;
   payload: CardPayload;
   issuanceAbortRef: IssuanceRefs["issuanceAbortRef"];
   issuanceReaderRef: IssuanceRefs["issuanceReaderRef"];
@@ -458,8 +460,13 @@ export async function handleFreshNfcSession({
     );
     capturedSerial = serial;
 
+    // Derive payload cardId from the hardware serial (truncated to 6 bytes)
+    // so that issuance stores the same key that topup/gate operations use.
+    payload.header.cardId = toPayloadCardId(serial);
+    const { bytes: rebuiltBytes } = await prepareWrite(payload, payload, grant);
+
     issuancePreparedRef.current = {
-      bytes,
+      bytes: rebuiltBytes,
       serial,
       payload,
       issueData: { name, userId, balance, expiresAt },
@@ -479,7 +486,10 @@ export async function handleFreshNfcSession({
     );
 
     if (!forceOverwrite) {
-      await checkLocalCardConflict(capturedSerial, tenantId);
+      const derivedCardIdHex = Array.from(payload.header.cardId)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      await checkLocalCardConflict(derivedCardIdHex, tenantId);
     }
 
     // ── All checks passed - write to card ──
@@ -489,9 +499,9 @@ export async function handleFreshNfcSession({
         records: [
           {
             recordType: "unknown",
-            data: bytes.buffer.slice(
-              bytes.byteOffset,
-              bytes.byteOffset + bytes.byteLength,
+            data: rebuiltBytes.buffer.slice(
+              rebuiltBytes.byteOffset,
+              rebuiltBytes.byteOffset + rebuiltBytes.byteLength,
             ) as ArrayBuffer,
           },
         ],
@@ -500,9 +510,12 @@ export async function handleFreshNfcSession({
     );
 
     const now = Math.floor(Date.now() / 1000);
+    const cardIdHex = Array.from(payload.header.cardId)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
     await localDb.cards.put({
       tenantId,
-      cardId: capturedSerial,
+      cardId: cardIdHex,
       userId,
       status: "active",
       balance,

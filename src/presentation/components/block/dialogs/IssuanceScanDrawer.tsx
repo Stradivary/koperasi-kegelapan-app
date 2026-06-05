@@ -1,4 +1,4 @@
-﻿import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import type { CardPayload, NfcPhase } from "#/presentation/hooks/types";
 import { CardState, CardStatus } from "#/presentation/hooks/types";

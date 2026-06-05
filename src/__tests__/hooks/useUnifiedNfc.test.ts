@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 /**
  * Tests for src/hooks/useUnifiedNfc.ts
  */

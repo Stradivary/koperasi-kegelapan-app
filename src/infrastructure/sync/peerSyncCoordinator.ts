@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PeerSyncCoordinator
  *
  * Ensures cross-device check-in consistency by coordinating sync pushes

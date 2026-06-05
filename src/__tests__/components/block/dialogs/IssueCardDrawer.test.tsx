@@ -115,7 +115,7 @@ describe("IssueCardDrawer", () => {
     ];
     render(<IssueCardDrawer {...defaultProps} members={members} />);
     const select = screen.getByLabelText("Anggota") as HTMLSelectElement;
-    // Should have "- Tanpa anggota -" + 2 active members
+    // Should have disabled placeholder "- Pilih anggota -" + 2 active members
     expect(select.options.length).toBe(3);
   });
 
@@ -127,12 +127,15 @@ describe("IssueCardDrawer", () => {
   });
 
   it("calls onIssue with form data on confirm", () => {
+    const members: StationUserRow[] = [
+      { userId: "u-1", name: "Alice", status: "active", syncStatus: "synced" },
+    ];
     const onIssue = vi.fn();
-    render(<IssueCardDrawer {...defaultProps} onIssue={onIssue} />);
+    render(<IssueCardDrawer {...defaultProps} members={members} onIssue={onIssue} />);
 
-    // Fill in name
-    const nameInput = screen.getByPlaceholderText("Nama lengkap pemegang kartu");
-    fireEvent.change(nameInput, { target: { value: "Test User" } });
+    // Select a member (required)
+    const select = screen.getByLabelText("Anggota");
+    fireEvent.change(select, { target: { value: "u-1" } });
 
     // Fill in amount
     const amountInput = screen.getByPlaceholderText("Min. 2.000");
@@ -144,8 +147,8 @@ describe("IssueCardDrawer", () => {
     fireEvent.click(submitBtn!);
 
     expect(onIssue).toHaveBeenCalledWith({
-      name: "Test User",
-      userId: null,
+      name: "Alice",
+      userId: "u-1",
       balance: 50000,
       expiresAt: null,
     });

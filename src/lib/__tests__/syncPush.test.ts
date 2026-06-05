@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import type { TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 import { describe, expect, it } from "vitest";
 import {

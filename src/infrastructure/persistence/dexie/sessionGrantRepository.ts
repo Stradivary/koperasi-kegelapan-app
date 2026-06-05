@@ -19,7 +19,7 @@ import { getSessionGrantCacheStore } from "./indexeddb.lazy";
 import { roleToOps } from "#/core/auth/roleOps";
 
 const SESSION_KEY_LIFETIME_SECONDS = 24 * 60 * 60;
-const LOCAL_MASTER_KEY = "dev-insecure-master-key-change-in-prod-32b";
+const LOCAL_MASTER_KEY = import.meta.env.VITE_SESSION_PUBLIC_KEY ?? "koperasi-local-session-key-v1";
 
 const ENC = new TextEncoder();
 

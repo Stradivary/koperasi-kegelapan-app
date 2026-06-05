@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for src/lib/utils/slugValidation.ts
  * Covers: createSlug, validateSlugFormat, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH
  */

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared test fixtures for NFC and card-related unit tests.
  *
  * Provides factory functions for Card and User records used across

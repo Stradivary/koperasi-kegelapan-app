@@ -1,4 +1,4 @@
-﻿import { getDb } from "#/infrastructure/persistence/drizzle";
+import { getDb } from "#/infrastructure/persistence/drizzle";
 import { tenants, accounts } from "#/infrastructure/persistence/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "#/core/validation/slugValidation";

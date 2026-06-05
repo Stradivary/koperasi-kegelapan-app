@@ -1,4 +1,4 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SuperadminSection } from "#/presentation/components/section/SuperadminSection";
 
 export const Route = createFileRoute("/superadmin")({

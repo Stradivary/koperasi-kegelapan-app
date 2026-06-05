@@ -1,4 +1,4 @@
-﻿import { CheckCircle2, LogIn, LogOut } from "lucide-react";
+import { CheckCircle2, LogIn, LogOut } from "lucide-react";
 import successPhoneImg from "#/assets/images/landing/success_phone.png";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import tamperImg from "#/assets/images/nfc/tamper.svg";

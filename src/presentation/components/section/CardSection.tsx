@@ -1,4 +1,4 @@
-﻿import { useSessionGrant } from "#/presentation/hooks/useSessionGrant";
+import { useSessionGrant } from "#/presentation/hooks/useSessionGrant";
 import { useTenantSync } from "#/presentation/hooks/useTenantSync";
 import {
   useCardDrawers,

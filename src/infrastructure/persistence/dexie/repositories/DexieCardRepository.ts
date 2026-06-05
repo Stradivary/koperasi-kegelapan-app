@@ -1,4 +1,4 @@
-﻿import type { CardRepository } from "#/core/interfaces/CardRepository";
+import type { CardRepository } from "#/core/interfaces/CardRepository";
 import type { CardRecord } from "#/core/interfaces/types";
 import type { Card } from "#/infrastructure/persistence/dexie/localDb";
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";

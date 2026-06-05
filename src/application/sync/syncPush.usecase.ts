@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Client-side sync push logic.
  *
  * Reads pending Outbox entries from IndexedDB, batches them (max 500),

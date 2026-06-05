@@ -1,4 +1,4 @@
-﻿// src/hooks/usePeerSync.ts
+// src/hooks/usePeerSync.ts
 export {
   notifyCheckin,
   verifyCheckinSynced,

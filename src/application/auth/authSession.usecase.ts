@@ -1,4 +1,4 @@
-﻿import { eq, and, isNull, gt, asc } from "drizzle-orm";
+import { eq, and, isNull, gt, asc } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { authSessions } from "#/infrastructure/persistence/drizzle/schema";
 import type { AuthSession } from "#/infrastructure/persistence/drizzle/schema";

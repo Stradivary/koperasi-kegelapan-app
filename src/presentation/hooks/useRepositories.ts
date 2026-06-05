@@ -1,4 +1,4 @@
-﻿// src/hooks/useRepositories.ts
+// src/hooks/useRepositories.ts
 export {
   cardRepo,
   userRepo,

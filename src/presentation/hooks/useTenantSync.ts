@@ -1,4 +1,4 @@
-﻿import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { LocalTenantConfig } from "#/infrastructure/persistence/dexie/indexeddb";
 import { getIndexedDb } from "#/infrastructure/persistence/dexie/indexeddb.lazy";
 import { API_BASE_URL, setAccessToken } from "#/infrastructure/api/apiClient";

@@ -1,9 +1,8 @@
-﻿import { useEffect } from "react";
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
-import { OfflineIndicator } from "#/presentation/components/block/OfflineIndicator";
 import { KioskLayout } from "#/presentation/components/layout/KioskLayout";
 import { useReconciliation } from "#/presentation/hooks/useReconciliation";
 import { TenantRoutePending, useTenantContext } from "#/presentation/hooks/useTenantContext";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 type KioskView = "terminal" | "scout" | "gate";
 
@@ -20,10 +19,7 @@ function KioskLayoutRoute() {
     "terminal",
   ]);
   const pathname = useLocation({ select: (location) => location.pathname });
-  const { status, pendingCount, sync, checkPending } = useReconciliation(
-    tenantId,
-    tenantContext?.terminalId ?? 0,
-  );
+  const { checkPending } = useReconciliation(tenantId, tenantContext?.terminalId ?? 0);
 
   useEffect(() => {
     if (!tenantContext) return;
@@ -33,11 +29,6 @@ function KioskLayoutRoute() {
   if (loading || !tenantContext) return <TenantRoutePending />;
 
   const currentMode = getKioskView(pathname);
-
-  const trailing =
-    currentMode === "terminal" ? (
-      <OfflineIndicator pendingCount={pendingCount} onSync={sync} syncStatus={status} />
-    ) : undefined;
 
   return (
     <KioskLayout
@@ -51,7 +42,6 @@ function KioskLayoutRoute() {
         (tenantContext.role === "admin" || tenantContext.role === "station")
       }
       deviceRole={tenantContext.role}
-      trailing={trailing}
     >
       <Outlet />
     </KioskLayout>

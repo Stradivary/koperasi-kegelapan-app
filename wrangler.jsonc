@@ -3,4 +3,7 @@
   "name": "koperasi-kegelapan-app",
   "compatibility_date": "2025-09-02",
   "pages_build_output_dir": "dist",
+  "vars": {
+    "SESSION_MASTER_KEY": "F2ABC10E1898C81DF7998EB7DAE3DDF6",
+  },
 }

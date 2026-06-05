@@ -1,4 +1,4 @@
-﻿import type { UserRepository } from "#/core/interfaces/UserRepository";
+import type { UserRepository } from "#/core/interfaces/UserRepository";
 import type { UserRecord } from "#/core/interfaces/types";
 import { localDb } from "#/infrastructure/persistence/dexie/localDb";
 

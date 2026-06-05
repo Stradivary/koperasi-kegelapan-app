@@ -1,4 +1,4 @@
-﻿/**
+/**
  * React hook for device block state management.
  *
  * Provides reactive access to the device block state, displays toast

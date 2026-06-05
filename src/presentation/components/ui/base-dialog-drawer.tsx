@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { useIsMobile } from "#/presentation/hooks/use-mobile.ts";
 import {
   Dialog,

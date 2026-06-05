@@ -1,9 +1,9 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import successHandImg from "#/assets/images/success_hand.svg";
 import failedImg from "#/assets/images/nfc/failed.svg";
 import type { CardPayload, NfcPhase } from "#/presentation/hooks/types";
-import { MIN_ISSUANCE_BALANCE } from "#/presentation/hooks/domain";
+import { MIN_ISSUANCE_BALANCE, MAX_BALANCE } from "#/presentation/hooks/domain";
 import {
   Drawer,
   DrawerContent,
@@ -90,7 +90,10 @@ export function IssueCardDrawer({
   const activeMembers = members.filter((m) => m.status === "active");
 
   const parsedAmount = Number.parseInt(amount, 10);
-  const isValidAmount = !Number.isNaN(parsedAmount) && parsedAmount >= MIN_ISSUANCE_BALANCE;
+  const isValidAmount =
+    !Number.isNaN(parsedAmount) &&
+    parsedAmount >= MIN_ISSUANCE_BALANCE &&
+    parsedAmount <= MAX_BALANCE;
   const canSubmit = name.trim().length > 0 && isValidAmount;
 
   function handleUserChange(selectedUserId: string | null) {
@@ -99,6 +102,24 @@ export function IssueCardDrawer({
       const member = activeMembers.find((m) => m.userId === selectedUserId);
       if (member) setName(member.name);
     }
+  }
+
+  function handleAmountChange(value: string) {
+    if (value === "" || value === "-") {
+      setAmount(value);
+      return;
+    }
+    const num = Number.parseInt(value, 10);
+    if (Number.isNaN(num)) return;
+    if (num > MAX_BALANCE) {
+      setAmount(String(MAX_BALANCE));
+      return;
+    }
+    if (num < 0) {
+      setAmount("0");
+      return;
+    }
+    setAmount(String(num));
   }
 
   function handleConfirm() {
@@ -167,7 +188,9 @@ export function IssueCardDrawer({
                   aria-label="Anggota"
                   className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="">- Tanpa anggota -</option>
+                  <option value="" disabled>
+                    - Pilih anggota -
+                  </option>
                   {activeMembers.map((m) => (
                     <option key={m.userId} value={m.userId}>
                       {m.name} (#{m.userId})
@@ -194,8 +217,12 @@ export function IssueCardDrawer({
                   placeholder="Min. 2.000"
                   min={MIN_ISSUANCE_BALANCE}
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  max={MAX_BALANCE}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Maks. {MAX_BALANCE.toLocaleString("id-ID")}
+                </p>
                 <div className="grid grid-cols-3 gap-2">
                   {[10_000, 20_000, 50_000, 100_000, 150_000, 200_000].map((v) => (
                     <button

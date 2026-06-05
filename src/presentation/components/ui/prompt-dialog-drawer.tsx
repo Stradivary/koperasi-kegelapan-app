@@ -1,4 +1,4 @@
-﻿import * as React from "react";
+import * as React from "react";
 import { Button } from "#/presentation/components/ui/button.tsx";
 import { Input } from "#/presentation/components/ui/input.tsx";
 import { BaseDialogDrawer } from "#/presentation/components/ui/base-dialog-drawer.tsx";

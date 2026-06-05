@@ -1,4 +1,4 @@
-﻿import { localDb, type TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
+import { localDb, type TransactionLog } from "#/infrastructure/persistence/dexie/localDb";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ export async function getTransactions(query: TransactionQuery): Promise<Paginate
 
   // Apply filters
   let filtered = collection.filter((tx) => {
-    if (cardId && tx.cardId.toLowerCase() !== cardId.toLowerCase()) return false;
+    if (cardId && !tx.cardId.toLowerCase().includes(cardId.toLowerCase())) return false;
     if (type && tx.type !== type) return false;
     if (dateFrom != null && tx.timestamp < dateFrom) return false;
     if (dateTo != null && tx.timestamp > dateTo) return false;
@@ -138,13 +138,22 @@ export async function getTransactionsByCard(
 }
 
 /**
- * Query all entries with syncStatus "pending" for a given tenant.
+ * Query all entries with syncStatus "pending" or "conflict" for a given tenant.
+ * Conflict entries are included for retry — the server's idempotency check
+ * will accept them if they were already processed.
  */
 export async function getSyncableEntries(tenantId: string): Promise<TransactionLog[]> {
-  return localDb.transactionLog
+  const pending = await localDb.transactionLog
     .where("[tenantId+syncStatus]")
     .equals([tenantId, "pending"])
     .toArray();
+
+  const conflict = await localDb.transactionLog
+    .where("[tenantId+syncStatus]")
+    .equals([tenantId, "conflict"])
+    .toArray();
+
+  return [...pending, ...conflict];
 }
 
 /**

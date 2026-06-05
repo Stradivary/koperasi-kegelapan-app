@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { getTransactions, type TransactionQuery } from "#/presentation/hooks/useTransactionLog";

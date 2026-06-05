@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Building2, Leaf, LogOut, Menu, Users } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "#/presentation/lib/brand";

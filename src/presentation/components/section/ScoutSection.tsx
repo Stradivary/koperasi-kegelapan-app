@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useNfcCard } from "#/presentation/hooks/nfc/useNfcCard";
 import { useSessionGrant } from "#/presentation/hooks/useSessionGrant";
 import { useBlockedCheck } from "#/presentation/hooks/useBlockedCheck";

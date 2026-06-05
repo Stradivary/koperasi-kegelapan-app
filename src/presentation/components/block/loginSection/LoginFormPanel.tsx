@@ -1,4 +1,4 @@
-﻿import type { RefObject } from "react";
+import type { RefObject } from "react";
 import { BookOpen, Layers, Plus, Search, Settings } from "lucide-react";
 import type { TenantSearchResult } from "#/presentation/hooks/useServerTenantSearch";
 import { AuthLayout } from "../../layout/AuthLayout";

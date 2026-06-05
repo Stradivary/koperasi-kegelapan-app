@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RealTimeSyncManager - manages real-time data synchronization between devices
  * via Server-Sent Events (SSE) with fallback to periodic pull.
  *
