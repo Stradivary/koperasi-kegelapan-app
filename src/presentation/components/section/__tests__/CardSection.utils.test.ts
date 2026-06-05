@@ -611,7 +611,6 @@ describe("handleForceOverwrite", () => {
     const { handleForceOverwrite } = await import("../CardSection.utils");
 
     const result = await handleForceOverwrite({
-      bytes: new Uint8Array(128),
       issuancePreparedRef: {
         current: {
           bytes: new Uint8Array(0),
@@ -628,7 +627,6 @@ describe("handleForceOverwrite", () => {
       balance: 100,
       expiresAt: null,
       name: "Test",
-      grant: { keyVersion: 1 } as any,
       qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
     });
 
@@ -641,7 +639,6 @@ describe("handleForceOverwrite", () => {
     abort.abort();
 
     const result = await handleForceOverwrite({
-      bytes: new Uint8Array(128),
       issuancePreparedRef: {
         current: {
           bytes: new Uint8Array(0),
@@ -658,7 +655,6 @@ describe("handleForceOverwrite", () => {
       balance: 0,
       expiresAt: null,
       name: "Test",
-      grant: { keyVersion: 1 } as any,
       qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
     });
 
@@ -681,7 +677,6 @@ describe("handleForceOverwrite", () => {
     };
 
     const result = await handleForceOverwrite({
-      bytes: new Uint8Array(128),
       issuancePreparedRef: preparedRef,
       issuanceReaderRef: { current: mockWriter as any },
       issuanceAbortRef: { current: abort },
@@ -691,7 +686,6 @@ describe("handleForceOverwrite", () => {
       balance: 500,
       expiresAt: null,
       name: "Test",
-      grant: { keyVersion: 2 } as any,
       qc: mockQc as any,
     });
 
@@ -718,7 +712,6 @@ describe("handleForceOverwrite", () => {
     const setIssuancePhase = vi.fn();
 
     const result = await handleForceOverwrite({
-      bytes: new Uint8Array(128),
       issuancePreparedRef: {
         current: {
           bytes: new Uint8Array(0),
@@ -735,7 +728,6 @@ describe("handleForceOverwrite", () => {
       balance: 0,
       expiresAt: null,
       name: "Test",
-      grant: { keyVersion: 1 } as any,
       qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
     });
 
