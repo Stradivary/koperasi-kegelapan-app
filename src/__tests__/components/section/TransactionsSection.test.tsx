@@ -345,3 +345,86 @@ describe("TransactionsSection - pagination", () => {
     expect(screen.getByTestId("data-table").getAttribute("data-page")).toBe("1");
   });
 });
+
+describe("TransactionsSection - date filter edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseIsMobile.mockReturnValue(false);
+    mockUseQuery.mockReturnValue({
+      data: { entries: [], total: 0, pageSize: 10 },
+      isLoading: false,
+    });
+  });
+
+  it("resets to page 1 when date-from filter changes", () => {
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    // Advance to page 2 first
+    fireEvent.click(screen.getByTestId("next-page-btn"));
+    // Then change from-date — should reset page
+    const dateInputs = screen.getAllByDisplayValue(today);
+    fireEvent.change(dateInputs[0], { target: { value: "2024-01-15" } });
+    expect(screen.getByTestId("data-table").getAttribute("data-page")).toBe("0");
+  });
+
+  it("resets to page 1 when date-to filter changes", () => {
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    fireEvent.click(screen.getByTestId("next-page-btn"));
+    const dateInputs = screen.getAllByDisplayValue(today);
+    fireEvent.change(dateInputs[1], { target: { value: "2024-12-31" } });
+    expect(screen.getByTestId("data-table").getAttribute("data-page")).toBe("0");
+  });
+
+  it("resets to page 1 when type filter changes", () => {
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    fireEvent.click(screen.getByTestId("next-page-btn"));
+    const select = screen.getByTestId("select").querySelector("select")!;
+    fireEvent.change(select, { target: { value: "checkin" } });
+    expect(screen.getByTestId("data-table").getAttribute("data-page")).toBe("0");
+  });
+
+  it("resets dates to today when Reset clicked", () => {
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    const dateInputs = screen.getAllByDisplayValue(today);
+    fireEvent.change(dateInputs[0], { target: { value: "2024-01-01" } });
+    fireEvent.click(screen.getByText("Reset"));
+    const updatedDateInputs = screen.getAllByDisplayValue(today);
+    expect(updatedDateInputs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("passes correct query params to useQuery with all filters active", () => {
+    mockUseQuery.mockReturnValue({
+      data: { entries: [], total: 0, pageSize: 10 },
+      isLoading: false,
+    });
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+
+    fireEvent.change(screen.getByPlaceholderText("Cari card ID..."), {
+      target: { value: "abc123" },
+    });
+    const select = screen.getByTestId("select").querySelector("select")!;
+    fireEvent.change(select, { target: { value: "topup" } });
+
+    // Check that useQuery was called with the right queryKey containing our filters
+    const lastCall = mockUseQuery.mock.calls[mockUseQuery.mock.calls.length - 1][0];
+    expect(lastCall.queryKey).toContain("abc123");
+    expect(lastCall.queryKey).toContain("topup");
+  });
+
+  it("shows empty search state content", () => {
+    mockUseQuery.mockReturnValue({
+      data: { entries: [], total: 0, pageSize: 10 },
+      isLoading: false,
+    });
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    expect(screen.getByText("Tidak ada transaksi yang cocok dengan filter.")).toBeDefined();
+  });
+
+  it("renders 'Reset semua filter' link in empty search state", () => {
+    mockUseQuery.mockReturnValue({
+      data: { entries: [], total: 0, pageSize: 10 },
+      isLoading: false,
+    });
+    render(<TransactionsSection tenantId="t-1" accountId="a-1" />);
+    expect(screen.getByText("Reset semua filter")).toBeDefined();
+  });
+});

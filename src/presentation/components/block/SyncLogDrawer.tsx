@@ -58,7 +58,7 @@ function useLongPress(callback: () => void, ms = 3000) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: SyncEngineStatus | undefined }) {
+function StatusBadge({ status }: Readonly<{ status: SyncEngineStatus | undefined }>) {
   const config: Record<string, { label: string; className: string }> = {
     idle: { label: "Idle", className: "bg-green-100 text-green-700" },
     pushing: { label: "Pushing", className: "bg-blue-100 text-blue-700" },
@@ -70,7 +70,7 @@ function StatusBadge({ status }: { status: SyncEngineStatus | undefined }) {
   return <span className={`text-xs font-medium px-2 py-0.5 rounded ${className}`}>{label}</span>;
 }
 
-function LogIcon({ level }: { level: SyncLogEntry["level"] }) {
+function LogIcon({ level }: Readonly<{ level: SyncLogEntry["level"] }>) {
   switch (level) {
     case "error":
       return <CircleAlert size={12} className="text-red-500 shrink-0 mt-0.5" />;
@@ -81,7 +81,7 @@ function LogIcon({ level }: { level: SyncLogEntry["level"] }) {
   }
 }
 
-function LogEntry({ entry }: { entry: SyncLogEntry }) {
+function LogEntry({ entry }: Readonly<{ entry: SyncLogEntry }>) {
   const time = new Date(entry.timestamp).toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",

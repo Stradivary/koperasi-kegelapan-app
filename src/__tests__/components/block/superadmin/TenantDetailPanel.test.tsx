@@ -379,3 +379,63 @@ describe("TenantDetailPanel - formatDate edge case", () => {
     expect(screen.getByText("not-a-date")).toBeDefined();
   });
 });
+
+describe("TenantDetailPanel - confirmation dialog archive warning", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows irreversible warning when archiving", () => {
+    render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Archive"));
+    expect(screen.getByText(/cannot be undone/)).toBeDefined();
+  });
+
+  it("does not show irreversible warning when suspending", () => {
+    render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Suspend"));
+    expect(screen.queryByText(/cannot be undone/)).toBeNull();
+  });
+
+  it("shows tenant name in confirmation description", () => {
+    render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Suspend"));
+    const desc = screen.getByTestId("dialog-description");
+    expect(desc.textContent).toContain("Test Tenant");
+  });
+
+  it("shows current and target status in confirmation", () => {
+    render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Suspend"));
+    const desc = screen.getByTestId("dialog-description");
+    expect(desc.textContent).toContain("active");
+    expect(desc.textContent).toContain("suspended");
+  });
+
+  it("uses default variant for non-archive confirmations", () => {
+    render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Suspend"));
+    expect(screen.getByTestId("confirm-dialog").getAttribute("data-variant")).toBe("default");
+  });
+
+  it("passes isProcessing to dialog when isUpdating", () => {
+    // Open the dialog first while not updating
+    const { rerender } = render(<TenantDetailPanel {...baseProps()} />);
+    fireEvent.click(screen.getByText("Suspend"));
+    expect(screen.getByTestId("confirm-dialog")).toBeDefined();
+    // Rerender with isUpdating - dialog stays open with processing state
+    rerender(<TenantDetailPanel {...baseProps({ isUpdating: true })} />);
+    expect(screen.getByTestId("confirm-dialog").getAttribute("data-processing")).toBe("true");
+  });
+});
+
+describe("TenantDetailPanel - suspended tenant actions", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls onStatusChange with 'active' when Activate confirmed", () => {
+    const suspended = { ...mockTenant, status: "suspended" as const };
+    const onStatusChange = vi.fn();
+    render(<TenantDetailPanel {...baseProps({ tenant: suspended, onStatusChange })} />);
+    fireEvent.click(screen.getByText("Activate"));
+    fireEvent.click(screen.getByTestId("dialog-confirm"));
+    expect(onStatusChange).toHaveBeenCalledWith("active");
+  });
+});
