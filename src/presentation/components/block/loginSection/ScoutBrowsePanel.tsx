@@ -5,6 +5,7 @@ import { AuthLayout } from "../../layout/AuthLayout";
 import { LoadingState } from "../LoadingState";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import type { SubmitEvent } from "react";
 
 interface ScoutBrowsePanelProps {
   query: string;
@@ -49,7 +50,7 @@ export function ScoutBrowsePanel({
 
   const showOfflineEmpty = !isOnline && query.length >= 2 && filteredLocal.length === 0;
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const slug = query.trim().toLowerCase();
     if (slug.length > 0) onEnterSlug(slug);

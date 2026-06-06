@@ -262,7 +262,7 @@ describe("POST /token - successful authentication", () => {
         tenantId: "t-1",
         slug: "test-tenant",
         name: "Test",
-        status: "active",
+        status: "suspended", // Tenant is NOT active from the start
       })
       .mockResolvedValueOnce({
         accountId: "a-1",
@@ -271,12 +271,6 @@ describe("POST /token - successful authentication", () => {
         role: "admin", // NOT superadmin
         status: "active",
         passwordHash,
-      })
-      .mockResolvedValueOnce({
-        tenantId: "t-1",
-        slug: "test-tenant",
-        name: "Test",
-        status: "suspended", // Tenant is NOT active
       });
 
     const res = await req("POST", "/token", {
@@ -295,17 +289,19 @@ describe("POST /token - successful authentication", () => {
     mockDb.select = vi.fn().mockReturnValue(mockDb);
     mockDb.from = vi.fn().mockReturnValue(mockDb);
     mockDb.where = vi.fn().mockReturnValue(mockDb);
-    mockDb.get = vi
-      .fn()
-      // superadmin login without tenantSlug: account lookup by username + role=superadmin
-      .mockResolvedValueOnce({
+    // No tenantSlug: source uses .all() to get all matching accounts
+    mockDb.all = vi.fn().mockResolvedValueOnce([
+      {
         accountId: "sa-1",
         tenantId: "t-system",
         username: "superadmin",
         role: "superadmin",
         status: "active",
         passwordHash,
-      })
+      },
+    ]);
+    mockDb.get = vi
+      .fn()
       // Tenant lookup: tenant is suspended
       .mockResolvedValueOnce({
         tenantId: "t-system",

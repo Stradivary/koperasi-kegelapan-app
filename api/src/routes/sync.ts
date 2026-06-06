@@ -174,6 +174,11 @@ async function processTransaction(
       `);
     }
 
+    // Reject stale transactions so the client can mark them as "conflict"
+    if (isStale) {
+      return { accepted: false, reason: "stale_counter" };
+    }
+
     return { accepted: true };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

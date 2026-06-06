@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Ban, CheckCircle2, Clock, MoreHorizontal, Plus, Trash, UserCheck } from "lucide-react";
 import { ConfirmationDialogDrawer } from "../ui/confirmation-dialog-drawer";
@@ -39,17 +39,18 @@ const SYNC_BADGE_VARIANT: Record<StationMemberRow["syncStatus"], "default" | "se
   pending: "secondary",
 };
 
-// ─── Module-level cell components ────────────────────────────────────────────
+// ─── Module-level cell renderers (named functions avoid S6478) ───────────────
 
-function MemberNameCell({ value }: Readonly<{ value: string }>) {
-  return <span className="font-medium">{value}</span>;
+function renderMemberName(info: { getValue: () => string }) {
+  return <span className="font-medium">{info.getValue()}</span>;
 }
 
-function MemberIdCell({ value }: Readonly<{ value: string }>) {
-  return <span className="text-xs text-muted-foreground">#{value}</span>;
+function renderMemberId(info: { getValue: () => string }) {
+  return <span className="text-xs text-muted-foreground">#{info.getValue()}</span>;
 }
 
-function MemberStatusCell({ value }: Readonly<{ value: string }>) {
+function renderMemberStatus(info: { getValue: () => string }) {
+  const value = info.getValue();
   return (
     <Badge
       variant={value === "active" ? "default" : "destructive"}
@@ -60,7 +61,8 @@ function MemberStatusCell({ value }: Readonly<{ value: string }>) {
   );
 }
 
-function MemberSyncCell({ value }: Readonly<{ value: StationMemberRow["syncStatus"] }>) {
+function renderMemberSync(info: { getValue: () => StationMemberRow["syncStatus"] }) {
+  const value = info.getValue();
   return (
     <Badge variant={SYNC_BADGE_VARIANT[value]} className="text-[10px] px-1.5 py-0">
       {value === "synced" ? "Synced" : "Pending"}
@@ -96,6 +98,48 @@ function MemberActionsCell({
   );
 }
 
+function renderMemberActions(
+  isToggling: boolean,
+  isDeleting: boolean | undefined,
+  onToggleStatus: (userId: string, currentStatus: string) => void,
+  onSetDeleteTarget: (member: StationMemberRow) => void,
+  onDeleteMember: ((userId: string) => void) | undefined,
+) {
+  return function MemberActionsCellRenderer(info: { row: { original: StationMemberRow } }) {
+    return (
+      <MemberActionsCell
+        member={info.row.original}
+        isToggling={isToggling}
+        isDeleting={isDeleting}
+        onToggleStatus={onToggleStatus}
+        onSetDeleteTarget={onSetDeleteTarget}
+        onDeleteMember={onDeleteMember}
+      />
+    );
+  };
+}
+
+// ─── Module-level static columns ─────────────────────────────────────────────
+
+const staticColumns = [
+  columnHelper.accessor("name", {
+    header: "Nama",
+    cell: renderMemberName,
+  }),
+  columnHelper.accessor("userId", {
+    header: "ID",
+    cell: renderMemberId,
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    cell: renderMemberStatus,
+  }),
+  columnHelper.accessor("syncStatus", {
+    header: "Sync",
+    cell: renderMemberSync,
+  }),
+];
+
 export function StationMembersPanel({
   members,
   isLoading,
@@ -114,40 +158,25 @@ export function StationMembersPanel({
     setAddOpen(false);
   }
 
-  // Build columns with action handlers in closure
-  const columns = [
-    columnHelper.accessor("name", {
-      header: "Nama",
-      cell: (info) => <MemberNameCell value={info.getValue()} />,
-    }),
-    columnHelper.accessor("userId", {
-      header: "ID",
-      cell: (info) => <MemberIdCell value={info.getValue()} />,
-    }),
-    columnHelper.accessor("status", {
-      header: "Status",
-      cell: (info) => <MemberStatusCell value={info.getValue()} />,
-    }),
-    columnHelper.accessor("syncStatus", {
-      header: "Sync",
-      cell: (info) => <MemberSyncCell value={info.getValue()} />,
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: (info) => (
-        <MemberActionsCell
-          member={info.row.original}
-          isToggling={isToggling}
-          isDeleting={isDeleting}
-          onToggleStatus={onToggleStatus}
-          onSetDeleteTarget={setDeleteTarget}
-          onDeleteMember={onDeleteMember}
-        />
-      ),
-    }),
-  ];
+  // Columns with action handlers that depend on component state/props
+  const columns = useMemo(
+    () => [
+      ...staticColumns,
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        cell: renderMemberActions(
+          isToggling,
+          isDeleting,
+          onToggleStatus,
+          setDeleteTarget,
+          onDeleteMember,
+        ),
+      }),
+    ],
+    [isToggling, isDeleting, onToggleStatus, onDeleteMember],
+  );
 
   return (
     <div className="space-y-4">
@@ -231,7 +260,15 @@ export function StationMembersPanel({
         cancelLabel="Batal"
         isProcessing={isCreating}
         processingLabel="Menyimpan..."
-        validate={(value) => (value.trim().length === 0 ? "Nama tidak boleh kosong" : undefined)}
+        validate={(value) => {
+          if (value.trim().length === 0) {
+            return "Nama tidak boleh kosong";
+          }
+          if (value.trim().length > 32) {
+            return "Nama tidak boleh lebih dari 32 karakter";
+          }
+          return undefined;
+        }}
         onConfirm={handleCreate}
         icon={
           <div className="flex items-center justify-center size-12 rounded-full bg-primary/10">

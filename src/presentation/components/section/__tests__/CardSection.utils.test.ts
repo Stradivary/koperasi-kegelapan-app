@@ -502,7 +502,7 @@ describe("validateUIDForIssuance", () => {
   it("throws CardAlreadyRegisteredError when UID is registered in same tenant", async () => {
     mockValidateUID.mockResolvedValue({ valid: false, reason: "UID_ALREADY_REGISTERED" });
     mockCardsGet.mockResolvedValue({
-      cardId: "serial-1",
+      cardId: "aabbcc",
       notes: "Existing",
       userId: "u-1",
       balance: 100,
@@ -514,7 +514,7 @@ describe("validateUIDForIssuance", () => {
     const abort = new AbortController();
     const ref = { current: null };
 
-    await expect(validateUIDForIssuance("serial-1", "t-1", false, abort, ref)).rejects.toThrow(
+    await expect(validateUIDForIssuance("aabbccddeeff", "t-1", false, abort, ref)).rejects.toThrow(
       CardAlreadyRegisteredError,
     );
   });
@@ -667,11 +667,12 @@ describe("handleForceOverwrite", () => {
     const mockWriter = { write: vi.fn().mockResolvedValue(undefined) };
     const setIssuancePhase = vi.fn();
     const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+    const cardIdBytes = new Uint8Array([0xab, 0xc1, 0x23, 0xde, 0xf0, 0x00]);
     const preparedRef = {
       current: {
         bytes: new Uint8Array(0),
         serial: "abc123",
-        payload: { trailer: { keyVersion: 2 } } as any,
+        payload: { header: { cardId: cardIdBytes }, trailer: { keyVersion: 2 } } as any,
         issueData: { name: "Test", userId: "u-1", balance: 500, expiresAt: null },
       },
     };
@@ -696,7 +697,7 @@ describe("handleForceOverwrite", () => {
     expect(mockCardsPut).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "t-1",
-        cardId: "abc123",
+        cardId: "abc123def000",
         userId: "u-1",
         balance: 500,
         status: "active",
@@ -716,7 +717,7 @@ describe("handleForceOverwrite", () => {
         current: {
           bytes: new Uint8Array(0),
           serial: "abc",
-          payload: {} as any,
+          payload: { header: { cardId: new Uint8Array(6) }, trailer: { keyVersion: 1 } } as any,
           issueData: {} as any,
         },
       },

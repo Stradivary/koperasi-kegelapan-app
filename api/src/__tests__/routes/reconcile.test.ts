@@ -4,6 +4,7 @@
  * Covers: POST / (reconciliation processing)
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Hono } from "hono";
 
 // ── DB mock ──────────────────────────────────────────────────────────────────
 
@@ -29,15 +30,33 @@ import { processReconciliation } from "#/server/reconcileCore";
 type Env = { DB: D1Database; SESSION_MASTER_KEY: string };
 const env: Env = { DB: {} as D1Database, SESSION_MASTER_KEY: "test-key" };
 
+function createTestApp() {
+  const app = new Hono<{ Bindings: Env }>();
+  app.use("*", async (c, next) => {
+    c.env = env;
+
+    c.set("auth", {
+      tenantId: "t-1",
+      accountId: "a-1",
+      role: "admin",
+      deviceId: "d-1",
+      iat: 0,
+      exp: 0,
+    });
+    await next();
+  });
+  app.route("/", reconcileRoute);
+  return app;
+}
+
 function req(method: string, path: string, body?: unknown) {
-  return reconcileRoute.request(
+  const app = createTestApp();
+  return app.request(
     new Request(`http://localhost${path}`, {
       method,
       headers: body ? { "Content-Type": "application/json" } : {},
       body: body ? JSON.stringify(body) : undefined,
     }),
-    undefined,
-    env,
   );
 }
 
@@ -49,14 +68,13 @@ describe("POST /reconcile", () => {
   });
 
   it("returns 400 when body is invalid JSON", async () => {
-    const res = await reconcileRoute.request(
+    const app = createTestApp();
+    const res = await app.request(
       new Request("http://localhost/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not-json",
       }),
-      undefined,
-      env,
     );
     expect(res.status).toBe(400);
     const body = await res.json();

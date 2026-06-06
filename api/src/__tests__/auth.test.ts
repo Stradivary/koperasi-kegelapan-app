@@ -30,6 +30,12 @@ vi.mock("drizzle-orm/d1", () => ({
             const result = dbGetResults[idx];
             return Promise.resolve(result ?? null);
           },
+          all: () => {
+            const idx = dbGetCallCount++;
+            const result = dbGetResults[idx];
+            // .all() returns an array of results
+            return Promise.resolve(result ?? []);
+          },
         }),
       }),
     }),
@@ -129,7 +135,7 @@ describe("auth routes - POST /token", () => {
   });
 
   it("returns 401 when account not found (no tenantSlug)", async () => {
-    pushDbResult(null); // account lookup returns null
+    pushDbResult([]); // .all() returns empty array - no accounts found
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,14 +160,16 @@ describe("auth routes - POST /token", () => {
   });
 
   it("returns 401 when password verification fails (unrecognized format)", async () => {
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "invalid_format_hash",
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "invalid_format_hash",
+        status: "active",
+      },
+    ]); // .all() returns array with account
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,14 +181,16 @@ describe("auth routes - POST /token", () => {
   });
 
   it("returns 401 when pbkdf2 format has wrong number of parts", async () => {
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "pbkdf2$only_two_parts",
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "pbkdf2$only_two_parts",
+        status: "active",
+      },
+    ]);
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -191,14 +201,16 @@ describe("auth routes - POST /token", () => {
 
   it("returns 401 when pbkdf2 password does not match", async () => {
     // Valid pbkdf2 format but wrong password
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "pbkdf2$aabbccdd$" + "ff".repeat(32),
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "pbkdf2$aabbccdd$" + "ff".repeat(32),
+        status: "active",
+      },
+    ]);
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -208,14 +220,16 @@ describe("auth routes - POST /token", () => {
   });
 
   it("returns 401 when colon format has non-integer iterations", async () => {
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "abc:aabb:ccdd",
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "abc:aabb:ccdd",
+        status: "active",
+      },
+    ]);
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -226,14 +240,16 @@ describe("auth routes - POST /token", () => {
 
   it("returns 401 when colon format password does not match", async () => {
     // Valid colon format: "iterations:saltHex:hashHex"
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "10000:aabbccdd:" + "ff".repeat(32),
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "10000:aabbccdd:" + "ff".repeat(32),
+        status: "active",
+      },
+    ]);
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -246,14 +262,16 @@ describe("auth routes - POST /token", () => {
     // Account found, password matches (we'll use a format that returns false)
     // Actually we need password to match for this test - let's just test the flow
     // by having password not match (simpler) - the tenant inactive check comes after
-    pushDbResult({
-      accountId: "a-1",
-      username: "user",
-      tenantId: "t-1",
-      role: "admin",
-      passwordHash: "pbkdf2$aabbcc$" + "00".repeat(32),
-      status: "active",
-    });
+    pushDbResult([
+      {
+        accountId: "a-1",
+        username: "user",
+        tenantId: "t-1",
+        role: "admin",
+        passwordHash: "pbkdf2$aabbcc$" + "00".repeat(32),
+        status: "active",
+      },
+    ]);
     const res = await app.request("/api/auth/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

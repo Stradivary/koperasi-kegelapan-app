@@ -93,7 +93,7 @@ export async function decodeAndValidateCard(
 ): Promise<CardValidationResult> {
   const decodableRaw = await decryptRawCard(raw, grant);
   const payload = decodePayload(decodableRaw);
-  const isOffline = typeof navigator !== "undefined" ? !navigator.onLine : false;
+  const isOffline = navigator === undefined ? false : !navigator.onLine;
 
   if (isOffline) {
     return buildOfflineResult(payload, grant, lenient);

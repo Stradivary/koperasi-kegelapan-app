@@ -71,6 +71,12 @@ vi.mock("#/presentation/components/block/dialogs/SyncConflictDialog", () => ({
   SyncConflictDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="sync-conflict-dialog" /> : null,
 }));
+vi.mock("#/presentation/components/block/SyncLogDrawer", () => ({
+  useSyncLogDrawer: () => ({
+    triggerProps: {},
+    drawerElement: null,
+  }),
+}));
 vi.mock("#/presentation/components/ui/badge", () => ({
   Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
     <span data-testid="badge" data-variant={variant}>
