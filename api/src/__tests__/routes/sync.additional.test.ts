@@ -134,8 +134,9 @@ describe("sync routes - additional coverage", () => {
       // drizzle uses prepare(sql).bind(params).raw() for .get() calls
       // Returns [[values]] for found, [] for not found
       // For processTransaction:
-      //   1st prepare+raw: idempotency check → [] (not found)
-      //   2nd prepare+raw: card counter check → [[10]] (counter=10)
+      //   1st raw: idempotency check → [] (not found)
+      //   2nd raw: card counter check → [[10]] (counter=10)
+      //   3rd raw: insert (via run) - no raw call
       let rawCallCount = 0;
       const db = {
         prepare: () => ({

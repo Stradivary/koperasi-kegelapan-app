@@ -118,64 +118,94 @@ function formatAmount(amount: number): string {
 
 const columnHelper = createColumnHelper<TransactionRow>();
 
+// ─── Module-level cell renderers ─────────────────────────────────────────────
+
+function renderTimestamp(info: { getValue: () => number }) {
+  return <span className="text-xs">{formatDateTime(info.getValue())}</span>;
+}
+
+function renderCardId(info: { getValue: () => string; row: { original: TransactionRow } }) {
+  const cardName = info.row.original.cardName;
+  return (
+    <div className="min-w-0">
+      {cardName && <div className="text-xs font-medium truncate">{cardName}</div>}
+      <span className="font-mono text-xs text-muted-foreground">{info.getValue()}</span>
+    </div>
+  );
+}
+
+function renderOperatorName(info: { getValue: () => string | null }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs font-medium truncate">
+        {info.getValue() ?? "Operator tidak ditemukan"}
+      </div>
+    </div>
+  );
+}
+
+function renderTransactionType(info: { getValue: () => TransactionRow["type"] }) {
+  return <Badge variant="outline">{TYPE_LABELS[info.getValue()] ?? info.getValue()}</Badge>;
+}
+
+function renderAmountHeader() {
+  return <span className="text-right w-full block">Jumlah</span>;
+}
+
+function renderAmount(info: { getValue: () => number; row: { original: TransactionRow } }) {
+  const type = info.row.original.type;
+  return (
+    <span className={cn("text-right block font-mono text-xs font-semibold", amountColor(type))}>
+      {amountPrefix(type)}Rp {formatAmount(info.getValue())}
+    </span>
+  );
+}
+
+function renderBalanceHeader() {
+  return <span className="text-right w-full block">Saldo</span>;
+}
+
+function renderBalanceAfter(info: { getValue: () => number }) {
+  return (
+    <span className="text-right block font-mono text-xs text-emerald-600 font-medium">
+      Rp {formatAmount(info.getValue())}
+    </span>
+  );
+}
+
+function renderSyncStatus(info: { getValue: () => TransactionRow["syncStatus"] }) {
+  const status = info.getValue();
+  return <Badge variant={SYNC_STATUS_VARIANT[status]}>{SYNC_STATUS_LABELS[status]}</Badge>;
+}
+
 const columns = [
   columnHelper.accessor("timestamp", {
     header: "Waktu",
-    cell: (info) => <span className="text-xs">{formatDateTime(info.getValue())}</span>,
+    cell: renderTimestamp,
   }),
   columnHelper.accessor("cardId", {
     header: "Card ID",
-    cell: (info) => {
-      const cardName = info.row.original.cardName;
-      return (
-        <div className="min-w-0">
-          {cardName && <div className="text-xs font-medium truncate">{cardName}</div>}
-          <span className="font-mono text-xs text-muted-foreground">{info.getValue()}</span>
-        </div>
-      );
-    },
+    cell: renderCardId,
   }),
   columnHelper.accessor("operatorName", {
     header: "Operator",
-    cell: (info) => (
-      <div className="min-w-0">
-        <div className="text-xs font-medium truncate">
-          {info.getValue() ?? "Operator tidak ditemukan"}
-        </div>
-      </div>
-    ),
+    cell: renderOperatorName,
   }),
   columnHelper.accessor("type", {
     header: "Tipe",
-    cell: (info) => (
-      <Badge variant="outline">{TYPE_LABELS[info.getValue()] ?? info.getValue()}</Badge>
-    ),
+    cell: renderTransactionType,
   }),
   columnHelper.accessor("amount", {
-    header: () => <span className="text-right w-full block">Jumlah</span>,
-    cell: (info) => {
-      const type = info.row.original.type;
-      return (
-        <span className={cn("text-right block font-mono text-xs font-semibold", amountColor(type))}>
-          {amountPrefix(type)}Rp {formatAmount(info.getValue())}
-        </span>
-      );
-    },
+    header: renderAmountHeader,
+    cell: renderAmount,
   }),
   columnHelper.accessor("balanceAfter", {
-    header: () => <span className="text-right w-full block">Saldo</span>,
-    cell: (info) => (
-      <span className="text-right block font-mono text-xs text-emerald-600 font-medium">
-        Rp {formatAmount(info.getValue())}
-      </span>
-    ),
+    header: renderBalanceHeader,
+    cell: renderBalanceAfter,
   }),
   columnHelper.accessor("syncStatus", {
     header: "Sync",
-    cell: (info) => {
-      const status = info.getValue();
-      return <Badge variant={SYNC_STATUS_VARIANT[status]}>{SYNC_STATUS_LABELS[status]}</Badge>;
-    },
+    cell: renderSyncStatus,
   }),
 ];
 

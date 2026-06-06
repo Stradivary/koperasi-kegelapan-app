@@ -426,13 +426,17 @@ describe("transactionLogService", () => {
   });
 
   describe("getSyncableEntries", () => {
-    it("queries by tenantId + syncStatus pending", async () => {
+    it("queries by tenantId + syncStatus pending and conflict", async () => {
       const table = getMockedTable();
-      const entries: TransactionLog[] = [
+      const pendingEntries: TransactionLog[] = [
         { ...makeEntry(), id: 1, syncStatus: "pending", syncedAt: null, createdAt: 1700000000000 },
       ];
+      const conflictEntries: TransactionLog[] = [];
 
-      const mockToArray = vi.fn().mockResolvedValue(entries);
+      const mockToArray = vi
+        .fn()
+        .mockResolvedValueOnce(pendingEntries)
+        .mockResolvedValueOnce(conflictEntries);
       table.where.mockReturnValue({
         equals: vi.fn().mockReturnValue({ toArray: mockToArray }),
         between: vi.fn(),

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Key, Plus, Search, Shield, UserCog } from "lucide-react";
 import { createColumnHelper } from "@tanstack/react-table";
 
@@ -79,6 +80,89 @@ function formatDate(dateStr: string): string {
 
 const columnHelper = createColumnHelper<AccountListItem>();
 
+// ─── Module-level cell renderers ─────────────────────────────────────────────
+
+function renderAccountUsername(info: { getValue: () => string }) {
+  return <span className="font-medium">{info.getValue()}</span>;
+}
+
+function renderAccountRole(info: { getValue: () => AccountListItem["role"] }) {
+  const role = info.getValue();
+  const style = ROLE_STYLES[role] ?? { className: "" };
+  return (
+    <Badge variant="outline" className={style.className}>
+      {role}
+    </Badge>
+  );
+}
+
+function renderAccountTenant(info: { getValue: () => string; row: { original: AccountListItem } }) {
+  const row = info.row.original;
+  return (
+    <div className="min-w-0">
+      <span className="text-sm">{info.getValue()}</span>
+      <span className="block text-xs text-muted-foreground font-mono">{row.tenantSlug}</span>
+    </div>
+  );
+}
+
+function renderAccountStatus(info: { getValue: () => AccountListItem["status"] }) {
+  const status = info.getValue();
+  const style = STATUS_STYLES[status] ?? { label: status, className: "" };
+  return (
+    <Badge variant="outline" className={style.className}>
+      {style.label}
+    </Badge>
+  );
+}
+
+function renderAccountCreatedAt(info: { getValue: () => string }) {
+  return <span className="text-muted-foreground">{formatDate(info.getValue())}</span>;
+}
+
+function renderActionsHeader() {
+  return <span className="sr-only">Actions</span>;
+}
+
+function renderAccountActions(
+  onChangePassword: (account: AccountListItem) => void,
+  onToggleStatus: (account: AccountListItem) => void,
+) {
+  return function AccountActionsCellRenderer(info: { row: { original: AccountListItem } }) {
+    const account = info.row.original;
+    return (
+      <div className="flex items-center gap-1 justify-end">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChangePassword(account);
+          }}
+          title="Change password"
+        >
+          <Key size={14} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleStatus(account);
+          }}
+          title={account.status === "active" ? "Suspend account" : "Activate account"}
+        >
+          {account.status === "active" ? (
+            <Shield size={14} className="text-yellow-600" />
+          ) : (
+            <UserCog size={14} className="text-green-600" />
+          )}
+        </Button>
+      </div>
+    );
+  };
+}
+
 function createColumns(
   onChangePassword: (account: AccountListItem) => void,
   onToggleStatus: (account: AccountListItem) => void,
@@ -86,84 +170,28 @@ function createColumns(
   return [
     columnHelper.accessor("username", {
       header: "Username",
-      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      cell: renderAccountUsername,
     }),
     columnHelper.accessor("role", {
       header: "Role",
-      cell: (info) => {
-        const role = info.getValue();
-        const style = ROLE_STYLES[role] ?? { className: "" };
-        return (
-          <Badge variant="outline" className={style.className}>
-            {role}
-          </Badge>
-        );
-      },
+      cell: renderAccountRole,
     }),
     columnHelper.accessor("tenantName", {
       header: "Tenant",
-      cell: (info) => {
-        const row = info.row.original;
-        return (
-          <div className="min-w-0">
-            <span className="text-sm">{info.getValue()}</span>
-            <span className="block text-xs text-muted-foreground font-mono">{row.tenantSlug}</span>
-          </div>
-        );
-      },
+      cell: renderAccountTenant,
     }),
     columnHelper.accessor("status", {
       header: "Status",
-      cell: (info) => {
-        const status = info.getValue();
-        const style = STATUS_STYLES[status] ?? { label: status, className: "" };
-        return (
-          <Badge variant="outline" className={style.className}>
-            {style.label}
-          </Badge>
-        );
-      },
+      cell: renderAccountStatus,
     }),
     columnHelper.accessor("createdAt", {
       header: "Created",
-      cell: (info) => <span className="text-muted-foreground">{formatDate(info.getValue())}</span>,
+      cell: renderAccountCreatedAt,
     }),
     columnHelper.display({
       id: "actions",
-      header: () => <span className="sr-only">Actions</span>,
-      cell: (info) => {
-        const account = info.row.original;
-        return (
-          <div className="flex items-center gap-1 justify-end">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChangePassword(account);
-              }}
-              title="Change password"
-            >
-              <Key size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleStatus(account);
-              }}
-              title={account.status === "active" ? "Suspend account" : "Activate account"}
-            >
-              {account.status === "active" ? (
-                <Shield size={14} className="text-yellow-600" />
-              ) : (
-                <UserCog size={14} className="text-green-600" />
-              )}
-            </Button>
-          </div>
-        );
-      },
+      header: renderActionsHeader,
+      cell: renderAccountActions(onChangePassword, onToggleStatus),
     }),
   ];
 }
@@ -189,7 +217,10 @@ export function AccountListPanel({
     totalPages: Math.max(1, Math.ceil(pagination.total / pagination.pageSize)),
   };
 
-  const columns = createColumns(onChangePassword, onToggleStatus);
+  const columns = useMemo(
+    () => createColumns(onChangePassword, onToggleStatus),
+    [onChangePassword, onToggleStatus],
+  );
 
   return (
     <DataTable

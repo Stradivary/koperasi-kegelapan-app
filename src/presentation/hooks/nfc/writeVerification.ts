@@ -73,6 +73,46 @@ async function verifyReadingEvent(
   }
 }
 
+interface VerificationContext {
+  settled: boolean;
+  timeout: ReturnType<typeof setTimeout>;
+  abort: AbortController;
+  resolve: () => void;
+  reject: (reason: Error) => void;
+}
+
+function finishVerification(ctx: VerificationContext, callback: () => void): void {
+  if (ctx.settled) return;
+  ctx.settled = true;
+  clearTimeout(ctx.timeout);
+  ctx.abort.abort();
+  callback();
+}
+
+function handleReadingEvent(
+  event: NDEFReadingEvent,
+  expectedPayload: CardPayload,
+  grant: SessionGrant,
+  ctx: VerificationContext,
+): void {
+  verifyReadingEvent(event, expectedPayload, grant)
+    .then(() => finishVerification(ctx, ctx.resolve))
+    .catch((e) =>
+      finishVerification(ctx, () =>
+        ctx.reject(e instanceof Error ? e : new Error(WRITE_VERIFICATION_FAILED_MESSAGE)),
+      ),
+    );
+}
+
+function handleReadingError(ctx: VerificationContext): void {
+  finishVerification(ctx, () => ctx.reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+}
+
+function handleScanError(ctx: VerificationContext): void {
+  if (ctx.settled || ctx.abort.signal.aborted) return;
+  finishVerification(ctx, () => ctx.reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+}
+
 /**
  * Single attempt to verify the written payload by reading back from the card.
  */
@@ -83,38 +123,29 @@ async function verifyWrittenPayloadOnce(
   const verificationAbort = new AbortController();
 
   return new Promise<void>((resolve, reject) => {
-    const verificationReader = new NDEFReader();
-    let settled = false;
-
-    const finish = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(verificationTimeout);
-      verificationAbort.abort();
-      callback();
+    const ctx: VerificationContext = {
+      settled: false,
+      timeout: setTimeout(
+        () => finishVerification(ctx, () => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE))),
+        VERIFICATION_TIMEOUT_MS,
+      ),
+      abort: verificationAbort,
+      resolve,
+      reject,
     };
 
-    const verificationTimeout = setTimeout(() => {
-      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
-    }, VERIFICATION_TIMEOUT_MS);
+    const verificationReader = new NDEFReader();
 
     verificationReader.addEventListener("reading", (event: NDEFReadingEvent) => {
-      verifyReadingEvent(event, expectedPayload, grant)
-        .then(() => finish(resolve))
-        .catch((e) =>
-          finish(() =>
-            reject(e instanceof Error ? e : new Error(WRITE_VERIFICATION_FAILED_MESSAGE)),
-          ),
-        );
+      handleReadingEvent(event, expectedPayload, grant, ctx);
     });
 
     verificationReader.addEventListener("readingerror", () => {
-      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+      handleReadingError(ctx);
     });
 
     verificationReader.scan({ signal: verificationAbort.signal }).catch(() => {
-      if (settled || verificationAbort.signal.aborted) return;
-      finish(() => reject(new Error(WRITE_VERIFICATION_FAILED_MESSAGE)));
+      handleScanError(ctx);
     });
   });
 }

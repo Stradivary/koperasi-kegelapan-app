@@ -21,7 +21,7 @@ function createMockSessionGrant(overrides: Partial<SessionGrant> = {}): SessionG
   return {
     keyVersion: 1,
     sessionKey: new Uint8Array(32),
-    expiresAt: Date.now() + 3600000, // 1 hour from now
+    expiresAt: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now in seconds
     allowedOps: ["check-in", "check-out", "debit", "topup"],
     signature: new Uint8Array(64),
     tenantId: "tenant-123",
@@ -71,7 +71,7 @@ describe("validateSession", () => {
   describe("expired session (Requirement 7.3)", () => {
     it("should return SESSION_EXPIRED when session has expired", () => {
       const expiredGrant = createMockSessionGrant({
-        expiresAt: Date.now() - 1000, // 1 second ago
+        expiresAt: Math.floor(Date.now() / 1000) - 1, // 1 second ago in seconds
       });
 
       const result = validateSession(expiredGrant, "tenant-123");
@@ -85,7 +85,7 @@ describe("validateSession", () => {
 
     it("should return SESSION_EXPIRED when session expired exactly at current time", () => {
       const expiredGrant = createMockSessionGrant({
-        expiresAt: Date.now() - 1, // 1ms ago
+        expiresAt: Math.floor(Date.now() / 1000) - 1, // just expired in seconds
       });
 
       const result = validateSession(expiredGrant, "tenant-123");
@@ -96,7 +96,7 @@ describe("validateSession", () => {
 
     it("should return SESSION_EXPIRED for long-expired sessions", () => {
       const expiredGrant = createMockSessionGrant({
-        expiresAt: Date.now() - 86400000, // 24 hours ago
+        expiresAt: Math.floor(Date.now() / 1000) - 86400, // 24 hours ago in seconds
       });
 
       const result = validateSession(expiredGrant, "tenant-123");
@@ -108,7 +108,7 @@ describe("validateSession", () => {
     it("should check expiration before tenant mismatch", () => {
       // Both expired AND tenant mismatch - should return SESSION_EXPIRED
       const expiredGrant = createMockSessionGrant({
-        expiresAt: Date.now() - 1000,
+        expiresAt: Math.floor(Date.now() / 1000) - 1,
         tenantId: "different-tenant",
       });
 
@@ -200,7 +200,7 @@ describe("validateSession", () => {
 
     it("should return valid for session expiring in the future", () => {
       const grant = createMockSessionGrant({
-        expiresAt: Date.now() + 1, // 1ms from now
+        expiresAt: Math.floor(Date.now() / 1000) + 1, // 1 second from now
       });
 
       const result = validateSession(grant, "tenant-123");
@@ -210,7 +210,7 @@ describe("validateSession", () => {
 
     it("should return valid for session with long expiration", () => {
       const grant = createMockSessionGrant({
-        expiresAt: Date.now() + 86400000 * 365, // 1 year from now
+        expiresAt: Math.floor(Date.now() / 1000) + 86400 * 365, // 1 year from now in seconds
       });
 
       const result = validateSession(grant, "tenant-123");
@@ -226,7 +226,7 @@ describe("validateSession", () => {
 
       // Expiration should come before tenant mismatch
       const expiredMismatch = createMockSessionGrant({
-        expiresAt: Date.now() - 1000,
+        expiresAt: Math.floor(Date.now() / 1000) - 1,
         tenantId: "wrong",
       });
       expect(validateSession(expiredMismatch, "t", "c").errorCode).toBe("SESSION_EXPIRED");
@@ -246,7 +246,7 @@ describe("validateSession", () => {
     });
 
     it("should return Indonesian error message for SESSION_EXPIRED", () => {
-      const expired = createMockSessionGrant({ expiresAt: Date.now() - 1000 });
+      const expired = createMockSessionGrant({ expiresAt: Math.floor(Date.now() / 1000) - 1 });
       const result = validateSession(expired, "tenant");
       expect(result.error).toBe("Sesi telah berakhir");
     });

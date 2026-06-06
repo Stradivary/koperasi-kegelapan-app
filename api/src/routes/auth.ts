@@ -345,7 +345,7 @@ authRoutes.post("/refresh", async (c) => {
       .where(eq(accounts.accountId, session.accountId))
       .get();
 
-    if (!account || account.status !== "active") {
+    if (account?.status !== "active") {
       return c.json({ error: "Account inactive" }, 401);
     }
 

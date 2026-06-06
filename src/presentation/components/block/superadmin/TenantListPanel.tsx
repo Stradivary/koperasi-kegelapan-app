@@ -62,40 +62,66 @@ function formatDate(dateStr: string): string {
 
 const columnHelper = createColumnHelper<TenantListItem>();
 
+// ─── Module-level cell renderers ─────────────────────────────────────────────
+
+function renderTenantName(info: { getValue: () => string }) {
+  return <span className="font-medium">{info.getValue()}</span>;
+}
+
+function renderTenantSlug(info: { getValue: () => string }) {
+  return <span className="font-mono text-muted-foreground text-xs">{info.getValue()}</span>;
+}
+
+function renderTenantStatus(info: { getValue: () => TenantListItem["status"] }) {
+  const status = info.getValue();
+  const style = STATUS_STYLES[status];
+  return (
+    <Badge variant="outline" className={style.className}>
+      {style.label}
+    </Badge>
+  );
+}
+
+function renderTenantTimezone(info: { getValue: () => string }) {
+  return <span className="text-muted-foreground">{info.getValue()}</span>;
+}
+
+function renderAccountCountHeader() {
+  return <span className="text-right w-full block">Accounts</span>;
+}
+
+function renderAccountCount(info: { getValue: () => number }) {
+  return <span className="text-right block">{info.getValue()}</span>;
+}
+
+function renderTenantCreatedAt(info: { getValue: () => string }) {
+  return <span className="text-muted-foreground">{formatDate(info.getValue())}</span>;
+}
+
 const columns = [
   columnHelper.accessor("name", {
     header: "Name",
-    cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+    cell: renderTenantName,
   }),
   columnHelper.accessor("slug", {
     header: "Slug",
-    cell: (info) => (
-      <span className="font-mono text-muted-foreground text-xs">{info.getValue()}</span>
-    ),
+    cell: renderTenantSlug,
   }),
   columnHelper.accessor("status", {
     header: "Status",
-    cell: (info) => {
-      const status = info.getValue();
-      const style = STATUS_STYLES[status];
-      return (
-        <Badge variant="outline" className={style.className}>
-          {style.label}
-        </Badge>
-      );
-    },
+    cell: renderTenantStatus,
   }),
   columnHelper.accessor("timezone", {
     header: "Timezone",
-    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+    cell: renderTenantTimezone,
   }),
   columnHelper.accessor("accountCount", {
-    header: () => <span className="text-right w-full block">Accounts</span>,
-    cell: (info) => <span className="text-right block">{info.getValue()}</span>,
+    header: renderAccountCountHeader,
+    cell: renderAccountCount,
   }),
   columnHelper.accessor("createdAt", {
     header: "Created",
-    cell: (info) => <span className="text-muted-foreground">{formatDate(info.getValue())}</span>,
+    cell: renderTenantCreatedAt,
   }),
 ];
 

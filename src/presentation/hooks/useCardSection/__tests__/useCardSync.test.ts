@@ -53,7 +53,13 @@ afterEach(() => {
 
 describe("useCardSync", () => {
   const mockPayload = {
-    header: { magic: 0x4b4f5057, version: 4, type: 0, cardId: new Uint8Array(6), tenantBind: 0 },
+    header: {
+      magic: 0x4b4f5057,
+      version: 4,
+      type: 0,
+      cardId: new Uint8Array([0xaa, 0xbb, 0xcc]),
+      tenantBind: 0,
+    },
     wallet: {
       balance: 5000,
       counter: 3n,
@@ -241,7 +247,7 @@ describe("useCardSync", () => {
       expect(mockNotifyMutation).toHaveBeenCalled();
     });
 
-    it("does nothing when serialNumber is null", async () => {
+    it("does nothing when payload is null", async () => {
       const { useCardSync } = await import("../useCardSync");
 
       renderHook(
@@ -250,7 +256,7 @@ describe("useCardSync", () => {
             tenantId: "t-1",
             state: {
               phase: "success",
-              payload: mockPayload,
+              payload: null,
               serialNumber: null,
               error: null,
               tamperDetected: false,
@@ -309,13 +315,18 @@ describe("useCardSync", () => {
       mockCardsGet.mockResolvedValue(undefined);
       const { useCardSync } = await import("../useCardSync");
 
+      const payloadDdeeff = {
+        ...mockPayload,
+        header: { ...mockPayload.header, cardId: new Uint8Array([0xdd, 0xee, 0xff]) },
+      };
+
       renderHook(
         () =>
           useCardSync({
             tenantId: "t-1",
             state: {
               phase: "ready",
-              payload: mockPayload,
+              payload: payloadDdeeff,
               serialNumber: "DD:EE:FF",
               error: null,
               tamperDetected: false,

@@ -75,22 +75,40 @@ function getAvailableTransitions(currentStatus: string): TenantStatus[] {
 
 const accountColumnHelper = createColumnHelper<TenantAccountInfo>();
 
+// ─── Module-level cell renderers ─────────────────────────────────────────────
+
+function renderAccountUsername(info: { getValue: () => string }) {
+  return <span className="font-medium">{info.getValue()}</span>;
+}
+
+function renderAccountRole(info: { getValue: () => string }) {
+  return <Badge variant="outline">{info.getValue()}</Badge>;
+}
+
+function renderAccountStatus(info: { getValue: () => string }) {
+  return getStatusBadge(info.getValue());
+}
+
+function renderAccountCreatedAt(info: { getValue: () => string }) {
+  return <span className="text-muted-foreground">{formatDate(info.getValue())}</span>;
+}
+
 const accountColumns = [
   accountColumnHelper.accessor("username", {
     header: "Username",
-    cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+    cell: renderAccountUsername,
   }),
   accountColumnHelper.accessor("role", {
     header: "Role",
-    cell: (info) => <Badge variant="outline">{info.getValue()}</Badge>,
+    cell: renderAccountRole,
   }),
   accountColumnHelper.accessor("status", {
     header: "Status",
-    cell: (info) => getStatusBadge(info.getValue()),
+    cell: renderAccountStatus,
   }),
   accountColumnHelper.accessor("createdAt", {
     header: "Created",
-    cell: (info) => <span className="text-muted-foreground">{formatDate(info.getValue())}</span>,
+    cell: renderAccountCreatedAt,
   }),
 ];
 

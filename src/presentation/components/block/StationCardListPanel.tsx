@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
 import {
   CheckCircle2,
@@ -73,43 +73,87 @@ const SYNC_BADGE_VARIANT: Record<StationCardRow["syncStatus"], "default" | "seco
   pending: "secondary",
 };
 
+// ─── Module-level cell renderers ─────────────────────────────────────────────
+
+function renderCardOwner(info: {
+  row: { original: StationCardRow };
+  getValue: () => string | null;
+}) {
+  const row = info.row.original;
+  return row.userName ?? (row.userId ? `User #${row.userId}` : "Tanpa Pemilik");
+}
+
+function renderCardId(info: { getValue: () => string }) {
+  return <span className="font-mono text-xs">{info.getValue()}</span>;
+}
+
+function renderCardStatus(info: { getValue: () => StationCardRow["status"] }) {
+  const status = info.getValue();
+  const isBlocked = status !== "active";
+  return (
+    <Badge variant={isBlocked ? "destructive" : "default"} className="text-[10px] px-1.5 py-0">
+      {status === "active" ? "Aktif" : status.replaceAll("blocked_", "Blokir ")}
+    </Badge>
+  );
+}
+
+function renderCardSync(info: { getValue: () => StationCardRow["syncStatus"] }) {
+  return (
+    <Badge variant={SYNC_BADGE_VARIANT[info.getValue()]} className="text-[10px] px-1.5 py-0">
+      {info.getValue() === "synced" ? "Synced" : "Pending"}
+    </Badge>
+  );
+}
+
+function renderCardBalance(info: { getValue: () => number | null | undefined }) {
+  return <span className="text-right block">Rp {info.getValue()?.toLocaleString("id-ID")}</span>;
+}
+
+function renderCardBalanceHeader() {
+  return <span className="text-right w-full block">Saldo</span>;
+}
+
+function renderCardActions(
+  isRecovering: boolean,
+  isDeleting: boolean,
+  onTopupCard: (cardId: string) => void,
+  onRecoverCard: (card: StationCardRow) => void,
+  onSetDeleteTarget: (card: StationCardRow) => void,
+) {
+  return function CardActionsCellRenderer(info: { row: { original: StationCardRow } }) {
+    return (
+      <CardActionsCell
+        card={info.row.original}
+        isRecovering={isRecovering}
+        isDeleting={isDeleting}
+        onTopupCard={onTopupCard}
+        onRecoverCard={onRecoverCard}
+        onSetDeleteTarget={onSetDeleteTarget}
+      />
+    );
+  };
+}
+
 const columns = [
   columnHelper.accessor("userName", {
     header: "Pemilik",
-    cell: (info) => {
-      const row = info.row.original;
-      return row.userName ?? (row.userId ? `User #${row.userId}` : "Tanpa Pemilik");
-    },
+    cell: renderCardOwner,
   }),
   columnHelper.accessor("cardId", {
     header: "Card ID",
-    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+    cell: renderCardId,
   }),
   columnHelper.accessor("status", {
     header: "Status",
-    cell: (info) => {
-      const status = info.getValue();
-      const isBlocked = status !== "active";
-      return (
-        <Badge variant={isBlocked ? "destructive" : "default"} className="text-[10px] px-1.5 py-0">
-          {status === "active" ? "Aktif" : status.replaceAll("blocked_", "Blokir ")}
-        </Badge>
-      );
-    },
+    cell: renderCardStatus,
   }),
   columnHelper.accessor("syncStatus", {
     header: "Sync",
-    cell: (info) => (
-      <Badge variant={SYNC_BADGE_VARIANT[info.getValue()]} className="text-[10px] px-1.5 py-0">
-        {info.getValue() === "synced" ? "Synced" : "Pending"}
-      </Badge>
-    ),
+    cell: renderCardSync,
   }),
   columnHelper.accessor("balance", {
-    header: () => <span className="text-right w-full block">Saldo</span>,
-    cell: (info) => (
-      <span className="text-right block">Rp {info.getValue()?.toLocaleString("id-ID")}</span>
-    ),
+    header: renderCardBalanceHeader,
+    cell: renderCardBalance,
   }),
   columnHelper.display({
     id: "actions",
@@ -133,24 +177,24 @@ export function StationCardListPanel({
   const nfcSupported = typeof globalThis !== "undefined" && "NDEFReader" in globalThis;
 
   // Build columns with actions (needs closure over handlers)
-  const columnsWithActions = [
-    ...columns.slice(0, -1), // remove placeholder actions column
-    columnHelper.display({
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: (info) => (
-        <CardActionsCell
-          card={info.row.original}
-          isRecovering={isRecovering}
-          isDeleting={isDeleting}
-          onTopupCard={onTopupCard}
-          onRecoverCard={onRecoverCard}
-          onSetDeleteTarget={setDeleteTarget}
-        />
-      ),
-    }),
-  ];
+  const columnsWithActions = useMemo(
+    () => [
+      ...columns.slice(0, -1), // remove placeholder actions column
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        cell: renderCardActions(
+          isRecovering,
+          isDeleting,
+          onTopupCard,
+          onRecoverCard,
+          setDeleteTarget,
+        ),
+      }),
+    ],
+    [isRecovering, isDeleting, onTopupCard, onRecoverCard],
+  );
 
   return (
     <>
