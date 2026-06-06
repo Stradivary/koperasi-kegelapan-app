@@ -180,6 +180,23 @@ describe("updateLocalCardRecord", () => {
       expect.objectContaining({ userId: "user-abc" }),
     );
   });
+
+  it("does not overwrite a locally-deleted card", async () => {
+    mockCardsGet.mockResolvedValue({ cardId: "010203040506", status: "deleted" });
+    const payload = makePayload({ balance: 99999 });
+    await updateLocalCardRecord("t-1", payload);
+
+    expect(mockCardsUpdate).not.toHaveBeenCalled();
+    expect(mockCardsPut).not.toHaveBeenCalled();
+  });
+
+  it("sets userId to null when identity.userId is falsy", async () => {
+    mockCardsGet.mockResolvedValue(undefined);
+    const payload = makePayload({ userId: "" });
+    await updateLocalCardRecord("t-1", payload);
+
+    expect(mockCardsPut).toHaveBeenCalledWith(expect.objectContaining({ userId: null }));
+  });
 });
 
 describe("updateLocalUserFromCard", () => {

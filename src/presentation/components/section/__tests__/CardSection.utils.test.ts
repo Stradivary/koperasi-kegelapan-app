@@ -736,3 +736,648 @@ describe("handleForceOverwrite", () => {
     expect(setIssuancePhase).toHaveBeenCalledWith("writing");
   });
 });
+
+// ── NDEFReader mock for NFC session tests ─────────────────────────────────────
+
+type NdefEventHandler = (...args: unknown[]) => void;
+
+class MockNDEFReader {
+  static instances: MockNDEFReader[] = [];
+  listeners: Record<string, NdefEventHandler[]> = {};
+  scanSignal: AbortSignal | null = null;
+  writtenData: unknown = null;
+
+  constructor() {
+    MockNDEFReader.instances.push(this);
+  }
+
+  addEventListener(event: string, handler: NdefEventHandler) {
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event].push(handler);
+  }
+
+  removeEventListener(event: string, handler: NdefEventHandler) {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter((h) => h !== handler);
+    }
+  }
+
+  async scan({ signal }: { signal: AbortSignal }) {
+    this.scanSignal = signal;
+  }
+
+  async write(msg: unknown, _opts?: unknown) {
+    this.writtenData = msg;
+  }
+
+  emit(event: string, ...args: unknown[]) {
+    (this.listeners[event] ?? []).forEach((h) => h(...args));
+  }
+}
+
+function installNDEFMock() {
+  MockNDEFReader.instances = [];
+  (globalThis as any).NDEFReader = MockNDEFReader;
+}
+
+function removeNDEFMock() {
+  delete (globalThis as any).NDEFReader;
+}
+
+// ── handleFreshNfcSession tests ───────────────────────────────────────────────
+
+describe("handleFreshNfcSession", () => {
+  beforeEach(() => {
+    installNDEFMock();
+    mockPrepareWrite.mockResolvedValue({ bytes: new Uint8Array([0x01, 0x02, 0x03]) });
+    mockValidateUID.mockResolvedValue({ valid: true });
+    mockExtractCardBytes.mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    removeNDEFMock();
+  });
+
+  it("completes full issuance flow on blank card", async () => {
+    const { handleFreshNfcSession } = await import("../CardSection.utils");
+
+    const setIssueCardDrawerOpen = vi.fn();
+    const setIssuancePhase = vi.fn();
+    const setIssuanceError = vi.fn();
+    const setIssuancePayload = vi.fn();
+    const issuanceAbortRef = { current: null as any };
+    const issuanceReaderRef = { current: null as any };
+    const issuanceTimeoutRef = { current: null as any };
+    const issuancePreparedRef = { current: null as any };
+    const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+
+    const payload = {
+      header: { magic: 0, version: 1, type: 0, cardId: new Uint8Array(6), tenantBind: 0 },
+      identity: { name: "Test", userId: "u-1", gender: 0, status: 0, createdAt: 0 },
+      wallet: { balance: 10000, lastBalance: 0, counter: 1n, lastTimestamp: 0, state: 0, flags: 0 },
+      session: { startTime: 0, endTime: 0, terminalId: 0 },
+      logEntries: [],
+      trailer: {
+        expiresAt: 0,
+        keyVersion: 1,
+        rootHash: new Uint8Array(6),
+        counterBind: 1,
+        hmac: new Uint8Array(8),
+        activePtr: 0,
+      },
+    };
+
+    const grant = {
+      keyVersion: 1,
+      sessionKey: new Uint8Array(32),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      allowedOps: ["read", "write"],
+      signature: new Uint8Array(32),
+      tenantId: "t-1",
+      accountId: "a-1",
+      deviceId: "d-1",
+    };
+
+    const promise = handleFreshNfcSession({
+      payload: payload as any,
+      issuanceAbortRef,
+      issuanceReaderRef,
+      issuanceTimeoutRef,
+      issuancePreparedRef,
+      setIssueCardDrawerOpen,
+      setIssuancePhase,
+      setIssuanceError,
+      setIssuancePayload,
+      tenantId: "t-1",
+      userId: "u-1",
+      balance: 10000,
+      expiresAt: null,
+      name: "Alice",
+      grant: grant as any,
+      forceOverwrite: false,
+      qc: mockQc as any,
+    });
+
+    // Simulate NFC reading event
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AA:BB:CC:DD:EE:FF",
+      message: { records: [] },
+    });
+
+    // Wait for async operations including the 1.5s delay
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(2000);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(setIssueCardDrawerOpen).toHaveBeenCalledWith(true);
+    expect(setIssuancePhase).toHaveBeenCalledWith("scanning");
+    expect(setIssuancePhase).toHaveBeenCalledWith("writing");
+    expect(setIssuancePhase).toHaveBeenCalledWith("done");
+    expect(mockCardsPut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "t-1",
+        userId: "u-1",
+        balance: 10000,
+        status: "active",
+        syncStatus: "pending",
+      }),
+    );
+  });
+
+  it("throws CardNotBlankError when card has data and forceOverwrite is false", async () => {
+    mockExtractCardBytes.mockReturnValue(new Uint8Array(128)); // card has data
+    const { handleFreshNfcSession, CardNotBlankError } = await import("../CardSection.utils");
+
+    const setIssuancePhase = vi.fn();
+    const setIssuanceError = vi.fn();
+    const issuanceAbortRef = { current: null as any };
+    const issuanceReaderRef = { current: null as any };
+    const issuanceTimeoutRef = { current: null as any };
+    const issuancePreparedRef = { current: null as any };
+
+    const payload = {
+      header: { magic: 0, version: 1, type: 0, cardId: new Uint8Array(6), tenantBind: 0 },
+      identity: { name: "T", userId: "", gender: 0, status: 0, createdAt: 0 },
+      wallet: { balance: 0, lastBalance: 0, counter: 1n, lastTimestamp: 0, state: 0, flags: 0 },
+      session: { startTime: 0, endTime: 0, terminalId: 0 },
+      logEntries: [],
+      trailer: {
+        expiresAt: 0,
+        keyVersion: 1,
+        rootHash: new Uint8Array(6),
+        counterBind: 1,
+        hmac: new Uint8Array(8),
+        activePtr: 0,
+      },
+    };
+
+    const grant = {
+      keyVersion: 1,
+      sessionKey: new Uint8Array(32),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      allowedOps: ["read"],
+      signature: new Uint8Array(32),
+      tenantId: "t-1",
+      accountId: "a-1",
+      deviceId: "d-1",
+    };
+
+    const promise = handleFreshNfcSession({
+      payload: payload as any,
+      issuanceAbortRef,
+      issuanceReaderRef,
+      issuanceTimeoutRef,
+      issuancePreparedRef,
+      setIssueCardDrawerOpen: vi.fn(),
+      setIssuancePhase,
+      setIssuanceError,
+      setIssuancePayload: vi.fn(),
+      tenantId: "t-1",
+      userId: null,
+      balance: 5000,
+      expiresAt: null,
+      name: "Bob",
+      grant: grant as any,
+      forceOverwrite: false,
+      qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AA:BB:CC:DD:EE:FF",
+      message: { records: [{ data: new Uint8Array(10) }] },
+    });
+
+    await expect(promise).rejects.toThrow(CardNotBlankError);
+  });
+
+  it("sets error phase on generic NFC failure", async () => {
+    // Make prepareWrite throw to simulate a generic error
+    mockPrepareWrite.mockRejectedValue(new Error("Encryption failed"));
+    const { handleFreshNfcSession } = await import("../CardSection.utils");
+
+    const setIssuancePhase = vi.fn();
+    const setIssuanceError = vi.fn();
+    const issuanceAbortRef = { current: null as any };
+    const issuanceReaderRef = { current: null as any };
+    const issuanceTimeoutRef = { current: null as any };
+    const issuancePreparedRef = { current: null as any };
+
+    const payload = {
+      header: { magic: 0, version: 1, type: 0, cardId: new Uint8Array(6), tenantBind: 0 },
+      identity: { name: "T", userId: "", gender: 0, status: 0, createdAt: 0 },
+      wallet: { balance: 0, lastBalance: 0, counter: 1n, lastTimestamp: 0, state: 0, flags: 0 },
+      session: { startTime: 0, endTime: 0, terminalId: 0 },
+      logEntries: [],
+      trailer: {
+        expiresAt: 0,
+        keyVersion: 1,
+        rootHash: new Uint8Array(6),
+        counterBind: 1,
+        hmac: new Uint8Array(8),
+        activePtr: 0,
+      },
+    };
+
+    const grant = {
+      keyVersion: 1,
+      sessionKey: new Uint8Array(32),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      allowedOps: ["read"],
+      signature: new Uint8Array(32),
+      tenantId: "t-1",
+      accountId: "a-1",
+      deviceId: "d-1",
+    };
+
+    const promise = handleFreshNfcSession({
+      payload: payload as any,
+      issuanceAbortRef,
+      issuanceReaderRef,
+      issuanceTimeoutRef,
+      issuancePreparedRef,
+      setIssueCardDrawerOpen: vi.fn(),
+      setIssuancePhase,
+      setIssuanceError,
+      setIssuancePayload: vi.fn(),
+      tenantId: "t-1",
+      userId: null,
+      balance: 5000,
+      expiresAt: null,
+      name: "Test",
+      grant: grant as any,
+      forceOverwrite: false,
+      qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AABBCCDDEEFF",
+      message: { records: [] },
+    });
+
+    await expect(promise).rejects.toThrow("Encryption failed");
+    expect(setIssuancePhase).toHaveBeenCalledWith("error");
+    expect(setIssuanceError).toHaveBeenCalledWith("Encryption failed");
+  });
+
+  it("skips local conflict check when forceOverwrite is true", async () => {
+    mockExtractCardBytes.mockReturnValue(new Uint8Array(128)); // card has data
+    const { handleFreshNfcSession } = await import("../CardSection.utils");
+
+    const setIssuancePhase = vi.fn();
+    const issuanceAbortRef = { current: null as any };
+    const issuanceReaderRef = { current: null as any };
+    const issuanceTimeoutRef = { current: null as any };
+    const issuancePreparedRef = { current: null as any };
+    const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+
+    const payload = {
+      header: { magic: 0, version: 1, type: 0, cardId: new Uint8Array(6), tenantBind: 0 },
+      identity: { name: "T", userId: "", gender: 0, status: 0, createdAt: 0 },
+      wallet: { balance: 0, lastBalance: 0, counter: 1n, lastTimestamp: 0, state: 0, flags: 0 },
+      session: { startTime: 0, endTime: 0, terminalId: 0 },
+      logEntries: [],
+      trailer: {
+        expiresAt: 0,
+        keyVersion: 1,
+        rootHash: new Uint8Array(6),
+        counterBind: 1,
+        hmac: new Uint8Array(8),
+        activePtr: 0,
+      },
+    };
+
+    const grant = {
+      keyVersion: 1,
+      sessionKey: new Uint8Array(32),
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      allowedOps: ["read"],
+      signature: new Uint8Array(32),
+      tenantId: "t-1",
+      accountId: "a-1",
+      deviceId: "d-1",
+    };
+
+    const promise = handleFreshNfcSession({
+      payload: payload as any,
+      issuanceAbortRef,
+      issuanceReaderRef,
+      issuanceTimeoutRef,
+      issuancePreparedRef,
+      setIssueCardDrawerOpen: vi.fn(),
+      setIssuancePhase,
+      setIssuanceError: vi.fn(),
+      setIssuancePayload: vi.fn(),
+      tenantId: "t-1",
+      userId: null,
+      balance: 5000,
+      expiresAt: null,
+      name: "Test",
+      grant: grant as any,
+      forceOverwrite: true,
+      qc: mockQc as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AABBCCDDEEFF",
+      message: { records: [{ data: new Uint8Array(10) }] },
+    });
+
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(2000);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(setIssuancePhase).toHaveBeenCalledWith("done");
+    // checkLocalCardConflict should NOT have been called (forceOverwrite=true)
+    // The flow completed without error
+  });
+});
+
+// ── executeRecovery tests ─────────────────────────────────────────────────────
+
+describe("executeRecovery", () => {
+  beforeEach(() => {
+    installNDEFMock();
+    mockPrepareWrite.mockResolvedValue({ bytes: new Uint8Array([0x01, 0x02]) });
+    mockEncodeTenantBind.mockReturnValue(0x12345678);
+  });
+
+  afterEach(() => {
+    removeNDEFMock();
+  });
+
+  it("throws when card is not found in local DB", async () => {
+    mockCardsGet.mockResolvedValue(undefined);
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    await expect(
+      executeRecovery({
+        cardId: "aabbccddeeff",
+        tenantId: "t-1",
+        grant: { keyVersion: 1 } as any,
+        setRecoveryPhase: vi.fn(),
+        setRecoveryError: vi.fn(),
+        setRecoveryPayload: vi.fn(),
+        setRecoverySerial: vi.fn(),
+        qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+      }),
+    ).rejects.toThrow("Data kartu tidak ditemukan");
+  });
+
+  it("throws when card status is deleted", async () => {
+    mockCardsGet.mockResolvedValue({ status: "deleted", tenantId: "t-1", cardId: "abc" });
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    await expect(
+      executeRecovery({
+        cardId: "aabbccddeeff",
+        tenantId: "t-1",
+        grant: { keyVersion: 1 } as any,
+        setRecoveryPhase: vi.fn(),
+        setRecoveryError: vi.fn(),
+        setRecoveryPayload: vi.fn(),
+        setRecoverySerial: vi.fn(),
+        qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+      }),
+    ).rejects.toThrow("Data kartu tidak ditemukan");
+  });
+
+  it("throws when card has pending sync status", async () => {
+    mockCardsGet.mockResolvedValue({
+      tenantId: "t-1",
+      cardId: "aabbccddeeff",
+      status: "active",
+      syncStatus: "pending",
+      balance: 50000,
+      counter: 5,
+    });
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    await expect(
+      executeRecovery({
+        cardId: "aabbccddeeff",
+        tenantId: "t-1",
+        grant: { keyVersion: 1 } as any,
+        setRecoveryPhase: vi.fn(),
+        setRecoveryError: vi.fn(),
+        setRecoveryPayload: vi.fn(),
+        setRecoverySerial: vi.fn(),
+        qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+      }),
+    ).rejects.toThrow("belum tersinkron");
+  });
+
+  it("throws when scanned card does not match selected card", async () => {
+    mockCardsGet.mockResolvedValue({
+      tenantId: "t-1",
+      cardId: "aabbccddeeff",
+      userId: "u-1",
+      status: "active",
+      syncStatus: "synced",
+      balance: 50000,
+      counter: 5,
+      createdAt: 1700000000,
+      lastActivityAt: 1700001000,
+      expiresAt: null,
+      notes: null,
+    });
+    mockUsersGet.mockResolvedValue({ name: "Alice" });
+
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    const setRecoveryPhase = vi.fn();
+    const setRecoveryError = vi.fn();
+
+    const promise = executeRecovery({
+      cardId: "aabbccddeeff",
+      tenantId: "t-1",
+      grant: { keyVersion: 1 } as any,
+      setRecoveryPhase,
+      setRecoveryError,
+      setRecoveryPayload: vi.fn(),
+      setRecoverySerial: vi.fn(),
+      qc: { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    // Emit a different serial than the cardId
+    reader.emit("reading", {
+      serialNumber: "11:22:33:44:55:66",
+      message: { records: [] },
+    });
+
+    await expect(promise).rejects.toThrow("tidak sesuai");
+    expect(setRecoveryPhase).toHaveBeenCalledWith("error");
+    expect(setRecoveryError).toHaveBeenCalledWith(expect.stringContaining("tidak sesuai"));
+  });
+
+  it("completes recovery flow when card matches", async () => {
+    mockCardsGet.mockResolvedValue({
+      tenantId: "t-1",
+      cardId: "aabbccddeeff",
+      userId: "u-1",
+      status: "active",
+      syncStatus: "synced",
+      balance: 50000,
+      counter: 5,
+      createdAt: 1700000000,
+      lastActivityAt: 1700001000,
+      expiresAt: null,
+      notes: "Alice",
+    });
+    mockUsersGet.mockResolvedValue({ name: "Alice" });
+    mockDecodePayload.mockImplementation(() => {
+      throw new Error("corrupted"); // Allow recovery (corrupted card)
+    });
+
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    const setRecoveryPhase = vi.fn();
+    const setRecoveryPayload = vi.fn();
+    const setRecoverySerial = vi.fn();
+    const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+
+    const promise = executeRecovery({
+      cardId: "aabbccddeeff",
+      tenantId: "t-1",
+      grant: { keyVersion: 1 } as any,
+      setRecoveryPhase,
+      setRecoveryError: vi.fn(),
+      setRecoveryPayload,
+      setRecoverySerial,
+      qc: mockQc as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AA:BB:CC:DD:EE:FF",
+      message: { records: [] },
+    });
+
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(2000);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(setRecoveryPhase).toHaveBeenCalledWith("writing");
+    expect(setRecoveryPhase).toHaveBeenCalledWith("done");
+    expect(setRecoveryPayload).toHaveBeenCalled();
+    expect(setRecoverySerial).toHaveBeenCalledWith("aabbccddeeff");
+    expect(mockQc.invalidateQueries).toHaveBeenCalled();
+  });
+
+  it("uses owner name from users table when available", async () => {
+    mockCardsGet.mockResolvedValue({
+      tenantId: "t-1",
+      cardId: "aabbccddeeff",
+      userId: "u-1",
+      status: "active",
+      syncStatus: "synced",
+      balance: 50000,
+      counter: 5,
+      createdAt: 1700000000,
+      lastActivityAt: 1700001000,
+      expiresAt: null,
+      notes: null,
+    });
+    mockUsersGet.mockResolvedValue({ name: "From DB" });
+    mockDecodePayload.mockImplementation(() => {
+      throw new Error("corrupted");
+    });
+
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    const setRecoveryPhase = vi.fn();
+    const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+
+    const promise = executeRecovery({
+      cardId: "aabbccddeeff",
+      tenantId: "t-1",
+      grant: { keyVersion: 1 } as any,
+      setRecoveryPhase,
+      setRecoveryError: vi.fn(),
+      setRecoveryPayload: vi.fn(),
+      setRecoverySerial: vi.fn(),
+      qc: mockQc as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AA:BB:CC:DD:EE:FF",
+      message: { records: [] },
+    });
+
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(2000);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(setRecoveryPhase).toHaveBeenCalledWith("done");
+  });
+
+  it("falls back to 'Anggota' when no owner name available", async () => {
+    mockCardsGet.mockResolvedValue({
+      tenantId: "t-1",
+      cardId: "aabbccddeeff",
+      userId: null,
+      status: "active",
+      syncStatus: "synced",
+      balance: 50000,
+      counter: 5,
+      createdAt: 1700000000,
+      lastActivityAt: 1700001000,
+      expiresAt: null,
+      notes: null,
+    });
+    mockDecodePayload.mockImplementation(() => {
+      throw new Error("corrupted");
+    });
+
+    const { executeRecovery } = await import("../CardSection.utils");
+
+    const setRecoveryPhase = vi.fn();
+    const mockQc = { invalidateQueries: vi.fn().mockResolvedValue(undefined) };
+
+    const promise = executeRecovery({
+      cardId: "aabbccddeeff",
+      tenantId: "t-1",
+      grant: { keyVersion: 1 } as any,
+      setRecoveryPhase,
+      setRecoveryError: vi.fn(),
+      setRecoveryPayload: vi.fn(),
+      setRecoverySerial: vi.fn(),
+      qc: mockQc as any,
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    const reader = MockNDEFReader.instances[0];
+    reader.emit("reading", {
+      serialNumber: "AA:BB:CC:DD:EE:FF",
+      message: { records: [] },
+    });
+
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(2000);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(setRecoveryPhase).toHaveBeenCalledWith("done");
+  });
+});

@@ -67,6 +67,28 @@ describe("POST /reconcile", () => {
     vi.clearAllMocks();
   });
 
+  it("returns 401 when auth context is missing", async () => {
+    const app = new Hono<{ Bindings: Env }>();
+    app.use("*", async (c, next) => {
+      c.env = env;
+      // Do not set auth — simulates missing auth context
+      await next();
+    });
+    app.route("/", reconcileRoute);
+
+    const res = await app.request(
+      new Request("http://localhost/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terminalId: "t-1", events: [] }),
+      }),
+    );
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("Authentication required");
+    expect(body.reason).toBe("auth_context_missing");
+  });
+
   it("returns 400 when body is invalid JSON", async () => {
     const app = createTestApp();
     const res = await app.request(

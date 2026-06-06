@@ -229,18 +229,21 @@ authRoutes.post("/token", async (c) => {
   });
 
   if (!account || !isPasswordValid) {
+    let hashFormat = "unknown";
+    if (account?.passwordHash?.startsWith("pbkdf2$")) {
+      hashFormat = "A";
+    } else if (account?.passwordHash?.includes(":")) {
+      hashFormat = "B";
+    }
+
     const debugInfo = {
-      step: !account ? "account_not_found" : "password_mismatch",
+      step: account ? "password_mismatch" : "account_not_found",
       username: json.username,
       tenantSlug: json.tenantSlug ?? "(none)",
       accountFound: !!account,
       accountStatus: account?.status ?? "N/A",
       passwordError,
-      hashFormat: account?.passwordHash?.startsWith("pbkdf2$")
-        ? "A"
-        : account?.passwordHash?.includes(":")
-          ? "B"
-          : "unknown",
+      hashFormat,
       hashLength: account?.passwordHash?.length ?? 0,
       hashPrefix: account?.passwordHash?.substring(0, 20) ?? "N/A",
     };

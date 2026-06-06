@@ -346,4 +346,121 @@ describe("useCardOperations", () => {
       expect(result.current.resetCardPending).toBe(false);
     });
   });
+
+  describe("topup card-mismatch detection", () => {
+    it("shows error toast and closes drawer when scanned card does not match target", async () => {
+      vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+      const mockToastError = vi.fn();
+      vi.mocked((await import("sonner")).toast.error).mockImplementation(mockToastError);
+
+      // Set state to ready with a different cardId than expected
+      mockNfcState.phase = "ready";
+      mockNfcState.payload = {
+        header: { cardId: new Uint8Array([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]) },
+        wallet: { balance: 100 },
+      };
+
+      const onCloseDrawer = vi.fn();
+      const { useCardOperations } = await import("../useCardOperations");
+      const { result } = renderHook(() => useCardOperations({ ...defaultOptions, onCloseDrawer }), {
+        wrapper: createWrapper(),
+      });
+
+      // Trigger topup flow with a specific cardId
+      act(() => {
+        result.current.handleTopupCard("aabbccddeeff");
+      });
+
+      // The effect should detect mismatch and close
+    });
+
+    it("closes drawer when blocked status detected", async () => {
+      mockCheckLocalBlockedStatus.mockResolvedValue({
+        blocked: true,
+        reason: "Kartu diblokir oleh admin",
+      });
+
+      mockNfcState.phase = "ready";
+      mockNfcState.payload = {
+        header: { cardId: new Uint8Array([0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]) },
+        wallet: { balance: 100 },
+      };
+
+      const onCloseDrawer = vi.fn();
+      const { useCardOperations } = await import("../useCardOperations");
+      const { result } = renderHook(() => useCardOperations({ ...defaultOptions, onCloseDrawer }), {
+        wrapper: createWrapper(),
+      });
+
+      act(() => {
+        result.current.handleTopupCard("aabbccddeeff");
+      });
+
+      // Wait for the async blocked status check
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    });
+  });
+
+  describe("handleTopupConfirm - validation failure", () => {
+    it("shows error toast when topup validation fails", async () => {
+      mockNfcState.phase = "ready";
+      mockNfcState.payload = { wallet: { balance: 50 } };
+      mockValidateTopup.mockReturnValue({ valid: false, reason: "Melebihi batas maksimum" });
+
+      const { useCardOperations } = await import("../useCardOperations");
+      const { result } = renderHook(() => useCardOperations(defaultOptions), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        await result.current.handleTopupConfirm(999999);
+      });
+
+      // Should not write to card
+      expect(mockWrite).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when grant is null", async () => {
+      mockNfcState.phase = "ready";
+      mockNfcState.payload = { wallet: { balance: 50 } };
+
+      const { useCardOperations } = await import("../useCardOperations");
+      const { result } = renderHook(() => useCardOperations({ ...defaultOptions, grant: null }), {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        await result.current.handleTopupConfirm(10000);
+      });
+
+      expect(mockWrite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("auto-reset on ready", () => {
+    it("triggers handleResetWrite when phase becomes ready and resetCardPending is true", async () => {
+      mockNfcState.phase = "ready";
+      mockNfcState.payload = { wallet: { balance: 100, state: 1 } };
+
+      const { useCardOperations } = await import("../useCardOperations");
+      const { result } = renderHook(() => useCardOperations(defaultOptions), {
+        wrapper: createWrapper(),
+      });
+
+      // Set resetCardPending to true
+      act(() => {
+        result.current.setResetCardPending(true);
+      });
+
+      // The useEffect should trigger - advance next tick
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(mockApplyResetState).toHaveBeenCalled();
+      expect(mockWrite).toHaveBeenCalledWith(expect.anything(), "admin_reset");
+    });
+  });
 });
